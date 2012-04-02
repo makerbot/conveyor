@@ -3,8 +3,6 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
-import dispatcher
-import dispatcher
 import logging
 import logging.config
 import os.path
@@ -17,7 +15,7 @@ class _Main(object):
 
     def main(self, argv):
         self._init_logging()
-        self._log = logging.getLogger('dispatcher.__main__._Main')
+        self._log = logging.getLogger('conveyor.__main__._Main')
         try:
             parser = self._init_parser()
             args = parser.parse_args(argv[1:])
@@ -35,7 +33,7 @@ class _Main(object):
             level = logging.INFO
         else:
             level = logging.ERROR
-        self._log.log(level, 'dispatcher terminating with status code %d', code)
+        self._log.log(level, 'conveyor terminating with status code %d', code)
         return code
 
     def _init_logging(self):
@@ -55,12 +53,12 @@ class _Main(object):
 
     def _init_logging_basic(self):
         logging.basicConfig(
-            format='dispatcher: %(levelname)s: %(message)s',
+            format='conveyor: %(levelname)s: %(message)s',
             datefmt='%Y.%m.%d|%H:%M:%S',
             level=logging.INFO)
 
     def _init_parser(self):
-        parser = argparse.ArgumentParser(prog='dispatcher')
+        parser = argparse.ArgumentParser(prog='conveyor')
         def error(message):
             self._log.error(message)
             sys.exit(1)
