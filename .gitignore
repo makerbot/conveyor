@@ -3,3 +3,4 @@
 .*.sw?
 /.coverage
 /obj
+/virtualenv
