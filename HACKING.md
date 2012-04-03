@@ -6,8 +6,8 @@ Conveyor is our new printing dispatch system.
 Prerequisites
 -------------
 
-    * Python 2.7
-    * Virtualenv
+* Python 2.7
+* Virtualenv
 
 On Ubuntu these dependencies can be installed by issuing this command:
 
