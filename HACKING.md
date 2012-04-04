@@ -40,11 +40,15 @@ ReplicatorG services).
 
 Start a toolpath generator process:
 
-        $ cd ReplicatorG-service
+        $ git submodule init
+	$ git submodule update
+	$ cd submodules/ReplicatorG-service
         $ ant run -Drun.arguments="toolpathGenerator --bus-name com.makerbot.ToolpathGenerator0"
 
 Start a printer process:
 
+        $ git submodule init
+	$ git submodule update
         $ cd ReplicatorG-service
         $ ant run -Drun.arguments="printer --bus-name com.makerbot.Printer0"
 
