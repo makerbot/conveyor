@@ -28,8 +28,10 @@ then
 	mkdir obj/
 fi
 
-env PYTHONPATH=src/main/python/ python -m coverage run --branch -m unittest ${_modules}
-env PYTHONPATH=src/main/python/ python -m coverage annotate -d obj/ ${_files}
-env PYTHONPATH=src/main/python/ python -m coverage html -d obj/ ${_files}
-env PYTHONPATH=src/main/python/ python -m coverage xml -o obj/coverage.xml ${_files}
-env PYTHONPATH=src/main/python/ python -m coverage report ${_files}
+env PYTHONPATH=src/main/python/ coverage run --branch -m unittest ${_modules}
+_exit=$?
+env PYTHONPATH=src/main/python/ coverage annotate -d obj/ ${_files}
+env PYTHONPATH=src/main/python/ coverage html -d obj/ ${_files}
+env PYTHONPATH=src/main/python/ coverage xml -o obj/coverage.xml ${_files}
+env PYTHONPATH=src/main/python/ coverage report ${_files}
+exit ${_exit}
