@@ -34,6 +34,10 @@ other tests will run correctly.
 The toolpath generator and printer services are available from the "service"
 branch of ReplicatorG.
 
+At least one time you must run the GUI version of ReplicatorG and convert a
+model to gcode (this will create a skeinforge profile which is required by the
+ReplicatorG services).
+
 Start a toolpath generator process:
 
         $ cd ReplicatorG-service
