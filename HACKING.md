@@ -48,6 +48,15 @@ Start a printer process:
         $ cd ReplicatorG-service
         $ ant run -Drun.arguments="printer --bus-name com.makerbot.Printer0"
 
+The printer subcommand accepts a '--machine-name' argument and a '--port'
+argument. These are not required if the GUI version of ReplicatorG is properly
+configured.
+
+The virtual printer is useful for testing. Please note the single quotes around
+the machine name (the machine name has spaces in it).
+
+        $ ant run -Drun.arguments="printer --bus-name com.makerbot.Printer0 --machine-name 'Virtual Printer Dual'"
+
 These particular bus names are required for the test suite.
 
 Run the test suite:
