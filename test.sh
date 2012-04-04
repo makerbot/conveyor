@@ -5,6 +5,7 @@
 _modules='
 	conveyor.async
 	conveyor.async.glib
+	conveyor.async.qt
 	conveyor.enum
 	conveyor.event
 	conveyor.printer
@@ -15,6 +16,7 @@ _modules='
 _files='
 	src/main/python/conveyor/async/__init__.py
 	src/main/python/conveyor/async/glib.py
+	src/main/python/conveyor/async/qt.py
 	src/main/python/conveyor/enum.py
 	src/main/python/conveyor/event.py
 	src/main/python/conveyor/printer/__init__.py
