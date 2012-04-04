@@ -5,6 +5,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import conveyor.async
 import conveyor.async.glib
 import conveyor.printer
+import conveyor.test
 import dbus
 import os.path
 import unittest
@@ -61,6 +62,7 @@ class _DbusPrinter(conveyor.printer.Printer):
         return async
 
 class _DbusPrinter_build_TestCase(unittest.TestCase):
+    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
     def test(self):
         bus = dbus.SessionBus()
         bus_name = 'com.makerbot.Printer0'

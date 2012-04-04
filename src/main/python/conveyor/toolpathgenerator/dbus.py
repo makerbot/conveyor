@@ -4,6 +4,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.async
 import conveyor.async.glib
+import conveyor.test
 import conveyor.toolpathgenerator
 import dbus
 import gobject
@@ -90,6 +91,7 @@ class _ToolpathGeneratorSingleTestCase(unittest.TestCase):
     def tearDown(self):
         _unlink(self.output)
 
+    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
     def test_single(self):
         bus = dbus.SessionBus()
         bus_name = 'com.makerbot.ToolpathGenerator0'
@@ -111,6 +113,7 @@ class _ToolpathGeneratorDualstrusionTestCase(unittest.TestCase):
         _unlink(self.input_right)
         _unlink(self.output)
 
+    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
     def test_dualstrusion(self):
         bus = dbus.SessionBus()
         bus_name = 'com.makerbot.ToolpathGenerator0'

@@ -19,9 +19,9 @@ class _GlibAsync(conveyor.async.Async):
         self._mainloop = None
 
     def _attach(self):
-        self.reply_event.attach(self._mainloop_callback)
-        self.error_event.attach(self._mainloop_callback)
-        self.timeout_event.attach(self._mainloop_callback)
+        for event in (self.reply_event, self.error_event,
+            self.timeout_event):
+                event.attach(self._mainloop_callback)
 
     def _quit(self):
         if None != self._mainloop:
