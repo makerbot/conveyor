@@ -430,7 +430,19 @@ class _ProcessTestCase(unittest.TestCase):
         self.assertFalse(machine.is_yielded())
         self.assertEqual(2, machine.get_abort_value())
 
-    def test_sequence(self):
+    def test_yield(self):
+        term = _TermYield(_TermAsync(1))
+        machine = _Machine.create(term)
+        machine.evaluate()
+        self.assertFalse(machine.is_aborted())
+        self.assertTrue(machine.is_yielded())
+        self.assertEqual(1, machine.get_yield_value())
+        machine.send(2)
+        self.assertTrue(machine.is_aborted())
+        self.assertFalse(machine.is_yielded())
+        self.assertEqual(2, machine.get_abort_value())
+
+    def test_sequence_yield(self):
         term = _TermSequence(
             _TermYield(
                 _TermAsync(1)),
