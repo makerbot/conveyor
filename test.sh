@@ -10,6 +10,7 @@ _modules='
 	conveyor.event
 	conveyor.printer
 	conveyor.printer.dbus
+	conveyor.process
 	conveyor.toolpathgenerator
 	conveyor.toolpathgenerator.dbus
 '
@@ -21,6 +22,7 @@ _files='
 	src/main/python/conveyor/event.py
 	src/main/python/conveyor/printer/__init__.py
 	src/main/python/conveyor/printer/dbus.py
+	src/main/python/conveyor/process.py
 	src/main/python/conveyor/toolpathgenerator/__init__.py
 	src/main/python/conveyor/toolpathgenerator/dbus.py
 '
