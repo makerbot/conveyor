@@ -2,9 +2,98 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import conveyor.async.glib
+import conveyor.event
 import unittest
 
-# This module is structured like a lambda calculus evaluator. The rationale is:
+class Process(object):
+    @classmethod
+    def create(cls, async_list):
+        # I <3 functional programming.
+        term = reduce(_TermSequence,
+            (_TermYield(_TermAsync(a)) for a in async_list))
+        machine = _Machine.create(term)
+        process = Process(machine)
+        return process
+
+    def __init__(self, machine):
+        self._machine = machine
+
+    def run(self):
+        self._machine.evaluate()
+        while True:
+            if self._machine.is_aborted():
+                break
+            else:
+                assert self._machine.is_yielded()
+                async = self._machine.get_yield_value()
+                async.wait()
+
+                # Future Implementation Note: soon we will not be able to use
+                # 'wait' here.
+
+                if async.state in (conveyor.async.AsyncState.ERROR,
+                    conveyor.async.AsyncState.TIMEOUT,
+                    conveyor.async.AsyncState.CANCELED):
+                        raise Exception # TODO: heinous
+                else:
+                    assert conveyor.async.AsyncState.SUCCESS == async.state
+                    self._machine.send()
+
+class _ProcessTestCase(unittest.TestCase):
+    def test_single(self):
+        callback = conveyor.event.Callback()
+        self.assertFalse(callback.delivered)
+        def func(async):
+            callback()
+            async.reply_trigger()
+        async = conveyor.async.glib.fromfunc(func)
+        process = Process.create([async])
+        process.run()
+        self.assertTrue(callback.delivered)
+
+    def test_multiple(self):
+        callback1 = conveyor.event.Callback()
+        callback2 = conveyor.event.Callback()
+        self.assertFalse(callback1.delivered)
+        self.assertFalse(callback2.delivered)
+        def func1(async):
+            self.assertFalse(callback1.delivered)
+            self.assertFalse(callback2.delivered)
+            callback1()
+            async.reply_trigger()
+        def func2(async):
+            self.assertTrue(callback1.delivered)
+            self.assertFalse(callback2.delivered)
+            callback2()
+            async.reply_trigger()
+        async1 = conveyor.async.glib.fromfunc(func1)
+        async2 = conveyor.async.glib.fromfunc(func2)
+        process = Process.create([async1, async2])
+        process.run()
+        self.assertTrue(callback1.delivered)
+        self.assertTrue(callback2.delivered)
+
+    def test_error(self):
+        callback1 = conveyor.event.Callback()
+        callback2 = conveyor.event.Callback()
+        self.assertFalse(callback1.delivered)
+        self.assertFalse(callback2.delivered)
+        def func1(async):
+            self.assertFalse(callback1.delivered)
+            self.assertFalse(callback2.delivered)
+            callback1()
+            async.error_trigger()
+        async1 = conveyor.async.glib.fromfunc(func1)
+        async2 = conveyor.async.glib.fromfunc(None) # not actually called
+        process = Process.create([async1, async2])
+        with self.assertRaises(Exception): # TODO: omg fix this. it's embarrassing.
+            process.run()
+        self.assertTrue(callback1.delivered)
+        self.assertFalse(callback2.delivered)
+
+# This module is structured like a lambda calculus evaluator (although without
+# closures, Abs, and App). The rationale is:
 #
 # 1. We already need something isomorphic to evaluation contexts to track
 #    progress through a process. We might as well model and use evaluation
@@ -371,7 +460,7 @@ class _Machine(object):
             else:
                 raise _UnknownPhaseException(self._phase)
 
-class _ProcessTestCase(unittest.TestCase):
+class _MachineTestCase(unittest.TestCase):
     def test_abort(self):
         term = _TermAsync(1)
         machine = _Machine.create(term)
@@ -421,17 +510,20 @@ class _ProcessTestCase(unittest.TestCase):
         self.assertEqual(3, machine.get_abort_value())
 
     def test__UnknownTermException(self):
-        phase = _PhaseRefocus(1, None, None, None)
+        term = 1
+        phase = _PhaseRefocus(term, None, None, None)
         with self.assertRaises(_UnknownTermException):
             phase.refocus()
 
     def test__UnknownContextException(self):
-        phase = _PhaseRefocusAux(1, None, None)
+        context = 1
+        phase = _PhaseRefocusAux(context, None, None)
         with self.assertRaises(_UnknownContextException):
             phase.refocus_aux()
 
     def test__UnknownPhaseException(self):
-        machine = _Machine(1)
+        phase = 1
+        machine = _Machine(phase)
         with self.assertRaises(_UnknownPhaseException):
             machine.evaluate()
 
