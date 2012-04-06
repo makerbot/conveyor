@@ -170,7 +170,7 @@ class _ContextYield(_Context):
         self.context = context
 
     def __repr__(self):
-        return '_ContexYield(context=%r)' % (self.context,)
+        return '_ContextYield(context=%r)' % (self.context,)
 
 class _Phase(object):
     '''\
@@ -276,7 +276,7 @@ class _PhaseRefocusAux(_Phase):
             phase = _PhaseRefocus(new_term, new_environment, new_context,
                 new_state)
         elif isinstance(self.context, _ContextYield):
-            phase = _PhaseYield(self.value, self.context, self.state)
+            phase = _PhaseYield(self.value, self.context.context, self.state)
         else:
             raise _UnknownContextException(self.context)
         return phase
@@ -438,6 +438,7 @@ class _ProcessTestCase(unittest.TestCase):
         self.assertTrue(machine.is_yielded())
         self.assertEqual(1, machine.get_yield_value())
         machine.send(2)
+        print(machine)
         self.assertTrue(machine.is_aborted())
         self.assertFalse(machine.is_yielded())
         self.assertEqual(2, machine.get_abort_value())
