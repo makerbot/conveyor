@@ -82,9 +82,6 @@ class _TermAbort(_Term):
     def __init__(self, term):
         self.term = term
 
-    def __repr__(self):
-        return '_TermAbort(term=%r)' % (self.term,)
-
 class _TermAsync(_Term):
     '''\
     The async term is a literal that evaluates to an Async value.
@@ -95,9 +92,6 @@ class _TermAsync(_Term):
 
     def __init__(self, async):
         self.async = async
-
-    def __repr__(self):
-        return '_TermAsync(async=%r)' % (self.async,)
 
 class _TermSequence(_Term):
     '''\
@@ -113,9 +107,6 @@ class _TermSequence(_Term):
         self.term1 = term1
         self.term2 = term2
 
-    def __repr__(self):
-        return '_TermSequence(term1=%r, term2=%r)' % (self.term1, self.term2)
-
 class _TermYield(_Term):
     '''\
     The yield term evaluates its inner term and then suspends the machine.
@@ -123,9 +114,6 @@ class _TermYield(_Term):
 
     def __init__(self, term):
         self.term = term
-
-    def __repr__(self):
-        return '_TermYield(term=%r)' % (self.term,)
 
 class _Context(object):
     '''\
@@ -141,9 +129,6 @@ class _ContextAbort(_Context):
     context, that enclosing context is discarded.
     '''
 
-    def __repr__(self):
-        return '_ContextAbort()'
-
 class _ContextSequence(_Context):
     '''\
     The context under which a sequence term is evaluated.
@@ -157,10 +142,6 @@ class _ContextSequence(_Context):
         self.term = term
         self.environment = environment
 
-    def __repr__(self):
-        return '_ContextSequence(context=%r, term=%r, environment=%r)' % (
-            self.context, self.term, self.environment)
-
 class _ContextYield(_Context):
     '''\
     The context under which a yield term is evaluated.
@@ -168,9 +149,6 @@ class _ContextYield(_Context):
 
     def __init__(self, context):
         self.context = context
-
-    def __repr__(self):
-        return '_ContextYield(context=%r)' % (self.context,)
 
 class _Phase(object):
     '''\
@@ -189,9 +167,6 @@ class _PhaseAbort(_Phase):
     def __init__(self, value, state):
         self.value = value
         self.state = state
-
-    def __repr__(self):
-        return '_PhaseAbort(value=%r, state=%r)' % (self.value, self.state)
 
 class _PhaseRefocus(_Phase):
     '''\
@@ -241,10 +216,6 @@ class _PhaseRefocus(_Phase):
             raise _UnknownTermException(self.term)
         return phase
 
-    def __repr__(self):
-        return '_PhaseRefocus(term=%r, environment=%r, context=%r, state=%r)' % (
-            self.term, self.environment, self.context, self.state)
-
 class _PhaseRefocusAux(_Phase):
     '''\
     This is the auxillary refocusing machine phase. It represents the 'apply'
@@ -255,10 +226,6 @@ class _PhaseRefocusAux(_Phase):
         self.context = context
         self.value = value
         self.state = state
-
-    def __repr__(self):
-        return '_PhaseRefocusAux(context=%r, value=%r, state=%r)' % (
-            self.context, self.value, self.state)
 
     def refocus_aux(self):
         '''\
@@ -294,10 +261,6 @@ class _PhaseYield(_Phase):
     def send(self, value):
         phase = _PhaseRefocusAux(self.context, value, self.state)
         return phase
-
-    def __repr__(self):
-        return '_PhaseYield(value=%r, context=%r, state=%r)' % (self.value,
-            self.context, self.state)
 
 class _InternalException(Exception):
     '''\
@@ -399,8 +362,6 @@ class _Machine(object):
 
     def _trampoline(self):
         while True:
-            # print('-------------------------------------------------------------------------------')
-            # print(self._phase)
             if isinstance(self._phase, (_PhaseAbort, _PhaseYield)):
                 break
             elif isinstance(self._phase, _PhaseRefocus):
@@ -409,9 +370,6 @@ class _Machine(object):
                 self._phase = self._phase.refocus_aux()
             else:
                 raise _UnknownPhaseException(self._phase)
-
-    def __repr__(self):
-        return '_Machine(phase=%r)' % (self._phase,)
 
 class _ProcessTestCase(unittest.TestCase):
     def test_abort(self):
@@ -438,7 +396,6 @@ class _ProcessTestCase(unittest.TestCase):
         self.assertTrue(machine.is_yielded())
         self.assertEqual(1, machine.get_yield_value())
         machine.send(2)
-        print(machine)
         self.assertTrue(machine.is_aborted())
         self.assertFalse(machine.is_yielded())
         self.assertEqual(2, machine.get_abort_value())
@@ -462,3 +419,42 @@ class _ProcessTestCase(unittest.TestCase):
         self.assertTrue(machine.is_aborted())
         self.assertFalse(machine.is_yielded())
         self.assertEqual(3, machine.get_abort_value())
+
+    def test__UnknownTermException(self):
+        phase = _PhaseRefocus(1, None, None, None)
+        with self.assertRaises(_UnknownTermException):
+            phase.refocus()
+
+    def test__UnknownContextException(self):
+        phase = _PhaseRefocusAux(1, None, None)
+        with self.assertRaises(_UnknownContextException):
+            phase.refocus_aux()
+
+    def test__UnknownPhaseException(self):
+        machine = _Machine(1)
+        with self.assertRaises(_UnknownPhaseException):
+            machine.evaluate()
+
+    def test__NotAbortedException(self):
+        term = _TermYield(_TermAsync(1))
+        machine = _Machine.create(term)
+        machine.evaluate()
+        self.assertFalse(machine.is_aborted())
+        with self.assertRaises(_NotAbortedException):
+            machine.get_abort_value()
+
+    def test__NotYieldedException_get_yield_value(self):
+        term = _TermAsync(1)
+        machine = _Machine.create(term)
+        machine.evaluate()
+        self.assertFalse(machine.is_yielded())
+        with self.assertRaises(_NotYieldedException):
+            machine.get_yield_value()
+
+    def test__NotYieldedException_send(self):
+        term = _TermAsync(1)
+        machine = _Machine.create(term)
+        machine.evaluate()
+        self.assertFalse(machine.is_yielded())
+        with self.assertRaises(_NotYieldedException):
+            machine.send()
