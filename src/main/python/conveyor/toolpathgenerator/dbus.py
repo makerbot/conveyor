@@ -3,7 +3,6 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.async
-import conveyor.async.glib
 import conveyor.test
 import conveyor.toolpathgenerator
 import dbus
@@ -12,10 +11,10 @@ import os.path
 import tempfile
 import unittest
 
-import dbus.mainloop.glib
-dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-
 _TOOLPATHGENERATOR1_INTERFACE = 'com.makerbot.alpha.ToolpathGenerator1'
+
+import dbus.mainloop.qt
+dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
 
 class _DbusToolpathGenerator(conveyor.toolpathgenerator.ToolpathGenerator):
     @classmethod
@@ -49,7 +48,7 @@ class _DbusToolpathGenerator(conveyor.toolpathgenerator.ToolpathGenerator):
                 pass
             target(*args, reply_handler=reply,
                 error_handler=async.error_trigger)
-        async = conveyor.async.glib.fromfunc(func)
+        async = conveyor.async.asyncfunc(func)
         return async
 
     def stl_to_gcode(self, input):
@@ -94,7 +93,7 @@ class _ToolpathGeneratorSingleTestCase(unittest.TestCase):
     @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
     def test_single(self):
         bus = dbus.SessionBus()
-        bus_name = 'com.makerbot.ToolpathGenerator0'
+        bus_name = 'com.makerbot.ToolpathGenerator'
         toolpathgenerator = _DbusToolpathGenerator.create(bus, bus_name)
         _stl_to_gcode(self, toolpathgenerator, self.input)
 
@@ -116,7 +115,7 @@ class _ToolpathGeneratorDualstrusionTestCase(unittest.TestCase):
     @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
     def test_dualstrusion(self):
         bus = dbus.SessionBus()
-        bus_name = 'com.makerbot.ToolpathGenerator0'
+        bus_name = 'com.makerbot.ToolpathGenerator'
         toolpathgenerator = _DbusToolpathGenerator.create(bus, bus_name)
         _stl_to_gcode(self, toolpathgenerator, self.stl_left)
         _stl_to_gcode(self, toolpathgenerator, self.stl_right)

@@ -3,17 +3,16 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.async
-import conveyor.async.glib
 import conveyor.printer
 import conveyor.test
 import dbus
 import os.path
 import unittest
 
-import dbus.mainloop.glib
-dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-
 _PRINTER1_INTERFACE = 'com.makerbot.alpha.Printer1'
+
+import dbus.mainloop.qt
+dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
 
 class _DbusPrinter(conveyor.printer.Printer):
     @classmethod
@@ -33,7 +32,7 @@ class _DbusPrinter(conveyor.printer.Printer):
         def func(async):
             target(*args, reply_handler=async.reply_trigger,
                 error_handler=async.error_trigger)
-        async = conveyor.async.glib.fromfunc(func)
+        async = conveyor.async.asyncfunc(func)
         return async
 
     def build(self, filename):
@@ -65,7 +64,7 @@ class _DbusPrinter_build_TestCase(unittest.TestCase):
     @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
     def test(self):
         bus = dbus.SessionBus()
-        bus_name = 'com.makerbot.Printer0'
+        bus_name = 'com.makerbot.Printer'
         printer = _DbusPrinter.create(bus, bus_name)
         filename = os.path.abspath('single.gcode')
         async = printer.build(filename)

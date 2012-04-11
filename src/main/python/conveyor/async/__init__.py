@@ -6,16 +6,43 @@ import conveyor.event
 import conveyor.enum
 import unittest
 
+AsyncImplementation = conveyor.enum.enum('AsyncImplementation', 'GLIB', 'QT')
+
+class UnknownAsyncImplementationException(ValueError):
+    def __init__(self, unknown_implementation):
+        ValueError.__init__(self, unknown_implementation)
+        self.unknown_implementation = unknown_implementation
+
+_implementation = None
+
+def set_implementation(implementation):
+    global _implementation
+    if AsyncImplementation.GLIB == implementation:
+        import conveyor.async.glib
+        _implementation = conveyor.async.glib
+        _implementation._initialize()
+    elif AsyncImplementation.QT == implementation:
+        import conveyor.async.qt
+        _implementation = conveyor.async.qt
+        _implementation._initialize()
+    else:
+        raise UnknownAsyncImplementationException(implementation)
+
+def _set_implementation_default():
+    global _implementation
+    if None == _implementation:
+        set_implementation(AsyncImplementation.QT)
+
+def asyncfunc(func):
+    _set_implementation_default()
+    async = _implementation.asyncfunc(func)
+    return async
+
 AsyncState = conveyor.enum.enum('AsyncState', 'PENDING', 'RUNNING',
     'SUCCESS', 'ERROR', 'TIMEOUT', 'CANCELED')
 
 AsyncEvent = conveyor.enum.enum('AsyncEvent', 'START', 'HEARTBEAT', 'REPLY',
     'ERROR', 'TIMEOUT', 'CANCEL')
-
-def fromfunc(func):
-    import conveyor.async.glib
-    async = conveyor.async.glib.fromfunc(func)
-    return async
 
 class Async(object):
     def __init__(self):
@@ -77,8 +104,8 @@ class Async(object):
     def start(self):
         raise NotImplementedError
 
-    def cancel(self):
-        self._trigger_transition(AsyncEvent.CANCEL, (), {})
+    def wait(self):
+        raise NotImplementedError
 
     def heartbeat_trigger(self, *args, **kwargs):
         self._trigger_transition(AsyncEvent.HEARTBEAT, args, kwargs)
@@ -92,12 +119,39 @@ class Async(object):
     def timeout_trigger(self, *args, **kwargs):
         self._trigger_transition(AsyncEvent.TIMEOUT, args, kwargs)
 
+    def cancel(self):
+        self._trigger_transition(AsyncEvent.CANCEL, (), {})
+
 class IllegalTransitionException(Exception):
     def __init__(self, state, event):
         self.state = state
         self.event = event
 
 class _AsyncTestCase(unittest.TestCase):
+    def test_UnknownAsyncImplementationException(self):
+        with self.assertRaises(UnknownAsyncImplementationException):
+            set_implementation(1)
+
+    def test_set_implementation_glib(self):
+        global _implementation
+        original = _implementation
+        try:
+            set_implementation(AsyncImplementation.GLIB)
+            import conveyor.async.glib
+            self.assertEqual(conveyor.async.glib, _implementation)
+        finally:
+            _implementation = original
+
+    def test_set_implementation_qt(self):
+        global _implementation
+        original = _implementation
+        try:
+            set_implementation(AsyncImplementation.QT)
+            import conveyor.async.qt
+            self.assertEqual(conveyor.async.qt, _implementation)
+        finally:
+            _implementation = original
+
     def _assert_transition(self, start_state, event, expected_state):
         async = Async()
         async.state = start_state
@@ -149,6 +203,11 @@ class _AsyncTestCase(unittest.TestCase):
         async = Async()
         with self.assertRaises(NotImplementedError):
             async.start()
+
+    def test_wait(self):
+        async = Async()
+        with self.assertRaises(NotImplementedError):
+            async.wait()
 
     def _test_trigger(self, event_name, trigger_name, value_name, expected_state):
         async = Async()

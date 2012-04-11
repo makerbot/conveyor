@@ -375,7 +375,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
         def func(async):
             callback()
             async.reply_trigger()
-        async = conveyor.async.fromfunc(func)
+        async = conveyor.async.asyncfunc(func)
         process = _ProcessAsync.create([async])
         process.start()
         self.assertTrue(callback.delivered)
@@ -395,8 +395,8 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             self.assertFalse(callback2.delivered)
             callback2()
             async.reply_trigger()
-        async1 = conveyor.async.fromfunc(func1)
-        async2 = conveyor.async.fromfunc(func2)
+        async1 = conveyor.async.asyncfunc(func1)
+        async2 = conveyor.async.asyncfunc(func2)
         process = _ProcessAsync.create([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
@@ -407,7 +407,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             self.assertFalse(callback.delivered)
             async.heartbeat_trigger()
             async.reply_trigger()
-        async = conveyor.async.fromfunc(func)
+        async = conveyor.async.asyncfunc(func)
         process = _ProcessAsync.create([async])
         callback = conveyor.event.Callback()
         process.heartbeat_event.attach(callback)
@@ -425,8 +425,8 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             self.assertFalse(callback2.delivered)
             callback1()
             async.error_trigger()
-        async1 = conveyor.async.fromfunc(func1)
-        async2 = conveyor.async.fromfunc(None) # not actually called
+        async1 = conveyor.async.asyncfunc(func1)
+        async2 = conveyor.async.asyncfunc(None) # not actually called
         process = _ProcessAsync.create([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
@@ -442,8 +442,8 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             self.assertFalse(callback2.delivered)
             callback1()
             async.timeout_trigger()
-        async1 = conveyor.async.fromfunc(func1)
-        async2 = conveyor.async.fromfunc(None) # not actually called
+        async1 = conveyor.async.asyncfunc(func1)
+        async2 = conveyor.async.asyncfunc(None) # not actually called
         process = _ProcessAsync.create([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
@@ -459,8 +459,8 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             self.assertFalse(callback2.delivered)
             callback1()
             async.cancel()
-        async1 = conveyor.async.fromfunc(func1)
-        async2 = conveyor.async.fromfunc(None) # not actually called
+        async1 = conveyor.async.asyncfunc(func1)
+        async2 = conveyor.async.asyncfunc(None) # not actually called
         process = _ProcessAsync.create([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
@@ -469,7 +469,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
     def test_cancel_process(self):
         callback = conveyor.event.Callback()
         self.assertFalse(callback.delivered)
-        async = conveyor.async.fromfunc(None) # not actually called
+        async = conveyor.async.asyncfunc(None) # not actually called
         process = _ProcessAsync.create([async])
         process.cancel()
         self.assertEqual(conveyor.async.AsyncState.CANCELED, process.state)
