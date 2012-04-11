@@ -8,6 +8,10 @@ import conveyor.async
 import conveyor.event
 import unittest
 
+def asyncsequence(async_list):
+    async = _ProcessAsync.create(async_list)
+    return async
+
 class _ProcessAsync(conveyor.async.Async):
     @classmethod
     def create(cls, async_list):
@@ -376,7 +380,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             callback()
             async.reply_trigger()
         async = conveyor.async.asyncfunc(func)
-        process = _ProcessAsync.create([async])
+        process = conveyor.async.asyncsequence([async])
         process.start()
         self.assertTrue(callback.delivered)
 
@@ -397,7 +401,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             async.reply_trigger()
         async1 = conveyor.async.asyncfunc(func1)
         async2 = conveyor.async.asyncfunc(func2)
-        process = _ProcessAsync.create([async1, async2])
+        process = conveyor.async.asyncsequence([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
         self.assertTrue(callback2.delivered)
@@ -408,7 +412,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             async.heartbeat_trigger()
             async.reply_trigger()
         async = conveyor.async.asyncfunc(func)
-        process = _ProcessAsync.create([async])
+        process = conveyor.async.asyncsequence([async])
         callback = conveyor.event.Callback()
         process.heartbeat_event.attach(callback)
         self.assertFalse(callback.delivered)
@@ -427,7 +431,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             async.error_trigger()
         async1 = conveyor.async.asyncfunc(func1)
         async2 = conveyor.async.asyncfunc(None) # not actually called
-        process = _ProcessAsync.create([async1, async2])
+        process = conveyor.async.asyncsequence([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
         self.assertFalse(callback2.delivered)
@@ -444,7 +448,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             async.timeout_trigger()
         async1 = conveyor.async.asyncfunc(func1)
         async2 = conveyor.async.asyncfunc(None) # not actually called
-        process = _ProcessAsync.create([async1, async2])
+        process = conveyor.async.asyncsequence([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
         self.assertFalse(callback2.delivered)
@@ -461,7 +465,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
             async.cancel()
         async1 = conveyor.async.asyncfunc(func1)
         async2 = conveyor.async.asyncfunc(None) # not actually called
-        process = _ProcessAsync.create([async1, async2])
+        process = conveyor.async.asyncsequence([async1, async2])
         process.start()
         self.assertTrue(callback1.delivered)
         self.assertFalse(callback2.delivered)
@@ -470,7 +474,7 @@ class _ProcessAsyncTestCase(unittest.TestCase):
         callback = conveyor.event.Callback()
         self.assertFalse(callback.delivered)
         async = conveyor.async.asyncfunc(None) # not actually called
-        process = _ProcessAsync.create([async])
+        process = conveyor.async.asyncsequence([async])
         process.cancel()
         self.assertEqual(conveyor.async.AsyncState.CANCELED, process.state)
         self.assertFalse(callback.delivered)
