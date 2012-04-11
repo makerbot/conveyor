@@ -70,7 +70,7 @@ def _unlink(path):
         os.unlink(path)
 
 class _DbusPrinter_build_TestCase(unittest.TestCase):
-    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
+    @unittest.skipIf(conveyor.test.skip_integration_tests, 'integration test')
     def test_build(self):
         bus = dbus.SessionBus()
         bus_name = 'com.makerbot.Printer'
@@ -81,7 +81,7 @@ class _DbusPrinter_build_TestCase(unittest.TestCase):
         async.wait()
         self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
 
-    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
+    @unittest.skipIf(conveyor.test.skip_integration_tests, 'integration test')
     @unittest.expectedFailure # virtual printer doesn't support build-to-file
     def test_buildtofile(self):
         bus = dbus.SessionBus()

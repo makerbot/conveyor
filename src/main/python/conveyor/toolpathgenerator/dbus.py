@@ -94,7 +94,7 @@ class _ToolpathGeneratorSingleTestCase(unittest.TestCase):
     def tearDown(self):
         _unlink(self.output)
 
-    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
+    @unittest.skipIf(conveyor.test.skip_integration_tests, 'integration test')
     def test_single(self):
         bus = dbus.SessionBus()
         bus_name = 'com.makerbot.ToolpathGenerator'
@@ -116,7 +116,7 @@ class _ToolpathGeneratorDualstrusionTestCase(unittest.TestCase):
         _unlink(self.input_right)
         _unlink(self.output)
 
-    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
+    @unittest.skipIf(conveyor.test.skip_integration_tests, 'integration test')
     def test_dualstrusion(self):
         bus = dbus.SessionBus()
         bus_name = 'com.makerbot.ToolpathGenerator'

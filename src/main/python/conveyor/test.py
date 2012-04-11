@@ -2,4 +2,4 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-skipIntegrationTests = True
+skip_integration_tests = True
