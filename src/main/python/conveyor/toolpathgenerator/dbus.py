@@ -13,8 +13,12 @@ import unittest
 
 _TOOLPATHGENERATOR1_INTERFACE = 'com.makerbot.alpha.ToolpathGenerator1'
 
-import dbus.mainloop.qt
-dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
+try: # pragma: no cover
+    import dbus.mainloop.qt
+    dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
+except ImportError: # pragma: no cover
+    import dbus.mainloop.glib
+    dbus.mainloop.glib.DBusGlibMainLoop(set_as_default=True)
 
 class _DbusToolpathGenerator(conveyor.toolpathgenerator.ToolpathGenerator):
     @classmethod

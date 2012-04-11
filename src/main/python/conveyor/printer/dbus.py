@@ -12,8 +12,12 @@ import unittest
 
 _PRINTER1_INTERFACE = 'com.makerbot.alpha.Printer1'
 
-import dbus.mainloop.qt
-dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
+try: # pragma: no cover
+    import dbus.mainloop.qt
+    dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
+except ImportError: # pragma: no cover
+    import dbus.mainloop.glib
+    dbus.mainloop.glib.DBusGlibMainLoop(set_as_default=True)
 
 class _DbusPrinter(conveyor.printer.Printer):
     @classmethod
