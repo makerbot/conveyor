@@ -38,6 +38,11 @@ def asyncfunc(func):
     async = _implementation.asyncfunc(func)
     return async
 
+def asyncsequence(async_list):
+    import conveyor.process # boo
+    async = conveyor.process.asyncsequence(async_list)
+    return async
+
 AsyncState = conveyor.enum.enum('AsyncState', 'PENDING', 'RUNNING',
     'SUCCESS', 'ERROR', 'TIMEOUT', 'CANCELED')
 
