@@ -17,7 +17,7 @@ try: # pragma: no cover
     dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
 except ImportError: # pragma: no cover
     import dbus.mainloop.glib
-    dbus.mainloop.glib.DBusGlibMainLoop(set_as_default=True)
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 class _DbusPrinter(conveyor.printer.Printer):
     @classmethod
