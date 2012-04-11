@@ -7,6 +7,7 @@ import conveyor.printer
 import conveyor.test
 import dbus
 import os.path
+import tempfile
 import unittest
 
 _PRINTER1_INTERFACE = 'com.makerbot.alpha.Printer1'
@@ -60,13 +61,36 @@ class _DbusPrinter(conveyor.printer.Printer):
         async = self._make_async(self._printer1.StopAll)
         return async
 
+def _unlink(path):
+    if os.path.exists(path):
+        os.unlink(path)
+
 class _DbusPrinter_build_TestCase(unittest.TestCase):
     @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
-    def test(self):
+    def test_build(self):
         bus = dbus.SessionBus()
         bus_name = 'com.makerbot.Printer'
         printer = _DbusPrinter.create(bus, bus_name)
-        filename = os.path.abspath('single.gcode')
+        filename = os.path.abspath('src/test/gcode/single.gcode')
         async = printer.build(filename)
         printer.progress_event.attach(async.heartbeat_trigger)
         async.wait()
+        self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+
+    @unittest.skipIf(conveyor.test.skipIntegrationTests, 'integration test')
+    @unittest.expectedFailure # virtual printer doesn't support build-to-file
+    def test_buildtofile(self):
+        bus = dbus.SessionBus()
+        bus_name = 'com.makerbot.Printer'
+        printer = _DbusPrinter.create(bus, bus_name)
+        input_path = os.path.abspath('src/test/gcode/single.gcode')
+        with tempfile.NamedTemporaryFile(delete=False) as temporary:
+            output_path = temporary.name
+        _unlink(output_path)
+        try:
+            async = printer.buildtofile(input_path, output_path)
+            async.wait()
+            self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+            self.assertTrue(os.path.exists(output_path))
+        finally:
+            _unlink(output_path)
