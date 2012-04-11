@@ -12,6 +12,11 @@ AsyncState = conveyor.enum.enum('AsyncState', 'PENDING', 'RUNNING',
 AsyncEvent = conveyor.enum.enum('AsyncEvent', 'START', 'HEARTBEAT', 'REPLY',
     'ERROR', 'TIMEOUT', 'CANCEL')
 
+def fromfunc(func):
+    import conveyor.async.glib
+    async = conveyor.async.glib.fromfunc(func)
+    return async
+
 class Async(object):
     def __init__(self):
         self.state = AsyncState.PENDING
@@ -72,11 +77,8 @@ class Async(object):
     def start(self):
         raise NotImplementedError
 
-    def wait(self):
-        raise NotImplementedError
-
     def cancel(self):
-        raise NotImplementedError
+        self._trigger_transition(AsyncEvent.CANCEL, (), {})
 
     def heartbeat_trigger(self, *args, **kwargs):
         self._trigger_transition(AsyncEvent.HEARTBEAT, args, kwargs)
@@ -143,23 +145,10 @@ class _AsyncTestCase(unittest.TestCase):
                         self._illegal_transition(state, event)
                 self._assert_transition(state, AsyncEvent.CANCEL, state)
 
-    def test_callback(self):
-        pass
-
     def test_start(self):
         async = Async()
         with self.assertRaises(NotImplementedError):
             async.start()
-
-    def test_wait(self):
-        async = Async()
-        with self.assertRaises(NotImplementedError):
-            async.wait()
-
-    def test_cancel(self):
-        async = Async()
-        with self.assertRaises(NotImplementedError):
-            async.cancel()
 
     def _test_trigger(self, event_name, trigger_name, value_name, expected_state):
         async = Async()
@@ -212,3 +201,26 @@ class _AsyncTestCase(unittest.TestCase):
     def test_timeout_trigger(self):
         self._test_trigger('timeout_event', 'timeout_trigger', None,
             AsyncState.TIMEOUT)
+
+    def test_cancel(self):
+        async = Async()
+        callback = conveyor.event.Callback()
+        async.cancel_event.attach(callback)
+        self.assertFalse(callback.delivered)
+
+        async.state = AsyncState.PENDING
+        async.cancel()
+        self.assertEqual(AsyncState.CANCELED, async.state)
+        self.assertTrue(callback.delivered)
+
+        async.state = AsyncState.RUNNING
+        async.cancel()
+        self.assertEqual(AsyncState.CANCELED, async.state)
+        self.assertTrue(callback.delivered)
+
+        for state in (AsyncState.SUCCESS, AsyncState.ERROR,
+            AsyncState.TIMEOUT, AsyncState.CANCELED):
+                callback.reset()
+                async.state = state
+                async.cancel()
+                self.assertFalse(callback.delivered)

@@ -32,10 +32,10 @@ then
 	mkdir obj/
 fi
 
-env PYTHONPATH=src/main/python/ coverage run --branch -m unittest ${_modules}
-_exit=$?
-env PYTHONPATH=src/main/python/ coverage annotate -d obj/ ${_files}
-env PYTHONPATH=src/main/python/ coverage html -d obj/ ${_files}
-env PYTHONPATH=src/main/python/ coverage xml -o obj/coverage.xml ${_files}
-env PYTHONPATH=src/main/python/ coverage report ${_files}
-exit ${_exit}
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage run --branch -m unittest ${_modules}
+_code=$?
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage annotate -d obj/ ${_files}
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage html -d obj/ ${_files}
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage xml -o obj/coverage.xml ${_files}
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage report ${_files}
+exit ${_code}
