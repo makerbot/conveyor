@@ -6,4 +6,4 @@ then
 fi
 
 . virtualenv/bin/activate
-pip install coverage
+pip install coverage unittest-xml-reporting

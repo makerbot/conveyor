@@ -20,7 +20,7 @@ then
 	mkdir obj/
 fi
 
-env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage run --branch -m unittest -v ${_modules}
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage run --branch test.py -v ${_modules}
 _code=$?
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage annotate -d obj/ --include 'src/main/python/*'
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage html -d obj/ --include 'src/main/python/*'
