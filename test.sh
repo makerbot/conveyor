@@ -13,6 +13,7 @@ _modules='
 	conveyor.process
 	conveyor.toolpathgenerator
 	conveyor.toolpathgenerator.dbus
+	conveyor.visitor
 '
 _files='
 	src/main/python/conveyor/async/__init__.py
@@ -25,6 +26,7 @@ _files='
 	src/main/python/conveyor/process.py
 	src/main/python/conveyor/toolpathgenerator/__init__.py
 	src/main/python/conveyor/toolpathgenerator/dbus.py
+	src/main/python/conveyor/visitor.py
 '
 
 if [ ! -d obj/ ]

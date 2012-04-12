@@ -6,6 +6,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.async
 import conveyor.event
+import conveyor.visitor
 import unittest
 
 def asyncsequence(async_list):
@@ -169,7 +170,7 @@ class _PhaseAbort(_Phase):
         self.value = value
         self.state = state
 
-class _PhaseRefocus(_Phase):
+class _PhaseRefocus(_Phase, conveyor.visitor.Visitor):
     '''\
     This is the refocusing machine phase. It represents the 'eval' transition.
     '''
@@ -187,37 +188,48 @@ class _PhaseRefocus(_Phase):
         'environment').
         '''
 
-        if isinstance(self.term, _TermAbort):
-            new_term = self.term.term
-            new_environment = self.environment
-            new_context = _ContextAbort()
-            new_state = self.state
-            phase = _PhaseRefocus(new_term, new_environment, new_context,
-                new_state)
-        elif isinstance(self.term, _TermAsync):
-            new_context = self.context
-            new_value = self.term.async
-            new_state = self.state
-            phase = _PhaseRefocusAux(new_context, new_value, new_state)
-        elif isinstance(self.term, _TermSequence):
-            new_term = self.term.term1
-            new_environment = self.environment
-            new_context = _ContextSequence(self.context, self.term, self.environment)
-            new_state = self.state
-            phase = _PhaseRefocus(new_term, new_environment, new_context,
-                new_state)
-        elif isinstance(self.term, _TermYield):
-            new_term = self.term.term
-            new_environment = self.environment
-            new_context = _ContextYield(self.context)
-            new_state = self.state
-            phase = _PhaseRefocus(new_term, new_environment, new_context,
-                new_state)
-        else:
+        try:
+            phase = self.visit(self.term)
+            return phase
+        except conveyor.visitor.NoAcceptorException:
             raise _UnknownTermException(self.term)
+
+    def accept__TermAbort(self, term):
+        new_term = self.term.term
+        new_environment = self.environment
+        new_context = _ContextAbort()
+        new_state = self.state
+        phase = _PhaseRefocus(new_term, new_environment, new_context,
+            new_state)
         return phase
 
-class _PhaseRefocusAux(_Phase):
+    def accept__TermAsync(self, term):
+        new_context = self.context
+        new_value = self.term.async
+        new_state = self.state
+        phase = _PhaseRefocusAux(new_context, new_value, new_state)
+        return phase
+
+    def accept__TermSequence(self, term):
+        new_term = self.term.term1
+        new_environment = self.environment
+        new_context = _ContextSequence(self.context, self.term,
+            self.environment)
+        new_state = self.state
+        phase = _PhaseRefocus(new_term, new_environment, new_context,
+            new_state)
+        return phase
+
+    def accept__TermYield(self, term):
+        new_term = self.term.term
+        new_environment = self.environment
+        new_context = _ContextYield(self.context)
+        new_state = self.state
+        phase = _PhaseRefocus(new_term, new_environment, new_context,
+            new_state)
+        return phase
+
+class _PhaseRefocusAux(_Phase, conveyor.visitor.Visitor):
     '''\
     This is the auxillary refocusing machine phase. It represents the 'apply'
     transition.
@@ -234,19 +246,27 @@ class _PhaseRefocusAux(_Phase):
         contexts.
         '''
 
-        if isinstance(self.context, _ContextAbort):
-            phase = _PhaseAbort(self.value, self.state)
-        elif isinstance(self.context, _ContextSequence):
-            new_term = self.context.term.term2
-            new_environment = self.context.environment
-            new_context = self.context.context
-            new_state = self.state
-            phase = _PhaseRefocus(new_term, new_environment, new_context,
-                new_state)
-        elif isinstance(self.context, _ContextYield):
-            phase = _PhaseYield(self.value, self.context.context, self.state)
-        else:
+        try:
+            phase = self.visit(self.context)
+            return phase
+        except conveyor.visitor.NoAcceptorException:
             raise _UnknownContextException(self.context)
+
+    def accept__ContextAbort(self, context):
+        phase = _PhaseAbort(self.value, self.state)
+        return phase
+
+    def accept__ContextSequence(self, context):
+        new_term = self.context.term.term2
+        new_environment = self.context.environment
+        new_context = self.context.context
+        new_state = self.state
+        phase = _PhaseRefocus(new_term, new_environment, new_context,
+            new_state)
+        return phase
+
+    def accept__ContextYield(self, context):
+        phase = _PhaseYield(self.value, self.context.context, self.state)
         return phase
 
 class _PhaseYield(_Phase):
