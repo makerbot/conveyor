@@ -99,7 +99,7 @@ class _TermSequence(_Term):
     '''\
     The sequence term evaluates the first term, discards its value, and then
     evaluates the second term. The value of the entire term is the value of the
-    second term The value of the entire term is the value of the second term.
+    second term.
     '''
 
     # Future Implementation Note: this (and the corresponding context) can be
