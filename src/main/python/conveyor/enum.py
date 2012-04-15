@@ -2,7 +2,10 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 def enum(name, *args, **kwargs):
     iterable = ((v, v) for v in args)

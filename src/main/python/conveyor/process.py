@@ -7,7 +7,10 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import conveyor.async
 import conveyor.event
 import conveyor.visitor
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 def asyncsequence(async_list):
     async = _ProcessAsync.create(async_list)

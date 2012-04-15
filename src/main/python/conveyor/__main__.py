@@ -7,7 +7,10 @@ import logging
 import logging.config
 import os.path
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 class _Main(object):
     def __init__(self):

@@ -4,7 +4,10 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.event
 import conveyor.enum
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 AsyncImplementation = conveyor.enum.enum('AsyncImplementation', 'GLIB', 'QT')
 
@@ -14,28 +17,30 @@ class UnknownAsyncImplementationException(ValueError):
         self.unknown_implementation = unknown_implementation
 
 _implementation = None
+_implementation_module = None
 
 def set_implementation(implementation):
     global _implementation
+    global _implementation_module
     if AsyncImplementation.GLIB == implementation:
         import conveyor.async.glib
-        _implementation = conveyor.async.glib
-        _implementation._initialize()
+        _implementation_module = conveyor.async.glib
     elif AsyncImplementation.QT == implementation:
         import conveyor.async.qt
-        _implementation = conveyor.async.qt
-        _implementation._initialize()
+        _implementation_module = conveyor.async.qt
     else:
         raise UnknownAsyncImplementationException(implementation)
+    _implementation = implementation
+    _implementation_module._initialize()
 
 def _set_implementation_default():
-    global _implementation
-    if None == _implementation:
+    global _implementation_module
+    if None == _implementation_module:
         set_implementation(AsyncImplementation.QT)
 
 def asyncfunc(func):
     _set_implementation_default()
-    async = _implementation.asyncfunc(func)
+    async = _implementation_module.asyncfunc(func)
     return async
 
 def asyncsequence(async_list):
@@ -139,23 +144,31 @@ class _AsyncTestCase(unittest.TestCase):
 
     def test_set_implementation_glib(self):
         global _implementation
+        global _implementation_module
         original = _implementation
+        original_module = _implementation_module
         try:
             set_implementation(AsyncImplementation.GLIB)
             import conveyor.async.glib
-            self.assertEqual(conveyor.async.glib, _implementation)
+            self.assertEqual(AsyncImplementation.GLIB, _implementation)
+            self.assertEqual(conveyor.async.glib, _implementation_module)
         finally:
             _implementation = original
+            _implementation_module = original_module
 
     def test_set_implementation_qt(self):
         global _implementation
+        global _implementation_module
         original = _implementation
+        original_module = _implementation_module
         try:
             set_implementation(AsyncImplementation.QT)
             import conveyor.async.qt
-            self.assertEqual(conveyor.async.qt, _implementation)
+            self.assertEqual(AsyncImplementation.QT, _implementation)
+            self.assertEqual(conveyor.async.qt, _implementation_module)
         finally:
             _implementation = original
+            _implementation_module = original_module
 
     def _assert_transition(self, start_state, event, expected_state):
         async = Async()
