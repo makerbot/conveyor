@@ -3,14 +3,21 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
+import conveyor.async
+import conveyor.thing
+import json
 import logging
 import logging.config
+import os
 import os.path
 import sys
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+import urllib
+import urllib2
+import urlparse
 
 class _Main(object):
     def __init__(self):
@@ -105,10 +112,91 @@ class _Main(object):
             dest='command',
             title='commands')
         for method in (
+            self._init_subparsers_print,
             ):
                 method(subparsers)
 
+    def _init_subparsers_print(self, subparsers):
+        parser = subparsers.add_parser(
+            'print',
+            help='print a .thing')
+        self._init_parser_common(parser)
+        parser.add_argument(
+            'thing_path',
+            help='the URL for a .thing resource',
+            metavar='THING')
+
     def _command(self, args):
+        if 'print' == args.command:
+            method = self._print
+        else:
+            raise NotImplementedError
+        code = method(args)
+        return code
+
+    def _print(self, args):
+
+        #
+        # TODO: Clean this up. It's awful.
+        #
+
+        if not os.path.exists(args.thing_path):
+            code = 1
+            self._log.error('no such file or directory: %s', args.thing_path)
+        elif not os.path.isdir(args.thing_path):
+            code = 1
+            self._log.error('unsupported file format: %s', args.thing_path)
+        else:
+            manifest_path = os.path.join(args.thing_path, 'manifest.json')
+            if not os.path.exists(manifest_path):
+                code = 1
+                self._log.error('no such file or directory: %s', manifest_path)
+            else:
+                manifest = conveyor.thing.Manifest.from_path(manifest_path)
+                manifest.validate()
+                if 1 == len(manifest.instances):
+                    code = self._print_single(manifest)
+                elif 2 == len(manifest.instances):
+                    code = self._print_dual(manifest)
+                else:
+                    raise Exception
+        return code
+
+    def _print_single(self, manifest):
+
+        #
+        # TODO: Clean this up, too. It is even awfuler.
+        #
+
+        import conveyor.async
+        import conveyor.printer.dbus
+        import conveyor.toolpathgenerator.dbus
+        import dbus
+        conveyor.async.set_implementation(conveyor.async.AsyncImplementation.QT)
+        bus = dbus.SessionBus()
+        toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
+            bus, 'com.makerbot.ToolpathGenerator')
+        printer = conveyor.printer.dbus._DbusPrinter.create(bus, 'com.makerbot.Printer')
+        async_list = []
+        for manifest_instance in manifest.instances.values():
+            stl = os.path.abspath(os.path.join(manifest.base,
+                manifest_instance.object.name))
+            async1 = toolpathgenerator.stl_to_gcode(stl)
+            async_list.append(async1)
+            assert stl.endswith('.stl')
+            gcode = ''.join((stl[:-4], '.gcode')) # perhaps not duplicate this everywhere
+            async2 = printer.build(gcode)
+            async_list.append(async2)
+        async = conveyor.async.asyncsequence(async_list)
+        async.wait()
+        if async.state in (conveyor.async.AsyncState.SUCCESS,
+            conveyor.async.AsyncState.CANCELED):
+                code = 0
+        else:
+            code = 1
+        return code
+
+    def _print_dual(self, manifest):
         raise NotImplementedError
 
 def _main(argv):

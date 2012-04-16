@@ -66,6 +66,14 @@ class _ProcessAsync(conveyor.async.Async):
         self._machine.evaluate()
         self._reply_or_next()
 
+    def wait(self):
+        if conveyor.async.AsyncState.PENDING == self.state:
+            self.start()
+        while self.state not in (conveyor.async.AsyncState.SUCCESS,
+            conveyor.async.AsyncState.ERROR, conveyor.async.AsyncState.TIMEOUT,
+            conveyor.async.AsyncState.CANCELED):
+                self._async.wait()
+
     def cancel(self):
         self._transition(conveyor.async.AsyncEvent.CANCEL, (), {})
         if None != self._async:

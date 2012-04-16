@@ -5,15 +5,27 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import conveyor.enum
 import fractions
 import json
+import os
+import os.path
 import unittest
 
 Scale = conveyor.enum.enum('Scale', Millimeter=fractions.Fraction(1, 1000))
 
 class Manifest(object):
     @classmethod
-    def read(cls, stream, path=None):
+    def from_path(cls, path):
+        with open(path) as stream:
+            manifest = Manifest.from_stream(stream, path)
+        return manifest
+
+    @classmethod
+    def from_stream(cls, stream, path=None):
         data = json.load(stream)
-        manifest = cls(path)
+        if None == path:
+            base = None
+        else:
+            base = os.path.dirname(path)
+        manifest = cls(base)
         for func in (Manifest._read_namespace, Manifest._read_constructions,
             Manifest._read_objects, Manifest._read_instances,
             Manifest._read_attribution):
@@ -63,17 +75,37 @@ class Manifest(object):
         if 'attribution' in data:
             manifest.attribution = data['attribution']
 
-    def __init__(self, path=None):
+    def __init__(self, base=None):
         self.objects = {}
         self.constructions = {}
         self.instances = {}
         self.attribution = None
-        self.path = path
+        self.base = base
+
+    def validate(self):
+        for name, manifest_object in self.objects.items():
+            if name != manifest_object.name:
+                raise Exception
+            else:
+                manifest_object.validate()
+        for name, manifest_construction in self.constructions.items():
+            if name != manifest_construction.name:
+                raise Exception
+            else:
+                manifest_construction.validate()
+        for name, manifest_instance in self.instances.items():
+            if name != manifest_instance.name:
+                raise Exception
+            else:
+                manifest_instance.validate()
 
 class ManifestItem(object):
     def __init__(self, manifest, name):
         self.manifest = manifest
         self.name = name
+
+    def validate(self):
+        raise NotImplementedError
 
 class ManifestObject(ManifestItem):
     @classmethod
@@ -84,6 +116,14 @@ class ManifestObject(ManifestItem):
             manifest_object = ManifestObject(manifest, json_name)
             return manifest_object
 
+    def validate(self):
+        if None == self.manifest.base:
+            raise Exception
+        else:
+            object_path = os.path.join(self.manifest.base, self.name)
+            if not os.path.exists(object_path):
+                raise Exception
+
 class ManifestConstruction(ManifestItem):
     @classmethod
     def _from_json(cls, manifest, json_name, json_value):
@@ -92,6 +132,9 @@ class ManifestConstruction(ManifestItem):
         else:
             manifest_construction = ManifestConstruction(manifest, json_name)
             return manifest_construction
+
+    def validate(self):
+        pass
 
 class ManifestInstance(ManifestItem):
     @classmethod
@@ -128,10 +171,15 @@ class ManifestInstance(ManifestItem):
         manifest_construction = self.manifest.constructions[self.construction_key]
         return manifest_construction
 
+    def validate(self):
+        if self.object_key not in self.manifest.objects:
+            raise Exception
+        elif self.construction_key not in self.manifest.constructions:
+            raise Exception
+
 class _ThingTestCase(unittest.TestCase):
     def test_rfc_4_1(self):
-        with open('src/test/thing/rfc-4.1/manifest.json') as stream:
-            manifest = Manifest.read(stream)
+        manifest = Manifest.from_path('src/test/thing/rfc-4.1/manifest.json')
 
         self.assertEqual(2, len(manifest.objects))
 
@@ -180,8 +228,7 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance_b.scale)
 
     def test_rfc_5_1(self):
-        with open('src/test/thing/rfc-5.1/manifest.json') as stream:
-            manifest = Manifest.read(stream)
+        manifest = Manifest.from_path('src/test/thing/rfc-5.1/manifest.json')
 
         self.assertEqual(1, len(manifest.objects))
 
@@ -210,8 +257,7 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance.scale)
 
     def test_rfc_5_2(self):
-        with open('src/test/thing/rfc-5.2/manifest.json') as stream:
-            manifest = Manifest.read(stream)
+        manifest = Manifest.from_path('src/test/thing/rfc-5.2/manifest.json')
 
         self.assertEqual(2, len(manifest.objects))
 
@@ -263,8 +309,7 @@ class _ThingTestCase(unittest.TestCase):
 
         # TODO: 5.3 is identical to 4.1?
 
-        with open('src/test/thing/rfc-5.3/manifest.json') as stream:
-            manifest = Manifest.read(stream)
+        manifest = Manifest.from_path('src/test/thing/rfc-5.3/manifest.json')
 
         self.assertEqual(2, len(manifest.objects))
 
@@ -313,8 +358,7 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance_b.scale)
 
     def test_rfc_5_4(self):
-        with open('src/test/thing/rfc-5.4/manifest.json') as stream:
-            manifest = Manifest.read(stream)
+        manifest = Manifest.from_path('src/test/thing/rfc-5.4/manifest.json')
 
         self.assertEqual(1, len(manifest.objects))
 
