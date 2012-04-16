@@ -5,7 +5,10 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import PyQt4.QtCore
 import conveyor.async
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 #
 # We need to keep a reference to the QCoreApplication or it gets garbage

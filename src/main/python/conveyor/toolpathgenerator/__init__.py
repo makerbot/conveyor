@@ -3,7 +3,10 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.event
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 class ToolpathGenerator(object):
     def __init__(self):

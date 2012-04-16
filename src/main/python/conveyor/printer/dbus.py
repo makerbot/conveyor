@@ -8,7 +8,10 @@ import dbus
 import dbus.service
 import os.path
 import tempfile
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 _PRINTER1_INTERFACE = 'com.makerbot.alpha.Printer1'
 
