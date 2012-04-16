@@ -11,6 +11,7 @@ _modules='
 	conveyor.printer
 	conveyor.printer.dbus
 	conveyor.process
+	conveyor.thing
 	conveyor.toolpathgenerator
 	conveyor.toolpathgenerator.dbus
 	conveyor.visitor

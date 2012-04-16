@@ -1,0 +1,22 @@
+{ "namespace": "http://spec.makerbot.com/ns/thing.0.1.1.1"
+, "objects":
+    { "bunny.stl": {}
+    , "bunny2.stl": {}
+    }
+, "constructions":
+    { "plastic A": {}
+    , "plastic B": {}
+    }
+, "instances":
+    { "NameA":
+        { "object": "bunny.stl"
+        , "scale": "mm"
+        , "construction": "plastic A"
+        }
+    , "NameB":
+        { "object": "bunny2.stl"
+        , "scale": "mm"
+        , "construction": "plastic B"
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{ "namespace": "http://spec.makerbot.com/ns/thing.0.1.1.1"
+, "objects":
+    { "bunny.stl": {}
+    }
+, "instances":
+    { "bunny":
+        { "object": "bunny.stl"
+        , "scale": "mm"
+        }
+    }
+}
