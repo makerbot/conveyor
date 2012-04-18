@@ -13,7 +13,8 @@ class _EventHandle(object):
         self._counter = counter
 
     def __hash__(self):
-        return hash(self._event) ^ hash(self._counter)
+        result = hash((self.__class__, self._event, self._counter))
+        return result
 
     def __eq__(self, other):
         eq = (isinstance(other, _EventHandle) and self._event == other._event
