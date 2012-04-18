@@ -7,13 +7,26 @@ try:
 except ImportError:
     import unittest
 
+class _EventHandle(object):
+    def __init__(self, event, counter):
+        self._event = event
+        self._counter = counter
+
+    def __hash__(self):
+        return hash(self._event) ^ hash(self._counter)
+
+    def __eq__(self, other):
+        eq = (isinstance(other, _EventHandle) and self._event == other._event
+            and self._counter == other._counter)
+        return eq
+
 class Event(object):
     def __init__(self):
         self._counter = 0
         self._callbacks = {}
 
     def attach(self, callback):
-        handle = self._counter
+        handle = _EventHandle(self, self._counter)
         self._counter += 1
         self._callbacks[handle] = callback
         return handle
