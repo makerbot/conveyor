@@ -4,20 +4,21 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
 import conveyor.async
+import conveyor.printer.dbus
 import conveyor.thing
+import conveyor.toolpathgenerator.dbus
+import dbus
 import json
 import logging
 import logging.config
 import os
 import os.path
 import sys
+import tempfile
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-import urllib
-import urllib2
-import urlparse
 
 class _Main(object):
     def __init__(self):
@@ -128,18 +129,13 @@ class _Main(object):
 
     def _command(self, args):
         if 'print' == args.command:
-            method = self._print
+            method = self._command_print
         else:
             raise NotImplementedError
         code = method(args)
         return code
 
-    def _print(self, args):
-
-        #
-        # TODO: Clean this up. It's awful.
-        #
-
+    def _command_print(self, args):
         if not os.path.exists(args.thing_path):
             code = 1
             self._log.error('no such file or directory: %s', args.thing_path)
@@ -163,22 +159,13 @@ class _Main(object):
         return code
 
     def _print_single(self, manifest):
-
-        #
-        # TODO: Clean this up, too. It is even awfuler.
-        #
-
-        import conveyor.async
-        import conveyor.printer.dbus
-        import conveyor.toolpathgenerator.dbus
-        import dbus
         conveyor.async.set_implementation(conveyor.async.AsyncImplementation.QT)
         bus = dbus.SessionBus()
         toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
             bus, 'com.makerbot.ToolpathGenerator')
         printer = conveyor.printer.dbus._DbusPrinter.create(bus, 'com.makerbot.Printer')
         async_list = []
-        for manifest_instance in manifest.instances.values():
+        for manifest_instance in manifest.instances.values(): # this loop is fishy; see _print_dual
             stl = os.path.abspath(os.path.join(manifest.base,
                 manifest_instance.object.name))
             async1 = toolpathgenerator.stl_to_gcode(stl)
@@ -197,7 +184,52 @@ class _Main(object):
         return code
 
     def _print_dual(self, manifest):
-        raise NotImplementedError
+        conveyor.async.set_implementation(conveyor.async.AsyncImplementation.QT)
+        bus = dbus.SessionBus()
+        toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
+            bus, 'com.makerbot.ToolpathGenerator')
+        printer = conveyor.printer.dbus._DbusPrinter.create(bus, 'com.makerbot.Printer')
+        plastic_a_instance = self._get_plastic_a_instance(manifest)
+        plastic_b_instance = self._get_plastic_b_instance(manifest)
+        plastic_a_stl = os.path.abspath(os.path.join(manifest.base,
+            plastic_a_instance.object.name))
+        plastic_b_stl = os.path.abspath(os.path.join(manifest.base,
+            plastic_b_instance.object.name))
+        assert plastic_a_stl.endswith('.stl')
+        assert plastic_b_stl.endswith('.stl')
+        plastic_a_gcode = ''.join((plastic_a_stl[:-4], '.gcode'))
+        plastic_b_gcode = ''.join((plastic_b_stl[:-4], '.gcode'))
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as tmp:
+            merged_gcode = tmp.name
+        os.unlink(merged_gcode)
+        print('merged filename: %r' % (merged_gcode,))
+        async1 = toolpathgenerator.stl_to_gcode(plastic_a_stl)
+        async2 = toolpathgenerator.stl_to_gcode(plastic_b_stl)
+        async3 = toolpathgenerator.merge_gcode(plastic_a_gcode,
+            plastic_b_gcode, merged_gcode)
+        async4 = printer.build(merged_gcode)
+        async_list = [async1, async2, async3, async4]
+        async = conveyor.async.asyncsequence(async_list)
+        async.wait()
+        print(async.state)
+        if async.state in (conveyor.async.AsyncState.SUCCESS,
+            conveyor.async.AsyncState.CANCELED):
+                code = 0
+        else:
+            code = 1
+        return code
+
+    def _get_plastic_a_instance(self, manifest):
+        for manifest_instance in manifest.instances.values():
+            if 'plastic A' == manifest_instance.construction.name:
+                return manifest_instance
+        raise Exception
+
+    def _get_plastic_b_instance(self, manifest):
+        for manifest_instance in manifest.instances.values():
+            if 'plastic B' == manifest_instance.construction.name:
+                return manifest_instance
+        raise Exception
 
 def _main(argv):
     main = _Main()

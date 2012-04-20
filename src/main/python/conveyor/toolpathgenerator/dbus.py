@@ -7,6 +7,7 @@ import conveyor.event
 import conveyor.toolpathgenerator
 import dbus
 import dbus.service
+import logging
 import os.path
 import tempfile
 try:
@@ -41,34 +42,41 @@ class _DbusToolpathGenerator(conveyor.toolpathgenerator.ToolpathGenerator):
         self._bus_name = bus_name
         self._toolpathgenerator1 = toolpathgenerator1
 
-    def _make_async(self, target, output, *args):
+    def _make_async(self, label, target, output, *args):
         def func(async):
+            logging.info('starting toolpathgenerator task: %s, args=%r',
+                label, args)
             self._bus.add_signal_receiver(async.heartbeat_trigger,
                 signal_name='Progress',
                 dbus_interface=_TOOLPATHGENERATOR1_INTERFACE)
+            def reply(*args, **kwargs):
+                pass
+            target(*args, reply_handler=reply,
+                error_handler=async.error_trigger)
             def complete(*args, **kwargs):
+                self._bus.remove_signal_receiver(
+                    complete,
+                    signal_name='Complete',
+                    dbus_interface=_TOOLPATHGENERATOR1_INTERFACE)
                 if not os.path.exists(output):
+                    logging.error('output file does not exist: %s', output)
                     async.error_trigger()
                 else:
                     async.reply_trigger()
             self._bus.add_signal_receiver(complete,
                 signal_name='Complete',
                 dbus_interface=_TOOLPATHGENERATOR1_INTERFACE)
-            def reply(*args, **kwargs):
-                pass
-            target(*args, reply_handler=reply,
-                error_handler=async.error_trigger)
         async = conveyor.async.asyncfunc(func)
         return async
 
     def stl_to_gcode(self, input):
         output = _gcode_filename(input)
-        async = self._make_async(self._toolpathgenerator1.Generate, output,
-            input)
+        async = self._make_async('Generate',
+            self._toolpathgenerator1.Generate, output, input)
         return async
 
     def merge_gcode(self, input_left, input_right, output):
-        async = self._make_async(
+        async = self._make_async('GenerateDualStrusion',
             self._toolpathgenerator1.GenerateDualStrusion, output, input_left,
             input_right, output)
         return async

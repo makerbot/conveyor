@@ -6,6 +6,7 @@ import conveyor.async
 import conveyor.printer
 import dbus
 import dbus.service
+import logging
 import os.path
 import tempfile
 try:
@@ -39,36 +40,37 @@ class _DbusPrinter(conveyor.printer.Printer):
         self._bus_name = bus_name
         self._printer1 = printer1
 
-    def _make_async(self, target, *args):
+    def _make_async(self, label, target, *args):
         def func(async):
+            logging.info('starting printer task: %s, args=%r', label, args)
             target(*args, reply_handler=async.reply_trigger,
                 error_handler=async.error_trigger)
         async = conveyor.async.asyncfunc(func)
         return async
 
     def build(self, filename):
-        async = self._make_async(self._printer1.Build, filename)
+        async = self._make_async('Build', self._printer1.Build, filename)
         return async
 
     def buildtofile(self, input_path, output_path):
-        async = self._make_async(self._printer1.BuildToFile, input_path,
-            output_path)
+        async = self._make_async('BuildToFile', self._printer1.BuildToFile,
+            input_path, output_path)
         return async
 
     def pause(self):
-        async = self._make_async(self._printer1.Pause)
+        async = self._make_async('Pause', self._printer1.Pause)
         return async
 
     def unpause(self):
-        async = self._make_async(self._printer1.Unpause)
+        async = self._make_async('Unpause', self._printer1.Unpause)
         return async
 
     def stopmotion(self):
-        async = self._make_async(self._printer1.StopMotion)
+        async = self._make_async('StopMotion', self._printer1.StopMotion)
         return async
 
     def stopall(self):
-        async = self._make_async(self._printer1.StopAll)
+        async = self._make_async('StopAll', self._printer1.StopAll)
         return async
 
 class _StubDbusPrinter(dbus.service.Object):

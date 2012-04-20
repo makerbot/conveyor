@@ -4,6 +4,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.event
 import conveyor.enum
+import logging
 try:
     import unittest2 as unittest
 except ImportError:
@@ -118,15 +119,19 @@ class Async(object):
         raise NotImplementedError
 
     def heartbeat_trigger(self, *args, **kwargs):
+        logging.debug('heartbeat: args=%r, kwargs=%r', args, kwargs)
         self._trigger_transition(AsyncEvent.HEARTBEAT, args, kwargs)
 
     def reply_trigger(self, *args, **kwargs):
+        logging.debug('reply: args=%r, kwargs=%r', args, kwargs)
         self._trigger_transition(AsyncEvent.REPLY, args, kwargs)
 
     def error_trigger(self, *args, **kwargs):
+        logging.debug('error: args=%r, kwargs=%r', args, kwargs)
         self._trigger_transition(AsyncEvent.ERROR, args, kwargs)
 
     def timeout_trigger(self, *args, **kwargs):
+        logging.debug('timeout: args=%r, kwargs=%r', args, kwargs)
         self._trigger_transition(AsyncEvent.TIMEOUT, args, kwargs)
 
     def cancel(self):
