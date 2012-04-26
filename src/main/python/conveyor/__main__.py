@@ -106,7 +106,7 @@ class _Main(object):
             '--version',
             action='version',
             help='show the version message and exit',
-            version='%(prog) 0.1.0.0')
+            version='%(prog)s 0.1.0.0')
 
     def _init_subparsers(self, parser):
         subparsers = parser.add_subparsers(
@@ -114,28 +114,60 @@ class _Main(object):
             title='commands')
         for method in (
             self._init_subparsers_print,
+            self._init_subparsers_printtofile,
             ):
                 method(subparsers)
+
+    def _init_parser_print_common(self, parser):
+        parser.add_argument(
+            'thing_path',
+            help='the URL for a .thing resource',
+            metavar='THING')
 
     def _init_subparsers_print(self, subparsers):
         parser = subparsers.add_parser(
             'print',
             help='print a .thing')
         self._init_parser_common(parser)
+        self._init_parser_print_common(parser)
+
+    def _init_subparsers_printtofile(self, subparsers):
+        parser = subparsers.add_parser(
+            'printtofile',
+            help='print a .thing to an .s3g file')
+        self._init_parser_common(parser)
+        self._init_parser_print_common(parser)
         parser.add_argument(
-            'thing_path',
-            help='the URL for a .thing resource',
-            metavar='THING')
+            's3g_path',
+            help='the output .s3g filename',
+            metavar='S3G')
 
     def _command(self, args):
         if 'print' == args.command:
             method = self._command_print
+        elif 'printtofile' == args.command:
+            method = self._command_printtofile
         else:
             raise NotImplementedError
         code = method(args)
         return code
 
     def _command_print(self, args):
+        def func(printer, input_path):
+            async = printer.build(input_path)
+            return async
+        code = self._command_print_common(args, func)
+        return code
+
+    def _command_printtofile(self, args):
+        def func(printer, input_path):
+            output_path = os.path.abspath(args.s3g_path)
+            async = printer.buildtofile(input_path, output_path)
+            return async
+        code = self._command_print_common(args, func)
+        return code
+
+    def _command_print_common(self, args, buildfunc):
         if not os.path.exists(args.thing_path):
             code = 1
             self._log.error('no such file or directory: %s', args.thing_path)
@@ -146,24 +178,27 @@ class _Main(object):
             manifest_path = os.path.join(args.thing_path, 'manifest.json')
             if not os.path.exists(manifest_path):
                 code = 1
-                self._log.error('no such file or directory: %s', manifest_path)
+                self._log.error(
+                    'no such file or directory: %s', manifest_path)
             else:
                 manifest = conveyor.thing.Manifest.from_path(manifest_path)
                 manifest.validate()
                 if 1 == len(manifest.instances):
-                    code = self._print_single(manifest)
+                    code = self._print_single(manifest, buildfunc)
                 elif 2 == len(manifest.instances):
-                    code = self._print_dual(manifest)
+                    code = self._print_dual(manifest, buildfunc)
                 else:
                     raise Exception
         return code
 
-    def _print_single(self, manifest):
-        conveyor.async.set_implementation(conveyor.async.AsyncImplementation.QT)
+    def _print_single(self, manifest, buildfunc):
+        conveyor.async.set_implementation(
+            conveyor.async.AsyncImplementation.QT)
         bus = dbus.SessionBus()
         toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
             bus, 'com.makerbot.ToolpathGenerator')
-        printer = conveyor.printer.dbus._DbusPrinter.create(bus, 'com.makerbot.Printer')
+        printer = conveyor.printer.dbus._DbusPrinter.create(
+            bus, 'com.makerbot.Printer')
         async_list = []
         for manifest_instance in manifest.instances.values(): # this loop is fishy; see _print_dual
             stl = os.path.abspath(os.path.join(manifest.base,
@@ -172,7 +207,7 @@ class _Main(object):
             async_list.append(async1)
             assert stl.endswith('.stl')
             gcode = ''.join((stl[:-4], '.gcode')) # perhaps not duplicate this everywhere
-            async2 = printer.build(gcode)
+            async2 = buildfunc(printer, gcode)
             async_list.append(async2)
         async = conveyor.async.asyncsequence(async_list)
         async.wait()
@@ -183,12 +218,13 @@ class _Main(object):
             code = 1
         return code
 
-    def _print_dual(self, manifest):
+    def _print_dual(self, manifest, buildfunc):
         conveyor.async.set_implementation(conveyor.async.AsyncImplementation.QT)
         bus = dbus.SessionBus()
         toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
             bus, 'com.makerbot.ToolpathGenerator')
-        printer = conveyor.printer.dbus._DbusPrinter.create(bus, 'com.makerbot.Printer')
+        printer = conveyor.printer.dbus._DbusPrinter.create(
+            bus, 'com.makerbot.Printer')
         plastic_a_instance = self._get_plastic_a_instance(manifest)
         plastic_b_instance = self._get_plastic_b_instance(manifest)
         plastic_a_stl = os.path.abspath(os.path.join(manifest.base,
@@ -207,7 +243,7 @@ class _Main(object):
         async2 = toolpathgenerator.stl_to_gcode(plastic_b_stl)
         async3 = toolpathgenerator.merge_gcode(plastic_a_gcode,
             plastic_b_gcode, merged_gcode)
-        async4 = printer.build(merged_gcode)
+        async4 = buildfunc(printer, merged_gcode)
         async_list = [async1, async2, async3, async4]
         async = conveyor.async.asyncsequence(async_list)
         async.wait()
