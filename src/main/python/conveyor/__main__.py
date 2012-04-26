@@ -123,6 +123,20 @@ class _Main(object):
             'thing_path',
             help='the URL for a .thing resource',
             metavar='THING')
+        parser.add_argument(
+            '--toolpath-generator-bus-name',
+            default='com.makerbot.ToolpathGenerator',
+            required=False,
+            help='set the DBus bus name for the toolpath generator',
+            metavar='BUS-NAME',
+            dest='toolpathgeneratorbusname')
+        parser.add_argument(
+            '--printer-bus-name',
+            default='com.makerbot.Printer',
+            required=False,
+            help='set the DBus bus name for the printer',
+            metavar='BUS-NAME',
+            dest='printerbusname')
 
     def _init_subparsers_print(self, subparsers):
         parser = subparsers.add_parser(
@@ -184,21 +198,21 @@ class _Main(object):
                 manifest = conveyor.thing.Manifest.from_path(manifest_path)
                 manifest.validate()
                 if 1 == len(manifest.instances):
-                    code = self._print_single(manifest, buildfunc)
+                    code = self._print_single(args, manifest, buildfunc)
                 elif 2 == len(manifest.instances):
-                    code = self._print_dual(manifest, buildfunc)
+                    code = self._print_dual(args, manifest, buildfunc)
                 else:
                     raise Exception
         return code
 
-    def _print_single(self, manifest, buildfunc):
+    def _print_single(self, args, manifest, buildfunc):
         conveyor.async.set_implementation(
             conveyor.async.AsyncImplementation.QT)
         bus = dbus.SessionBus()
         toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
-            bus, 'com.makerbot.ToolpathGenerator')
+            bus, args.toolpathgeneratorbusname)
         printer = conveyor.printer.dbus._DbusPrinter.create(
-            bus, 'com.makerbot.Printer')
+            bus, args.printerbusname)
         async_list = []
         for manifest_instance in manifest.instances.values(): # this loop is fishy; see _print_dual
             stl = os.path.abspath(os.path.join(manifest.base,
@@ -218,13 +232,13 @@ class _Main(object):
             code = 1
         return code
 
-    def _print_dual(self, manifest, buildfunc):
+    def _print_dual(self, args, manifest, buildfunc):
         conveyor.async.set_implementation(conveyor.async.AsyncImplementation.QT)
         bus = dbus.SessionBus()
         toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
-            bus, 'com.makerbot.ToolpathGenerator')
+            bus, args.toolpathgeneratorbusname)
         printer = conveyor.printer.dbus._DbusPrinter.create(
-            bus, 'com.makerbot.Printer')
+            bus, args.printerbusname)
         plastic_a_instance = self._get_plastic_a_instance(manifest)
         plastic_b_instance = self._get_plastic_b_instance(manifest)
         plastic_a_stl = os.path.abspath(os.path.join(manifest.base,
