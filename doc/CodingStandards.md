@@ -59,9 +59,9 @@ variant suffix is appended to the test name:
                 ...
 
 Don't do work in constructors. They must contain *only* trivial assignment
-statements. Use a `@classmethod` or `@staticmethod` when you need to execute
-more complicated code during the construction of an object (a.k.a a named
-constructor):
+statements and calls to other constructors. Use a `@classmethod` or
+`@staticmethod` when you need to execute more complicated code during the
+construction of an object (a.k.a a named constructor):
 
     class Example(object):
         @classmethod
@@ -102,5 +102,11 @@ name:
             ...
 
 Avoid both multiple inheritance and `super`.
+
+When testing for equality, constant values should appear on the left hand of
+the `==` operator:
+
+    if 1 == x:
+       ...
 
 <!-- vim:set ai et fenc=utf-8 ff=unix sw=4 syntax=markdown ts=4: -->
