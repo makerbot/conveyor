@@ -45,6 +45,9 @@ For brevity, imports of conveyor modules should be written like this:
 
     from conveyor import enum, event
 
+Never use "from module import \*". Always list explicitly the names being
+imported.
+
 Identifier names should follow the Mercurial convention: all lowercase, with no
 underbars between words. The exception to this rule is test methods. They
 should start with the prefix `test_` and should use an underscore whenever a
@@ -103,8 +106,8 @@ name:
 
 Avoid both multiple inheritance and `super`.
 
-When testing for equality, constant values should appear on the left hand of
-the `==` operator:
+When testing for equality, literals and other constant values should appear on
+the left hand of the `==` operator:
 
     if 1 == x:
        ...
