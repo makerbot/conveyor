@@ -76,7 +76,21 @@ construction of an object (a.k.a a named constructor):
         def __init__(self, value):
             self.value = value
 
-This pattern can also be used to enforce initialization requirements:
+It is also acceptable to invoke a 'reset' method from the constructor:
+
+    class Example(object):
+        def __init__(self):
+            self._reset()
+
+        def _reset(self):
+            self.value = 0
+
+        def something(self):
+            if condition:
+                self._reset()
+
+The named constructor pattern can be used to enforce initialization
+requirements:
 
     class Example(object):
         @classmethod
