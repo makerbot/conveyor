@@ -126,4 +126,7 @@ the left hand of the `==` operator:
     if 1 == x:
        ...
 
+Contrary to PEP 8, the preferred place to break around a binary operator is
+*before* the operator, not after it.
+
 <!-- vim:set ai et fenc=utf-8 ff=unix sw=4 syntax=markdown ts=4: -->
