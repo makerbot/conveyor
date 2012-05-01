@@ -2,6 +2,7 @@ Coding Standards
 ================
 
 * [PEP-8](http://www.python.org/dev/peps/pep-0008/)
+* [PEP-257](http://www.python.org/dev/peps/pep-0257/)
 * [Mercurial Coding Style](http://mercurial.selenic.com/wiki/CodingStyle)
 
 The overall structure of a file should be:
