@@ -6,4 +6,4 @@ then
 fi
 
 . virtualenv/bin/activate
-pip install coverage doxypy unittest-xml-reporting
+pip install coverage doxypy python-daemon unittest-xml-reporting
