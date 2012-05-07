@@ -2,29 +2,32 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import conveyor.async
-import conveyor.printer
+import PyQt4.QtCore
 import dbus
+import dbus.mainloop.qt
 import dbus.service
 import logging
 import os.path
+import sys
 import tempfile
+import threading
+
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+
+import conveyor.dbus
+import conveyor.event
+import conveyor.task
+import conveyor.printer
 
 _PRINTER1_INTERFACE = 'com.makerbot.alpha.Printer1'
 
 _PRINTER_BUS_NAME = 'com.makerbot.Printer'
 _PRINTER_OBJECT_PATH = '/com/makerbot/Printer'
 
-try: # pragma: no cover
-    import dbus.mainloop.qt
-    dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
-except ImportError: # pragma: no cover
-    import dbus.mainloop.glib
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
 
 class _DbusPrinter(conveyor.printer.Printer):
     @classmethod
@@ -40,38 +43,44 @@ class _DbusPrinter(conveyor.printer.Printer):
         self._bus_name = bus_name
         self._printer1 = printer1
 
-    def _make_async(self, label, target, *args):
-        def func(async):
+    def _make_task(self, label, target, *args):
+        task = conveyor.task.Task()
+        def func(unused):
             logging.info('starting printer task: %s, args=%r', label, args)
-            target(*args, reply_handler=async.reply_trigger,
-                error_handler=async.error_trigger)
-        async = conveyor.async.asyncfunc(func)
-        return async
+            def reply(*args, **kwargs):
+                logging.info('reply: args=%r, kwargs=%r', args, kwargs)
+                task.end(None)
+            def error(*args, **kwargs):
+                logging.info('error: args=%r, kwargs=%r', args, kwargs)
+                task.fail(None)
+            target(*args, reply_handler=reply, error_handler=error)
+        task.runningevent.attach(func)
+        return task
 
     def build(self, filename):
-        async = self._make_async('Build', self._printer1.Build, filename)
-        return async
+        task = self._make_task('Build', self._printer1.Build, filename)
+        return task
 
     def buildtofile(self, input_path, output_path):
-        async = self._make_async('BuildToFile', self._printer1.BuildToFile,
+        task = self._make_task('BuildToFile', self._printer1.BuildToFile,
             input_path, output_path)
-        return async
+        return task
 
     def pause(self):
-        async = self._make_async('Pause', self._printer1.Pause)
-        return async
+        task = self._make_task('Pause', self._printer1.Pause)
+        return task
 
     def unpause(self):
-        async = self._make_async('Unpause', self._printer1.Unpause)
-        return async
+        task = self._make_task('Unpause', self._printer1.Unpause)
+        return task
 
     def stopmotion(self):
-        async = self._make_async('StopMotion', self._printer1.StopMotion)
-        return async
+        task = self._make_task('StopMotion', self._printer1.StopMotion)
+        return task
 
     def stopall(self):
-        async = self._make_async('StopAll', self._printer1.StopAll)
-        return async
+        task = self._make_task('StopAll', self._printer1.StopAll)
+        return task
 
 class _StubDbusPrinter(dbus.service.Object):
     @classmethod
@@ -119,8 +128,7 @@ class _StubDbusPrinter(dbus.service.Object):
     def StopAll(self):
         self.stopall_callback()
 
-@unittest.skip('DBus does not work on the Mac')
-class _DbusPrinterTestCase(unittest.TestCase):
+class _DbusPrinterTestCase(conveyor.dbus.DbusTestCase):
     def setUp(self):
         self._bus = dbus.SessionBus()
         self._stub_printer = _StubDbusPrinter.create(self._bus,
@@ -128,16 +136,15 @@ class _DbusPrinterTestCase(unittest.TestCase):
 
     def tearDown(self):
         self._stub_printer.remove_from_connection()
-        pass
 
-    @unittest.expectedFailure
     def test_build(self):
         printer = _DbusPrinter.create(self._bus, _PRINTER_BUS_NAME)
         filename = os.path.abspath('src/test/gcode/single.gcode')
-        async = printer.build(filename)
+        task = printer.build(filename)
         self.assertFalse(self._stub_printer.build_callback.delivered)
-        async.wait()
-        self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_printer.build_callback.delivered)
         self.assertEqual((filename,), self._stub_printer.build_callback.args)
         self.assertEqual({}, self._stub_printer.build_callback.kwargs)
@@ -148,15 +155,15 @@ class _DbusPrinterTestCase(unittest.TestCase):
             self._stub_printer.stopall_callback):
                 self.assertFalse(callback.delivered)
 
-    @unittest.expectedFailure
     def test_buildtofile(self):
         printer = _DbusPrinter.create(self._bus, _PRINTER_BUS_NAME)
         input_path = os.path.abspath('src/test/gcode/single.gcode')
         output_path = os.path.abspath('obj/single.s3g')
-        async = printer.buildtofile(input_path, output_path)
+        task = printer.buildtofile(input_path, output_path)
         self.assertFalse(self._stub_printer.buildtofile_callback.delivered)
-        async.wait()
-        self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_printer.buildtofile_callback.delivered)
         self.assertEqual((input_path, output_path,),
             self._stub_printer.buildtofile_callback.args)
@@ -168,13 +175,13 @@ class _DbusPrinterTestCase(unittest.TestCase):
             self._stub_printer.stopall_callback):
                 self.assertFalse(callback.delivered)
 
-    @unittest.expectedFailure
     def test_pause(self):
         printer = _DbusPrinter.create(self._bus, _PRINTER_BUS_NAME)
-        async = printer.pause()
+        task = printer.pause()
         self.assertFalse(self._stub_printer.pause_callback.delivered)
-        async.wait()
-        self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_printer.pause_callback.delivered)
         self.assertEqual((), self._stub_printer.pause_callback.args)
         self.assertEqual({}, self._stub_printer.pause_callback.kwargs)
@@ -185,13 +192,13 @@ class _DbusPrinterTestCase(unittest.TestCase):
             self._stub_printer.stopall_callback):
                 self.assertFalse(callback.delivered)
 
-    @unittest.expectedFailure
     def test_unpause(self):
         printer = _DbusPrinter.create(self._bus, _PRINTER_BUS_NAME)
-        async = printer.unpause()
+        task = printer.unpause()
         self.assertFalse(self._stub_printer.unpause_callback.delivered)
-        async.wait()
-        self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_printer.unpause_callback.delivered)
         self.assertEqual((), self._stub_printer.unpause_callback.args)
         self.assertEqual({}, self._stub_printer.unpause_callback.kwargs)
@@ -202,13 +209,13 @@ class _DbusPrinterTestCase(unittest.TestCase):
             self._stub_printer.stopall_callback):
                 self.assertFalse(callback.delivered)
 
-    @unittest.expectedFailure
     def test_stopmotion(self):
         printer = _DbusPrinter.create(self._bus, _PRINTER_BUS_NAME)
-        async = printer.stopmotion()
+        task = printer.stopmotion()
         self.assertFalse(self._stub_printer.stopmotion_callback.delivered)
-        async.wait()
-        self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_printer.stopmotion_callback.delivered)
         self.assertEqual((), self._stub_printer.stopmotion_callback.args)
         self.assertEqual({}, self._stub_printer.stopmotion_callback.kwargs)
@@ -219,13 +226,13 @@ class _DbusPrinterTestCase(unittest.TestCase):
             self._stub_printer.stopall_callback):
                 self.assertFalse(callback.delivered)
 
-    @unittest.expectedFailure
     def test_stopall(self):
         printer = _DbusPrinter.create(self._bus, _PRINTER_BUS_NAME)
-        async = printer.stopall()
+        task = printer.stopall()
         self.assertFalse(self._stub_printer.stopall_callback.delivered)
-        async.wait()
-        self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_printer.stopall_callback.delivered)
         self.assertEqual((), self._stub_printer.stopall_callback.args)
         self.assertEqual({}, self._stub_printer.stopall_callback.kwargs)

@@ -3,6 +3,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.event
+
 try:
     import unittest2 as unittest
 except ImportError:
@@ -10,8 +11,8 @@ except ImportError:
 
 class ToolpathGenerator(object):
     def __init__(self):
-        self.progress_event = conveyor.event.Event()
-        self.complete_event = conveyor.event.Event()
+        self.progress_event = conveyor.event.Event('ToolpathGenerator.progressevent')
+        self.complete_event = conveyor.event.Event('ToolpathGenerator.completeevent')
 
     def stl_to_gcode(self, filename):
         raise NotImplementedError

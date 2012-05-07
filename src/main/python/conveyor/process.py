@@ -4,80 +4,70 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import conveyor.async
 import conveyor.event
+import conveyor.task
 import conveyor.visitor
+
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-def asyncsequence(async_list):
-    async = _ProcessAsync.create(async_list)
-    return async
+def tasksequence(tasklist):
+    term = reduce(
+        _TermSequence, (_TermYield(_TermTask(t)) for t in tasklist))
+    machine = _Machine.create(term)
+    task = conveyor.task.Task()
+    processhandler = _ProcessHandler(machine, task)
+    return task
 
-class _ProcessAsync(conveyor.async.Async):
-    @classmethod
-    def create(cls, async_list):
-        term = reduce(_TermSequence,
-            (_TermYield(_TermAsync(a)) for a in async_list))
-        machine = _Machine.create(term)
-        async = _ProcessAsync(machine)
-        return async
-
-    def __init__(self, machine):
-        conveyor.async.Async.__init__(self)
+class _ProcessHandler(object):
+    def __init__(self, machine, task):
+        self._child = None
         self._machine = machine
-        self._async = None
+        self._task = task
+        self._task.startevent.attach(self._taskstartcallback)
+        self._task.cancelevent.attach(self._taskcancelcallback)
 
-    def _heartbeat_handler(self, *args, **kwargs):
-        self.heartbeat_trigger(*args, **kwargs)
-
-    def _reply_handler(self, *args, **kwargs):
-        assert self._machine.is_yielded()
-        self._machine.send()
-        self._reply_or_next()
-
-    def _error_handler(self, *args, **kwargs):
-        self.error_trigger(*args, **kwargs)
-
-    def _timeout_handler(self, *args, **kwargs):
-        self.timeout_trigger(*args, **kwargs)
-
-    def _cancel_handler(self, *args, **kwargs):
-        self.cancel()
-
-    def _reply_or_next(self):
-        self._async = None
+    def _next(self):
         if self._machine.is_aborted():
-            self.reply_trigger()
+            result = self._child.result
+            self._child = None
+            self._task.end(result)
         else:
             assert self._machine.is_yielded()
-            self._async = self._machine.get_yield_value()
-            self._async.heartbeat_event.attach(self._heartbeat_handler)
-            self._async.reply_event.attach(self._reply_handler)
-            self._async.error_event.attach(self._error_handler)
-            self._async.timeout_event.attach(self._timeout_handler)
-            self._async.cancel_event.attach(self._cancel_handler)
-            self._async.start()
+            self._child = self._machine.get_yield_value()
+            self._child.heartbeatevent.attach(self._childheartbeatcallback)
+            self._child.endevent.attach(self._childendcallback)
+            self._child.failevent.attach(self._childfailcallback)
+            self._child.cancelevent.attach(self._childcancelcallback)
+            self._child.start()
 
-    def start(self):
-        self._transition(conveyor.async.AsyncEvent.START, (), {})
+    def _taskstartcallback(self, unused):
         self._machine.evaluate()
-        self._reply_or_next()
+        self._next()
 
-    def wait(self):
-        if conveyor.async.AsyncState.PENDING == self.state:
-            self.start()
-        while self.state not in (conveyor.async.AsyncState.SUCCESS,
-            conveyor.async.AsyncState.ERROR, conveyor.async.AsyncState.TIMEOUT,
-            conveyor.async.AsyncState.CANCELED):
-                self._async.wait()
+    def _taskcancelcallback(self, unused):
+        if (None is not self._child
+            and conveyor.task.TaskState.STOPPED != self._child.state):
+                self._child.cancel()
 
-    def cancel(self):
-        self._transition(conveyor.async.AsyncEvent.CANCEL, (), {})
-        if None != self._async:
-            self._async.cancel()
+    def _childheartbeatcallback(self, unused):
+        self._task.heartbeat(self._child)
+
+    def _childendcallback(self, unused):
+        assert self._machine.is_yielded()
+        self._machine.send()
+        self._next()
+
+    def _childfailcallback(self, unused):
+        failure = self._child
+        self._child = None
+        self._task.fail(failure)
+
+    def _childcancelcallback(self, unused):
+        if conveyor.task.TaskState.STOPPED != self._task.state:
+            self._task.cancel()
 
 class _Term(object):
     '''\
@@ -95,16 +85,16 @@ class _TermAbort(_Term):
     def __init__(self, term):
         self.term = term
 
-class _TermAsync(_Term):
+class _TermTask(_Term):
     '''\
-    The async term is a literal that evaluates to an Async value.
+    The task term is a literal that evaluates to an Task value.
     '''
 
     # Future Implementation Note: this could be changed to a generic literal
     # term or a generic primitive literal term.
 
-    def __init__(self, async):
-        self.async = async
+    def __init__(self, task):
+        self.task = task
 
 class _TermSequence(_Term):
     '''\
@@ -214,9 +204,9 @@ class _PhaseRefocus(_Phase, conveyor.visitor.Visitor):
             new_state)
         return phase
 
-    def accept__TermAsync(self, term):
+    def accept__TermTask(self, term):
         new_context = self.context
-        new_value = self.term.async
+        new_value = self.term.task
         new_state = self.state
         phase = _PhaseRefocusAux(new_context, new_value, new_state)
         return phase
@@ -403,116 +393,124 @@ class _Machine(object):
             else:
                 raise _UnknownPhaseException(self._phase)
 
-class _ProcessAsyncTestCase(unittest.TestCase):
+class _ProcessTaskTestCase(unittest.TestCase):
+    def _runeventqueue(self, eventqueue):
+        while eventqueue.runiteration(False):
+            pass
+
     def test_single(self):
+        eventqueue = conveyor.event.geteventqueue()
         callback = conveyor.event.Callback()
         self.assertFalse(callback.delivered)
-        def func(async):
+        def func(task):
             callback()
-            async.reply_trigger()
-        async = conveyor.async.asyncfunc(func)
-        process = conveyor.async.asyncsequence([async])
+            task.end(None)
+        task = conveyor.task.Task()
+        task.runningevent.attach(func)
+        process = tasksequence([task])
         process.start()
+        self._runeventqueue(eventqueue)
         self.assertTrue(callback.delivered)
 
     def test_multiple(self):
+        eventqueue = conveyor.event.geteventqueue()
         callback1 = conveyor.event.Callback()
         callback2 = conveyor.event.Callback()
         self.assertFalse(callback1.delivered)
         self.assertFalse(callback2.delivered)
-        def func1(async):
+        def func1(task):
             self.assertFalse(callback1.delivered)
             self.assertFalse(callback2.delivered)
             callback1()
-            async.reply_trigger()
-        def func2(async):
+            task.end(None)
+        def func2(task):
             self.assertTrue(callback1.delivered)
             self.assertFalse(callback2.delivered)
             callback2()
-            async.reply_trigger()
-        async1 = conveyor.async.asyncfunc(func1)
-        async2 = conveyor.async.asyncfunc(func2)
-        process = conveyor.async.asyncsequence([async1, async2])
+            task.end(None)
+        task1 = conveyor.task.Task()
+        task1.runningevent.attach(func1)
+        task2 = conveyor.task.Task()
+        task2.runningevent.attach(func2)
+        process = tasksequence([task1, task2])
         process.start()
+        self._runeventqueue(eventqueue)
         self.assertTrue(callback1.delivered)
         self.assertTrue(callback2.delivered)
 
     def test_heartbeat(self):
-        def func(async):
+        eventqueue = conveyor.event.geteventqueue()
+        def func(task):
             self.assertFalse(callback.delivered)
-            async.heartbeat_trigger()
-            async.reply_trigger()
-        async = conveyor.async.asyncfunc(func)
-        process = conveyor.async.asyncsequence([async])
+            task.heartbeat(None)
+            task.end(None)
+        task = conveyor.task.Task()
+        task.runningevent.attach(func)
+        process = tasksequence([task])
         callback = conveyor.event.Callback()
-        process.heartbeat_event.attach(callback)
+        process.heartbeatevent.attach(callback)
         self.assertFalse(callback.delivered)
         process.start()
+        self._runeventqueue(eventqueue)
         self.assertTrue(callback.delivered)
 
     def test_error(self):
+        eventqueue = conveyor.event.geteventqueue()
         callback1 = conveyor.event.Callback()
         callback2 = conveyor.event.Callback()
         self.assertFalse(callback1.delivered)
         self.assertFalse(callback2.delivered)
-        def func1(async):
+        def func1(task):
             self.assertFalse(callback1.delivered)
             self.assertFalse(callback2.delivered)
             callback1()
-            async.error_trigger()
-        async1 = conveyor.async.asyncfunc(func1)
-        async2 = conveyor.async.asyncfunc(None) # not actually called
-        process = conveyor.async.asyncsequence([async1, async2])
+            task.fail(None)
+        task1 = conveyor.task.Task()
+        task1.runningevent.attach(func1)
+        task2 = conveyor.task.Task()
+        process = tasksequence([task1, task2])
         process.start()
+        self._runeventqueue(eventqueue)
         self.assertTrue(callback1.delivered)
         self.assertFalse(callback2.delivered)
 
-    def test_timeout(self):
+    def test_cancel_task(self):
+        eventqueue = conveyor.event.geteventqueue()
         callback1 = conveyor.event.Callback()
         callback2 = conveyor.event.Callback()
         self.assertFalse(callback1.delivered)
         self.assertFalse(callback2.delivered)
-        def func1(async):
+        def func1(task):
             self.assertFalse(callback1.delivered)
             self.assertFalse(callback2.delivered)
             callback1()
-            async.timeout_trigger()
-        async1 = conveyor.async.asyncfunc(func1)
-        async2 = conveyor.async.asyncfunc(None) # not actually called
-        process = conveyor.async.asyncsequence([async1, async2])
+            task.cancel()
+        task1 = conveyor.task.Task()
+        task1.runningevent.attach(func1)
+        task2 = conveyor.task.Task()
+        process = tasksequence([task1, task2])
         process.start()
-        self.assertTrue(callback1.delivered)
-        self.assertFalse(callback2.delivered)
-
-    def test_cancel_async(self):
-        callback1 = conveyor.event.Callback()
-        callback2 = conveyor.event.Callback()
-        self.assertFalse(callback1.delivered)
-        self.assertFalse(callback2.delivered)
-        def func1(async):
-            self.assertFalse(callback1.delivered)
-            self.assertFalse(callback2.delivered)
-            callback1()
-            async.cancel()
-        async1 = conveyor.async.asyncfunc(func1)
-        async2 = conveyor.async.asyncfunc(None) # not actually called
-        process = conveyor.async.asyncsequence([async1, async2])
-        process.start()
+        self._runeventqueue(eventqueue)
         self.assertTrue(callback1.delivered)
         self.assertFalse(callback2.delivered)
 
     def test_cancel_process(self):
+        eventqueue = conveyor.event.geteventqueue()
         callback = conveyor.event.Callback()
         self.assertFalse(callback.delivered)
-        async = conveyor.async.asyncfunc(None) # not actually called
-        process = conveyor.async.asyncsequence([async])
+        task = conveyor.task.Task()
+        process = tasksequence([task])
+        process.start()
         process.cancel()
-        self.assertEqual(conveyor.async.AsyncState.CANCELED, process.state)
+        self._runeventqueue(eventqueue)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, process.state)
+        self.assertEqual(
+            conveyor.task.TaskConclusion.CANCELED, process.conclusion)
         self.assertFalse(callback.delivered)
 
 class _MachineTestCase(unittest.TestCase):
     def test_abort(self):
-        term = _TermAsync(1)
+        term = _TermTask(1)
         machine = _Machine.create(term)
         machine.evaluate()
         self.assertTrue(machine.is_aborted())
@@ -520,7 +518,7 @@ class _MachineTestCase(unittest.TestCase):
         self.assertEqual(1, machine.get_abort_value())
 
     def test_sequence(self):
-        term = _TermSequence(_TermAsync(1), _TermAsync(2))
+        term = _TermSequence(_TermTask(1), _TermTask(2))
         machine = _Machine.create(term)
         machine.evaluate()
         self.assertTrue(machine.is_aborted())
@@ -528,7 +526,7 @@ class _MachineTestCase(unittest.TestCase):
         self.assertEqual(2, machine.get_abort_value())
 
     def test_yield(self):
-        term = _TermYield(_TermAsync(1))
+        term = _TermYield(_TermTask(1))
         machine = _Machine.create(term)
         machine.evaluate()
         self.assertFalse(machine.is_aborted())
@@ -542,9 +540,9 @@ class _MachineTestCase(unittest.TestCase):
     def test_sequence_yield(self):
         term = _TermSequence(
             _TermYield(
-                _TermAsync(1)),
+                _TermTask(1)),
             _TermYield(
-                _TermAsync(2)))
+                _TermTask(2)))
         machine = _Machine.create(term)
         machine.evaluate()
         self.assertFalse(machine.is_aborted())
@@ -578,7 +576,7 @@ class _MachineTestCase(unittest.TestCase):
             machine.evaluate()
 
     def test__NotAbortedException(self):
-        term = _TermYield(_TermAsync(1))
+        term = _TermYield(_TermTask(1))
         machine = _Machine.create(term)
         machine.evaluate()
         self.assertFalse(machine.is_aborted())
@@ -586,7 +584,7 @@ class _MachineTestCase(unittest.TestCase):
             machine.get_abort_value()
 
     def test__NotYieldedException_get_yield_value(self):
-        term = _TermAsync(1)
+        term = _TermTask(1)
         machine = _Machine.create(term)
         machine.evaluate()
         self.assertFalse(machine.is_yielded())
@@ -594,7 +592,7 @@ class _MachineTestCase(unittest.TestCase):
             machine.get_yield_value()
 
     def test__NotYieldedException_send(self):
-        term = _TermAsync(1)
+        term = _TermTask(1)
         machine = _Machine.create(term)
         machine.evaluate()
         self.assertFalse(machine.is_yielded())

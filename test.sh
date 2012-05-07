@@ -3,25 +3,25 @@
 # set -x
 
 _modules='
-	conveyor.async
-	conveyor.async.glib
-	conveyor.async.qt
 	conveyor.enum
 	conveyor.event
+	conveyor.jsonrpc
 	conveyor.printer
 	conveyor.printer.dbus
 	conveyor.process
+	conveyor.task
 	conveyor.thing
 	conveyor.toolpathgenerator
 	conveyor.toolpathgenerator.dbus
 	conveyor.visitor
 '
+
 if [ ! -d obj/ ]
 then
 	mkdir obj/
 fi
 
-env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage run --branch test.py --xml -- -v ${_modules}
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage run --branch test.py -- -v ${_modules}
 _code=$?
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage annotate -d obj/ --include 'src/main/python/*'
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/ coverage html -d obj/ --include 'src/main/python/*'

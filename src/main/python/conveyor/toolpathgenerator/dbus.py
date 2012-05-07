@@ -2,30 +2,67 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import conveyor.async
-import conveyor.event
-import conveyor.toolpathgenerator
+import PyQt4.QtCore
 import dbus
+import dbus.mainloop.qt
 import dbus.service
 import logging
 import os.path
 import tempfile
+import threading
+
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+
+import conveyor.dbus
+import conveyor.event
+import conveyor.task
+import conveyor.toolpathgenerator
 
 _TOOLPATHGENERATOR1_INTERFACE = 'com.makerbot.alpha.ToolpathGenerator1'
 
 _TOOLPATHGENERATOR_BUS_NAME = 'com.makerbot.ToolpathGenerator'
 _TOOLPATHGENERATOR_OBJECT_PATH = '/com/makerbot/ToolpathGenerator'
 
-try: # pragma: no cover
-    import dbus.mainloop.qt
-    dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
-except ImportError: # pragma: no cover
-    import dbus.mainloop.glib
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+_listener = None
+class _Listener(object):
+    @classmethod
+    def create(cls, bus):
+        global _listener
+        if None is _listener:
+            _listener = _Listener()
+            bus.add_signal_receiver(
+                _listener._complete, signal_name='Complete',
+                dbus_interface=_TOOLPATHGENERATOR1_INTERFACE)
+        return _listener
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._task = None
+        self._output = None
+
+    def settask(self, task, output):
+        with self._lock:
+            if None is not self._task:
+                raise Exception
+            else:
+                self._task = task
+                self._output = output
+
+    def _complete(self, *args, **kwargs):
+        with self._lock:
+            if None is not self._task:
+                task = self._task
+                output = self._output
+                self._task = None
+                self._output = None
+                if not os.path.exists(output):
+                    logging.error('output file does not exist: %s', output)
+                    task.fail(None)
+                else:
+                    task.end(None)
 
 class _DbusToolpathGenerator(conveyor.toolpathgenerator.ToolpathGenerator):
     @classmethod
@@ -42,44 +79,33 @@ class _DbusToolpathGenerator(conveyor.toolpathgenerator.ToolpathGenerator):
         self._bus_name = bus_name
         self._toolpathgenerator1 = toolpathgenerator1
 
-    def _make_async(self, label, target, output, *args):
-        def func(async):
+    def _make_task(self, label, target, output, *args):
+        task = conveyor.task.Task()
+        listener = _Listener.create(self._bus)
+        listener.settask(task, output)
+        def func(unused):
             logging.info('starting toolpathgenerator task: %s, args=%r',
                 label, args)
-            self._bus.add_signal_receiver(async.heartbeat_trigger,
-                signal_name='Progress',
-                dbus_interface=_TOOLPATHGENERATOR1_INTERFACE)
             def reply(*args, **kwargs):
-                pass
-            target(*args, reply_handler=reply,
-                error_handler=async.error_trigger)
-            def complete(*args, **kwargs):
-                self._bus.remove_signal_receiver(
-                    complete,
-                    signal_name='Complete',
-                    dbus_interface=_TOOLPATHGENERATOR1_INTERFACE)
-                if not os.path.exists(output):
-                    logging.error('output file does not exist: %s', output)
-                    async.error_trigger()
-                else:
-                    async.reply_trigger()
-            self._bus.add_signal_receiver(complete,
-                signal_name='Complete',
-                dbus_interface=_TOOLPATHGENERATOR1_INTERFACE)
-        async = conveyor.async.asyncfunc(func)
-        return async
+                logging.info('reply: args=%r, kwargs=%r', args, kwargs)
+            def error(*args, **kwargs):
+                logging.info('error: args=%r, kwargs=%r', args, kwargs)
+                task.fail(None)
+            target(*args, reply_handler=reply, error_handler=error)
+        task.runningevent.attach(func)
+        return task
 
     def stl_to_gcode(self, input):
         output = _gcode_filename(input)
-        async = self._make_async('Generate',
+        task = self._make_task('Generate',
             self._toolpathgenerator1.Generate, output, input)
-        return async
+        return task
 
     def merge_gcode(self, input_left, input_right, output):
-        async = self._make_async('GenerateDualStrusion',
+        task = self._make_task('GenerateDualStrusion',
             self._toolpathgenerator1.GenerateDualStrusion, output, input_left,
             input_right, output)
-        return async
+        return task
 
 class _StubDbusToolpathGenerator(dbus.service.Object):
     @classmethod
@@ -124,8 +150,7 @@ def _gcode_filename(stl, testcase=None):
     gcode = ''.join((stl[:-4], '.gcode'))
     return gcode
 
-@unittest.skip('DBus does not work on the Mac')
-class _ToolpathGeneratorTestCase(unittest.TestCase):
+class _ToolpathGeneratorTestCase(conveyor.dbus.DbusTestCase):
     def setUp(self):
         self._bus = dbus.SessionBus()
         self._stub_toolpathgenerator = _StubDbusToolpathGenerator.create(
@@ -135,34 +160,34 @@ class _ToolpathGeneratorTestCase(unittest.TestCase):
     def tearDown(self):
         self._stub_toolpathgenerator.remove_from_connection()
 
-    @unittest.expectedFailure
     def test_stl_to_gcode(self):
         toolpathgenerator = _DbusToolpathGenerator.create(self._bus,
             _TOOLPATHGENERATOR_BUS_NAME)
         input = os.path.abspath('src/test/stl/single.stl')
-        async = toolpathgenerator.stl_to_gcode(input)
+        task = toolpathgenerator.stl_to_gcode(input)
         self.assertFalse(self._stub_toolpathgenerator.generate_callback.delivered)
-        async.wait()
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
         # This does not work since the stub doesn't actually generate the file:
-        # self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        # self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_toolpathgenerator.generate_callback.delivered)
         self.assertEqual((input,), self._stub_toolpathgenerator.generate_callback.args)
         self.assertEqual({}, self._stub_toolpathgenerator.generate_callback.kwargs)
         self.assertFalse(self._stub_toolpathgenerator.generatedualstrusion_callback.delivered)
 
-    @unittest.expectedFailure
     def test_merge_gcode(self):
         toolpathgenerator = _DbusToolpathGenerator.create(self._bus,
             _TOOLPATHGENERATOR_BUS_NAME)
         input_filename0 = os.path.abspath('src/test/gcode/left.gcode')
         input_filename1 = os.path.abspath('src/test/gcode/right.gcode')
         output_filename = os.path.abspath('obj/merged.gcode')
-        async = toolpathgenerator.merge_gcode(input_filename0,
+        task = toolpathgenerator.merge_gcode(input_filename0,
             input_filename1, output_filename)
         self.assertFalse(self._stub_toolpathgenerator.generatedualstrusion_callback.delivered)
-        async.wait()
+        self._wait(task)
+        self.assertEqual(conveyor.task.TaskState.STOPPED, task.state)
         # This does not work since the stub doesn't actually generate the file:
-        # self.assertEqual(conveyor.async.AsyncState.SUCCESS, async.state)
+        # self.assertEqual(conveyor.task.TaskConclusion.ENDED, task.conclusion)
         self.assertTrue(self._stub_toolpathgenerator.generatedualstrusion_callback.delivered)
         self.assertEqual((input_filename0, input_filename1, output_filename),
             self._stub_toolpathgenerator.generatedualstrusion_callback.args)
