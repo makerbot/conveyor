@@ -4,6 +4,7 @@
 
 _modules='
 	conveyor.client
+	conveyor.client.__main__
 	conveyor.enum
 	conveyor.event
 	conveyor.ipc
@@ -12,6 +13,7 @@ _modules='
 	conveyor.printer.dbus
 	conveyor.process
 	conveyor.server
+	conveyor.server.__main__
 	conveyor.task
 	conveyor.thing
 	conveyor.toolpathgenerator
