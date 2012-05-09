@@ -3,30 +3,23 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
-import dbus
-import json
 import logging
 import logging.config
-import os
 import os.path
 import socket
 import sys
-import tempfile
-import threading
+
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
 import conveyor.client
-import conveyor.event
-import conveyor.jsonrpc
-import conveyor.printer.dbus
 import conveyor.server
-import conveyor.thing
-import conveyor.toolpathgenerator.dbus
 
 class _ConsoleFormatter(logging.Formatter):
+    '''A log formatter that does not emit the exception stack trace.'''
+
     def format(self, record):
         record.message = record.getMessage()
         if self.usesTime():
@@ -34,7 +27,9 @@ class _ConsoleFormatter(logging.Formatter):
         s = self._fmt % record.__dict__
         return s
 
-class _DebugFormatter(object):
+class _DebugFormatter(object):  
+    '''A log formatter that has a second format for DEBUG messages.'''
+
     def __init__(self, format, datefmt, debugformat):
         self._formatter = logging.Formatter(format, datefmt)
         self._debugformatter = logging.Formatter(debugformat, datefmt)
@@ -61,16 +56,22 @@ class _DebugFormatter(object):
         return result
 
 class _StdoutFilter(object):
+    '''A log filter that only accepts INFO messages.'''
+
     def filter(self, record):
         result = (record.levelno == logging.INFO)
         return result
 
 class _StderrFilter(object):
+    '''A log filter that only accepts WARNING, ERROR, and CRITICAL messages.'''
+
     def filter(self, record):
         result = (record.levelno >= logging.WARNING)
         return result
 
 class _Socket(object):
+    '''An abstract socket.'''
+
     def listen(self):
         raise NotImplementedError
 
@@ -78,6 +79,8 @@ class _Socket(object):
         raise NotImplementedError
 
 class _TcpSocket(_Socket):
+    '''A TCP/IP socket.'''
+
     def __init__(self, host, port):
         self._host = host
         self._port = port
@@ -95,6 +98,8 @@ class _TcpSocket(_Socket):
         return s
 
 class _UnixSocket(_Socket):
+    '''A UNIX socket.'''
+
     def __init__(self, path):
         self._path = path
 
