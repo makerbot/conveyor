@@ -65,6 +65,42 @@ class _UnixSocket(_Socket):
         s.connect(self._path)
         return s
 
+class _DebugFormatter(object):
+    def __init__(self, format, datefmt, debugformat):
+        self._formatter = logging.Formatter(format, datefmt)
+        self._debugformatter = logging.Formatter(debugformat, datefmt)
+
+    def format(self, record):
+        if logging.DEBUG != record.levelno:
+            result = self._formatter.format(record)
+        else:
+            result = self._debugformatter.format(record)
+        return result
+
+    def formatTime(self, record, datefmt=None):
+        if logging.DEBUG != record.levelno:
+            result = self._formatter.formatTime(record, datefmt)
+        else:
+            result = self._debugformatter.formatTime(record, datefmt)
+        return result
+
+    def formatException(self, exc_info):
+        if logging.DEBUG != record.levelno:
+            result = self._formatter.formatException(exc_info)
+        else:
+            result = self._debugformatter.formatException(exc_info)
+        return result
+
+class _StdoutFilter(object):
+    def filter(self, record):
+        result = (record.levelno == logging.INFO)
+        return result
+
+class _StderrFilter(object):
+    def filter(self, record):
+        result = (record.levelno >= logging.WARNING)
+        return result
+
 class _Main(object):
     def __init__(self):
         self._log = None
@@ -96,7 +132,7 @@ class _Main(object):
         for path in ('logging.ini',):
             if self._init_logging_file(path):
                 return
-        self._init_logging_basic()
+        self._init_logging_default()
 
     def _init_logging_file(self, path):
         if not os.path.exists(path):
@@ -107,11 +143,62 @@ class _Main(object):
             success = True
         return success
 
-    def _init_logging_basic(self):
-        logging.basicConfig(
-            format='conveyor: %(levelname)s: %(funcName)s: %(message)s',
-            datefmt='%Y.%m.%d|%H:%M:%S',
-            level=logging.INFO)
+    def _init_logging_default(self):
+        dct = {
+            'version': 1,
+            'formatters': {
+                'log': {
+                    '()': 'conveyor.__main__._DebugFormatter',
+                    'format': '%(asctime)s - %(levelname)s - %(message)s',
+                    'datefmt': '%Y.%m.%d - %H:%M:%S',
+                    'debugformat': '%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s'
+                },
+                'console': {
+                    'format': '%(levelname)s - %(message)s'
+                },
+            },
+            'filters': {
+                'stdout': {
+                    '()': 'conveyor.__main__._StdoutFilter'
+                },
+                'stderr': {
+                    '()': 'conveyor.__main__._StderrFilter'
+                }
+            },
+            'handlers': {
+                'stdout': {
+                    'class': 'logging.StreamHandler',
+                    'level': 'INFO',
+                    'formatter': 'console',
+                    'filters': ['stdout'],
+                    'stream': sys.stdout
+                },
+                'stderr': {
+                    'class': 'logging.StreamHandler',
+                    'level': 'ERROR',
+                    'formatter': 'console',
+                    'filters': ['stderr'],
+                    'stream': sys.stderr
+                },
+                'log': {
+                    'class': 'logging.FileHandler',
+                    'level': 'NOTSET',
+                    'formatter': 'log',
+                    'filters': [],
+                    'filename': 'conveyor.log'
+                }
+            },
+            'loggers': {},
+            'root': {
+                'level': 'INFO',
+                'propagate': True,
+                'filters': [],
+                'handlers': ['stdout', 'stderr', 'log']
+            },
+            'incremental': False,
+            'disable_existing_loggers': True
+        }
+        logging.config.dictConfig(dct)
 
     def _init_parser(self):
         parser = argparse.ArgumentParser(prog='conveyor')
