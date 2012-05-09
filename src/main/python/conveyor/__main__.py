@@ -16,59 +16,8 @@ except ImportError:
 
 import conveyor.client
 import conveyor.ipc
+import conveyor.log
 import conveyor.server
-
-class _ConsoleFormatter(logging.Formatter):
-    '''A log formatter that does not emit the exception stack trace.'''
-
-    def format(self, record):
-        record.message = record.getMessage()
-        if self.usesTime():
-            record.asctime = self.formatTime(record, self.datefmt)
-        s = self._fmt % record.__dict__
-        return s
-
-class _DebugFormatter(object):  
-    '''A log formatter that has a second format for DEBUG messages.'''
-
-    def __init__(self, format, datefmt, debugformat):
-        self._formatter = logging.Formatter(format, datefmt)
-        self._debugformatter = logging.Formatter(debugformat, datefmt)
-
-    def format(self, record):
-        if logging.DEBUG != record.levelno:
-            result = self._formatter.format(record)
-        else:
-            result = self._debugformatter.format(record)
-        return result
-
-    def formatTime(self, record, datefmt=None):
-        if logging.DEBUG != record.levelno:
-            result = self._formatter.formatTime(record, datefmt)
-        else:
-            result = self._debugformatter.formatTime(record, datefmt)
-        return result
-
-    def formatException(self, exc_info):
-        if logging.DEBUG != record.levelno:
-            result = self._formatter.formatException(exc_info)
-        else:
-            result = self._debugformatter.formatException(exc_info)
-        return result
-
-class _StdoutFilter(object):
-    '''A log filter that only accepts INFO messages.'''
-
-    def filter(self, record):
-        result = (record.levelno == logging.INFO)
-        return result
-
-class _StderrFilter(object):
-    '''A log filter that only accepts WARNING, ERROR, and CRITICAL messages.'''
-
-    def filter(self, record):
-        result = (record.levelno >= logging.WARNING)
-        return result
 
 class _Main(object):
     def __init__(self):
@@ -120,22 +69,22 @@ class _Main(object):
             'version': 1,
             'formatters': {
                 'log': {
-                    '()': 'conveyor.__main__._DebugFormatter',
+                    '()': 'conveyor.log.DebugFormatter',
                     'format': '%(asctime)s - %(levelname)s - %(message)s',
                     'datefmt': '%Y.%m.%d - %H:%M:%S',
                     'debugformat': '%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s'
                 },
                 'console': {
-                    '()': 'conveyor.__main__._ConsoleFormatter',
+                    '()': 'conveyor.log.ConsoleFormatter',
                     'format': 'conveyor: %(levelname)s: %(message)s'
                 },
             },
             'filters': {
                 'stdout': {
-                    '()': 'conveyor.__main__._StdoutFilter'
+                    '()': 'conveyor.log.StdoutFilter'
                 },
                 'stderr': {
-                    '()': 'conveyor.__main__._StderrFilter'
+                    '()': 'conveyor.log.StderrFilter'
                 }
             },
             'handlers': {
