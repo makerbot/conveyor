@@ -50,77 +50,7 @@ class _Main(object):
         return code
 
     def _init_logging(self):
-        for path in ('logging.ini',):
-            if self._init_logging_file(path):
-                return
-        self._init_logging_default()
-
-    def _init_logging_file(self, path):
-        if not os.path.exists(path):
-            success = False
-        else:
-            with open(path, 'r') as file:
-                logging.config.fileConfig(file)
-            success = True
-        return success
-
-    def _init_logging_default(self):
-        dct = {
-            'version': 1,
-            'formatters': {
-                'log': {
-                    '()': 'conveyor.log.DebugFormatter',
-                    'format': '%(asctime)s - %(levelname)s - %(message)s',
-                    'datefmt': '%Y.%m.%d - %H:%M:%S',
-                    'debugformat': '%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s'
-                },
-                'console': {
-                    '()': 'conveyor.log.ConsoleFormatter',
-                    'format': 'conveyor: %(levelname)s: %(message)s'
-                },
-            },
-            'filters': {
-                'stdout': {
-                    '()': 'conveyor.log.StdoutFilter'
-                },
-                'stderr': {
-                    '()': 'conveyor.log.StderrFilter'
-                }
-            },
-            'handlers': {
-                'stdout': {
-                    'class': 'logging.StreamHandler',
-                    'level': 'INFO',
-                    'formatter': 'console',
-                    'filters': ['stdout'],
-                    'stream': sys.stdout
-                },
-                'stderr': {
-                    'class': 'logging.StreamHandler',
-                    'level': 'WARNING',
-                    'formatter': 'console',
-                    'filters': ['stderr'],
-                    'stream': sys.stderr
-                },
-                'log': {
-                    'class': 'logging.FileHandler',
-                    'level': 'NOTSET',
-                    'formatter': 'log',
-                    'filters': [],
-                    'filename': 'conveyor.log'
-                }
-            },
-            'loggers': {},
-            'root': {
-                'level': 'INFO',
-                'propagate': True,
-                'filters': [],
-                'handlers': ['stdout', 'stderr', 'log']
-            },
-            'incremental': False,
-            'disable_existing_loggers': True
-        }
-        logging.config.dictConfig(dct)
+        conveyor.log.initlogging('conveyor')
 
     def _init_parser(self):
         parser = argparse.ArgumentParser(prog='conveyor')
