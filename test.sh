@@ -3,9 +3,10 @@
 # set -x
 
 _modules='
+	conveyor.client
 	conveyor.enum
 	conveyor.event
-	conveyor.client
+	conveyor.ipc
 	conveyor.jsonrpc
 	conveyor.printer
 	conveyor.printer.dbus

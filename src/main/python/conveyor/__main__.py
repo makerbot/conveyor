@@ -15,6 +15,7 @@ except ImportError:
     import unittest
 
 import conveyor.client
+import conveyor.ipc
 import conveyor.server
 
 class _ConsoleFormatter(logging.Formatter):
@@ -68,51 +69,6 @@ class _StderrFilter(object):
     def filter(self, record):
         result = (record.levelno >= logging.WARNING)
         return result
-
-class _Socket(object):
-    '''An abstract socket.'''
-
-    def listen(self):
-        raise NotImplementedError
-
-    def connect(self):
-        raise NotImplementedError
-
-class _TcpSocket(_Socket):
-    '''A TCP/IP socket.'''
-
-    def __init__(self, host, port):
-        self._host = host
-        self._port = port
-
-    def listen(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((self._host, self._port))
-        s.listen(socket.SOMAXCONN)
-        return s
-
-    def connect(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self._host, self._port))
-        return s
-
-class _UnixSocket(_Socket):
-    '''A UNIX socket.'''
-
-    def __init__(self, path):
-        self._path = path
-
-    def listen(self):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.bind(self._path)
-        s.listen(socket.SOMAXCONN)
-        return s
-
-    def connect(self):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(self._path)
-        return s
 
 class _Main(object):
     def __init__(self):
@@ -337,41 +293,8 @@ class _Main(object):
         code = method(parser, args)
         return code
 
-    def _getsocket(self, args):
-        split = args.socket.split(':', 1)
-        if 'tcp' == split[0]:
-            if 2 != len(split):
-                self._log.error('invalid TCP socket: %s', args.socket)
-                sock = None
-            else:
-                host_port = split[1].split(':', 1)
-                if 2 != len(host_port):
-                    self._log.error('invalid TCP socket: %s', args.socket)
-                    sock = None
-                else:
-                    host = host_port[0]
-                    try:
-                        port = int(host_port[1])
-                    except ValueError:
-                        self._log.error('invalid TCP port: %s', host_port[1])
-                    else:
-                        self._log.debug('TCP socket: host=%r, port=%r', host, port)
-                        sock = _TcpSocket(host, port)
-        elif 'unix' == split[0]:
-            if 2 != len(split):
-                self._log.error('invalid UNIX socket: %s', args.socket)
-                sock = None
-            else:
-                path = split[1]
-                self._log.debug('UNIX socket: path=%r', path)
-                sock = _UnixSocket(path)
-        else:
-            self._log.error('unknown socket type: %s', split[0])
-            sock = None
-        return sock
-
     def _command_daemon(self, parser, args):
-        sock = self._getsocket(args)
+        sock = conveyor.ipc.getsocket(args)
         if None is sock:
             code = 1
         else:
@@ -381,7 +304,7 @@ class _Main(object):
         return code
 
     def _command_print(self, parser, args):
-        sock = self._getsocket(args)
+        sock = conveyor.ipc.getsocket(args)
         if None is sock:
             code = 1
         else:
