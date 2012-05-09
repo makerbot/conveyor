@@ -5,10 +5,12 @@
 _modules='
 	conveyor.enum
 	conveyor.event
+	conveyor.client
 	conveyor.jsonrpc
 	conveyor.printer
 	conveyor.printer.dbus
 	conveyor.process
+	conveyor.server
 	conveyor.task
 	conveyor.thing
 	conveyor.toolpathgenerator
