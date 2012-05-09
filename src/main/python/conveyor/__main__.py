@@ -26,6 +26,50 @@ import conveyor.server
 import conveyor.thing
 import conveyor.toolpathgenerator.dbus
 
+class _ConsoleFormatter(logging.Formatter):
+    def format(self, record):
+        record.message = record.getMessage()
+        if self.usesTime():
+            record.asctime = self.formatTime(record, self.datefmt)
+        s = self._fmt % record.__dict__
+        return s
+
+class _DebugFormatter(object):
+    def __init__(self, format, datefmt, debugformat):
+        self._formatter = logging.Formatter(format, datefmt)
+        self._debugformatter = logging.Formatter(debugformat, datefmt)
+
+    def format(self, record):
+        if logging.DEBUG != record.levelno:
+            result = self._formatter.format(record)
+        else:
+            result = self._debugformatter.format(record)
+        return result
+
+    def formatTime(self, record, datefmt=None):
+        if logging.DEBUG != record.levelno:
+            result = self._formatter.formatTime(record, datefmt)
+        else:
+            result = self._debugformatter.formatTime(record, datefmt)
+        return result
+
+    def formatException(self, exc_info):
+        if logging.DEBUG != record.levelno:
+            result = self._formatter.formatException(exc_info)
+        else:
+            result = self._debugformatter.formatException(exc_info)
+        return result
+
+class _StdoutFilter(object):
+    def filter(self, record):
+        result = (record.levelno == logging.INFO)
+        return result
+
+class _StderrFilter(object):
+    def filter(self, record):
+        result = (record.levelno >= logging.WARNING)
+        return result
+
 class _Socket(object):
     def listen(self):
         raise NotImplementedError
@@ -65,42 +109,6 @@ class _UnixSocket(_Socket):
         s.connect(self._path)
         return s
 
-class _DebugFormatter(object):
-    def __init__(self, format, datefmt, debugformat):
-        self._formatter = logging.Formatter(format, datefmt)
-        self._debugformatter = logging.Formatter(debugformat, datefmt)
-
-    def format(self, record):
-        if logging.DEBUG != record.levelno:
-            result = self._formatter.format(record)
-        else:
-            result = self._debugformatter.format(record)
-        return result
-
-    def formatTime(self, record, datefmt=None):
-        if logging.DEBUG != record.levelno:
-            result = self._formatter.formatTime(record, datefmt)
-        else:
-            result = self._debugformatter.formatTime(record, datefmt)
-        return result
-
-    def formatException(self, exc_info):
-        if logging.DEBUG != record.levelno:
-            result = self._formatter.formatException(exc_info)
-        else:
-            result = self._debugformatter.formatException(exc_info)
-        return result
-
-class _StdoutFilter(object):
-    def filter(self, record):
-        result = (record.levelno == logging.INFO)
-        return result
-
-class _StderrFilter(object):
-    def filter(self, record):
-        result = (record.levelno >= logging.WARNING)
-        return result
-
 class _Main(object):
     def __init__(self):
         self._log = None
@@ -114,8 +122,11 @@ class _Main(object):
             if args.level:
                 logger = logging.getLogger()
                 logger.setLevel(args.level)
-            self._log.debug('main: args=%r', args)
+            self._log.debug('args=%r', args)
             code = self._command(parser, args)
+        except KeyboardInterrupt:
+            self._log.warning('interrupted', exc_info=True)
+            code = 0
         except SystemExit, e:
             code = e.code
         except:
@@ -154,7 +165,8 @@ class _Main(object):
                     'debugformat': '%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s'
                 },
                 'console': {
-                    'format': '%(levelname)s - %(message)s'
+                    '()': 'conveyor.__main__._ConsoleFormatter',
+                    'format': 'conveyor: %(levelname)s: %(message)s'
                 },
             },
             'filters': {
@@ -175,7 +187,7 @@ class _Main(object):
                 },
                 'stderr': {
                     'class': 'logging.StreamHandler',
-                    'level': 'ERROR',
+                    'level': 'WARNING',
                     'formatter': 'console',
                     'filters': ['stderr'],
                     'stream': sys.stderr
