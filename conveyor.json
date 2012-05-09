@@ -1,0 +1,54 @@
+{ "version": 1
+, "formatters":
+    { "log":
+        { "()": "conveyor.log.DebugFormatter"
+        , "format": "%(asctime)s - %(levelname)s - %(message)s"
+        , "datefmt": "%Y.%m.%d - %H:%M:%S"
+        , "debugformat": "%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s"
+        }
+    , "console":
+        { "()": "conveyor.log.ConsoleFormatter"
+        , "format": "conveyor: %(levelname)s: %(message)s"
+        }
+    }
+, "filters":
+    { "stdout":
+        { "()": "conveyor.log.StdoutFilter"
+        }
+    , "stderr":
+        { "()": "conveyor.log.StderrFilter"
+        }
+    }
+, "handlers":
+    { "stdout":
+        { "class": "logging.StreamHandler"
+        , "level": "INFO"
+        , "formatter": "console"
+        , "filters": ["stdout"]
+        , "stream": sys.stdout
+        }
+    , "stderr":
+        { "class": "logging.StreamHandler"
+        , "level": "WARNING"
+        , "formatter": "console"
+        , "filters": ["stderr"]
+        , "stream": sys.stderr
+        }
+    , "log":
+        { "class": "logging.FileHandler"
+        , "level": "NOTSET"
+        , "formatter": "log"
+        , "filters": []
+        , "filename": "conveyor.log"
+        }
+    }
+, "loggers": {}
+, "root":
+    { "level": "INFO"
+    , "propagate": true
+    , "filters": []
+    , "handlers": ["stdout", "stderr", "log"]
+    }
+, "incremental": false
+, "disable_existing_loggers": true
+}

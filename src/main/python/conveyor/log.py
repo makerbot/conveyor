@@ -19,12 +19,20 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import json
 import logging
+import os.path
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+
+def initlogging(program):
+    path = '%s.json' % (program,)
+    with open(path, 'r') as fp:
+        dct = json.load(fp)
+    logging.config.dictConfig(dct)
 
 class ConsoleFormatter(logging.Formatter):
     '''A log formatter that does not emit the exception stack trace.'''
