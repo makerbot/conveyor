@@ -294,7 +294,7 @@ class _Main(object):
         return code
 
     def _command_daemon(self, parser, args):
-        sock = conveyor.ipc.getsocket(args)
+        sock = conveyor.ipc.getsocket(args.socket)
         if None is sock:
             code = 1
         else:
@@ -304,7 +304,7 @@ class _Main(object):
         return code
 
     def _command_print(self, parser, args):
-        sock = conveyor.ipc.getsocket(args)
+        sock = conveyor.ipc.getsocket(args.socket)
         if None is sock:
             code = 1
         else:
