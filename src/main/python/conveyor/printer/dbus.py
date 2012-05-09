@@ -17,7 +17,7 @@ try:
 except ImportError:
     import unittest
 
-import conveyor.dbus
+import conveyor.dbustest
 import conveyor.event
 import conveyor.task
 import conveyor.printer
@@ -128,7 +128,7 @@ class _StubDbusPrinter(dbus.service.Object):
     def StopAll(self):
         self.stopall_callback()
 
-class _DbusPrinterTestCase(conveyor.dbus.DbusTestCase):
+class _DbusPrinterTestCase(conveyor.dbustest.DbusTestCase):
     def setUp(self):
         self._bus = dbus.SessionBus()
         self._stub_printer = _StubDbusPrinter.create(self._bus,

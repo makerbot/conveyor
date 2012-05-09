@@ -16,7 +16,7 @@ try:
 except ImportError:
     import unittest
 
-import conveyor.dbus
+import conveyor.dbustest
 import conveyor.event
 import conveyor.task
 import conveyor.toolpathgenerator
@@ -150,7 +150,7 @@ def _gcode_filename(stl, testcase=None):
     gcode = ''.join((stl[:-4], '.gcode'))
     return gcode
 
-class _ToolpathGeneratorTestCase(conveyor.dbus.DbusTestCase):
+class _ToolpathGeneratorTestCase(conveyor.dbustest.DbusTestCase):
     def setUp(self):
         self._bus = dbus.SessionBus()
         self._stub_toolpathgenerator = _StubDbusToolpathGenerator.create(

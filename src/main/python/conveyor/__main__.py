@@ -3,22 +3,67 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
-import conveyor.async
-import conveyor.printer.dbus
-import conveyor.thing
-import conveyor.toolpathgenerator.dbus
 import dbus
 import json
 import logging
 import logging.config
 import os
 import os.path
+import socket
 import sys
 import tempfile
+import threading
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+
+import conveyor.client
+import conveyor.event
+import conveyor.jsonrpc
+import conveyor.printer.dbus
+import conveyor.server
+import conveyor.thing
+import conveyor.toolpathgenerator.dbus
+
+class _Socket(object):
+    def listen(self):
+        raise NotImplementedError
+
+    def connect(self):
+        raise NotImplementedError
+
+class _TcpSocket(_Socket):
+    def __init__(self, host, port):
+        self._host = host
+        self._port = port
+
+    def listen(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((self._host, self._port))
+        s.listen(socket.SOMAXCONN)
+        return s
+
+    def connect(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((self._host, self._port))
+        return s
+
+class _UnixSocket(_Socket):
+    def __init__(self, path):
+        self._path = path
+
+    def listen(self):
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.bind(self._path)
+        s.listen(socket.SOMAXCONN)
+        return s
+
+    def connect(self):
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(self._path)
+        return s
 
 class _Main(object):
     def __init__(self):
@@ -34,7 +79,7 @@ class _Main(object):
                 logger = logging.getLogger()
                 logger.setLevel(args.level)
             self._log.debug('main: args=%r', args)
-            code = self._command(args)
+            code = self._command(parser, args)
         except SystemExit, e:
             code = e.code
         except:
@@ -64,7 +109,7 @@ class _Main(object):
 
     def _init_logging_basic(self):
         logging.basicConfig(
-            format='conveyor: %(levelname)s: %(message)s',
+            format='conveyor: %(levelname)s: %(funcName)s: %(message)s',
             datefmt='%Y.%m.%d|%H:%M:%S',
             level=logging.INFO)
 
@@ -100,6 +145,16 @@ class _Main(object):
             help='set the log level',
             metavar='LEVEL')
 
+    def _init_parser_socket(self, parser):
+        parser.add_argument(
+            '-s',
+            '--socket',
+            default=None,
+            type=str,
+            required=True,
+            help='set the socket address',
+            metavar='ADDRESS')
+
     def _init_parser_version(self, parser):
         parser.add_argument(
             '-v',
@@ -113,10 +168,18 @@ class _Main(object):
             dest='command',
             title='commands')
         for method in (
+            self._init_subparsers_daemon,
             self._init_subparsers_print,
             self._init_subparsers_printtofile,
             ):
                 method(subparsers)
+
+    def _init_subparsers_daemon(self, subparsers):
+        parser = subparsers.add_parser(
+            'daemon',
+            help='daemonize')
+        self._init_parser_common(parser)
+        self._init_parser_socket(parser)
 
     def _init_parser_print_common(self, parser):
         parser.add_argument(
@@ -143,6 +206,7 @@ class _Main(object):
             'print',
             help='print a .thing')
         self._init_parser_common(parser)
+        self._init_parser_socket(parser)
         self._init_parser_print_common(parser)
 
     def _init_subparsers_printtofile(self, subparsers):
@@ -150,136 +214,87 @@ class _Main(object):
             'printtofile',
             help='print a .thing to an .s3g file')
         self._init_parser_common(parser)
+        self._init_parser_socket(parser)
         self._init_parser_print_common(parser)
         parser.add_argument(
             's3g_path',
             help='the output .s3g filename',
             metavar='S3G')
 
-    def _command(self, args):
-        if 'print' == args.command:
+    def _command(self, parser, args):
+        if 'daemon' == args.command:
+            method = self._command_daemon
+        elif 'print' == args.command:
             method = self._command_print
         elif 'printtofile' == args.command:
             method = self._command_printtofile
         else:
             raise NotImplementedError
-        code = method(args)
+        code = method(parser, args)
         return code
 
-    def _command_print(self, args):
-        def func(printer, input_path):
-            async = printer.build(input_path)
-            return async
-        code = self._command_print_common(args, func)
-        return code
-
-    def _command_printtofile(self, args):
-        def func(printer, input_path):
-            output_path = os.path.abspath(args.s3g_path)
-            async = printer.buildtofile(input_path, output_path)
-            return async
-        code = self._command_print_common(args, func)
-        return code
-
-    def _command_print_common(self, args, buildfunc):
-        if not os.path.exists(args.thing_path):
-            code = 1
-            self._log.error('no such file or directory: %s', args.thing_path)
-        elif not os.path.isdir(args.thing_path):
-            code = 1
-            self._log.error('unsupported file format: %s', args.thing_path)
-        else:
-            manifest_path = os.path.join(args.thing_path, 'manifest.json')
-            if not os.path.exists(manifest_path):
-                code = 1
-                self._log.error(
-                    'no such file or directory: %s', manifest_path)
+    def _getsocket(self, args):
+        split = args.socket.split(':', 1)
+        if 'tcp' == split[0]:
+            if 2 != len(split):
+                self._log.error('invalid TCP socket: %s', args.socket)
+                sock = None
             else:
-                manifest = conveyor.thing.Manifest.from_path(manifest_path)
-                manifest.validate()
-                if 1 == len(manifest.instances):
-                    code = self._print_single(args, manifest, buildfunc)
-                elif 2 == len(manifest.instances):
-                    code = self._print_dual(args, manifest, buildfunc)
+                host_port = split[1].split(':', 1)
+                if 2 != len(host_port):
+                    self._log.error('invalid TCP socket: %s', args.socket)
+                    sock = None
                 else:
-                    raise Exception
-        return code
-
-    def _print_single(self, args, manifest, buildfunc):
-        conveyor.async.set_implementation(
-            conveyor.async.AsyncImplementation.QT)
-        bus = dbus.SessionBus()
-        toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
-            bus, args.toolpathgeneratorbusname)
-        printer = conveyor.printer.dbus._DbusPrinter.create(
-            bus, args.printerbusname)
-        async_list = []
-        for manifest_instance in manifest.instances.values(): # this loop is fishy; see _print_dual
-            stl = os.path.abspath(os.path.join(manifest.base,
-                manifest_instance.object.name))
-            async1 = toolpathgenerator.stl_to_gcode(stl)
-            async_list.append(async1)
-            assert stl.endswith('.stl')
-            gcode = ''.join((stl[:-4], '.gcode')) # perhaps not duplicate this everywhere
-            async2 = buildfunc(printer, gcode)
-            async_list.append(async2)
-        async = conveyor.async.asyncsequence(async_list)
-        async.wait()
-        if async.state in (conveyor.async.AsyncState.SUCCESS,
-            conveyor.async.AsyncState.CANCELED):
-                code = 0
+                    host = host_port[0]
+                    try:
+                        port = int(host_port[1])
+                    except ValueError:
+                        self._log.error('invalid TCP port: %s', host_port[1])
+                    else:
+                        self._log.debug('TCP socket: host=%r, port=%r', host, port)
+                        sock = _TcpSocket(host, port)
+        elif 'unix' == split[0]:
+            if 2 != len(split):
+                self._log.error('invalid UNIX socket: %s', args.socket)
+                sock = None
+            else:
+                path = split[1]
+                self._log.debug('UNIX socket: path=%r', path)
+                sock = _UnixSocket(path)
         else:
-            code = 1
-        return code
+            self._log.error('unknown socket type: %s', split[0])
+            sock = None
+        return sock
 
-    def _print_dual(self, args, manifest, buildfunc):
-        conveyor.async.set_implementation(conveyor.async.AsyncImplementation.QT)
-        bus = dbus.SessionBus()
-        toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
-            bus, args.toolpathgeneratorbusname)
-        printer = conveyor.printer.dbus._DbusPrinter.create(
-            bus, args.printerbusname)
-        plastic_a_instance = self._get_plastic_a_instance(manifest)
-        plastic_b_instance = self._get_plastic_b_instance(manifest)
-        plastic_a_stl = os.path.abspath(os.path.join(manifest.base,
-            plastic_a_instance.object.name))
-        plastic_b_stl = os.path.abspath(os.path.join(manifest.base,
-            plastic_b_instance.object.name))
-        assert plastic_a_stl.endswith('.stl')
-        assert plastic_b_stl.endswith('.stl')
-        plastic_a_gcode = ''.join((plastic_a_stl[:-4], '.gcode'))
-        plastic_b_gcode = ''.join((plastic_b_stl[:-4], '.gcode'))
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as tmp:
-            merged_gcode = tmp.name
-        os.unlink(merged_gcode)
-        print('merged filename: %r' % (merged_gcode,))
-        async1 = toolpathgenerator.stl_to_gcode(plastic_a_stl)
-        async2 = toolpathgenerator.stl_to_gcode(plastic_b_stl)
-        async3 = toolpathgenerator.merge_gcode(plastic_a_gcode,
-            plastic_b_gcode, merged_gcode)
-        async4 = buildfunc(printer, merged_gcode)
-        async_list = [async1, async2, async3, async4]
-        async = conveyor.async.asyncsequence(async_list)
-        async.wait()
-        print(async.state)
-        if async.state in (conveyor.async.AsyncState.SUCCESS,
-            conveyor.async.AsyncState.CANCELED):
-                code = 0
+    def _command_daemon(self, parser, args):
+        sock = self._getsocket(args)
+        if None is sock:
+            code = 1
         else:
-            code = 1
+            s = sock.listen()
+            server = conveyor.server.Server(s)
+            code = server.run()
         return code
 
-    def _get_plastic_a_instance(self, manifest):
-        for manifest_instance in manifest.instances.values():
-            if 'plastic A' == manifest_instance.construction.name:
-                return manifest_instance
-        raise Exception
+    def _command_print(self, parser, args):
+        sock = self._getsocket(args)
+        if None is sock:
+            code = 1
+        else:
+            s = sock.connect()
+            client = conveyor.client.Client.create(s, 'print', [])
+            code = client.run()
+        return code
 
-    def _get_plastic_b_instance(self, manifest):
-        for manifest_instance in manifest.instances.values():
-            if 'plastic B' == manifest_instance.construction.name:
-                return manifest_instance
-        raise Exception
+    def _command_printtofile(self, parser, args):
+        sock = self._getsocket(args)
+        if None is sock:
+            code = 1
+        else:
+            s = sock.connect()
+            client = conveyor.client.Client.create(s, 'printtofile', [])
+            code = client.run()
+        return code
 
 def _main(argv):
     main = _Main()

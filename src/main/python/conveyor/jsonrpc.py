@@ -30,6 +30,28 @@ import unittest
 import conveyor.event
 import conveyor.task
 
+class socketadapter(object):
+    '''A file-like wrapper for sockets.
+
+    This differs from socket.makefile() in that the read() method doesn't
+    buffer until the end of time and it only implements the methods required by
+    the _JsonReader and JsonRpc class contracts.
+
+    '''
+
+    def __init__(self, fp):
+        self._fp = fp
+
+    def flush(self):
+        pass
+
+    def read(self, size=-1):
+        data = self._fp.recv(size)
+        return data
+
+    def write(self, data):
+        self._fp.sendall(data)
+
 class _JsonReader(object):
     def __init__(self):
         self.event = conveyor.event.Event('_JsonReader.event')
@@ -81,7 +103,7 @@ class _JsonReader(object):
         data = self._buffer.getvalue()
         self._log.debug('data=%r', data)
         self._reset()
-        if 0 != len(data):
+        if 0 != len(data.strip(' \t\n\r')):
             self.event(data)
 
     def feed(self, data):
@@ -119,7 +141,7 @@ class JsonRpc(object):
         self._jsonreader.event.attach(self._jsonreadercallback)
         self._log = logging.getLogger(self.__class__.__name__)
         self._methods = {}
-        self._outfp = outfp # contract: .write(str)
+        self._outfp = outfp # contract: .write(str), .flush()
         self._outfplock = threading.Lock()
         self._tasks = {}
 
@@ -228,6 +250,7 @@ class JsonRpc(object):
         self._log.debug('data=%r', data)
         with self._outfplock:
             self._outfp.write(data)
+            self._outfp.flush()
 
     def run(self):
         self._log.debug('starting')
