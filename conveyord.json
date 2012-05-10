@@ -25,14 +25,14 @@
         , "level": "INFO"
         , "formatter": "console"
         , "filters": ["stdout"]
-        , "stream": sys.stdout
+        , "stream": "ext://sys.stdout"
         }
     , "stderr":
         { "class": "logging.StreamHandler"
         , "level": "WARNING"
         , "formatter": "console"
         , "filters": ["stderr"]
-        , "stream": sys.stderr
+        , "stream": "ext://sys.stderr"
         }
     , "log":
         { "class": "logging.FileHandler"

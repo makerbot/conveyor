@@ -29,79 +29,80 @@ try:
 except ImportError:
     import unittest
 
-def getsocket(address):
-    split = address.split(':', 1)
+def getaddress(value):
+    split = value.split(':', 1)
     if 'tcp' == split[0]:
-        sock = _getsockettcp(address, split)
+        sock = _getaddresstcp(value, split)
     elif 'unix' == split[0]:
-        sock = _getsocketunix(address, split)
+        sock = _getaddressunix(value, split)
     else:
-        raise UnknownProtocolException(address, split[0])
+        raise UnknownProtocolException(value, split[0])
     return sock
 
-def _getsockettcp(address, split):
+def _getaddresstcp(value, split):
     protocol = split[0]
     assert 'tcp' == protocol
     if 2 != len(split):
-        raise MissingHostException(address)
+        raise MissingHostException(value)
     else:
         hostport = split[1].split(':', 1)
         if 2 != len(hostport):
-            raise MissingPortException(address)
+            raise MissingPortException(value)
         else:
             host = hostport[0]
             if 0 == len(host):
-                raise MissingHostException(address)
+                raise MissingHostException(value)
             else:
                 try:
                     port = int(hostport[1])
                 except ValueError:
-                    raise InvalidPortException(address)
+                    raise InvalidPortException(value, hostport[1])
                 else:
-                    sock = TcpSocket(host, port)
+                    sock = TcpAddress(host, port)
                     return sock
 
-def _getsocketunix(address, split):
+def _getaddressunix(value, split):
     protocol = split[0]
     assert 'unix' == protocol
     if 2 != len(split):
-        raise MissingPathException(address)
+        raise MissingPathException(value)
     else:
         path = split[1]
         if 0 == len(path):
-            raise MissingPathException(address)
+            raise MissingPathException(value)
         else:
-            sock = UnixSocket(path)
+            sock = UnixAddress(path)
             return sock
 
 class UnknownProtocolException(Exception):
-    def __init__(self, address, protocol):
-        Exception.__init__(self, address, protocol)
-        self.address = address
+    def __init__(self, value, protocol):
+        Exception.__init__(self, value, protocol)
+        self.value = value
         self.protocol = protocol
 
 class MissingHostException(Exception):
-    def __init__(self, address):
-        Exception.__init__(self, address)
-        self.address = address
+    def __init__(self, value):
+        Exception.__init__(self, value)
+        self.value = value
 
 class MissingPortException(Exception):
-    def __init__(self, address):
-        Exception.__init__(self, address)
-        self.address = address
+    def __init__(self, value):
+        Exception.__init__(self, value)
+        self.value = value
 
 class InvalidPortException(Exception):
-    def __init__(self, address):
-        Exception.__init__(self, address)
-        self.address = address
+    def __init__(self, value, port):
+        Exception.__init__(self, value, port)
+        self.value = value
+        self.port = port
 
 class MissingPathException(Exception):
-    def __init__(self, address):
-        Exception.__init__(self, address)
-        self.address = address
+    def __init__(self, value):
+        Exception.__init__(self, value)
+        self.value = value
 
-class Socket(object):
-    '''An abstract socket.'''
+class Address(object):
+    '''An abstract socket address.'''
 
     def listen(self):
         raise NotImplementedError
@@ -109,8 +110,8 @@ class Socket(object):
     def connect(self):
         raise NotImplementedError
 
-class TcpSocket(Socket):
-    '''A TCP/IP socket.'''
+class TcpAddress(Address):
+    '''A TCP/IP socket address.'''
 
     def __init__(self, host, port):
         self._host = host
@@ -128,8 +129,8 @@ class TcpSocket(Socket):
         s.connect((self._host, self._port))
         return s
 
-class UnixSocket(Socket):
-    '''A UNIX socket.'''
+class UnixAddress(Address):
+    '''A UNIX socket address.'''
 
     def __init__(self, path):
         self._path = path
@@ -145,89 +146,90 @@ class UnixSocket(Socket):
         s.connect(self._path)
         return s
 
-class _GetsocketTestCase(unittest.TestCase):
+class _GetaddressTestCase(unittest.TestCase):
     def test_tcp(self):
-        sock = getsocket('tcp:localhost:1234')
-        self.assertIsInstance(sock, TcpSocket)
+        sock = getaddress('tcp:localhost:1234')
+        self.assertIsInstance(sock, TcpAddress)
         self.assertEqual('localhost', sock._host)
         self.assertEqual(1234, sock._port)
 
     def test_unix(self):
-        sock = getsocket('unix:/path')
-        self.assertIsInstance(sock, UnixSocket)
+        sock = getaddress('unix:/path')
+        self.assertIsInstance(sock, UnixAddress)
         self.assertEqual('/path', sock._path)
 
     def test_UnknownProtocolException_0(self):
         with self.assertRaises(UnknownProtocolException) as cm:
-            getsocket('a')
-        self.assertEqual('a', cm.exception.address)
+            getaddress('a')
+        self.assertEqual('a', cm.exception.value)
         self.assertEqual('a', cm.exception.protocol)
 
     def test_UnknownProtocolException_1(self):
         with self.assertRaises(UnknownProtocolException) as cm:
-            getsocket('b:')
-        self.assertEqual('b:', cm.exception.address)
+            getaddress('b:')
+        self.assertEqual('b:', cm.exception.value)
         self.assertEqual('b', cm.exception.protocol)
 
     def test_UnknownProtocolException_2(self):
         with self.assertRaises(UnknownProtocolException) as cm:
-            getsocket('c:d')
-        self.assertEqual('c:d', cm.exception.address)
+            getaddress('c:d')
+        self.assertEqual('c:d', cm.exception.value)
         self.assertEqual('c', cm.exception.protocol)
 
     def test_MissingHostException_0(self):
         with self.assertRaises(MissingHostException) as cm:
-            getsocket('tcp')
-        self.assertEqual('tcp', cm.exception.address)
+            getaddress('tcp')
+        self.assertEqual('tcp', cm.exception.value)
 
     def test_MissingHostException_1(self):
         with self.assertRaises(MissingHostException) as cm:
-            getsocket('tcp::1')
-        self.assertEqual('tcp::1', cm.exception.address)
+            getaddress('tcp::1')
+        self.assertEqual('tcp::1', cm.exception.value)
 
     def test_MissingPortException(self):
         with self.assertRaises(MissingPortException) as cm:
-            getsocket('tcp:host')
-        self.assertEqual('tcp:host', cm.exception.address)
+            getaddress('tcp:host')
+        self.assertEqual('tcp:host', cm.exception.value)
 
     def test_InvalidPortException(self):
         with self.assertRaises(InvalidPortException) as cm:
-            getsocket('tcp:host:port')
-        self.assertEqual('tcp:host:port', cm.exception.address)
+            getaddress('tcp:host:port')
+        self.assertEqual('tcp:host:port', cm.exception.value)
+        self.assertEqual('port', cm.exception.port)
 
     def test_MissingPathException_0(self):
         with self.assertRaises(MissingPathException) as cm:
-            getsocket('unix')
-        self.assertEqual('unix', cm.exception.address)
+            getaddress('unix')
+        self.assertEqual('unix', cm.exception.value)
 
     def test_MissingPathException_1(self):
         with self.assertRaises(MissingPathException) as cm:
-            getsocket('unix:')
-        self.assertEqual('unix:', cm.exception.address)
+            getaddress('unix:')
+        self.assertEqual('unix:', cm.exception.value)
 
-class _SocketTestCase(unittest.TestCase):
+class _AddressTestCase(unittest.TestCase):
     def test_listen(self):
-        sock = Socket()
+        sock = Address()
         with self.assertRaises(NotImplementedError):
             sock.listen()
 
     def test_connect(self):
-        sock = Socket()
+        sock = Address()
         with self.assertRaises(NotImplementedError):
             sock.connect()
 
-class _AbstractSocketTestCase(unittest.TestCase):
-    def _getclientaddress(self, serveraddress, serversock):
+class _AbstractAddressTestCase(unittest.TestCase):
+    def _getclientvalue(self, servervalue, serversock):
         raise NotImplementedError
 
-    def _test(self, serveraddress):
-        server = getsocket(serveraddress)
+    def _test(self, servervalue):
+        server = getaddress(servervalue)
         serversock = server.listen()
         try:
             serversock.settimeout(5)
-            clientaddress = self._getclientaddress(serveraddress, serversock)
+            clientvalue = self._getclientvalue(servervalue, serversock)
             def target():
-                client = getsocket(clientaddress)
+                client = getaddress(clientvalue)
                 clientsock = client.connect()
                 clientsock.shutdown(socket.SHUT_RDWR)
             thread = threading.Thread(target=target)
@@ -236,26 +238,26 @@ class _AbstractSocketTestCase(unittest.TestCase):
         finally:
             serversock.shutdown(socket.SHUT_RDWR)
 
-    def test__getclientaddress(self):
+    def test__getclientvalue(self):
         with self.assertRaises(NotImplementedError):
-            _AbstractSocketTestCase._getclientaddress(self, None, None)
+            _AbstractAddressTestCase._getclientvalue(self, None, None)
 
-class _TcpSocketTestCase(_AbstractSocketTestCase):
-    def _getclientaddress(self, serveraddress, serversock):
+class _TcpAddressTestCase(_AbstractAddressTestCase):
+    def _getclientvalue(self, servervalue, serversock):
         addr, port = serversock.getsockname()
-        address = 'tcp:localhost:%d' % (port,)
-        return address
+        value = 'tcp:localhost:%d' % (port,)
+        return value
 
     def test(self):
         self._test('tcp:localhost:0')
 
-class _UnixSocketTestCase(_AbstractSocketTestCase):
-    def _getclientaddress(self, serveraddress, serversock):
-        return serveraddress
+class _UnixAddressTestCase(_AbstractAddressTestCase):
+    def _getclientvalue(self, servervalue, serversock):
+        return servervalue
 
     def test(self):
         with tempfile.NamedTemporaryFile(delete=False) as fp:
             pass
         os.unlink(fp.name)
-        address = 'unix:%s' % (fp.name,)
-        self._test(address)
+        value = 'unix:%s' % (fp.name,)
+        self._test(value)

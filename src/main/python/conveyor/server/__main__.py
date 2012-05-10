@@ -21,8 +21,55 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import sys
 
-def _main(argv):
-    return 0
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
+import conveyor.log
+import conveyor.main
+import conveyor.server
+
+class _ServerMain(conveyor.main.AbstractMain):
+    def __init__(self):
+        conveyor.main.AbstractMain.__init__(self, 'conveyord')
+
+    def _initparser(self):
+        parser = conveyor.main.AbstractMain._initparser(self)
+        for method in (
+            self._initparser_logging,
+            self._initparser_version,
+            self._initparser_socket,
+            ):
+                method(parser)
+        return parser
+
+    def _initparser_socket(self, parser):
+        parser.add_argument(
+            'socket',
+            default=None,
+            type=str,
+            help='the socket address',
+            metavar='ADDRESS')
+
+    def _run(self, parser, args):
+        address = self._getaddress(args.socket)
+        if None == address:
+            code = 1
+        else:
+            sock = address.listen()
+            server = conveyor.server.Server(sock)
+            code = server.run()
+        return code
+
+class _ServerMainTestCase(unittest.TestCase):
+    pass
+
+def _main(argv): # pragma: no cover
+    conveyor.log.initlogging('conveyord')
+    main = _ServerMain()
+    code = main.main(argv)
+    return code
 
 if '__main__' == __name__: # pragma: no cover
     sys.exit(_main(sys.argv))

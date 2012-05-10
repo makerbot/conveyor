@@ -21,6 +21,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import json
 import logging
+import logging.config
 import os.path
 
 try:
