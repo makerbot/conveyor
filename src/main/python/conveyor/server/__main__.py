@@ -57,9 +57,12 @@ class _ServerMain(conveyor.main.AbstractMain):
         if None == address:
             code = 1
         else:
-            sock = address.listen()
-            server = conveyor.server.Server(sock)
-            code = server.run()
+            try:
+                sock = address.listen()
+                server = conveyor.server.Server(sock)
+                code = server.run()
+            finally:
+                address.cleanup()
         return code
 
 class _ServerMainTestCase(unittest.TestCase):

@@ -20,6 +20,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import os
+import os.path
 import socket
 import struct
 import tempfile
@@ -111,6 +112,9 @@ class Address(object):
     def connect(self):
         raise NotImplementedError
 
+    def cleanup(self):
+        raise NotImplementedError
+
 class TcpAddress(Address):
     '''A TCP/IP socket address.'''
 
@@ -130,6 +134,9 @@ class TcpAddress(Address):
         s.connect((self._host, self._port))
         return s
 
+    def cleanup(self):
+        pass
+
 class UnixAddress(Address):
     '''A UNIX socket address.'''
 
@@ -146,6 +153,10 @@ class UnixAddress(Address):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(self._path)
         return s
+
+    def cleanup(self):
+        if os.path.exists(self._path):
+            os.unlink(self._path)
 
 class _GetaddressTestCase(unittest.TestCase):
     def test_tcp(self):

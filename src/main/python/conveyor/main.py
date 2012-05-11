@@ -28,6 +28,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.debug
 import conveyor.ipc
 
 class AbstractMain(object):
@@ -84,6 +85,7 @@ class AbstractMain(object):
 
     def main(self, argv):
         try:
+            conveyor.debug.initdebug()
             parser = self._initparser()
             args = parser.parse_args(argv[1:])
             if args.level:
@@ -106,6 +108,7 @@ class AbstractMain(object):
             level = logging.ERROR
         self._log.log(
             level, '%s terminating with status code %d', self._program, code)
+        conveyor.debug.logthreads(logging.DEBUG)
         return code
 
 class _AbstractMainTestCase(unittest.TestCase):
