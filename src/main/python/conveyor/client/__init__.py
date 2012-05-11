@@ -27,7 +27,10 @@ class Client(object):
         self._sock = sock
 
     def _shutdown(self):
-        self._sock.shutdown(socket.SHUT_RDWR)
+        # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
+        # 'Connection reset by peer' errors.
+        self._sock.shutdown(socket.SHUT_RD)
+        self._sock.close()
         eventqueue = conveyor.event.geteventqueue()
         eventqueue.quit()
 
@@ -79,5 +82,4 @@ class Client(object):
         finally:
             eventqueue.quit()
             eventqueuethread.join(5)
-        print('code = %r' % (self._code,))
         return self._code

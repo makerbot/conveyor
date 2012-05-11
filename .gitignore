@@ -3,5 +3,6 @@
 .*.sw?
 /.coverage
 /conveyor.log
+/conveyord.log
 /obj
 /virtualenv

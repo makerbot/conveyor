@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import socket
 import sys
 
 try:
@@ -36,32 +37,26 @@ class _ClientMain(conveyor.main.AbstractMain):
 
     def _initparser(self):
         parser = conveyor.main.AbstractMain._initparser(self)
-        for method in (
-            self._initparser_logging,
-            self._initparser_version,
-            self._initparser_socket,
-            self._initparser_subparsers,
-            ):
-                method(parser)
+        self._initparser_logging(parser)
+        self._initparser_version(parser)
+        self._initparser_socket(parser, False)
+        self._initparser_subparsers(parser)
         return parser
 
-    def _initparser_socket(self, parser):
+    def _initparser_socket(self, parser, required):
         parser.add_argument(
-            '-s'
+            '-s',
             '--socket',
             default=None,
             type=str,
-            required=True,
+            required=required,
             help='the socket address',
             metavar='ADDRESS')
 
     def _initparser_subparsers(self, parser):
         subparsers = parser.add_subparsers(dest='command', title='Commands')
-        for method in (
-            self._initsubparser_print,
-            self._initsubparser_printtofile,
-            ):
-                method(subparsers)
+        self._initsubparser_print(subparsers)
+        self._initsubparser_printtofile(subparsers)
 
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print a .thing')
@@ -72,13 +67,13 @@ class _ClientMain(conveyor.main.AbstractMain):
         parser = subparsers.add_parser('printtofile', help='print a .thing')
         parser.set_defaults(func=self._printtofile)
         self._initparser_common(parser)
+        parser.add_argument(
+            's3g', help='the output path for the .s3g file', metavar='S3G')
 
     def _initparser_common(self, parser):
-        for method in (
-            self._initparser_logging,
-            self._initparser_version,
-            ):
-                method(parser)
+        self._initparser_logging(parser)
+        self._initparser_version(parser)
+        self._initparser_socket(parser, True)
         parser.add_argument(
             '--toolpath-generator-bus-name',
             default='com.makerbot.ToolpathGenerator',
@@ -94,17 +89,39 @@ class _ClientMain(conveyor.main.AbstractMain):
             metavar='BUS-NAME',
             dest='printerbusname')
         parser.add_argument(
-            'thing', help='print a .thing file', metavar='THING')
+            'thing', help='the path to the .thing file', metavar='THING')
 
     def _run(self, parser, args):
-        code = 0
+        code = args.func(args)
         return code
 
-    def _print(self, parser, args):
-        pass
+    def _print(self, args):
+        params = [
+            args.toolpathgeneratorbusname, args.printerbusname, args.thing]
+        code = self._client(args, 'print', params)
+        return code
 
     def _printtofile(self, parser, args):
-        pass
+        params = [
+            args.toolpathgeneratorbusname, args.printerbusname, args.thing,
+            args.s3g]
+        code = self._client(args, 'printtofile', params)
+        return code
+
+    def _client(self, args, method, params):
+        address = self._getaddress(args.socket)
+        if None == address:
+            code = 1
+        else:
+            try:
+                sock = address.connect()
+            except socket.error as e:
+                code = 1
+                self._log.critical('failed to connect: %s', e, exc_info=True)
+            else:
+                client = conveyor.client.Client.create(sock, method, params)
+                code = client.run()
+        return code
 
 class _ClientMainTestCase(unittest.TestCase):
     pass

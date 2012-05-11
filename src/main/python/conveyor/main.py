@@ -99,7 +99,7 @@ class AbstractMain(object):
             self._log.debug('handled exception', exc_info=True)
         except:
             code = 1
-            self._log.critical('unhandled exception', exc_info=True)
+            self._log.critical('internal error', exc_info=True)
         if 0 == code:
             level = logging.INFO
         else:

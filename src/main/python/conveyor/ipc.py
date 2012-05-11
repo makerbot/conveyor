@@ -21,6 +21,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import os
 import socket
+import struct
 import tempfile
 import threading
 
@@ -232,11 +233,13 @@ class _AbstractAddressTestCase(unittest.TestCase):
                 client = getaddress(clientvalue)
                 clientsock = client.connect()
                 clientsock.shutdown(socket.SHUT_RDWR)
+                clientsock.close()
             thread = threading.Thread(target=target)
             thread.start()
             sock, addr = serversock.accept()
         finally:
             serversock.shutdown(socket.SHUT_RDWR)
+            serversock.close()
 
     def test__getclientvalue(self):
         with self.assertRaises(NotImplementedError):

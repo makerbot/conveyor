@@ -20,6 +20,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import cStringIO as StringIO
+import errno
 import json
 import logging
 import operator
@@ -115,11 +116,18 @@ class _JsonReader(object):
     def feedfile(self, fp):
         self._log.debug('starting')
         while True:
-            data = fp.read(8192)
-            if 0 == len(data):
-                break
+            try:
+                data = fp.read(8192)
+            except IOError as e:
+                if errno.EINTR == e.args[0]:
+                    continue
+                else:
+                    raise
             else:
-                self.feed(data)
+                if 0 == len(data):
+                    break
+                else:
+                    self.feed(data)
         self._log.debug('ending')
 
     def feedeof(self):

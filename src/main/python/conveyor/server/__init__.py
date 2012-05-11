@@ -9,15 +9,16 @@ import conveyor.jsonrpc
 
 class _ClientThread(threading.Thread):
     @classmethod
-    def create(cls, server, fp):
+    def create(cls, server, fp, id):
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
-        clientthread = _ClientThread(server, jsonrpc)
+        clientthread = _ClientThread(server, jsonrpc, id)
         return clientthread
 
-    def __init__(self, server, jsonrpc):
+    def __init__(self, server, jsonrpc, id):
         threading.Thread.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
+        self._id = id
         self._jsonrpc = jsonrpc
 
     def _hello(self, *args, **kwargs):
@@ -27,7 +28,7 @@ class _ClientThread(threading.Thread):
     def _print(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         params = [
-            0, conveyor.task.TaskState.STOPPED,
+            self._id, conveyor.task.TaskState.STOPPED,
             conveyor.task.TaskConclusion.ENDED]
         self._jsonrpc.notify('notify', params)
         return None
@@ -35,7 +36,7 @@ class _ClientThread(threading.Thread):
     def _printtofile(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         params = [
-            0, conveyor.task.TaskState.STOPPED,
+            self._id, conveyor.task.TaskState.STOPPED,
             conveyor.task.TaskConclusion.ENDED]
         self._jsonrpc.notify('notify', params)
         return None
@@ -53,6 +54,7 @@ class _ClientThread(threading.Thread):
 class Server(object):
     def __init__(self, sock):
         self._clientthreads = []
+        self._idcounter = 0
         self._lock = threading.Lock()
         self._sock = sock
 
@@ -72,7 +74,9 @@ class Server(object):
             while True:
                 conn, addr = self._sock.accept()
                 fp = conveyor.jsonrpc.socketadapter(conn)
-                clientthread = _ClientThread.create(self, fp)
+                id = self._idcounter
+                self._idcounter += 1
+                clientthread = _ClientThread.create(self, fp, id)
                 clientthread.start()
         finally:
             eventqueue.quit()
