@@ -44,7 +44,7 @@ class Manifest(object):
         if 'objects' not in data:
             raise Exception
         else:
-            for json_name, json_value in data['objects'].items():
+            for json_name, json_value in data['objects'].iteritems():
                 manifest_object = ManifestObject._from_json(manifest,
                     json_name, json_value)
                 manifest.objects[manifest_object.name] = manifest_object
@@ -55,7 +55,7 @@ class Manifest(object):
             manifest_construction = ManifestConstruction(manifest, 'plastic A')
             manifest.constructions[manifest_construction.name] = manifest_construction
         else:
-            for json_name, json_value in data['constructions'].items():
+            for json_name, json_value in data['constructions'].iteritems():
                 manifest_construction = ManifestConstruction._from_json(
                     manifest, json_name, json_value)
                 manifest.constructions[manifest_construction.name] = manifest_construction
@@ -65,7 +65,7 @@ class Manifest(object):
         if 'instances' not in data:
             raise Exception
         else:
-            for json_name, json_value in data['instances'].items():
+            for json_name, json_value in data['instances'].iteritems():
                 manifest_instance = ManifestInstance._from_json(manifest,
                     json_name, json_value)
                 manifest.instances[manifest_instance.name] = manifest_instance
@@ -83,17 +83,17 @@ class Manifest(object):
         self.base = base
 
     def validate(self):
-        for name, manifest_object in self.objects.items():
+        for name, manifest_object in self.objects.iteritems():
             if name != manifest_object.name:
                 raise Exception
             else:
                 manifest_object.validate()
-        for name, manifest_construction in self.constructions.items():
+        for name, manifest_construction in self.constructions.iteritems():
             if name != manifest_construction.name:
                 raise Exception
             else:
                 manifest_construction.validate()
-        for name, manifest_instance in self.instances.items():
+        for name, manifest_instance in self.instances.iteritems():
             if name != manifest_instance.name:
                 raise Exception
             else:

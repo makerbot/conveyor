@@ -337,11 +337,11 @@ class JsonRpc(object):
         response = None
         try:
             result = func(*args, **kwargs)
-        except TypeError, e:
+        except TypeError as e:
             self._log.debug('exception', exc_info=True)
             if None is not id:
                 response = self._invalidparams(id)
-        except JsonRpcException, e:
+        except JsonRpcException as e:
             self._log.debug('exception', exc_info=True)
             if None is not id:
                 response = self._errorresponse(id, e.code, e.message, e.data)
