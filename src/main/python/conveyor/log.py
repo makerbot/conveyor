@@ -30,7 +30,7 @@ except ImportError:
     import unittest
 
 def initlogging(program):
-    path = '%s.json' % (program,)
+    path = '%s-log.json' % (program,)
     with open(path, 'r') as fp:
         dct = json.load(fp)
     logging.config.dictConfig(dct)
