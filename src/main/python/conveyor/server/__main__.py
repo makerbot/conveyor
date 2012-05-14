@@ -87,13 +87,14 @@ class _ServerMain(conveyor.main.AbstractMain):
         else:
             self._setdefaults(config)
             if args.nofork:
-                code = self._run_service(args, config)
+                code = self._run_server(args, config)
             else:
                 try:
                     import daemon
                     import lockfile.pidlockfile
                 except ImportError:
-                    code = self._run_service(args, config)
+                    self._log.debug('handled exception', exc_info=True)
+                    code = self._run_server(args, config)
                 else:
                     pidfile = config['pidfile']
                     dct = {
@@ -109,10 +110,10 @@ class _ServerMain(conveyor.main.AbstractMain):
                         sys.exit(0)
                     context.terminate = terminate # monkey patch!
                     with context:
-                        code = self._run_service(args, config)
+                        code = self._run_server(args, config)
         return code
 
-    def _run_service(self, args, config):
+    def _run_server(self, args, config):
         try:
             dct = config.get('logging')
             if None is not dct:
@@ -128,7 +129,7 @@ class _ServerMain(conveyor.main.AbstractMain):
                 'invalid logging configuration: %s', e.message, exc_info=True)
         else:
             self._log.info('starting conveyord')
-            value = config.get('socket', 'unix:/var/run/conveyor/conveyord.socket')
+            value = config['socket']
             address = self._getaddress(value)
             if None == address:
                 code = 1

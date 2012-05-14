@@ -2,7 +2,8 @@
 *.pyc
 .*.sw?
 /.coverage
-/conveyor.log
 /conveyord.log
+/conveyord.pid
+/conveyord.socket
 /obj
 /virtualenv

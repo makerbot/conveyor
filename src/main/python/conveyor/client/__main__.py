@@ -19,7 +19,8 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import socket
+import json
+import logging.config
 import sys
 
 try:
@@ -37,21 +38,23 @@ class _ClientMain(conveyor.main.AbstractMain):
 
     def _initparser(self):
         parser = conveyor.main.AbstractMain._initparser(self)
-        self._initparser_logging(parser)
-        self._initparser_version(parser)
-        self._initparser_socket(parser, False)
-        self._initparser_subparsers(parser)
+        for method in (
+            self._initparser_config,
+            self._initparser_logging,
+            self._initparser_version,
+            self._initparser_subparsers,
+            ):
+                method(parser)
         return parser
 
-    def _initparser_socket(self, parser, required):
+    def _initparser_config(self, parser):
         parser.add_argument(
-            '-s',
-            '--socket',
-            default=None,
+            '-c',
+            '--config',
+            default='/etc/conveyor/conveyor.conf',
             type=str,
-            required=required,
-            help='the socket address',
-            metavar='ADDRESS')
+            help='the configuration file',
+            metavar='FILE')
 
     def _initparser_subparsers(self, parser):
         subparsers = parser.add_subparsers(dest='command', title='Commands')
@@ -60,20 +63,23 @@ class _ClientMain(conveyor.main.AbstractMain):
 
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print a .thing')
-        parser.set_defaults(func=self._print)
+        parser.set_defaults(func=self._run_print)
         self._initparser_common(parser)
 
     def _initsubparser_printtofile(self, subparsers):
-        parser = subparsers.add_parser('printtofile', help='print a .thing')
-        parser.set_defaults(func=self._printtofile)
+        parser = subparsers.add_parser('printtofile', help='print a .thing to an .s3g file')
+        parser.set_defaults(func=self._run_printtofile)
         self._initparser_common(parser)
         parser.add_argument(
             's3g', help='the output path for the .s3g file', metavar='S3G')
 
     def _initparser_common(self, parser):
-        self._initparser_logging(parser)
-        self._initparser_version(parser)
-        self._initparser_socket(parser, True)
+        for method in (
+            self._initparser_config,
+            self._initparser_logging,
+            self._initparser_version,
+            ):
+                method(parser)
         parser.add_argument(
             '--toolpath-generator-bus-name',
             default='com.makerbot.ToolpathGenerator',
@@ -91,33 +97,71 @@ class _ClientMain(conveyor.main.AbstractMain):
         parser.add_argument(
             'thing', help='the path to the .thing file', metavar='THING')
 
+    def _setdefaults(self, config):
+        config.setdefault('socket', 'unix:/var/run/conveyor/conveyord.socket')
+
     def _run(self, parser, args):
-        code = args.func(args)
+        try:
+            with open(args.config, 'r') as fp:
+                config = json.load(fp)
+        except EnvironmentError as e:
+            code = 1
+            self._log.critical(
+                'failed to open configuration file: %s: %s', args.config,
+                e.strerror, exc_info=True)
+        except ValueError:
+            code = 1
+            self._log.critical(
+                'failed to parse configuration file: %s', args.config,
+                exc_info=True)
+        else:
+            self._setdefaults(config)
+            try:
+                dct = config.get('logging')
+                if None is not dct:
+                    dct['incremental'] = False
+                    dct['disable_existing_loggers'] = False
+                    logging.config.dictConfig(dct)
+                    if args.level:
+                        root = logging.getLogger()
+                        root.setLevel(args.level)
+            except ValueError as e:
+                code = 1
+                self._log.critical(
+                    'invalid logging configuration: %s', e.message,
+                    exc_info=True)
+            else:
+                code = args.func(args, config)
         return code
 
-    def _print(self, args):
+    def _run_print(self, args, config):
         params = [
             args.toolpathgeneratorbusname, args.printerbusname, args.thing]
-        code = self._client(args, 'print', params)
+        self._log.info('printing: %s', args.thing)
+        code = self._run_client(args, config, 'print', params)
         return code
 
-    def _printtofile(self, parser, args):
+    def _run_printtofile(self, args, config):
         params = [
             args.toolpathgeneratorbusname, args.printerbusname, args.thing,
             args.s3g]
-        code = self._client(args, 'printtofile', params)
+        self._log.info('printing to file: %s -> %s', args.thing, args.s3g)
+        code = self._run_client(args, config, 'printtofile', params)
         return code
 
-    def _client(self, args, method, params):
-        address = self._getaddress(args.socket)
+    def _run_client(self, args, config, method, params):
+        value = config['socket']
+        address = self._getaddress(value)
         if None == address:
             code = 1
         else:
             try:
                 sock = address.connect()
-            except socket.error as e:
+            except EnvironmentError as e:
                 code = 1
-                self._log.critical('failed to connect: %s', e, exc_info=True)
+                self._log.critical(
+                    'failed to connect to socket: %s: %s', value,
+                    e.strerror, exc_info=True)
             else:
                 client = conveyor.client.Client.create(sock, method, params)
                 code = client.run()

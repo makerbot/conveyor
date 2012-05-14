@@ -72,13 +72,20 @@ def earlylogging(program):
     logging.config.dictConfig(dct)
 
 class ConsoleFormatter(logging.Formatter):
-    '''A log formatter that does not emit the exception stack trace.'''
+    '''A log formatter that does not emit the exception stack trace unless
+    DEBUG is enabled.
+
+    '''
 
     def format(self, record):
-        record.message = record.getMessage()
-        if self.usesTime():
-            record.asctime = self.formatTime(record, self.datefmt)
-        s = self._fmt % record.__dict__
+        log = logging.getLogger(record.name)
+        if logging.DEBUG == log.getEffectiveLevel():
+            s = logging.Formatter.format(self, record)
+        else:
+            record.message = record.getMessage()
+            if self.usesTime():
+                record.asctime = self.formatTime(record, self.datefmt)
+            s = self._fmt % record.__dict__
         return s
 
 class DebugFormatter(object):  
