@@ -21,8 +21,8 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
 import json
-import lockfile.pidlockfile
 import logging.config
+import os
 import sys
 
 try:
@@ -65,6 +65,11 @@ class _ServerMain(conveyor.main.AbstractMain):
             default=False,
             help='do not fork nor detach from the terminal')
 
+    def _setdefaults(self, config):
+        config.setdefault('pidfile', '/var/run/conveyor/conveyord.pid')
+        config.setdefault('chdir', True)
+        config.setdefault('socket', 'unix:/var/run/conveyor/conveyord.socket')
+
     def _run(self, parser, args):
         try:
             with open(args.config, 'r') as fp:
@@ -80,20 +85,29 @@ class _ServerMain(conveyor.main.AbstractMain):
                 'failed to parse configuration file: %s', args.config,
                 exc_info=True)
         else:
+            self._setdefaults(config)
             if args.nofork:
                 code = self._run_service(args, config)
             else:
                 try:
                     import daemon
+                    import lockfile.pidlockfile
                 except ImportError:
                     code = self._run_service(args, config)
                 else:
-                    import os
-                    pidfile = config.get(
-                        'pidfile', '/var/run/conveyor/conveyord.pid')
-                    context = daemon.DaemonContext(
-                        working_directory=os.getcwd(),
-                        pidfile=lockfile.pidlockfile.PIDLockFile(pidfile))
+                    pidfile = config['pidfile']
+                    dct = {
+                        'pidfile': lockfile.pidlockfile.PIDLockFile(pidfile)
+                    }
+                    if not config['chdir']:
+                        dct['working_directory'] = os.getcwd()
+                    context = daemon.DaemonContext(**dct)
+                    def terminate(signal_number, stack_frame):
+                        # The daemon module's implementation of terminate()
+                        # raises a SystemExit with a string message instead of
+                        # an exit code. This monkey patch fixes it.
+                        sys.exit(0)
+                    context.terminate = terminate # monkey patch!
                     with context:
                         code = self._run_service(args, config)
         return code
