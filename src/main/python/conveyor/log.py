@@ -29,10 +29,46 @@ try:
 except ImportError:
     import unittest
 
-def initlogging(program):
-    path = '%s-log.json' % (program,)
-    with open(path, 'r') as fp:
-        dct = json.load(fp)
+def earlylogging(program):
+    dct = {
+        'version': 1,
+        'formatters': {
+            'console': {
+                # '()': 'conveyor.log.ConsoleFormatter',
+                'format': '%s: %%(levelname)s: %%(message)s' % (program,)
+            }
+        },
+        'filters': {
+            'stdout': { '()': 'conveyor.log.StdoutFilter' },
+            'stderr': { '()': 'conveyor.log.StderrFilter' }
+        },
+        'handlers': {
+            'stdout': {
+                'class': 'logging.StreamHandler',
+                'level': 'INFO',
+                'formatter': 'console',
+                'filters': ['stdout'],
+                'stream': 'ext://sys.stdout'
+            },
+            'stderr': {
+                'class': 'logging.StreamHandler',
+                'level': 'INFO',
+                'formatter': 'console',
+                'filters': ['stderr'],
+                'stream': 'ext://sys.stderr'
+            }
+        },
+        'loggers': {
+        },
+        'root': {
+            'level': 'INFO',
+            'propagate': True,
+            'filters': [],
+            'handlers': ['stdout', 'stderr']
+        },
+        'incremental': False,
+        'disable_existing_loggers': True
+    }
     logging.config.dictConfig(dct)
 
 class ConsoleFormatter(logging.Formatter):

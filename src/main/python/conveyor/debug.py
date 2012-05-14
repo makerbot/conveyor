@@ -38,9 +38,9 @@ def logthreads(level):
     threads = {}
     for thread in threading.enumerate():
         threads[thread.ident] = thread
-    for threadid, frame in sys._current_frames().items():
+    for threadident, frame in sys._current_frames().items():
         fp = StringIO.StringIO()
         print('thread=%r', file=fp)
         traceback.print_stack(frame, file=fp)
         message = fp.getvalue().strip()
-        log.log(level, message, threads[threadid])
+        log.log(level, message, threads[threadident])

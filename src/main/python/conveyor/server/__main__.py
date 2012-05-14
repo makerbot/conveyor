@@ -19,6 +19,10 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import argparse
+import json
+import lockfile.pidlockfile
+import logging.config
 import sys
 
 try:
@@ -37,39 +41,102 @@ class _ServerMain(conveyor.main.AbstractMain):
     def _initparser(self):
         parser = conveyor.main.AbstractMain._initparser(self)
         for method in (
+            self._initparser_config,
             self._initparser_logging,
+            self._initparser_nofork,
             self._initparser_version,
-            self._initparser_socket,
             ):
                 method(parser)
         return parser
 
-    def _initparser_socket(self, parser):
+    def _initparser_config(self, parser):
         parser.add_argument(
-            'socket',
-            default=None,
+            '-c',
+            '--config',
+            default='/etc/conveyor/conveyord.conf',
             type=str,
-            help='the socket address',
-            metavar='ADDRESS')
+            help='the configuration file',
+            metavar='FILE')
+
+    def _initparser_nofork(self, parser):
+        parser.add_argument(
+            '--nofork',
+            action='store_true',
+            default=False,
+            help='do not fork nor detach from the terminal')
 
     def _run(self, parser, args):
-        address = self._getaddress(args.socket)
-        if None == address:
+        try:
+            with open(args.config, 'r') as fp:
+                config = json.load(fp)
+        except EnvironmentError as e:
             code = 1
+            self._log.critical(
+                'failed to open configuration file: %s: %s', args.config,
+                e.strerror, exc_info=True)
+        except ValueError:
+            code = 1
+            self._log.critical(
+                'failed to parse configuration file: %s', args.config,
+                exc_info=True)
         else:
-            try:
-                sock = address.listen()
-                server = conveyor.server.Server(sock)
-                code = server.run()
-            finally:
-                address.cleanup()
+            if args.nofork:
+                code = self._run_service(args, config)
+            else:
+                try:
+                    import daemon
+                except ImportError:
+                    code = self._run_service(args, config)
+                else:
+                    import os
+                    pidfile = config.get(
+                        'pidfile', '/var/run/conveyor/conveyord.pid')
+                    context = daemon.DaemonContext(
+                        working_directory=os.getcwd(),
+                        pidfile=lockfile.pidlockfile.PIDLockFile(pidfile))
+                    with context:
+                        code = self._run_service(args, config)
+        return code
+
+    def _run_service(self, args, config):
+        try:
+            dct = config.get('logging')
+            if None is not dct:
+                dct['incremental'] = False
+                dct['disable_existing_loggers'] = False
+                logging.config.dictConfig(dct)
+                if args.level:
+                    root = logging.getLogger()
+                    root.setLevel(args.level)
+        except ValueError as e:
+            code = 1
+            self._log.critical(
+                'invalid logging configuration: %s', e.message, exc_info=True)
+        else:
+            self._log.info('starting conveyord')
+            value = config.get('socket', 'unix:/var/run/conveyor/conveyord.socket')
+            address = self._getaddress(value)
+            if None == address:
+                code = 1
+            else:
+                with address:
+                    try:
+                        sock = address.listen()
+                    except EnvironmentError as e:
+                        code = 1
+                        self._log.critical(
+                            'failed to open socket: %s: %s', value,
+                            e.strerror, exc_info=True)
+                    else:
+                        server = conveyor.server.Server(sock)
+                        code = server.run()
         return code
 
 class _ServerMainTestCase(unittest.TestCase):
     pass
 
 def _main(argv): # pragma: no cover
-    conveyor.log.initlogging('conveyord')
+    conveyor.log.earlylogging('conveyord')
     main = _ServerMain()
     code = main.main(argv)
     return code

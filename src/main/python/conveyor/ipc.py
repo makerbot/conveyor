@@ -115,6 +115,13 @@ class Address(object):
     def cleanup(self):
         raise NotImplementedError
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.cleanup()
+        return False
+
 class TcpAddress(Address):
     '''A TCP/IP socket address.'''
 

@@ -21,6 +21,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
 import logging
+import os
 import sys
 
 try:
@@ -56,7 +57,7 @@ class AbstractMain(object):
         parser = argparse.ArgumentParser(prog=self._program)
         def error(message):
             self._log.error(message)
-            sys.exit(1)
+            sys.exit(2)
         parser.error = error # monkey patch!
         return parser
 
@@ -91,7 +92,6 @@ class AbstractMain(object):
             if args.level:
                 root = logging.getLogger()
                 root.setLevel(args.level)
-            self._log.debug('args=%r', args)
             code = self._run(parser, args)
         except KeyboardInterrupt:
             code = 0

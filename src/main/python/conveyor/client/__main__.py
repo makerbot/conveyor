@@ -127,7 +127,7 @@ class _ClientMainTestCase(unittest.TestCase):
     pass
 
 def _main(argv): # pragma: no cover
-    conveyor.log.initlogging('conveyor')
+    conveyor.log.earlylogging('conveyor')
     main = _ClientMain()
     code = main.main(argv)
     return code
