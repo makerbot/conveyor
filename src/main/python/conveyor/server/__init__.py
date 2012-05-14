@@ -33,12 +33,20 @@ class _ClientThread(threading.Thread):
             toolpathgeneratorbusname, printerbusname, thing)
         task = conveyor.task.Task()
         def runningcallback(unused):
-            print('printing')
+            self._log.info('printing: %s (job %d)', thing, self._id)
             import time
             time.sleep(5)
             task.end(None)
         task.runningevent.attach(runningcallback)
         def stoppedcallback(unused):
+            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
+                self._log.info('job %d ended', self._id)
+            elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+                self._log.info('job %d failed', self._id)
+            elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+                self._log.info('job %d canceled', self._id)
+            else:
+                raise ValueError(task.conclusion)
             params = [
                 self._id, conveyor.task.TaskState.STOPPED,
                 conveyor.task.TaskConclusion.ENDED]
@@ -53,12 +61,21 @@ class _ClientThread(threading.Thread):
             toolpathgeneratorbusname, printerbusname, thing, s3g)
         task = conveyor.task.Task()
         def runningcallback(unused):
-            print('printing-to-file')
+            self._log.info(
+                'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
             import time
             time.sleep(5)
             task.end(None)
         task.runningevent.attach(runningcallback)
         def stoppedcallback(unused):
+            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
+                self._log.info('job %d ended', self._id)
+            elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+                self._log.info('job %d failed', self._id)
+            elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+                self._log.info('job %d canceled', self._id)
+            else:
+                raise ValueError(task.conclusion)
             params = [
                 self._id, conveyor.task.TaskState.STOPPED,
                 conveyor.task.TaskConclusion.ENDED]
