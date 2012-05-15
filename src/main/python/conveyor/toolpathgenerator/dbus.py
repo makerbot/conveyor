@@ -40,10 +40,12 @@ class _Listener(object):
 
     def __init__(self):
         self._lock = threading.Lock()
+        self._log = logging.getLogger(self.__class__.__name__)
         self._task = None
         self._output = None
 
     def settask(self, task, output):
+        self._log.debug('task=%r, output=%r', task, output)
         with self._lock:
             if None is not self._task:
                 raise Exception
@@ -52,8 +54,10 @@ class _Listener(object):
                 self._output = output
 
     def _complete(self, *args, **kwargs):
+        self._log.debug('args=%r, kwargs=%r', args, kwargs)
         with self._lock:
             if None is not self._task:
+                self._log.debug('completing task: %r', self._task)
                 task = self._task
                 output = self._output
                 self._task = None
@@ -82,10 +86,10 @@ class _DbusToolpathGenerator(conveyor.toolpathgenerator.ToolpathGenerator):
     def _make_task(self, label, target, output, *args):
         task = conveyor.task.Task()
         listener = _Listener.create(self._bus)
-        listener.settask(task, output)
         def func(unused):
             logging.info('starting toolpathgenerator task: %s, args=%r',
                 label, args)
+            listener.settask(task, output)
             def reply(*args, **kwargs):
                 logging.info('reply: args=%r, kwargs=%r', args, kwargs)
             def error(*args, **kwargs):

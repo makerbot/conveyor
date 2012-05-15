@@ -2,12 +2,15 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import PyQt4.QtCore
 import collections
 import errno
 import logging
+import sys
 import threading
 
 import conveyor.jsonrpc
+import conveyor.recipe
 
 class _ClientThread(threading.Thread):
     @classmethod
@@ -31,12 +34,12 @@ class _ClientThread(threading.Thread):
         self._log.debug(
             'toolpathgeneratorbusname=%r, printerbusname=%r, thing=%r',
             toolpathgeneratorbusname, printerbusname, thing)
-        task = conveyor.task.Task()
+        recipemanager = conveyor.recipe.RecipeManager()
+        recipe = recipemanager.getrecipe(thing)
+        task = recipe.print(toolpathgeneratorbusname, printerbusname)
         def runningcallback(unused):
-            self._log.info('printing: %s (job %d)', thing, self._id)
-            import time
-            time.sleep(5)
-            task.end(None)
+            self._log.info(
+                'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
         task.runningevent.attach(runningcallback)
         def stoppedcallback(unused):
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
@@ -59,13 +62,12 @@ class _ClientThread(threading.Thread):
         self._log.debug(
             'toolpathgeneratorbusname=%r, printerbusname=%r, thing=%r, s3g=%r',
             toolpathgeneratorbusname, printerbusname, thing, s3g)
-        task = conveyor.task.Task()
+        recipemanager = conveyor.recipe.RecipeManager()
+        recipe = recipemanager.getrecipe(thing)
+        task = recipe.printtofile(toolpathgeneratorbusname, printerbusname, s3g)
         def runningcallback(unused):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
-            import time
-            time.sleep(5)
-            task.end(None)
         task.runningevent.attach(runningcallback)
         def stoppedcallback(unused):
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
@@ -142,6 +144,7 @@ class Queue(object):
 
 class Server(object):
     def __init__(self, sock):
+        self._application = PyQt4.QtCore.QCoreApplication(sys.argv)
         self._clientthreads = []
         self._idcounter = 0
         self._lock = threading.Lock()
@@ -160,6 +163,9 @@ class Server(object):
         self._queue.appendtask(task)
 
     def run(self):
+        eventloop = PyQt4.QtCore.QEventLoop()
+        eventloopthread = threading.Thread(target=eventloop.exec_, name='eventloop')
+        eventloopthread.start()
         taskqueuethread = threading.Thread(target=self._queue.run, name='taskqueue')
         taskqueuethread.start()
         eventqueue = conveyor.event.geteventqueue()
@@ -181,8 +187,10 @@ class Server(object):
                     clientthread = _ClientThread.create(self, fp, id)
                     clientthread.start()
         finally:
+            eventloop.quit()
             self._queue.quit()
             eventqueue.quit()
+            eventloopthread.join(5)
             taskqueuethread.join(5)
             eventqueuethread.join(5)
         return 0
