@@ -9,15 +9,13 @@ _modules='
 	conveyor.event
 	conveyor.ipc
 	conveyor.jsonrpc
-	conveyor.printer
-	conveyor.printer.dbus
 	conveyor.process
 	conveyor.server
 	conveyor.server.__main__
 	conveyor.task
 	conveyor.thing
-	conveyor.toolpathgenerator
-	conveyor.toolpathgenerator.dbus
+	conveyor.toolpath
+	conveyor.toolpath.skeinforge
 	conveyor.visitor
 '
 

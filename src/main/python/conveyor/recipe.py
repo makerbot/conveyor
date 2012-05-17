@@ -30,11 +30,10 @@ try:
 except ImportError:
     import unittest
 
-import conveyor.printer.dbus
 import conveyor.process
 import conveyor.task
 import conveyor.thing
-import conveyor.toolpathgenerator.dbus
+import conveyor.toolpath.skeinforge
 
 dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
 
@@ -63,6 +62,9 @@ class Recipe(object):
     def __init__(self, manifest):
         self._manifest = manifest
 
+    def _createtask(self, func):
+        raise NotImplementedError
+
     def _gcodefilename(self, stl):
         gcode = ''.join((stl[:-4], '.gcode'))
         return gcode
@@ -81,60 +83,36 @@ class Recipe(object):
         instance = self._getinstance(manifest, 'plastic B')
         return instance
 
-    def print(self, toolpathgeneratorbusname, printerbusname):
+    def print(self):
         def func(printer, inputpath):
             task = printer.build(inputpath)
             return task
-        task = self._createtask(toolpathgeneratorbusname, printerbusname, func)
+        task = self._createtask(func)
         return task
 
-    def printtofile(self, toolpathgeneratorbusname, printerbusname, s3g):
+    def printtofile(self, s3g):
         def func(printer, inputpath):
             outputpath = os.path.abspath(s3g)
             task = printer.buildtofile(inputpath, outputpath)
             return task
-        task = self._createtask(toolpathgeneratorbusname, printerbusname, func)
+        task = self._createtask(func)
         return task
 
 class _SingleRecipe(Recipe):
     def _createtask(self, toolpathgeneratorbusname, printerbusname, func):
         bus = dbus.Sessionbus()
-        toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
-            bus, toolpathgeneratorbusname)
-        printer = conveyor.printer.dbus._DbusPrinter.create(
-            bus, printerbusname)
+        toolpath = conveyor.toolpath.skeinforge.SkeinfrogeToolpath()
+        # TODO: printer driver
+        # printer = ...
         instance = self._getinstance_a(self._manifest)
         stl = os.path.abspath(os.path.join(self._manifest.base, instance.object.name))
         assert stl.endswith('.stl')
         gcode = self._gcodefilename(stl)
-        task1 = toolpathgenerator.stl_to_gcode(stl)
-        task2 = func(printer, gcode)
-        tasks = [task1, task2]
+        task1 = toolpath.generate(stl, gcode)
+        # task2 = func(printer, gcode)
+        tasks = [task1] # , task2]
         task = conveyor.process.tasksequence(tasks)
         return task
 
 class _DualRecipe(Recipe):
-    def _createtask(self, toolpathgeneratorbusname, printerbusname, func):
-        bus = dbus.SessionBus()
-        toolpathgenerator = conveyor.toolpathgenerator.dbus._DbusToolpathGenerator.create(
-            bus, toolpathgeneratorbusname)
-        printer = conveyor.printer.dbus._DbusPrinter.create(
-            bus, printerbusname)
-        instance_a = self._getinstance_a(self._manifest)
-        instance_b = self._getinstance_b(self._manifest)
-        stl_a = os.path.abspath(os.path.join(self._manifest.base, instance_a.object.name))
-        stl_b = os.path.abspath(os.path.join(self._manifest.base, instance_b.object.name))
-        assert stl_a.endswith('.stl')
-        assert stl_b.endswith('.stl')
-        gcode_a = self._gcodefilename(stl_a)
-        gcode_b = self._gcodefilename(stl_b)
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as tmp:
-            gcode_merged = tmp.name
-        os.unlink(gcode_merged)
-        task1 = toolpathgenerator.stl_to_gcode(stl_a)
-        task2 = toolpathgenerator.stl_to_gcode(stl_b)
-        task3 = toolpathgenerator.merge_gcode(gcode_a, gcode_b, gcode_merged)
-        task4 = func(printer, gcode_merged)
-        tasks = [task1, task2, task3, task4]
-        task = conveyor.process.tasksequence(tasks)
-        return task
+    pass
