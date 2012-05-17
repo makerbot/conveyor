@@ -2,7 +2,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import PyQt4.QtCore
 import collections
 import errno
 import logging
@@ -144,7 +143,6 @@ class Queue(object):
 
 class Server(object):
     def __init__(self, sock):
-        self._application = PyQt4.QtCore.QCoreApplication(sys.argv)
         self._clientthreads = []
         self._idcounter = 0
         self._lock = threading.Lock()
@@ -163,9 +161,6 @@ class Server(object):
         self._queue.appendtask(task)
 
     def run(self):
-        eventloop = PyQt4.QtCore.QEventLoop()
-        eventloopthread = threading.Thread(target=eventloop.exec_, name='eventloop')
-        eventloopthread.start()
         taskqueuethread = threading.Thread(target=self._queue.run, name='taskqueue')
         taskqueuethread.start()
         eventqueue = conveyor.event.geteventqueue()
@@ -187,10 +182,8 @@ class Server(object):
                     clientthread = _ClientThread.create(self, fp, id)
                     clientthread.start()
         finally:
-            eventloop.quit()
             self._queue.quit()
             eventqueue.quit()
-            eventloopthread.join(5)
             taskqueuethread.join(5)
             eventqueuethread.join(5)
         return 0

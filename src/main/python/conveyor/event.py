@@ -2,7 +2,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import PyQt4.QtCore
 import collections
 import logging
 import threading
@@ -17,9 +16,8 @@ def geteventqueue():
         _eventqueue = EventQueue()
     return _eventqueue
 
-class EventQueue(PyQt4.QtCore.QThread):
+class EventQueue(object):
     def __init__(self):
-        PyQt4.QtCore.QThread.__init__(self)
         self._lock = threading.Lock()
         self._log = logging.getLogger(self.__class__.__name__)
         self._condition = threading.Condition(self._lock)
