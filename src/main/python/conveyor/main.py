@@ -113,6 +113,6 @@ class AbstractMain(object):
 
 class _AbstractMainTestCase(unittest.TestCase):
     def test__run(self):
-        main = AbstractMain()
+        main = AbstractMain('test')
         with self.assertRaises(NotImplementedError):
-            main._run()
+            main._run(None, None)

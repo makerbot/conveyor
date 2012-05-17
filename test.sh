@@ -3,13 +3,18 @@
 # set -x
 
 _modules='
+	conveyor
 	conveyor.client
 	conveyor.client.__main__
+	conveyor.debug
 	conveyor.enum
 	conveyor.event
 	conveyor.ipc
 	conveyor.jsonrpc
+	conveyor.log
+	conveyor.main
 	conveyor.process
+	conveyor.recipe
 	conveyor.server
 	conveyor.server.__main__
 	conveyor.task
