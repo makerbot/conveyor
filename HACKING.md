@@ -27,48 +27,6 @@ Activate the virtualenv:
 Unit Tests
 ----------
 
-Some of the tests require that a toolpath generator and printer are available
-over D-Bus. These test will fail when the services are not available, but most
-other tests will run correctly.
-
-The toolpath generator and printer services are available from the "service"
-branch of ReplicatorG.
-
-At least one time you must run the GUI version of ReplicatorG and convert a
-model to gcode (this will create a skeinforge profile which is required by the
-ReplicatorG services).
-
-Start a toolpath generator process:
-
-        $ git submodule init
-        $ git submodule update
-        $ cd submodule/ReplicatorG-service
-        $ ant run -Drun.arguments="toolpathGenerator --bus-name com.makerbot.ToolpathGenerator0"
-
-Start a printer process:
-
-        $ git submodule init
-        $ git submodule update
-        $ cd submodule/ReplicatorG-service
-        $ ant run -Drun.arguments="printer --bus-name com.makerbot.Printer0"
-
-The printer subcommand accepts a '--machine-name' argument and a '--port'
-argument. These are not required if the GUI version of ReplicatorG is properly
-configured.
-
-The virtual printer is useful for testing. Please note the single quotes around
-the machine name (the machine name has spaces in it).
-
-        $ ant run -Drun.arguments="printer --bus-name com.makerbot.Printer0 --machine-name 'Virtual Printer Dual'"
-
-These particular bus names are required for the test suite.
-
 Run the test suite:
 
         $ ./test.sh
-
-The current D-Bus services are unable to detect and report various sorts of
-errors. The test suite may report success even if your actual print fails.
-
-NOTE: older versions of unittest (i.e., those before Python 2.7's unittest2)
-have trouble finding the tests.
