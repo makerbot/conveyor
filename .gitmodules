@@ -1,3 +1,6 @@
 [submodule "submodule/ReplicatorG-service"]
 	path = submodule/ReplicatorG-service
 	url = git@github.com:makerbot/ReplicatorG
+[submodule "submodule/skeinforge"]
+	path = submodule/skeinforge
+	url = ../skeinforge
