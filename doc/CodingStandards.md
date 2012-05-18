@@ -42,7 +42,7 @@ The import order is (from PEP-8):
 2. related third party imports
 3. local application/library specific imports
 
-For brevity, imports of conveyor modules should be written like this:
+For brevity, imports of conveyor modules may be written like this:
 
     from conveyor import enum, event
 
