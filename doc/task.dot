@@ -1,0 +1,19 @@
+// vim:ai:et:fenc=utf-8:ff=unix:sw=4:ts=4:
+
+digraph
+{
+    rankdir=LR;
+
+    node [shape="circle"];
+    "PENDING";
+    "RUNNING";
+    "STOPPED";
+
+    "PENDING" -> "RUNNING" [label="START"];
+    "PENDING" -> "STOPPED" [label="CANCEL"];
+
+    "RUNNING" -> "RUNNING" [label="HEARTBEAT"];
+    "RUNNING" -> "STOPPED" [label="END"];
+    "RUNNING" -> "STOPPED" [label="FAIL"];
+    "RUNNING" -> "STOPPED" [label="CANCEL"];
+}
