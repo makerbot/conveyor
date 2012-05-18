@@ -26,14 +26,16 @@ try:
 except ImportError:
     import unittest
 
-from conveyor import enum, event
+import conveyor.enum
+import conveyor.event
 
-TaskState = enum.enum('TaskState', 'PENDING', 'RUNNING', 'STOPPED')
+TaskState = conveyor.enum.enum('TaskState', 'PENDING', 'RUNNING', 'STOPPED')
 
-TaskEvent = enum.enum(
+TaskEvent = conveyor.enum.enum(
     'TaskEvent', 'START', 'HEARTBEAT', 'END', 'FAIL', 'CANCEL')
 
-TaskConclusion = enum.enum('TaskConclusion', 'ENDED', 'FAILED', 'CANCELED')
+TaskConclusion = conveyor.enum.enum(
+    'TaskConclusion', 'ENDED', 'FAILED', 'CANCELED')
 
 class IllegalTransitionException(Exception):
     def __init__(self, state, event):
@@ -51,15 +53,18 @@ class Task(object):
         self.failure = None  # data from 'fail'
 
         # Event events (edge-ish events)
-        self.startevent = event.Event('Task.startevent', eventqueue)
-        self.heartbeatevent = event.Event('Task.heartbeatevent', eventqueue)
-        self.endevent = event.Event('Task.endevent', eventqueue)
-        self.failevent = event.Event('Task.failevent', eventqueue)
-        self.cancelevent = event.Event('Task.cancelevent', eventqueue)
+        self.startevent = conveyor.event.Event('Task.startevent', eventqueue)
+        self.heartbeatevent = conveyor.event.Event(
+            'Task.heartbeatevent', eventqueue)
+        self.endevent = conveyor.event.Event('Task.endevent', eventqueue)
+        self.failevent = conveyor.event.Event('Task.failevent', eventqueue)
+        self.cancelevent = conveyor.event.Event('Task.cancelevent', eventqueue)
 
         # State events (level-ish events)
-        self.runningevent = event.Event('Task.runningevent', eventqueue)
-        self.stoppedevent = event.Event('Task.stoppedevent', eventqueue)
+        self.runningevent = conveyor.event.Event(
+            'Task.runningevent', eventqueue)
+        self.stoppedevent = conveyor.event.Event(
+            'Task.stoppedevent', eventqueue)
 
     def _transition(self, event, data):
         if TaskState.PENDING == self.state:
@@ -127,28 +132,28 @@ class TaskTestCase(unittest.TestCase):
             pass
 
     def test_events(self):
-        eventqueue = event.geteventqueue()
+        eventqueue = conveyor.event.geteventqueue()
         task = Task()
 
-        startcallback = event.Callback()
+        startcallback = conveyor.event.Callback()
         task.startevent.attach(startcallback)
 
-        heartbeatcallback = event.Callback()
+        heartbeatcallback = conveyor.event.Callback()
         task.heartbeatevent.attach(heartbeatcallback)
 
-        endcallback = event.Callback()
+        endcallback = conveyor.event.Callback()
         task.endevent.attach(endcallback)
 
-        failcallback = event.Callback()
+        failcallback = conveyor.event.Callback()
         task.failevent.attach(failcallback)
 
-        cancelcallback = event.Callback()
+        cancelcallback = conveyor.event.Callback()
         task.cancelevent.attach(cancelcallback)
 
-        runningcallback = event.Callback()
+        runningcallback = conveyor.event.Callback()
         task.runningevent.attach(runningcallback)
 
-        stoppedcallback = event.Callback()
+        stoppedcallback = conveyor.event.Callback()
         task.stoppedevent.attach(stoppedcallback)
 
         callbacks = (
