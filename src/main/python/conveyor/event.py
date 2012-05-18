@@ -6,7 +6,13 @@ import collections
 import logging
 import threading
 import time
-import unittest
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
+import conveyor.test
 
 _eventqueue = None
 
@@ -162,6 +168,12 @@ class EventQueueTestCase(unittest.TestCase):
         self.assertFalse(callback1.delivered)
         self.assertFalse(callback2.delivered)
 
+    def test_runiteration_empty(self):
+        eventqueue = geteventqueue()
+        eventqueue._queue.clear()
+
+        self.assertFalse(eventqueue.runiteration(False))
+
     def test_wait(self):
         eventqueue = geteventqueue()
         eventqueue._queue.clear()
@@ -195,7 +207,26 @@ class EventQueueTestCase(unittest.TestCase):
         self.assertTrue(callback1.delivered)
         self.assertFalse(callback2.delivered)
 
+    def test_Exception(self):
+        eventqueue = geteventqueue()
+        eventqueue._queue.clear()
+
+        conveyor.test.listlogging('ERROR')
+        conveyor.test.ListHandler.list = []
+
+        def callback(*args, **kwargs):
+            raise Exception('failure')
+        event = Event('event')
+        event.attach(callback)
+        event()
+        eventqueue.runiteration(False)
+
+        self.assertEqual(1, len(conveyor.test.ListHandler.list))
+        self.assertEqual('internal error', conveyor.test.ListHandler.list[0].msg)
+
+class _EventTestCase(unittest.TestCase):
     def test___repr__(self):
         event = Event('event')
         self.assertEqual(
             "Event(name=u'event', eventqueue=None)", repr(event))
+

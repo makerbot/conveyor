@@ -237,6 +237,17 @@ class _AddressTestCase(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             sock.connect()
 
+    def test_cleanup(self):
+        sock = Address()
+        with self.assertRaises(NotImplementedError):
+            sock.cleanup()
+
+    def test_with(self):
+        sock = Address()
+        with self.assertRaises(NotImplementedError):
+            with sock:
+                pass
+
 class _AbstractAddressTestCase(unittest.TestCase):
     def _getclientvalue(self, servervalue, serversock):
         raise NotImplementedError
@@ -272,6 +283,11 @@ class _TcpAddressTestCase(_AbstractAddressTestCase):
     def test(self):
         self._test('tcp:localhost:0')
 
+    def test_cleanup(self):
+        address = getaddress('tcp:localhost:0')
+        with address:
+            pass
+
 class _UnixAddressTestCase(_AbstractAddressTestCase):
     def _getclientvalue(self, servervalue, serversock):
         return servervalue
@@ -282,3 +298,16 @@ class _UnixAddressTestCase(_AbstractAddressTestCase):
         os.unlink(fp.name)
         value = 'unix:%s' % (fp.name,)
         self._test(value)
+
+    def test_cleanup(self):
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
+            pass
+        os.unlink(fp.name)
+        value = 'unix:%s' % (fp.name,)
+        address = getaddress(value)
+        with address:
+            self.assertFalse(os.path.exists(fp.name))
+        address.listen()
+        with address:
+            self.assertTrue(os.path.exists(fp.name))
+        self.assertFalse(os.path.exists(fp.name))
