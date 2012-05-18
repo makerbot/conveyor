@@ -18,6 +18,7 @@ _modules='
 	conveyor.server
 	conveyor.server.__main__
 	conveyor.task
+	conveyor.test
 	conveyor.thing
 	conveyor.toolpath
 	conveyor.toolpath.skeinforge
