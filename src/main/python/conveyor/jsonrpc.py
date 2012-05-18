@@ -59,6 +59,18 @@ class socketadapter(object):
     def write(self, data):
         self._fp.sendall(data)
 
+# See conveyor/doc/jsonreader.{dot,png}.
+#
+#   S0 - handles whitespace before the top-level JSON object or array
+#   S1 - handles JSON text that is not a string
+#   S2 - handles JSON strings
+#   S3 - handles JSON string escape sequences
+#
+# The _JsonReader state machine invokes the event handler whenever it makes an
+# invalid transition. This resets the machine to S0 and sends the invalid JSON
+# to the event handler. The event handler is expected to try to parse the
+# invalid JSON and issue an error.
+
 class _JsonReader(object):
     def __init__(self):
         self.event = conveyor.event.Event('_JsonReader.event')
