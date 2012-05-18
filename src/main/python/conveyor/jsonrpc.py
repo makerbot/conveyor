@@ -23,12 +23,14 @@ import cStringIO as StringIO
 import errno
 import json
 import logging
+import io
 import operator
 import sys
 import threading
 import unittest
 
 import conveyor.event
+import conveyor.test
 import conveyor.task
 
 class socketadapter(object):
@@ -119,7 +121,7 @@ class _JsonReader(object):
             try:
                 data = fp.read(8192)
             except IOError as e:
-                if errno.EINTR == e.args[0]:
+                if errno.EINTR == e.errno:
                     continue
                 else:
                     raise
@@ -364,9 +366,59 @@ class JsonRpc(object):
         self._log.debug('method=%r, func=%r', method, func)
         self._methods[method] = func
 
-    def delmethod(self, method):
-        self._log.debug('method=%r', method)
-        del self._methods[method]
+class _SocketadapterStubFile(object):
+    def __init__(self):
+        self.recv = conveyor.event.Callback()
+        self.sendall = conveyor.event.Callback()
+
+class _SocketadapterTestCase(unittest.TestCase):
+    def test_flush(self):
+        adapter = socketadapter(None)
+        adapter.flush()
+
+    def test_read(self):
+        fp = _SocketadapterStubFile()
+        adapter = socketadapter(fp)
+        self.assertFalse(fp.recv.delivered)
+        self.assertFalse(fp.sendall.delivered)
+        adapter.read()
+        self.assertTrue(fp.recv.delivered)
+        self.assertEqual((-1,), fp.recv.args)
+        self.assertEqual({}, fp.recv.kwargs)
+        self.assertFalse(fp.sendall.delivered)
+        fp.recv.reset()
+        self.assertFalse(fp.recv.delivered)
+        self.assertFalse(fp.sendall.delivered)
+        adapter.read(8192)
+        self.assertEqual((8192,), fp.recv.args)
+        self.assertEqual({}, fp.recv.kwargs)
+        self.assertFalse(fp.sendall.delivered)
+
+    def test_write(self):
+        fp = _SocketadapterStubFile()
+        adapter = socketadapter(fp)
+        self.assertFalse(fp.recv.delivered)
+        self.assertFalse(fp.sendall.delivered)
+        adapter.write('data')
+        self.assertFalse(fp.recv.delivered)
+        self.assertTrue(fp.sendall.delivered)
+        self.assertEqual(('data',), fp.sendall.args)
+        self.assertEqual({}, fp.sendall.kwargs)
+
+class _JsonReaderStubFile(object):
+    def __init__(self):
+        self.exception = None
+        self.data = None
+
+    def read(self, size):
+        if None is not self.exception:
+            exception = self.exception
+            self.exception = None
+            raise exception
+        else:
+            data = self.data
+            self.data = ''
+            return data
 
 class _JsonReaderTestCase(unittest.TestCase):
     def test_object(self):
@@ -450,6 +502,30 @@ class _JsonReaderTestCase(unittest.TestCase):
         eventqueue.runiteration(False)
         self.assertTrue(callback.delivered)
         self.assertEqual(('{"key":"value"}',), callback.args)
+
+    def test_feedfile_eintr(self):
+        eventqueue = conveyor.event.geteventqueue()
+
+        jsonreader = _JsonReader()
+        callback = conveyor.event.Callback()
+        jsonreader.event.attach(callback)
+
+        stub = _JsonReaderStubFile()
+        stub.exception = IOError(errno.EINTR, 'interrupted')
+        stub.data = '{"key":"value"}'
+        jsonreader.feedfile(stub)
+        eventqueue.runiteration(False)
+        self.assertTrue(callback.delivered)
+        self.assertEqual(('{"key":"value"}',), callback.args)
+
+    def test_feedfile_exception(self):
+        jsonreader = _JsonReader()
+        stub = _JsonReaderStubFile()
+        stub.exception = IOError(errno.EPERM, 'permission')
+        with self.assertRaises(IOError) as cm:
+            jsonreader.feedfile(stub)
+        self.assertEqual(errno.EPERM, cm.exception.errno)
+        self.assertEqual('permission', cm.exception.strerror)
 
     def test_invalid(self):
         eventqueue = conveyor.event.geteventqueue()
@@ -702,3 +778,108 @@ class _JsonRpcTest(unittest.TestCase):
         '''
         response = self._test_stringresponse(data, True)
         self.assertEqual('', response)
+
+    #
+    # Bi-directional tests
+    #
+
+    def test_notify(self):
+        stoc = StringIO.StringIO()
+        ctos = StringIO.StringIO()
+        client = JsonRpc(stoc, ctos)
+        server = JsonRpc(ctos, stoc)
+        callback = conveyor.event.Callback()
+        server.addmethod('method', callback)
+        self.assertFalse(callback.delivered)
+        client.notify('method', [1])
+        ctos.seek(0)
+        server.run()
+        eventqueue = conveyor.event.geteventqueue()
+        eventqueue.runiteration(False)
+        self.assertTrue(callback.delivered)
+        self.assertEqual((1,), callback.args)
+        self.assertEqual({}, callback.kwargs)
+
+    def test_request(self):
+        stoc = StringIO.StringIO()
+        ctos = StringIO.StringIO()
+        client = JsonRpc(stoc, ctos)
+        server = JsonRpc(ctos, stoc)
+        callback = conveyor.event.Callback()
+        def method(*args, **kwargs):
+            callback(*args, **kwargs)
+            return 2
+        server.addmethod('method', method)
+        self.assertFalse(callback.delivered)
+        task = client.request('method', [1])
+        ctos.seek(0)
+        server.run()
+        eventqueue = conveyor.event.geteventqueue()
+        while True:
+            result = eventqueue.runiteration(False)
+            if not result:
+                break
+        stoc.seek(0)
+        client.run()
+        while True:
+            result = eventqueue.runiteration(False)
+            if not result:
+                break
+        self.assertTrue(callback.delivered)
+        self.assertEqual((1,), callback.args)
+        self.assertEqual({}, callback.kwargs)
+        self.assertTrue(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertTrue(conveyor.task.TaskConclusion.ENDED, task.conclusion)
+        self.assertTrue(2, task.result)
+
+    def test_request_error(self):
+        stoc = StringIO.StringIO()
+        ctos = StringIO.StringIO()
+        client = JsonRpc(stoc, ctos)
+        server = JsonRpc(ctos, stoc)
+        def method(*args, **kwargs):
+            raise Exception('failure')
+        server.addmethod('method', method)
+        task = client.request('method', [1])
+        ctos.seek(0)
+        server.run()
+        eventqueue = conveyor.event.geteventqueue()
+        while True:
+            result = eventqueue.runiteration(False)
+            if not result:
+                break
+        stoc.seek(0)
+        client.run()
+        while True:
+            result = eventqueue.runiteration(False)
+            if not result:
+                break
+        self.assertTrue(conveyor.task.TaskState.STOPPED, task.state)
+        self.assertTrue(conveyor.task.TaskConclusion.FAILED, task.conclusion)
+        expected = {
+            'message': 'uncaught exception',
+            'code': -32000,
+            'data': {
+                'message': 'failure',
+                'args': ['failure'],
+                'name': 'Exception'
+            }
+        }
+        self.assertEqual(expected, task.failure)
+
+    def test__handleresponse_unknown(self):
+        conveyor.test.listlogging(logging.DEBUG)
+        jsonrpc = JsonRpc(None, None)
+        conveyor.test.ListHandler.list = []
+        jsonrpc._handleresponse(None, 0)
+        self.assertEqual(2, len(conveyor.test.ListHandler.list))
+        self.assertEqual(
+            'ignoring response for unknown id: 0',
+            conveyor.test.ListHandler.list[1].getMessage())
+
+    def test__handleresponse_ValueError(self):
+        jsonrpc = JsonRpc(None, None)
+        jsonrpc._tasks[0] = conveyor.task.Task()
+        with self.assertRaises(ValueError) as cm:
+            jsonrpc._handleresponse({}, 0)
+        self.assertEqual(({},), cm.exception.args)
