@@ -27,7 +27,11 @@ import io
 import operator
 import sys
 import threading
-import unittest
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import conveyor.event
 import conveyor.test

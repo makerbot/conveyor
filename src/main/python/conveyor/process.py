@@ -21,14 +21,14 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import conveyor.event
-import conveyor.task
-import conveyor.visitor
-
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+
+import conveyor.event
+import conveyor.task
+import conveyor.visitor
 
 def tasksequence(tasklist):
     term = reduce(

@@ -24,7 +24,11 @@ import fractions
 import json
 import os
 import os.path
-import unittest
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 Scale = conveyor.enum.enum('Scale', Millimeter=fractions.Fraction(1, 1000))
 

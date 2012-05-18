@@ -19,11 +19,12 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import conveyor.event
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+
+import conveyor.event
 
 class NoAcceptorException(ValueError):
     def __init__(self, target):
