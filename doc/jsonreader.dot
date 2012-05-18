@@ -1,0 +1,21 @@
+// vim:ai:et:fenc=utf-8:ff=unix:sw=4:ts=4:
+
+digraph
+{
+    rankdir=LR;
+
+    node [shape="circle"];
+    "S0";
+    "S1";
+    "S2";
+    "S3";
+
+    "S0" -> "S0" [label="<ws>"];
+    "S0" -> "S1" [label="{,["];
+    "S1" -> "S1" [label="<any>"];
+    "S1" -> "S2" [label="\""];
+    "S2" -> "S2" [label="<any>"];
+    "S2" -> "S3" [label="\\"];
+    "S2" -> "S1" [label="\""];
+    "S3" -> "S2" [label="<any>"];
+}
