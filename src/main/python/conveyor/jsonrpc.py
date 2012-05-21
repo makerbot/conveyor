@@ -63,6 +63,7 @@ class socketadapter(object):
                 if self._shutdown:
                     return ''
                 else:
+                    import select
                     rlist, wlist, xlist = select.select([self._fp], [], [], 1)
                     if 0 != len(rlist):
                         data = self._fp.recv(size)
