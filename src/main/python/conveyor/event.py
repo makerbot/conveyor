@@ -51,7 +51,7 @@ class EventQueue(object):
         self._log.debug('block=%r', block)
         with self._condition:
             if block:
-                while 0 == len(self._queue):
+                while 0 == len(self._queue) and not self._quit:
                     self._log.debug('waiting')
                     self._condition.wait()
                     self._log.debug('resumed')

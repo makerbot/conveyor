@@ -22,6 +22,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import json
 import logging.config
 import sys
+import threading
 
 try:
     import unittest2 as unittest
@@ -102,52 +103,96 @@ class _ClientMain(conveyor.main.AbstractMain):
                 exc_info=True)
         else:
             self._setdefaults(config)
+            code = self._run_logging(args, config)
+        return code
+
+    # These are the methods called during initialization. Each method makes a
+    # tail call (non-optimized, of course) to the next method.
+    #
+    # 1. _run_logging
+    # 2. _run_eventqueue
+    # 3. _run_socket
+    # 4. _run_print or _run_printtofile
+    # 5. _run_client
+
+    def _run_logging(self, args, config):
+        try:
+            dct = config.get('logging')
+            if None is not dct:
+                dct['incremental'] = False
+                dct['disable_existing_loggers'] = False
+                logging.config.dictConfig(dct)
+                if args.level:
+                    root = logging.getLogger()
+                    root.setLevel(args.level)
+        except ValueError as e:
+            code = 1
+            self._log.critical(
+                'invalid logging configuration: %s', e.message,
+                exc_info=True)
+        else:
+            code = self._run_eventqueue(args, config)
+        return code
+
+    def _run_eventqueue(self, args, config):
+        value = config.get('eventthreads')
+        try:
+            count = int(value)
+        except ValueError:
+            code = 1
+            self._log.critical('invalid value for "eventthreads": %s', value)
+        else:
+            eventqueue = conveyor.event.geteventqueue()
+            threads = []
+            for i in range(count):
+                name = 'eventqueue-%d' % (i,)
+                thread = threading.Thread(target=eventqueue.run, name=name)
+                thread.start()
+                threads.append(thread)
             try:
-                dct = config.get('logging')
-                if None is not dct:
-                    dct['incremental'] = False
-                    dct['disable_existing_loggers'] = False
-                    logging.config.dictConfig(dct)
-                    if args.level:
-                        root = logging.getLogger()
-                        root.setLevel(args.level)
-            except ValueError as e:
-                code = 1
-                self._log.critical(
-                    'invalid logging configuration: %s', e.message,
-                    exc_info=True)
-            else:
-                code = args.func(args, config)
+                code = self._run_socket(args, config)
+            finally:
+                eventqueue.quit()
+                for thread in threads:
+                    thread.join(1)
+                    if thread.is_alive():
+                        self._log.debug('thread not terminated: %r', thread)
         return code
 
-    def _run_print(self, args, config):
-        params = [args.thing]
-        self._log.info('printing: %s', args.thing)
-        code = self._run_client(args, config, 'print', params)
-        return code
-
-    def _run_printtofile(self, args, config):
-        params = [args.thing, args.s3g]
-        self._log.info('printing to file: %s -> %s', args.thing, args.s3g)
-        code = self._run_client(args, config, 'printtofile', params)
-        return code
-
-    def _run_client(self, args, config, method, params):
+    def _run_socket(self, args, config):
         value = config['socket']
         address = self._getaddress(value)
         if None == address:
+            # NOTE: _getaddress has issues the error message itself.
             code = 1
         else:
-            try:
-                sock = address.connect()
-            except EnvironmentError as e:
-                code = 1
-                self._log.critical(
-                    'failed to connect to socket: %s: %s', value,
-                    e.strerror, exc_info=True)
-            else:
-                client = conveyor.client.Client.create(sock, method, params)
-                code = client.run()
+            with address:
+                try:
+                    sock = address.connect()
+                except EnvironmentError as e:
+                    code = 1
+                    self._log.critical(
+                        'failed to open socket: %s: %s', value,
+                        e.strerror, exc_info=True)
+                else:
+                    code = args.func(args, config, sock)
+        return code
+
+    def _run_print(self, args, config, sock):
+        params = [args.thing]
+        self._log.info('printing: %s', args.thing)
+        code = self._run_client(args, config, sock, 'print', params)
+        return code
+
+    def _run_printtofile(self, args, config, sock):
+        params = [args.thing, args.s3g]
+        self._log.info('printing to file: %s -> %s', args.thing, args.s3g)
+        code = self._run_client(args, config, sock, 'printtofile', params)
+        return code
+
+    def _run_client(self, args, config, sock, method, params):
+        client = conveyor.client.Client.create(sock, method, params)
+        code = client.run()
         return code
 
 class _ClientMainTestCase(unittest.TestCase):

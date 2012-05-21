@@ -53,7 +53,7 @@ class _ClientThread(threading.Thread):
         task = recipe.print()
         def runningcallback(unused):
             self._log.info(
-                'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
+                'printing: %s (job %d)', thing, self._id)
         task.runningevent.attach(runningcallback)
         def stoppedcallback(unused):
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
@@ -176,9 +176,6 @@ class Server(object):
     def run(self):
         taskqueuethread = threading.Thread(target=self._queue.run, name='taskqueue')
         taskqueuethread.start()
-        eventqueue = conveyor.event.geteventqueue()
-        eventqueuethread = threading.Thread(target=eventqueue.run, name='eventqueue')
-        eventqueuethread.start()
         try:
             while True:
                 try:
@@ -196,7 +193,5 @@ class Server(object):
                     clientthread.start()
         finally:
             self._queue.quit()
-            eventqueue.quit()
             taskqueuethread.join(5)
-            eventqueuethread.join(5)
         return 0
