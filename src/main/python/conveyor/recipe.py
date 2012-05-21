@@ -31,6 +31,7 @@ except ImportError:
 import conveyor.process
 import conveyor.task
 import conveyor.thing
+import conveyor.printer.replicator
 import conveyor.toolpath.skeinforge
 
 class RecipeManager(object):
@@ -95,7 +96,17 @@ class Recipe(object):
         return task
 
 class _SingleRecipe(Recipe):
-    pass
+    def _createtask(self, func):
+        def runningevent(task):
+            task.end(None)
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningevent)
+        return task
 
 class _DualRecipe(Recipe):
-    pass
+    def _createtask(self, func):
+        def runningevent(task):
+            task.end(None)
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningevent)
+        return task

@@ -46,13 +46,11 @@ class _ClientThread(threading.Thread):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         return None
 
-    def _print(self, toolpathgeneratorbusname, printerbusname, thing):
-        self._log.debug(
-            'toolpathgeneratorbusname=%r, printerbusname=%r, thing=%r',
-            toolpathgeneratorbusname, printerbusname, thing)
+    def _print(self, thing):
+        self._log.debug('thing=%r', thing)
         recipemanager = conveyor.recipe.RecipeManager()
         recipe = recipemanager.getrecipe(thing)
-        task = recipe.print(toolpathgeneratorbusname, printerbusname)
+        task = recipe.print()
         def runningcallback(unused):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
@@ -74,13 +72,11 @@ class _ClientThread(threading.Thread):
         self._server.appendtask(task)
         return None
 
-    def _printtofile(self, toolpathgeneratorbusname, printerbusname, thing, s3g):
-        self._log.debug(
-            'toolpathgeneratorbusname=%r, printerbusname=%r, thing=%r, s3g=%r',
-            toolpathgeneratorbusname, printerbusname, thing, s3g)
+    def _printtofile(self, thing, s3g):
+        self._log.debug('thing=%r, s3g=%r', thing, s3g)
         recipemanager = conveyor.recipe.RecipeManager()
         recipe = recipemanager.getrecipe(thing)
-        task = recipe.printtofile(toolpathgeneratorbusname, printerbusname, s3g)
+        task = recipe.printtofile(s3g)
         def runningcallback(unused):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)

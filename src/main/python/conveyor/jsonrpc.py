@@ -315,8 +315,6 @@ class JsonRpc(object):
             self._idcounter += 1
         self._log.debug('method=%r, params=%r, id=%r', method, params, id)
         def runningevent(task):
-            print('runningevent')
-            print('-------------------------------------------------------------------------------')
             request = {
                 'jsonrpc': '2.0', 'method': method, 'params': params, 'id': id}
             data = json.dumps(request)

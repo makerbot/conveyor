@@ -73,7 +73,20 @@ class SkeinforgeToolpath(object):
                     arguments = list(
                         self._getarguments(configuration, tmp_stlpath))
                     popen = subprocess.Popen(
-                        arguments, executable=sys.executable)
+                        arguments, executable=sys.executable,
+                        stdout=subprocess.PIPE)
+                    buffer = ''
+                    while True:
+                        data = popen.stdout.read(8192)
+                        if '' == data:
+                            break
+                        else:
+                            buffer += data
+                            match = re.search('Fill layer count \d+ of \d+', buffer)
+                            if None is not match:
+                                print('ding: %r' % (buffer,))
+                                buffer = buffer[:match.end()]
+                                print('trimmed: %r' % (buffer,))
                     code = popen.wait()
                     if 0 != code:
                         raise Exception(code)

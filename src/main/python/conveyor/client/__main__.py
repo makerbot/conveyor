@@ -81,20 +81,6 @@ class _ClientMain(conveyor.main.AbstractMain):
             ):
                 method(parser)
         parser.add_argument(
-            '--toolpath-generator-bus-name',
-            default='com.makerbot.ToolpathGenerator',
-            required=False,
-            help='set the D-Bus bus name for the toolpath generator',
-            metavar='BUS-NAME',
-            dest='toolpathgeneratorbusname')
-        parser.add_argument(
-            '--printer-bus-name',
-            default='com.makerbot.Printer',
-            required=False,
-            help='set the D-Bus bus name for the printer',
-            metavar='BUS-NAME',
-            dest='printerbusname')
-        parser.add_argument(
             'thing', help='the path to the .thing file', metavar='THING')
 
     def _setdefaults(self, config):
@@ -135,16 +121,13 @@ class _ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_print(self, args, config):
-        params = [
-            args.toolpathgeneratorbusname, args.printerbusname, args.thing]
+        params = [args.thing]
         self._log.info('printing: %s', args.thing)
         code = self._run_client(args, config, 'print', params)
         return code
 
     def _run_printtofile(self, args, config):
-        params = [
-            args.toolpathgeneratorbusname, args.printerbusname, args.thing,
-            args.s3g]
+        params = [args.thing, args.s3g]
         self._log.info('printing to file: %s -> %s', args.thing, args.s3g)
         code = self._run_client(args, config, 'printtofile', params)
         return code
