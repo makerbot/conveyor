@@ -66,7 +66,13 @@ class socketadapter(object):
                     import select
                     rlist, wlist, xlist = select.select([self._fp], [], [], 1)
                     if 0 != len(rlist):
-                        data = self._fp.recv(size)
+                        try:
+                            data = self._fp.recv(size)
+                        except IOError as e:
+                            if errno.EBADF == e.errno:
+                                data = ''
+                            else:
+                                raise
                         return data
 
         def shutdown(self):
