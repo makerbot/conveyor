@@ -45,13 +45,14 @@ class Client(object):
         self._sock = sock
 
     def _shutdown(self):
+        print('_shutdown')
         # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
         # 'Connection reset by peer' errors.
-        # self._sock.shutdown(socket.SHUT_RD)
-        self._sock.shutdown(socket.SHUT_RDWR)
+        self._sock.shutdown(socket.SHUT_RD)
         self._sock.close()
 
     def _notify(self, job, state, conclusion):
+        print('_notify')
         self._log.debug('job=%r, state=%r, conclusion=%r', job, state, conclusion)
         if conveyor.task.TaskState.STOPPED == state:
             if conveyor.task.TaskConclusion.ENDED == conclusion:
@@ -67,12 +68,14 @@ class Client(object):
             self._shutdown()
 
     def _hellocallback(self, task):
+        print('_hellocallback')
         self._log.debug('task=%r', task)
         task1 = self._jsonrpc.request(self._method, self._params)
         task1.stoppedevent.attach(self._methodcallback)
         task1.start()
 
     def _methodcallback(self, task):
+        print('_methodcallback')
         self._log.debug('task=%r', task)
         if conveyor.task.TaskState.STOPPED == task.state:
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
@@ -89,6 +92,7 @@ class Client(object):
                 raise ValueError(task.conclusion)
 
     def run(self):
+        print('run')
         eventqueue = conveyor.event.geteventqueue()
         eventqueuethread = threading.Thread(target=eventqueue.run, name='eventqueue')
         eventqueuethread.start()
@@ -96,7 +100,9 @@ class Client(object):
             self._jsonrpc.addmethod('notify', self._notify)
             task = self._jsonrpc.request("hello", [])
             task.stoppedevent.attach(self._hellocallback)
+            print('task.start')
             task.start()
+            print('_jsonrpc.run')
             self._jsonrpc.run()
         finally:
             eventqueue.quit()
