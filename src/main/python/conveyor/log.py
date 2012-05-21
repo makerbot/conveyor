@@ -38,7 +38,7 @@ def earlylogging(program): # pragma: no cover
         'version': 1,
         'formatters': {
             'console': {
-                '()': 'conveyor.log.ConsoleFormatter',
+                # '()': 'conveyor.log.ConsoleFormatter',
                 'format': '%s: %%(levelname)s: %%(message)s' % (program,)
             }
         },
