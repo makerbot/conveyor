@@ -47,10 +47,9 @@ class Client(object):
     def _shutdown(self):
         # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
         # 'Connection reset by peer' errors.
-        self._sock.shutdown(socket.SHUT_RD)
+        # self._sock.shutdown(socket.SHUT_RD)
+        self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
-        eventqueue = conveyor.event.geteventqueue()
-        eventqueue.quit()
 
     def _notify(self, job, state, conclusion):
         self._log.debug('job=%r, state=%r, conclusion=%r', job, state, conclusion)
