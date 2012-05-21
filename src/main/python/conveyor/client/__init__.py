@@ -71,6 +71,7 @@ class Client(object):
         self._log.debug('task=%r', task)
         task1 = self._jsonrpc.request(self._method, self._params)
         task1.stoppedevent.attach(self._methodcallback)
+        task1.start()
 
     def _methodcallback(self, task):
         self._log.debug('task=%r', task)
@@ -96,6 +97,7 @@ class Client(object):
             self._jsonrpc.addmethod('notify', self._notify)
             task = self._jsonrpc.request("hello", [])
             task.stoppedevent.attach(self._hellocallback)
+            task.start()
             self._jsonrpc.run()
         finally:
             eventqueue.quit()

@@ -314,16 +314,19 @@ class JsonRpc(object):
             id = self._idcounter
             self._idcounter += 1
         self._log.debug('method=%r, params=%r, id=%r', method, params, id)
-        request = {
-            'jsonrpc': '2.0', 'method': method, 'params': params, 'id': id}
-        data = json.dumps(request)
-        self._send(data)
-        task = conveyor.task.Task()
-        self._tasks[id] = task
-        def func(t):
+        def runningevent(task):
+            print('runningevent')
+            print('-------------------------------------------------------------------------------')
+            request = {
+                'jsonrpc': '2.0', 'method': method, 'params': params, 'id': id}
+            data = json.dumps(request)
+            self._send(data)
+            self._tasks[id] = task
+        def stoppedevent(task):
             del self._tasks[id]
-        task.stoppedevent.attach(func)
-        task.start()
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningevent)
+        task.stoppedevent.attach(stoppedevent)
         return task
 
     #
@@ -883,9 +886,14 @@ class _JsonRpcTest(unittest.TestCase):
         server.addmethod('method', method)
         self.assertFalse(callback.delivered)
         task = client.request('method', [1])
+        task.start()
+        eventqueue = conveyor.event.geteventqueue()
+        while True:
+            result = eventqueue.runiteration(False)
+            if not result:
+                break
         ctos.seek(0)
         server.run()
-        eventqueue = conveyor.event.geteventqueue()
         while True:
             result = eventqueue.runiteration(False)
             if not result:
@@ -914,9 +922,14 @@ class _JsonRpcTest(unittest.TestCase):
             raise Exception('failure')
         server.addmethod('method', method)
         task = client.request('method', [1])
+        task.start()
+        eventqueue = conveyor.event.geteventqueue()
+        while True:
+            result = eventqueue.runiteration(False)
+            if not result:
+                break
         ctos.seek(0)
         server.run()
-        eventqueue = conveyor.event.geteventqueue()
         while True:
             result = eventqueue.runiteration(False)
             if not result:
