@@ -45,11 +45,7 @@ class Client(object):
         self._sock = sock
 
     def _shutdown(self):
-        print('_shutdown')
-        # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
-        # 'Connection reset by peer' errors.
-        self._sock.shutdown(socket.SHUT_RD)
-        self._sock.close()
+        self._fp.shutdown()
 
     def _notify(self, job, state, conclusion):
         print('_notify')

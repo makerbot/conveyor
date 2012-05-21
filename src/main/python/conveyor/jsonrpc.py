@@ -25,6 +25,7 @@ import json
 import logging
 import io
 import operator
+import os
 import sys
 import threading
 
@@ -46,18 +47,44 @@ class socketadapter(object):
 
     '''
 
-    def __init__(self, fp):
-        self._fp = fp
-
     def flush(self):
         pass
 
-    def read(self, size=-1):
-        data = self._fp.recv(size)
-        return data
-
     def write(self, data):
         self._fp.sendall(data)
+
+    if 'nt' == os.name:
+        def __init__(self, fp):
+            self._fp = fp
+            self._shutdown = False
+
+        def read(self, size=-1):
+            while True:
+                if self._shutdown:
+                    return ''
+                else:
+                    rlist, wlist, xlist = select.select([self._fp], [], [], 1)
+                    if 0 != len(rlist):
+                        data = self._fp.recv(size)
+                        return data
+
+        def shutdown(self):
+            self._shutdown = True
+            self._fp.close()
+    else:
+        def __init__(self, fp):
+            self._fp = fp
+
+        def read(self, size=-1):
+            data = self._fp.recv(size)
+            return data
+
+        def shutdown(self):
+            # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
+            # 'Connection reset by peer' errors.
+            import socket
+            self._fp.shutdown(socket.SHUT_RD)
+            self._fp.close()
 
 # See conveyor/doc/jsonreader.{dot,png}.
 #
