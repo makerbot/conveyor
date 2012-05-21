@@ -59,6 +59,8 @@ class SkeinforgeConfiguration(object):
 class SkeinforgeToolpath(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
+        self._regex = re.compile(
+            'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
     def generate(self, stlpath, gcodepath, configuration=None):
         if None is configuration:
@@ -77,16 +79,17 @@ class SkeinforgeToolpath(object):
                         stdout=subprocess.PIPE)
                     buffer = ''
                     while True:
-                        data = popen.stdout.read(8192)
+                        data = popen.stdout.read(1) # :(
                         if '' == data:
                             break
                         else:
                             buffer += data
-                            match = re.search('Fill layer count \d+ of \d+', buffer)
+                            match = self._regex.search(buffer)
                             if None is not match:
-                                print('ding: %r' % (buffer,))
-                                buffer = buffer[:match.end()]
-                                print('trimmed: %r' % (buffer,))
+                                buffer = buffer[match.end():]
+                                layer = int(match.group('layer'))
+                                total = int(match.group('total'))
+                                task.heartbeat((layer, total))
                     code = popen.wait()
                     if 0 != code:
                         raise Exception(code)
