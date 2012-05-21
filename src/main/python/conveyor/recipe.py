@@ -19,8 +19,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import dbus
-import dbus.mainloop.qt
 import os
 import os.path
 import tempfile
@@ -34,8 +32,6 @@ import conveyor.process
 import conveyor.task
 import conveyor.thing
 import conveyor.toolpath.skeinforge
-
-dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
 
 class RecipeManager(object):
     def getrecipe(self, thing):
@@ -99,20 +95,7 @@ class Recipe(object):
         return task
 
 class _SingleRecipe(Recipe):
-    def _createtask(self, toolpathgeneratorbusname, printerbusname, func):
-        bus = dbus.Sessionbus()
-        toolpath = conveyor.toolpath.skeinforge.SkeinfrogeToolpath()
-        # TODO: printer driver
-        # printer = ...
-        instance = self._getinstance_a(self._manifest)
-        stl = os.path.abspath(os.path.join(self._manifest.base, instance.object.name))
-        assert stl.endswith('.stl')
-        gcode = self._gcodefilename(stl)
-        task1 = toolpath.generate(stl, gcode)
-        # task2 = func(printer, gcode)
-        tasks = [task1] # , task2]
-        task = conveyor.process.tasksequence(tasks)
-        return task
+    pass
 
 class _DualRecipe(Recipe):
     pass
