@@ -132,6 +132,8 @@ class TaskTestCase(unittest.TestCase):
             pass
 
     def test_events(self):
+        '''Test event delivery.'''
+
         eventqueue = conveyor.event.geteventqueue()
         task = Task()
 
@@ -272,13 +274,24 @@ class TaskTestCase(unittest.TestCase):
         self.assertFalse(runningcallback.delivered)
         self.assertTrue(stoppedcallback.delivered)
 
-    def test__transition_notastate(self):
+    def test__transition_ValueError(self):
+        '''Test that the _transition method throws a ValueError when state is
+        an unknown value.
+
+        '''
+
         task = Task()
         task.state = None
         with self.assertRaises(ValueError):
             task._transition(None, None)
 
     def test__transition_IllegalTransitionException(self):
+        '''Test that the _transition method throws an
+        IllegalTransitionException when the lifecycle methods are called in the
+        wrong order.
+
+        '''
+
         task = Task()
 
         def func(state, events):

@@ -113,6 +113,8 @@ class AbstractMain(object):
 
 class _AbstractMainTestCase(unittest.TestCase):
     def test__run(self):
+        '''Test that the _run method throws a NotImplementedError.'''
+
         main = AbstractMain('test')
         with self.assertRaises(NotImplementedError):
             main._run(None, None)

@@ -200,6 +200,8 @@ class ManifestInstance(ManifestItem):
 
 class _ThingTestCase(unittest.TestCase):
     def test_rfc_4_1(self):
+        '''Test example 4.1 from the .thing RFC.'''
+
         manifest = Manifest.frompath('src/test/thing/rfc-4.1/manifest.json')
 
         self.assertEqual(2, len(manifest.objects))
@@ -249,6 +251,8 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance_b.scale)
 
     def test_rfc_5_1(self):
+        '''Test example 5.1 from the .thing RFC.'''
+
         manifest = Manifest.frompath('src/test/thing/rfc-5.1/manifest.json')
 
         self.assertEqual(1, len(manifest.objects))
@@ -278,6 +282,8 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance.scale)
 
     def test_rfc_5_2(self):
+        '''Test example 5.2 from the .thing RFC.'''
+
         manifest = Manifest.frompath('src/test/thing/rfc-5.2/manifest.json')
 
         self.assertEqual(2, len(manifest.objects))
@@ -327,6 +333,7 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance_b.scale)
 
     def test_rfc_5_3(self):
+        '''Test example 5.3 from the .thing RFC.'''
 
         # TODO: 5.3 is identical to 4.1?
 
@@ -379,6 +386,8 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance_b.scale)
 
     def test_rfc_5_4(self):
+        '''Test example 5.4 from the .thing RFC.'''
+
         manifest = Manifest.frompath('src/test/thing/rfc-5.4/manifest.json')
 
         self.assertEqual(1, len(manifest.objects))

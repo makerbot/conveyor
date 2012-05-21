@@ -58,6 +58,8 @@ class _VisitorTestCase(unittest.TestCase):
         self._d = _D()
 
     def test_visit(self):
+        '''Test that the visitor works.'''
+
         callback = conveyor.event.Callback()
         class V(Visitor):
             def accept__A(self_v, target, *args, **kwargs):
@@ -76,12 +78,22 @@ class _VisitorTestCase(unittest.TestCase):
             self.assertEqual({'b': 2}, callback.kwargs)
 
     def test_NoAcceptorException(self):
+        '''Test that the visitor throws a NoAcceptorException when there is no
+        acceptor method for the value.
+
+        '''
+
         v = Visitor()
         for x in (self._a, self._b, self._c, self._d):
             with self.assertRaises(NoAcceptorException):
                 v.visit(x) # pragma: no cover
 
     def test_mro(self):
+        '''Test that the visitor searches for acceptor methods based on the
+        type's method resolution order.
+
+        '''
+
         callback = conveyor.event.Callback()
 
         # MRO Reference:

@@ -393,6 +393,11 @@ class _SocketadapterTestCase(unittest.TestCase):
         adapter.flush()
 
     def test_read(self):
+        '''Test that the socketadapter calls the recv method on the underlying
+        socket.
+
+        '''
+
         fp = _SocketadapterStubFile()
         adapter = socketadapter(fp)
         self.assertFalse(fp.recv.delivered)
@@ -411,6 +416,11 @@ class _SocketadapterTestCase(unittest.TestCase):
         self.assertFalse(fp.sendall.delivered)
 
     def test_write(self):
+        '''Test that the socketadapter calls the sendall method on the
+        underlying socket.
+
+        '''
+
         fp = _SocketadapterStubFile()
         adapter = socketadapter(fp)
         self.assertFalse(fp.recv.delivered)
@@ -438,6 +448,8 @@ class _JsonReaderStubFile(object):
 
 class _JsonReaderTestCase(unittest.TestCase):
     def test_object(self):
+        '''Test handline an object.'''
+
         eventqueue = conveyor.event.geteventqueue()
 
         jsonreader = _JsonReader()
@@ -454,6 +466,8 @@ class _JsonReaderTestCase(unittest.TestCase):
         self.assertEqual(('{"key":"value"}',), callback.args)
 
     def test_nestedobject(self):
+        '''Test handling a nested object.'''
+
         eventqueue = conveyor.event.geteventqueue()
 
         jsonreader = _JsonReader()
@@ -474,6 +488,8 @@ class _JsonReaderTestCase(unittest.TestCase):
         self.assertEqual(('{"key0":{"key1":"value"}}',), callback.args)
 
     def test_escape(self):
+        '''Test handling a string escape sequence.'''
+
         eventqueue = conveyor.event.geteventqueue()
 
         jsonreader = _JsonReader()
@@ -494,12 +510,22 @@ class _JsonReaderTestCase(unittest.TestCase):
         self.assertEqual(('{"key":"value\\""}',), callback.args)
 
     def test__transition_ValueError(self):
+        '''Test that the _transition method throws a ValueError when _state is
+        an unknown value.
+
+        '''
+
         jsonreader = _JsonReader()
         jsonreader._state = None
         with self.assertRaises(ValueError):
             jsonreader._transition('')
 
     def test_feedfile(self):
+        '''Test that feedfile handles JSON data that is split across multiple
+        calls to feedfile.
+
+        '''
+
         eventqueue = conveyor.event.geteventqueue()
 
         jsonreader = _JsonReader()
@@ -520,6 +546,8 @@ class _JsonReaderTestCase(unittest.TestCase):
         self.assertEqual(('{"key":"value"}',), callback.args)
 
     def test_feedfile_eintr(self):
+        '''Test that feedfile handles EINTR.'''
+
         eventqueue = conveyor.event.geteventqueue()
 
         jsonreader = _JsonReader()
@@ -535,6 +563,8 @@ class _JsonReaderTestCase(unittest.TestCase):
         self.assertEqual(('{"key":"value"}',), callback.args)
 
     def test_feedfile_exception(self):
+        '''Test that feedfile propagates exceptions.'''
+
         jsonreader = _JsonReader()
         stub = _JsonReaderStubFile()
         stub.exception = IOError(errno.EPERM, 'permission')
@@ -544,6 +574,8 @@ class _JsonReaderTestCase(unittest.TestCase):
         self.assertEqual('permission', cm.exception.strerror)
 
     def test_invalid(self):
+        '''Test the receipt of invalid JSON text.'''
+
         eventqueue = conveyor.event.geteventqueue()
 
         jsonreader = _JsonReader()
@@ -556,6 +588,8 @@ class _JsonReaderTestCase(unittest.TestCase):
         self.assertEqual((']',), callback.args)
 
     def test_emptystack(self):
+        '''Test the receipt of a ']' when the stack is empty.'''
+
         eventqueue = conveyor.event.geteventqueue()
 
         jsonreader = _JsonReader()
@@ -572,7 +606,7 @@ class _JsonRpcTest(unittest.TestCase):
     def setUp(self):
         logging.debug('_testMethodName=%r', self._testMethodName)
         eventqueue = conveyor.event.geteventqueue()
-        eventqueue._queue.clear() # TODO: sort this out; it should not be necessary
+        eventqueue._queue.clear()
 
     def _assertsuccess(self, result, id, response):
         expected = {'jsonrpc': '2.0', 'result': result, 'id': id}
@@ -634,7 +668,6 @@ class _JsonRpcTest(unittest.TestCase):
         eventqueue = conveyor.event.geteventqueue()
         eventqueue.runiteration(False)
         response = outfp.getvalue()
-        logging.debug('outfp.getvalue = %r', response)
         return response
 
     def _test_jsonresponse(self, data, addmethods):
@@ -642,6 +675,8 @@ class _JsonRpcTest(unittest.TestCase):
         return response
 
     def test_invalidrequest(self):
+        '''Test an invalid request.'''
+
         infp = None
         outfp = StringIO.StringIO()
         jsonrpcserver = JsonRpc(infp, outfp)
@@ -650,36 +685,52 @@ class _JsonRpcTest(unittest.TestCase):
         self._asserterror(-32600, 'invalid request', None, response)
 
     def test_invalidparams_0(self):
+        '''Test a request with an invalid type of paramters.'''
+
         data = '{"jsonrpc": "2.0", "method": "subtract", "params": "x", "id": "1"}'
         response = self._test_jsonresponse(data, True)
         self._asserterror(-32602, 'invalid params', '1', response)
 
     def test_invalidparams_1(self):
+        '''Test a request with an incorrect number of parameters.'''
+
         data = '{"jsonrpc": "2.0", "method": "subtract", "params": [1], "id": "1"}'
         response = self._test_jsonresponse(data, True)
         self._asserterror(-32602, 'invalid params', '1', response)
 
     def test_invalidparams_notification(self):
+        '''Test a notification with invalid parameters.'''
+
         data = '{"jsonrpc": "2.0", "method": "notification_noargs", "params": [1]}'
         response = self._test_stringresponse(data, True)
         self.assertEqual('', response)
 
     def test_JsonRpcException(self):
+        '''Test a request that throws a JsonRpcException.'''
+
         data = '{"jsonrpc": "2.0", "method": "raise_JsonRpcException", "id": "1"}'
         response = self._test_jsonresponse(data, True)
         self._asserterror(1, 'message', '1', response, 'data')
 
     def test_JsonRpcException_notification(self):
+        '''Test a notification that throws a JsonRpcException.'''
+
         data = '{"jsonrpc": "2.0", "method": "raise_JsonRpcException"}'
         response = self._test_stringresponse(data, True)
         self.assertEqual('', response)
 
     def test_Exception(self):
+        '''Test a request that throws an unexpected exception.'''
+
         data = '{"jsonrpc": "2.0", "method": "raise_Exception", "id": "1"}'
         response = self._test_jsonresponse(data, True)
-        self._asserterror(-32000, 'uncaught exception', '1', response, {'name': 'Exception', 'args': ['message'], 'message': 'message'})
+        self._asserterror(
+            -32000, 'uncaught exception', '1', response,
+            {'name': 'Exception', 'args': ['message'], 'message': 'message'})
 
     def test_Exception_notification(self):
+        '''Test a notification that throws an unexpected exception.'''
+
         data = '{"jsonrpc": "2.0", "method": "raise_Exception"}'
         response = self._test_stringresponse(data, True)
         self.assertEqual('', response)
@@ -800,6 +851,8 @@ class _JsonRpcTest(unittest.TestCase):
     #
 
     def test_notify(self):
+        '''Test the notify method.'''
+
         stoc = StringIO.StringIO()
         ctos = StringIO.StringIO()
         client = JsonRpc(stoc, ctos)
@@ -817,6 +870,8 @@ class _JsonRpcTest(unittest.TestCase):
         self.assertEqual({}, callback.kwargs)
 
     def test_request(self):
+        '''Test the request method.'''
+
         stoc = StringIO.StringIO()
         ctos = StringIO.StringIO()
         client = JsonRpc(stoc, ctos)
@@ -849,6 +904,8 @@ class _JsonRpcTest(unittest.TestCase):
         self.assertTrue(2, task.result)
 
     def test_request_error(self):
+        '''Test that the request method handles a server-side exception.'''
+
         stoc = StringIO.StringIO()
         ctos = StringIO.StringIO()
         client = JsonRpc(stoc, ctos)
@@ -884,6 +941,11 @@ class _JsonRpcTest(unittest.TestCase):
         self.assertEqual(expected, task.failure)
 
     def test__handleresponse_unknown(self):
+        '''Test that the _handleresponse method logs a debugging message when
+        it reads a response for an unknown request.
+
+        '''
+
         conveyor.test.listlogging(logging.DEBUG)
         jsonrpc = JsonRpc(None, None)
         conveyor.test.ListHandler.list = []
@@ -894,6 +956,11 @@ class _JsonRpcTest(unittest.TestCase):
             conveyor.test.ListHandler.list[1].getMessage())
 
     def test__handleresponse_ValueError(self):
+        '''Test that the _handleresponse method throws a ValueError when it
+        reads an object that is neither a request nor a response.
+
+        '''
+
         jsonrpc = JsonRpc(None, None)
         jsonrpc._tasks[0] = conveyor.task.Task()
         with self.assertRaises(ValueError) as cm:

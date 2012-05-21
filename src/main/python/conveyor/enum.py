@@ -33,6 +33,8 @@ def enum(name, *args, **kwargs):
 
 class _EnumTestCase(unittest.TestCase):
     def test(self):
+        '''Test the enum() function.'''
+
         cls = enum('Test', 'A', 'B', C='c', D='d')
         self.assertEqual('A', cls.A)
         self.assertEqual('B', cls.B)

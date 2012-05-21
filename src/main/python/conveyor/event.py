@@ -148,6 +148,8 @@ class Callback(object):
 
 class EventQueueTestCase(unittest.TestCase):
     def test(self):
+        '''Test the event queue.'''
+
         eventqueue = geteventqueue()
         eventqueue._queue.clear()
 
@@ -186,12 +188,16 @@ class EventQueueTestCase(unittest.TestCase):
         self.assertFalse(callback2.delivered)
 
     def test_runiteration_empty(self):
+        '''Test the runiteration method with an empty queue.'''
+
         eventqueue = geteventqueue()
         eventqueue._queue.clear()
 
         self.assertFalse(eventqueue.runiteration(False))
 
     def test_wait(self):
+        '''Test waiting for an event to be delivered by a second thread.'''
+
         eventqueue = geteventqueue()
         eventqueue._queue.clear()
 
@@ -208,6 +214,8 @@ class EventQueueTestCase(unittest.TestCase):
         self.assertTrue(callback.delivered)
 
     def test_quit(self):
+        '''Test the quit method.'''
+
         eventqueue = geteventqueue()
         eventqueue._queue.clear()
 
@@ -225,6 +233,8 @@ class EventQueueTestCase(unittest.TestCase):
         self.assertFalse(callback2.delivered)
 
     def test_Exception(self):
+        '''Test an event handler that throws an exception.'''
+
         eventqueue = geteventqueue()
         eventqueue._queue.clear()
 
@@ -243,7 +253,8 @@ class EventQueueTestCase(unittest.TestCase):
 
 class _EventTestCase(unittest.TestCase):
     def test___repr__(self):
+        '''Test the __repr__ method of Event.'''
+
         event = Event('event')
         self.assertEqual(
             "Event(name=u'event', eventqueue=None)", repr(event))
-

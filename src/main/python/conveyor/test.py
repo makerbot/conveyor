@@ -69,6 +69,8 @@ class _ListHandlerTestCase(unittest.TestCase):
         listlogging('INFO')
 
     def test_emit(self):
+        '''Test that the ListHandler collects log messages into its list.'''
+
         ListHandler.list = []
         log = logging.getLogger('ListHandlerTestCase')
         log.info('info')

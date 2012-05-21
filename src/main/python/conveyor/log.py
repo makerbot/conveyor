@@ -133,6 +133,11 @@ class StderrFilter(object):
 
 class _ConsoleFormatterTestCase(unittest.TestCase):
     def test_stacktrace(self):
+        '''Test that the ConsoleFormatter only prints the stack trace when the
+        log level is set to DEBUG.
+
+        '''
+
         name = 'conveyor.log._ConsoleFormatterTestCase'
         log = logging.getLogger(name)
         formatter = ConsoleFormatter()
@@ -167,8 +172,12 @@ class _ConsoleFormatterTestCase(unittest.TestCase):
             self.assertIn('Traceback (most recent call last):', s)
 
     def test_formatTime(self):
-        # NOTE: this test may fail if you run it near midnight on December
-        # 31st.
+        '''Test that the ConsoleFormatter formats time correctly.
+
+        NOTE: this test may fail if you run it near midnight on December 31st.
+
+        '''
+
         name = 'conveyor.log._ConsoleFormatterTestCase'
         log = logging.getLogger(name)
         log.setLevel(logging.INFO)
@@ -204,6 +213,11 @@ class _DebugFormatterTestCase(unittest.TestCase):
                     callback.reset()
 
     def test_format(self):
+        '''Test that the DebugFormatter uses the appropriate formatter instance
+        to format messages.
+
+        '''
+
         stubformatter = _StubFormatter()
         stubdebugformatter = _StubFormatter()
         debugformatter = DebugFormatter('', '', None)
@@ -229,6 +243,11 @@ class _DebugFormatterTestCase(unittest.TestCase):
         self.assertTrue(stubdebugformatter.formatcallback.delivered)
 
     def test_formatTime(self):
+        '''Test that the DebugFormatter uses the appropriate formatter instance
+        to format the time.
+
+        '''
+
         stubformatter = _StubFormatter()
         stubdebugformatter = _StubFormatter()
         debugformatter = DebugFormatter('', '', None)
@@ -255,6 +274,11 @@ class _DebugFormatterTestCase(unittest.TestCase):
         self.assertTrue(stubdebugformatter.formattimecallback.delivered)
 
     def test_formatException(self):
+        '''Test that the DebugFormatter uses its _debugformatter instance to
+        format exceptions.
+
+        '''
+
         stubformatter = _StubFormatter()
         stubdebugformatter = _StubFormatter()
         debugformatter = DebugFormatter('', '', None)
@@ -278,6 +302,8 @@ class _DebugFormatterTestCase(unittest.TestCase):
 
 class _StdoutFilterTestCase(unittest.TestCase):
     def test_filter(self):
+        '''Test that the StdoutFilter only accepts INFO message.'''
+
         filter = StdoutFilter()
         record = logging.LogRecord(
             'name', logging.INFO, 'pathname', 1, 'message', {}, False)
@@ -294,6 +320,11 @@ class _StdoutFilterTestCase(unittest.TestCase):
 
 class _StderrFilterTestCase(unittest.TestCase):
     def test_filter(self):
+        '''Test that the StderrFilter accepts only CRITICAL, ERROR, and WARNING
+        messages.
+
+        '''
+
         filter = StderrFilter()
         record = logging.LogRecord(
             'name', logging.INFO, 'pathname', 1, 'message', {}, False)
