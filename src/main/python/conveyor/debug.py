@@ -26,11 +26,11 @@ import sys
 import threading
 import traceback
 
-def _sigusr1(signum, frame): # pragma: no cover
-    logthreads(logging.INFO)
-
 def initdebug(): # pragma: no cover
-    signal.signal(signal.SIGUSR1, _sigusr1)
+    if hasattr(signal, 'SIGUSR1'):
+        def _sigusr1(signum, frame): # pragma: no cover
+            logthreads(logging.INFO)
+        signal.signal(signal.SIGUSR1, _sigusr1)
 
 def logthreads(level): # pragma: no cover
     log = logging.getLogger('conveyor.debug')
