@@ -20,9 +20,12 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
+import decimal
+import json
 import logging
 import os
 import sys
+import threading
 
 try:
     import unittest2 as unittest
@@ -33,35 +36,59 @@ import conveyor.debug
 import conveyor.ipc
 
 class AbstractMain(object):
-    def __init__(self, program):
+    def __init__(self, program, configsection):
+        self._address = None
+        self._config = None
+        self._configsection = configsection
+        self._eventthreads = []
         self._log = logging.getLogger(self.__class__.__name__)
+        self._parser = None
+        self._parsedargs = None
         self._program = program
+        self._socket = None
+        self._unparsedargs = None
 
-    def _getaddress(self, value):
-        address = None
-        try:
-            address = conveyor.ipc.getaddress(value)
-        except conveyor.ipc.UnknownProtocolException as e:
-            self._log.error('unknown socket protocol: %s', e.protocol)
-        except conveyor.ipc.MissingHostException as e:
-            self._log.error('missing socket host: %s', e.value)
-        except conveyor.ipc.MissingPortException as e:
-            self._log.error('missing socket port: %s', e.value)
-        except conveyor.ipc.InvalidPortException as e:
-            self._log.error('invalid socket port: %s', e.port)
-        except conveyor.ipc.MissingPathException as e:
-            self._log.error('missing socket path: %s', e.value)
-        return address
+    def _sequence(self, *stages):
+        code = None
+        for stage in stages:
+            code = stage()
+            if None is not code:
+                break
+        return code
+
+    def _getstages(self):
+        '''Return an iterable of stages for the program to execute.'''
+
+        yield self._initparser
+        yield self._initsubparsers
+        yield self._parseargs
+        yield self._setrootlogger
+        yield self._loadconfig
+        yield self._setconfigdefaults
+        yield self._checkconfig
+        yield self._initlogging
+        yield self._parseaddress
+        yield self._run
 
     def _initparser(self):
-        parser = argparse.ArgumentParser(prog=self._program)
+        '''Initialize the command-line argument parser.'''
+
+        self._parser = argparse.ArgumentParser(prog=self._program)
         def error(message):
             self._log.error(message)
             sys.exit(2)
-        parser.error = error # monkey patch!
-        return parser
+        self._parser.error = error # monkey patch!
+        self._initparser_common(self._parser)
+        return None
 
-    def _initparser_logging(self, parser):
+    def _initparser_common(self, parser):
+        parser.add_argument(
+            '-c',
+            '--config',
+            default='/etc/conveyor/conveyor.conf',
+            type=str,
+            help='the configuration file',
+            metavar='FILE')
         parser.add_argument(
             '-l',
             '--level',
@@ -72,8 +99,6 @@ class AbstractMain(object):
             required=False,
             help='set the log level',
             metavar='LEVEL')
-
-    def _initparser_version(self, parser):
         parser.add_argument(
             '-v',
             '--version',
@@ -81,18 +106,212 @@ class AbstractMain(object):
             help='show the version message and exit',
             version='%(prog)s 0.1.0.0')
 
-    def _run(self, parser, args):
+    def _initsubparsers(self):
         raise NotImplementedError
 
+    def _parseargs(self):
+        self._parsedargs = self._parser.parse_args(self._unparsedargs[1:])
+        return None
+
+    def _setrootlogger(self):
+        if self._parsedargs.level:
+            root = logging.getLogger()
+            root.setLevel(self._parsedargs.level)
+        return None
+
+    def _loadconfig(self):
+        try:
+            with open(self._parsedargs.config, 'r') as fp:
+                self._config = json.load(fp)
+        except EnvironmentError as e:
+            code = 1
+            self._log.critical(
+                'failed to open configuration file: %s: %s', args.config,
+                e.strerror, exc_info=True)
+        except ValueError:
+            code = 1
+            self._log.critical(
+                'failed to parse configuration file: %s', args.config,
+                exc_info=True)
+        else:
+            code = None
+        return code
+
+    def _setconfigdefaults(self):
+        code = self._sequence(
+            self._setconfigdefaults_common,
+            self._setconfigdefaults_server,
+            self._setconfigdefaults_client)
+        return code
+
+    def _setconfigdefaults_common(self):
+        self._config.setdefault('common', {})
+        self._config['common'].setdefault(
+            'socket', 'unix:/var/run/conveyor/conveyord.socket')
+        return None
+
+    def _setconfigdefaults_server(self):
+        self._config.setdefault('server', {})
+        self._config['server'].setdefault(
+            'pidfile', '/var/run/conveyor/conveyord.pid')
+        self._config['server'].setdefault('chdir', True)
+        self._config['server'].setdefault('eventthreads', 2)
+        self._config['server'].setdefault('logging', None)
+        return None
+
+    def _setconfigdefaults_client(self):
+        self._config.setdefault('client', {})
+        self._config['client'].setdefault('eventthreads', 2)
+        self._config['client'].setdefault('logging', None)
+        return None
+
+    def _checkconfig(self):
+        code = self._sequence(
+            self._checkconfig_common,
+            self._checkconfig_server,
+            self._checkconfig_client)
+        return code
+
+    def _checkconfig_common(self):
+        code = self._sequence(self._checkconfig_common_socket)
+        return code
+
+    def _checkconfig_common_socket(self):
+        code = self._require_string('common', 'socket')
+        return code
+
+    def _checkconfig_server(self):
+        code = self._sequence(
+            self._checkconfig_server_pidfile,
+            self._checkconfig_server_chdir,
+            self._checkconfig_server_eventthreads)
+        return code
+
+    def _checkconfig_server_pidfile(self):
+        code = self._require_string('server', 'pidfile')
+        return code
+
+    def _checkconfig_server_chdir(self):
+        code = self._require_bool('server', 'chdir')
+        return code
+
+    def _checkconfig_server_eventthreads(self):
+        code = self._require_number('server', 'eventthreads')
+        return code
+
+    def _checkconfig_client(self):
+        code = self._sequence(self._checkconfig_client_eventthreads)
+        return code
+
+    def _checkconfig_client_eventthreads(self):
+        code = self._require_number('client', 'eventthreads')
+        return code
+
+    def _require(self, type, typename, *path):
+        value = self._config
+        for name in path:
+            value = value[name]
+        if isinstance(value, type):
+            code = None
+        else:
+            code = 1
+            self._log.critical(
+                "configuration value '%s' is not a %s: %s",
+                '/'.join(path), typename, value)
+        return code
+
+    def _require_bool(self, *path):
+        code = self._require(bool, 'boolean', *path)
+        return code
+
+    def _require_number(self, *path):
+        code = self._require((decimal.Decimal, float, int), 'number', *path)
+        return code
+
+    def _require_string(self, *path):
+        code = self._require(basestring, 'string', *path)
+        return code
+
+    def _initlogging(self):
+        dct = self._config[self._configsection].get('logging')
+        if None is dct:
+            code = None
+        else:
+            dct['incremental'] = False
+            dct['disable_existing_loggers'] = False
+            try:
+                logging.config.dictConfig(dct)
+            except ValueError as e:
+                code = 1
+                self._log.critical(
+                    'invalid logging configuration: %s', e.message,
+                    exc_info=True)
+            else:
+                code = None
+                if self._parsedargs.level:
+                    root = logging.getLogger()
+                    root.setLevel(self._parsedargs.level)
+        return code
+
+    def _parseaddress(self):
+        value = self._config['common']['socket']
+        try:
+            self._address = conveyor.ipc.getaddress(value)
+        except conveyor.ipc.UnknownProtocolException as e:
+            code = 1
+            self._log.error('unknown socket protocol: %s', e.protocol)
+        except conveyor.ipc.MissingHostException as e:
+            code = 1
+            self._log.error('missing socket host: %s', e.value)
+        except conveyor.ipc.MissingPortException as e:
+            code = 1
+            self._log.error('missing socket port: %s', e.value)
+        except conveyor.ipc.InvalidPortException as e:
+            code = 1
+            self._log.error('invalid socket port: %s', e.port)
+        except conveyor.ipc.MissingPathException as e:
+            code = 1
+            self._log.error('missing socket path: %s', e.value)
+        else:
+            code = None
+        return code
+
+    def _run(self):
+        raise NotImplementedError
+
+    def _initeventqueue(self):
+        value = self._config[self._configsection]['eventthreads']
+        try:
+            count = int(value)
+        except ValueError:
+            code = 1
+            self._log.critical(
+                'invalid value for "%s/eventthreads": %s', self._configsection,
+                value)
+        else:
+            eventqueue = conveyor.event.geteventqueue()
+            for i in range(count):
+                name = 'eventqueue-%d' % (i,)
+                thread = threading.Thread(target=eventqueue.run, name=name)
+                thread.start()
+                self._eventthreads.append(thread)
+
+    def _stopeventqueue(self):
+        eventqueue = conveyor.event.geteventqueue()
+        eventqueue.quit()
+        for thread in self._eventthreads:
+            thread.join(1)
+            if thread.is_alive():
+                self._log.debug('thread not terminated: %r', thread)
+
     def main(self, argv):
+        self._unparsedargs = argv
         try:
             conveyor.debug.initdebug()
-            parser = self._initparser()
-            args = parser.parse_args(argv[1:])
-            if args.level:
-                root = logging.getLogger()
-                root.setLevel(args.level)
-            code = self._run(parser, args)
+            try:
+                code = self._sequence(*self._getstages())
+            finally:
+                self._stopeventqueue()
         except KeyboardInterrupt:
             code = 0
             self._log.warning('interrupted', exc_info=True)
@@ -112,9 +331,4 @@ class AbstractMain(object):
         return code
 
 class _AbstractMainTestCase(unittest.TestCase):
-    def test__run(self):
-        '''Test that the _run method throws a NotImplementedError.'''
-
-        main = AbstractMain('test')
-        with self.assertRaises(NotImplementedError):
-            main._run(None, None)
+    pass

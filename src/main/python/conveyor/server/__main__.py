@@ -19,12 +19,8 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import argparse
-import json
-import logging.config
 import os
 import sys
-import threading
 
 try:
     import unittest2 as unittest
@@ -37,86 +33,37 @@ import conveyor.server
 
 class _ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
-        conveyor.main.AbstractMain.__init__(self, 'conveyord')
+        conveyor.main.AbstractMain.__init__(self, 'conveyord', 'server')
 
-    def _initparser(self):
-        parser = conveyor.main.AbstractMain._initparser(self)
-        for method in (
-            self._initparser_config,
-            self._initparser_logging,
-            self._initparser_nofork,
-            self._initparser_version,
-            ):
-                method(parser)
-        return parser
-
-    def _initparser_config(self, parser):
-        parser.add_argument(
-            '-c',
-            '--config',
-            default='/etc/conveyor/conveyord.conf',
-            type=str,
-            help='the configuration file',
-            metavar='FILE')
-
-    def _initparser_nofork(self, parser):
+    def _initparser_common(self, parser):
+        conveyor.main.AbstractMain._initparser_common(self, parser)
         parser.add_argument(
             '--nofork',
             action='store_true',
             default=False,
             help='do not fork nor detach from the terminal')
 
-    def _setdefaults(self, config):
-        config.setdefault('pidfile', '/var/run/conveyor/conveyord.pid')
-        config.setdefault('chdir', True)
-        config.setdefault('eventthreads', 2)
-        config.setdefault('socket', 'unix:/var/run/conveyor/conveyord.socket')
+    def _initsubparsers(self):
+        return None
 
-    def _run(self, parser, args):
-        try:
-            with open(args.config, 'r') as fp:
-                config = json.load(fp)
-        except EnvironmentError as e:
-            code = 1
-            self._log.critical(
-                'failed to open configuration file: %s: %s', args.config,
-                e.strerror, exc_info=True)
-        except ValueError:
-            code = 1
-            self._log.critical(
-                'failed to parse configuration file: %s', args.config,
-                exc_info=True)
-        else:
-            self._setdefaults(config)
-            code = self._run_daemon(args, config)
-        return code
-
-    # These are the methods called during initialization. Each method makes a
-    # tail call (non-optimized, of course) to the next method.
-    #
-    # 1. _run_daemon
-    # 2. _run_logging
-    # 3. _run_eventqueue
-    # 4. _run_socket
-    # 5. _run_server
-    #
-
-    def _run_daemon(self, args, config):
-        if args.nofork:
-            code = self._run_logging(args, config)
+    def _run(self):
+        if self._parsedargs.nofork:
+            code = self._run_server()
         else:
             try:
                 import daemon
                 import lockfile.pidlockfile
             except ImportError:
                 self._log.debug('handled exception', exc_info=True)
-                code = self._run_server(args, config)
+                code = self._run_server()
             else:
-                pidfile = config['pidfile']
+                files_preserve = list(conveyor.log.getfiles())
+                pidfile = self._config['server']['pidfile']
                 dct = {
+                    'files_preserve': files_preserve,
                     'pidfile': lockfile.pidlockfile.PIDLockFile(pidfile)
                 }
-                if not config['chdir']:
+                if not self._config['server']['chdir']:
                     dct['working_directory'] = os.getcwd()
                 context = daemon.DaemonContext(**dct)
                 def terminate(signal_number, stack_frame):
@@ -126,76 +73,16 @@ class _ServerMain(conveyor.main.AbstractMain):
                     sys.exit(0)
                 context.terminate = terminate # monkey patch!
                 with context:
-                    code = self._run_logging(args, config)
+                    code = self._run_server()
         return code
 
-    def _run_logging(self, args, config):
-        self._log.info('starting conveyord')
-        try:
-            dct = config.get('logging')
-            if None is not dct:
-                dct['incremental'] = False
-                dct['disable_existing_loggers'] = False
-                logging.config.dictConfig(dct)
-                if args.level:
-                    root = logging.getLogger()
-                    root.setLevel(args.level)
-        except ValueError as e:
-            code = 1
-            self._log.critical(
-                'invalid logging configuration: %s', e.message, exc_info=True)
-        else:
-            code = self._run_eventqueue(args, config)
-        return code
-
-    def _run_eventqueue(self, args, config):
-        value = config.get('eventthreads')
-        try:
-            count = int(value)
-        except ValueError:
-            code = 1
-            self._log.critical('invalid value for "eventthreads": %s', value)
-        else:
-            eventqueue = conveyor.event.geteventqueue()
-            threads = []
-            for i in range(count):
-                name = 'eventqueue-%d' % (i,)
-                thread = threading.Thread(target=eventqueue.run, name=name)
-                thread.start()
-                threads.append(thread)
-            try:
-                code = self._run_socket(args, config)
-            finally:
-                eventqueue.quit()
-                for thread in threads:
-                    thread.join(1)
-                    if thread.is_alive():
-                        self._log.debug('thread not terminated: %r', thread)
-        return code
-
-    def _run_socket(self, args, config):
-        value = config['socket']
-        address = self._getaddress(value)
-        if None == address:
-            # NOTE: _getaddress has issues the error message itself.
-            code = 1
-        else:
-            with address:
-                try:
-                    sock = address.listen()
-                except EnvironmentError as e:
-                    code = 1
-                    self._log.critical(
-                        'failed to open socket: %s: %s', value,
-                        e.strerror, exc_info=True)
-                else:
-                    code = self._run_server(args, config, sock)
-        return code
-
-    def _run_server(self, args, config, sock):
-        server = conveyor.server.Server(sock)
-        code = server.run()
-        return code
+    def _run_server(self):
+        self._initeventqueue()
+        with self._address:
+            self._socket = self._address.listen()
+            server = conveyor.server.Server(self._socket)
+            code = server.run()
+            return code
 
 class _ServerMainTestCase(unittest.TestCase):
     pass

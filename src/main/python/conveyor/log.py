@@ -34,6 +34,8 @@ except ImportError:
 import conveyor.event
 
 def earlylogging(program): # pragma: no cover
+    '''Initialize console logging for the early part of a conveyor process.'''
+
     dct = {
         'version': 1,
         'formatters': {
@@ -74,6 +76,25 @@ def earlylogging(program): # pragma: no cover
         'disable_existing_loggers': True
     }
     logging.config.dictConfig(dct)
+
+def getfiles():
+    '''Return an iterator of the files open by the logging system.
+
+    This assumes that the relevant logging handlers are subclasses of
+    logging.StreamHandler.
+
+    This function relies on internal logging module voodoo.
+
+    '''
+
+    logging._acquireLock()
+    try:
+        for ref in logging._handlerList:
+            handler = ref()
+            if isinstance(handler, logging.StreamHandler):
+                yield handler.stream
+    finally:
+        logging._releaseLock()
 
 class ConsoleFormatter(logging.Formatter):
     '''A log formatter that does not emit the exception stack trace unless

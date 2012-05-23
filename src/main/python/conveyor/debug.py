@@ -27,12 +27,21 @@ import threading
 import traceback
 
 def initdebug(): # pragma: no cover
+    '''Initialize thread debugging support.
+
+    The process will log the list of threads when it receives SIGUSR1 (on
+    platforms that have SIGUSR1; sorry Windows).
+
+    '''
+
     if hasattr(signal, 'SIGUSR1'):
         def _sigusr1(signum, frame): # pragma: no cover
             logthreads(logging.INFO)
         signal.signal(signal.SIGUSR1, _sigusr1)
 
 def logthreads(level): # pragma: no cover
+    '''Log the list of threads at the specified logging level.'''
+
     log = logging.getLogger('conveyor.debug')
     log.log(level, 'threads:')
     threads = {}
