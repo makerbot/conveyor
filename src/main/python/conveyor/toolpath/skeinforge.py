@@ -159,13 +159,12 @@ class SkeinforgeToolpath(object):
         yield (skeinforgepath,)
 
     def _getarguments_skeinforge(self, configuration, stlpath):
-        yield ('-p',)
         profile = configuration.profile
         if None is profile:
             profile = os.path.join(
                 _CONVEYORDIR,
                 'src/main/skeinforge/Replicator slicing defaults')
-        yield (profile,)
+        yield ('-p', profile)
         for method in (
             self._getarguments_raft,
             self._getarguments_support,
