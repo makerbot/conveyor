@@ -46,55 +46,51 @@ class _ClientThread(threading.Thread):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         return None
 
+    def _stoppedcallback(self, task):
+        if conveyor.task.TaskConclusion.ENDED == task.conclusion:
+            self._log.info('job %d ended', self._id)
+        elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+            self._log.info('job %d failed', self._id)
+        elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+            self._log.info('job %d canceled', self._id)
+        else:
+            raise ValueError(task.conclusion)
+        params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
+        self._jsonrpc.notify('notify', params)
+
     def _print(self, thing):
         self._log.debug('thing=%r', thing)
+        def runningcallback(task):
+            self._log.info(
+                'printing: %s (job %d)', thing, self._id)
         recipemanager = conveyor.recipe.RecipeManager()
         recipe = recipemanager.getrecipe(thing)
         task = recipe.print()
-        def runningcallback(unused):
-            self._log.info(
-                'printing: %s (job %d)', thing, self._id)
         task.runningevent.attach(runningcallback)
-        def stoppedcallback(unused):
-            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                self._log.info('job %d ended', self._id)
-            elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-                self._log.info('job %d failed', self._id)
-            elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
-                self._log.info('job %d canceled', self._id)
-            else:
-                raise ValueError(task.conclusion)
-            params = [
-                self._id, conveyor.task.TaskState.STOPPED,
-                conveyor.task.TaskConclusion.ENDED]
-            self._jsonrpc.notify('notify', params)
-        task.stoppedevent.attach(stoppedcallback)
+        task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
 
     def _printtofile(self, thing, s3g):
         self._log.debug('thing=%r, s3g=%r', thing, s3g)
+        def runningcallback(task):
+            self._log.info(
+                'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
         recipemanager = conveyor.recipe.RecipeManager()
         recipe = recipemanager.getrecipe(thing)
         task = recipe.printtofile(s3g)
-        def runningcallback(unused):
-            self._log.info(
-                'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
         task.runningevent.attach(runningcallback)
-        def stoppedcallback(unused):
-            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                self._log.info('job %d ended', self._id)
-            elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-                self._log.info('job %d failed', self._id)
-            elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
-                self._log.info('job %d canceled', self._id)
-            else:
-                raise ValueError(task.conclusion)
-            params = [
-                self._id, conveyor.task.TaskState.STOPPED,
-                conveyor.task.TaskConclusion.ENDED]
-            self._jsonrpc.notify('notify', params)
-        task.stoppedevent.attach(stoppedcallback)
+        task.stoppedevent.attach(self._stoppedcallback)
+        self._server.appendtask(task)
+        return None
+
+    def _slice(self, thing, gcode):
+        self._log.debug('thing=%r, gcode=%r', thing, gcode)
+        def runningcallback(task):
+            task.end(None) # TODO
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningcallback)
+        task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
 
@@ -102,6 +98,7 @@ class _ClientThread(threading.Thread):
         self._jsonrpc.addmethod('hello', self._hello)
         self._jsonrpc.addmethod('print', self._print)
         self._jsonrpc.addmethod('printtofile', self._printtofile)
+        self._jsonrpc.addmethod('slice', self._slice)
         self._server.appendclientthread(self)
         try:
             self._jsonrpc.run()
