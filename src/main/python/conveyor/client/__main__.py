@@ -41,6 +41,7 @@ class _ClientMain(conveyor.main.AbstractMain):
         subparsers = self._parser.add_subparsers(dest='command', title='Commands')
         self._initsubparser_print(subparsers)
         self._initsubparser_printtofile(subparsers)
+        self._initsubparser_slice(subparsers)
 
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print a .thing')
@@ -57,6 +58,16 @@ class _ClientMain(conveyor.main.AbstractMain):
             'thing', help='the path to the .thing file', metavar='THING')
         parser.add_argument(
             's3g', help='the output path for the .s3g file', metavar='S3G')
+
+    def _initsubparser_slice(self, subparsers):
+        parser = subparsers.add_parser('slice', help='slice a .thing into .gcode')
+        parser.set_defaults(func=self._run_slice)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'thing', help='the path to the .thing file', metavar='THING')
+        parser.add_argument(
+            'gcode', help='the output path for the .gcode file',
+            metavar='GCODE')
 
     def _run(self):
         self._initeventqueue()
@@ -83,6 +94,14 @@ class _ClientMain(conveyor.main.AbstractMain):
             'printing to file: %s -> %s', self._parsedargs.thing,
             self._parsedargs.s3g)
         code = self._run_client('printtofile', params)
+        return code
+
+    def _run_slice(self):
+        params = [self._parsedargs.thing, self._parsedargs.gcode]
+        self._log.info(
+            'slicing to file: %s -> %s', self._parsedargs.thing,
+            self._parsedargs.gcode)
+        code = self._run_client('slice', params)
         return code
 
     def _run_client(self, method, params):
