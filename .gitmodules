@@ -1,3 +1,6 @@
 [submodule "submodule/skeinforge"]
 	path = submodule/skeinforge
 	url = ../skeinforge
+[submodule "submodule/Miracle-Grue"]
+	path = submodule/Miracle-Grue
+	url = ../Miracle-Grue
