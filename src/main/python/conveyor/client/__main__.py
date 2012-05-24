@@ -120,6 +120,7 @@ class _ClientMain(conveyor.main.AbstractMain):
         ]
         if self._parsedargs.json:
             json.dump(printers, sys.stdout)
+            print('')
         else:
             for i, printer in enumerate(printers):
                 if 0 != i:
