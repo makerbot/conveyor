@@ -66,6 +66,7 @@ class SkeinforgeToolpath(object):
         if None is configuration:
             configuration = SkeinforgeConfiguration()
         def runningcallback(task):
+            self._log.info('slicing with Skeinforge')
             try:
                 directory = tempfile.mkdtemp()
                 try:
@@ -74,6 +75,7 @@ class SkeinforgeToolpath(object):
                     shutil.copy2(stlpath, tmp_stlpath)
                     arguments = list(
                         self._getarguments(configuration, tmp_stlpath))
+                    self._log.debug('arguments=%r', arguments)
                     popen = subprocess.Popen(
                         arguments, executable=sys.executable,
                         stdout=subprocess.PIPE)
@@ -91,6 +93,8 @@ class SkeinforgeToolpath(object):
                                 total = int(match.group('total'))
                                 task.heartbeat((layer, total))
                     code = popen.wait()
+                    self._log.debug(
+                        'Skeinforge terminated with status code %d', code)
                     if 0 != code:
                         raise Exception(code)
                     else:

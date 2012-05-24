@@ -28,13 +28,18 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.enum
 import conveyor.process
 import conveyor.task
 import conveyor.thing
 import conveyor.printer.replicator
+import conveyor.toolpath.miraclegrue
 import conveyor.toolpath.skeinforge
 
 class RecipeManager(object):
+    def __init__(self, config):
+        self._config = config
+
     def getrecipe(self, thing):
         if not os.path.exists(thing):
             raise Exception
@@ -48,15 +53,16 @@ class RecipeManager(object):
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
                 if 1 == len(manifest.instances):
-                    recipe = _SingleRecipe(manifest)
+                    recipe = _SingleRecipe(self._config, manifest)
                 elif 2 == len(manifest.instances):
-                    recipe = _DualRecipe(manifest)
+                    recipe = _DualRecipe(self._config, manifest)
                 else:
                     raise Exception
                 return recipe
 
 class Recipe(object):
-    def __init__(self, manifest):
+    def __init__(self, config, manifest):
+        self._config = config
         self._manifest = manifest
 
     def _createtask(self, func):
@@ -66,47 +72,51 @@ class Recipe(object):
         gcode = ''.join((stl[:-4], '.gcode'))
         return gcode
 
-    def _getinstance(self, manifest, name):
-        for instance in manifest.instances.itervalues():
+    def _getinstance(self, name):
+        for instance in self._manifest.instances.itervalues():
             if name == instance.construction.name:
                 return instance
         raise Exception
 
-    def _getinstance_a(self, manifest):
-        instance = self._getinstance(manifest, 'plastic A')
+    def _getinstance_a(self):
+        instance = self._getinstance('plastic A')
         return instance
 
-    def _getinstance_b(self, manifest):
-        instance = self._getinstance(manifest, 'plastic B')
+    def _getinstance_b(self):
+        instance = self._getinstance('plastic B')
         return instance
+
+    def _faketask(self):
+        def runningcallback(task):
+            task.end(None)
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningcallback)
+        return task
 
     def print(self):
-        def func(printer, inputpath):
-            task = printer.build(inputpath)
-            return task
-        task = self._createtask(func)
+        task = self._faketask()
         return task
 
     def printtofile(self, s3g):
-        def func(printer, inputpath):
-            outputpath = os.path.abspath(s3g)
-            task = printer.buildtofile(inputpath, outputpath)
-            return task
-        task = self._createtask(func)
+        task = self._faketask()
         return task
 
+    def slice(self, gcode):
+        raise NotImplementedError
+
 class _SingleRecipe(Recipe):
-    def _createtask(self, func):
-        def runningevent(task):
-            task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(runningevent)
+    def slice(self, gcode):
+        value = self._config['common']['slicer']
+        if 'miraclegrue' == value:
+            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
+        elif 'skeinforge' == value:
+            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
+        else:
+            raise ValueError(value)
+        instance = self._getinstance_a()
+        objectpath = os.path.join(self._manifest.base, instance.object.name)
+        task = toolpath.generate(objectpath, gcode)
         return task
 
 class _DualRecipe(Recipe):
-    def _createtask(self, func):
-        def runningevent(task):
-            task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(runningevent)
-        return task
+    pass

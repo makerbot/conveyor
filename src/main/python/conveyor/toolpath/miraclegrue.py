@@ -47,13 +47,15 @@ class MiracleGrueToolpath(object):
         if None is configuration:
             configuration = MiracleGrueConfiguration()
         def runningcallback(task):
+            self._log.info('slicing with Miracle Grue')
             try:
                 arguments = list(self._getarguments(
                     configuration, stlpath, gcodepath))
-                print('arguments:')
-                print(arguments)
+                self._log.debug('arguments=%r', arguments)
                 popen = subprocess.Popen(arguments)
                 code = popen.wait()
+                self._log.debug(
+                    'Miracle Grue terminated with status code %d', code)
                 if 0 != code:
                     raise Exception(code)
             except Exception as e:
@@ -93,6 +95,7 @@ class MiracleGrueToolpath(object):
         yield ('-c', configpath,)
         yield ('-s', startpath,)
         yield ('-e', endpath,)
+        yield ('-o', gcodepath,)
         yield (stlpath,)
 
 def _main(argv):

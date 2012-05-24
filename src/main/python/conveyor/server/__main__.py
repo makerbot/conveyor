@@ -80,7 +80,7 @@ class _ServerMain(conveyor.main.AbstractMain):
         self._initeventqueue()
         with self._address:
             self._socket = self._address.listen()
-            server = conveyor.server.Server(self._socket)
+            server = conveyor.server.Server(self._config, self._socket)
             code = server.run()
             return code
 

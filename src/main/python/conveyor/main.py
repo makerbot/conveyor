@@ -148,6 +148,7 @@ class AbstractMain(object):
         self._config.setdefault('common', {})
         self._config['common'].setdefault(
             'socket', 'unix:/var/run/conveyor/conveyord.socket')
+        self._config['common'].setdefault('slicer', 'miraclegrue')
         return None
 
     def _setconfigdefaults_server(self):
@@ -173,11 +174,23 @@ class AbstractMain(object):
         return code
 
     def _checkconfig_common(self):
-        code = self._sequence(self._checkconfig_common_socket)
+        code = self._sequence(
+            self._checkconfig_common_socket,
+            self._checkconfig_common_slicer)
         return code
 
     def _checkconfig_common_socket(self):
         code = self._require_string('common', 'socket')
+        return code
+
+    def _checkconfig_common_slicer(self):
+        code = self._require_string('common', 'slicer')
+        if None is code:
+            value = self._config['common']['slicer']
+            if value not in ('miraclegrue', 'skeinforge'):
+                code = 1
+                self._log.critical(
+                    "unsupported value for 'common/slicer': %s", value)
         return code
 
     def _checkconfig_server(self):

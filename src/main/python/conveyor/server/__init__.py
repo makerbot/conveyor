@@ -30,13 +30,14 @@ import conveyor.recipe
 
 class _ClientThread(threading.Thread):
     @classmethod
-    def create(cls, server, fp, id):
+    def create(cls, config, server, fp, id):
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
-        clientthread = _ClientThread(server, jsonrpc, id)
+        clientthread = _ClientThread(config, server, jsonrpc, id)
         return clientthread
 
-    def __init__(self, server, jsonrpc, id):
+    def __init__(self, config, server, jsonrpc, id):
         threading.Thread.__init__(self)
+        self._config = config
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
         self._id = id
@@ -63,7 +64,7 @@ class _ClientThread(threading.Thread):
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
-        recipemanager = conveyor.recipe.RecipeManager()
+        recipemanager = conveyor.recipe.RecipeManager(self._config)
         recipe = recipemanager.getrecipe(thing)
         task = recipe.print()
         task.runningevent.attach(runningcallback)
@@ -76,7 +77,7 @@ class _ClientThread(threading.Thread):
         def runningcallback(task):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
-        recipemanager = conveyor.recipe.RecipeManager()
+        recipemanager = conveyor.recipe.RecipeManager(self._config)
         recipe = recipemanager.getrecipe(thing)
         task = recipe.printtofile(s3g)
         task.runningevent.attach(runningcallback)
@@ -87,8 +88,11 @@ class _ClientThread(threading.Thread):
     def _slice(self, thing, gcode):
         self._log.debug('thing=%r, gcode=%r', thing, gcode)
         def runningcallback(task):
-            task.end(None) # TODO
-        task = conveyor.task.Task()
+            self._log.info(
+                'slicing: %s -> %s (job %d)', thing, gcode, self._id)
+        recipemanager = conveyor.recipe.RecipeManager(self._config)
+        recipe = recipemanager.getrecipe(thing)
+        task = recipe.slice(gcode)
         task.runningevent.attach(runningcallback)
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
@@ -152,8 +156,9 @@ class Queue(object):
             self._condition.notify_all()
 
 class Server(object):
-    def __init__(self, sock):
+    def __init__(self, config, sock):
         self._clientthreads = []
+        self._config = config
         self._idcounter = 0
         self._lock = threading.Lock()
         self._queue = Queue()
@@ -186,7 +191,7 @@ class Server(object):
                     fp = conveyor.jsonrpc.socketadapter(conn)
                     id = self._idcounter
                     self._idcounter += 1
-                    clientthread = _ClientThread.create(self, fp, id)
+                    clientthread = _ClientThread.create(self._config, self, fp, id)
                     clientthread.start()
         finally:
             self._queue.quit()

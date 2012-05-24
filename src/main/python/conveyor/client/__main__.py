@@ -91,8 +91,8 @@ class _ClientMain(conveyor.main.AbstractMain):
         except EnvironmentError as e:
             code = 1
             self._log.critical(
-                'failed to open socket: %s: %s', value,
-                e.strerror, exc_info=True)
+                'failed to open socket: %s: %s',
+                self._config['common']['socket'], e.strerror, exc_info=True)
         else:
             code = self._parsedargs.func()
         return code
