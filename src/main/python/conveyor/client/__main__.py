@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import json
 import sys
 
 try:
@@ -39,9 +40,23 @@ class _ClientMain(conveyor.main.AbstractMain):
 
     def _initsubparsers(self):
         subparsers = self._parser.add_subparsers(dest='command', title='Commands')
-        self._initsubparser_print(subparsers)
-        self._initsubparser_printtofile(subparsers)
-        self._initsubparser_slice(subparsers)
+        for method in (
+            self._initsubparser_print,
+            self._initsubparser_printers,
+            self._initsubparser_printtofile,
+            self._initsubparser_slice,
+            ):
+                method(subparsers)
+
+    def _initsubparser_printers(self, subparsers):
+        parser = subparsers.add_parser('printers', help='list connected printers')
+        parser.set_defaults(func=self._run_printers)
+        self._initparser_common(parser)
+        parser.add_argument(
+            '--json',
+            action='store_true',
+            default=False,
+            help='print in JSON format')
 
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print a .thing')
@@ -87,6 +102,33 @@ class _ClientMain(conveyor.main.AbstractMain):
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
         return code
+
+    def _run_printers(self):
+        printers = [
+            {
+                'name': 'bot 1',
+                'kind': 'Replicator',
+                'extruders': 2,
+                'printtofile': True
+            },
+            {
+                'name': 'bot 2',
+                'kind': 'Replicator',
+                'extruders': 2,
+                'printtofile': True
+            }
+        ]
+        if self._parsedargs.json:
+            json.dump(printers, sys.stdout)
+        else:
+            for i, printer in enumerate(printers):
+                if 0 != i:
+                    print('')
+                print('Name: %s' % (printer['name'],))
+                print('Kind: %s' % (printer['kind'],))
+                print('Extruders: %s' % (printer['extruders'],))
+                print('Print to File: %s' % (printer['printtofile'],))
+        return 0
 
     def _run_printtofile(self):
         params = [self._parsedargs.thing, self._parsedargs.s3g]

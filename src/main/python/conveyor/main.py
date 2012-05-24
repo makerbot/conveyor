@@ -126,13 +126,13 @@ class AbstractMain(object):
         except EnvironmentError as e:
             code = 1
             self._log.critical(
-                'failed to open configuration file: %s: %s', args.config,
-                e.strerror, exc_info=True)
+                'failed to open configuration file: %s: %s',
+                self._parsedargs.config, e.strerror, exc_info=True)
         except ValueError:
             code = 1
             self._log.critical(
-                'failed to parse configuration file: %s', args.config,
-                exc_info=True)
+                'failed to parse configuration file: %s',
+                self._parsedargs.config, exc_info=True)
         else:
             code = None
         return code
