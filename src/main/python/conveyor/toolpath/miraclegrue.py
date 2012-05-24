@@ -82,12 +82,17 @@ class MiracleGrueToolpath(object):
         yield (path,)
 
     def _getarguments_miraclegrue(self, configuration, stlpath, gcodepath):
-        path = configuration.miraclegruepath
-        if None is path:
-            path = os.path.abspath(os.path.join(
+        configpath = configuration.miraclegruepath
+        if None is configpath:
+            configpath = os.path.abspath(os.path.join(
                 _CONVEYORDIR, 'submodule/Miracle-Grue/miracle.config'))
-        yield ('-c', path)
-        yield ('-o', gcodepath)
+        startpath = os.path.abspath(os.path.join(
+            _CONVEYORDIR, 'submodule/Miracle-Grue/start_replicator_dual.gcode'))
+        endpath = os.path.abspath(os.path.join(
+            _CONVEYORDIR, 'submodule/Miracle-Grue/end_replicator_dual.gcode'))
+        yield ('-c', configpath,)
+        yield ('-s', startpath,)
+        yield ('-e', endpath,)
         yield (stlpath,)
 
 def _main(argv):
