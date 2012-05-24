@@ -107,12 +107,14 @@ class _ClientMain(conveyor.main.AbstractMain):
         printers = [
             {
                 'name': 'bot 1',
+                'displayname': 'Bot 1',
                 'kind': 'Replicator',
                 'extruders': 2,
                 'printtofile': True
             },
             {
                 'name': 'bot 2',
+                'displayname': 'Bot 2',
                 'kind': 'Replicator',
                 'extruders': 2,
                 'printtofile': True
