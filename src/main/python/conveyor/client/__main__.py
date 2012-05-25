@@ -128,6 +128,7 @@ class _ClientMain(conveyor.main.AbstractMain):
                 if 0 != i:
                     print('')
                 print('Name: %s' % (printer['name'],))
+                print('Display Name: %s' % (printer['displayname'],))
                 print('Kind: %s' % (printer['kind'],))
                 print('Extruders: %s' % (printer['extruders'],))
                 print('Print to File: %s' % (printer['printtofile'],))
