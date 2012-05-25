@@ -20,13 +20,14 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import logging
+import s3g
 
 class ReplicatorPrinter(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def build(self):
+    def print(self, gcode):
         pass
 
-    def buildtofile(self):
-        pass
+    def printtofile(self, gcode, s3g):
+        raise NotImplementedError

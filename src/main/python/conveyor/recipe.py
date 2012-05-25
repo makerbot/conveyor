@@ -41,6 +41,22 @@ class RecipeManager(object):
         self._config = config
 
     def getrecipe(self, thing):
+        if thing.endswith('.gcode'):
+            recipe = self._getrecipe_gcode(thing)
+        else:
+            recipe = self._getrecipe_thing(thing)
+        return recipe
+
+    def _getrecipe_gcode(self, gcode):
+        if not os.path.exists(gcode):
+            raise Exception
+        elif not os.path.isfile(gcode):
+            raise Exception
+        else:
+            recipe = _GcodeRecipe(self._config, gcode)
+            return recipe
+
+    def _getrecipe_thing(self, thing):
         if not os.path.exists(thing):
             raise Exception
         elif not os.path.isdir(thing):
@@ -53,16 +69,39 @@ class RecipeManager(object):
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
                 if 1 == len(manifest.instances):
-                    recipe = _SingleRecipe(self._config, manifest)
+                    recipe = _SingleThingRecipe(self._config, manifest)
                 elif 2 == len(manifest.instances):
-                    recipe = _DualRecipe(self._config, manifest)
+                    recipe = _DualThingRecipe(self._config, manifest)
                 else:
                     raise Exception
                 return recipe
 
 class Recipe(object):
-    def __init__(self, config, manifest):
+    def __init__(self, config):
         self._config = config
+
+    def print(self):
+        raise NotImplementedError
+
+    def printtofile(self, s3g):
+        raise NotImplementedError
+
+    def slice(self, gcode):
+        raise NotImplementedError
+
+class _GcodeRecipe(Recipe):
+    def __init__(self, config, gcode):
+        Recipe.__init__(config)
+        self._gcode = gcode
+
+    def print(self):
+        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        task = printer.print(self._gcode)
+        return task
+
+class _ThingRecipe(Recipe):
+    def __init__(self, config, manifest):
+        Recipe.__init__(config)
         self._manifest = manifest
 
     def _createtask(self, func):
@@ -101,10 +140,7 @@ class Recipe(object):
         task = self._faketask()
         return task
 
-    def slice(self, gcode):
-        raise NotImplementedError
-
-class _SingleRecipe(Recipe):
+class _SingleThingRecipe(_ThingRecipe):
     def slice(self, gcode):
         value = self._config['common']['slicer']
         if 'miraclegrue' == value:
@@ -118,5 +154,5 @@ class _SingleRecipe(Recipe):
         task = toolpath.generate(objectpath, gcode)
         return task
 
-class _DualRecipe(Recipe):
+class _DualThingRecipe(_ThingRecipe):
     pass
