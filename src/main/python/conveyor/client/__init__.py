@@ -53,7 +53,7 @@ class Client(object):
             if conveyor.task.TaskConclusion.ENDED == conclusion:
                 self._code = 0
             elif conveyor.task.TaskConclusion.FAILED == conclusion:
-                self._log.error('job failed: %r', task.failure)
+                self._log.error('job failed')
                 self._code = 1
             elif conveyor.task.TaskConclusion.CANCELED == conclusion:
                 self._log.warning('job canceled')

@@ -87,9 +87,9 @@ class MiracleGrueToolpath(object):
         configpath = configuration.miraclegruepath
         if None is configpath:
             configpath = os.path.abspath(os.path.join(
-                _CONVEYORDIR, 'submodule/Miracle-Grue/miracle.config'))
+                _CONVEYORDIR, 'submodule/Miracle-Grue/miracle-pla-noaccel.config'))
         startpath = os.path.abspath(os.path.join(
-            _CONVEYORDIR, 'submodule/Miracle-Grue/start_replicator_dual.gcode'))
+            _CONVEYORDIR, 'submodule/Miracle-Grue/start_replicator_dual_pla.gcode'))
         endpath = os.path.abspath(os.path.join(
             _CONVEYORDIR, 'submodule/Miracle-Grue/end_replicator_dual.gcode'))
         yield ('-c', configpath,)

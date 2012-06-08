@@ -4,3 +4,6 @@
 [submodule "submodule/Miracle-Grue"]
 	path = submodule/Miracle-Grue
 	url = ../Miracle-Grue
+[submodule "submodule/s3g"]
+	path = submodule/s3g
+	url = ../s3g

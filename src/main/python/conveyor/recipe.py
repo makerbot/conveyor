@@ -91,7 +91,7 @@ class Recipe(object):
 
 class _GcodeRecipe(Recipe):
     def __init__(self, config, gcode):
-        Recipe.__init__(config)
+        Recipe.__init__(self, config)
         self._gcode = gcode
 
     def print(self):
@@ -99,9 +99,14 @@ class _GcodeRecipe(Recipe):
         task = printer.print(self._gcode)
         return task
 
+    def printtofile(self, s3gpath):
+        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        task = printer.printtofile(self._gcode, s3gpath)
+        return task
+
 class _ThingRecipe(Recipe):
     def __init__(self, config, manifest):
-        Recipe.__init__(config)
+        Recipe.__init__(self, config)
         self._manifest = manifest
 
     def _createtask(self, func):
@@ -136,12 +141,12 @@ class _ThingRecipe(Recipe):
         task = self._faketask()
         return task
 
-    def printtofile(self, s3g):
+    def printtofile(self, s3gpath):
         task = self._faketask()
         return task
 
 class _SingleThingRecipe(_ThingRecipe):
-    def slice(self, gcode):
+    def print(self):
         value = self._config['common']['slicer']
         if 'miraclegrue' == value:
             toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
@@ -151,7 +156,53 @@ class _SingleThingRecipe(_ThingRecipe):
             raise ValueError(value)
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
-        task = toolpath.generate(objectpath, gcode)
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
+            pass
+        gcodepath = gcodefp.name
+        os.unlink(gcodepath)
+        task1 = toolpath.generate(objectpath, gcodepath)
+        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        task2 = printer.print(gcodepath)
+        def endcallback(task):
+            os.unlink(gcodepath)
+        task = conveyor.process.tasksequence([task1, task2])
+        task.endevent.attach(endcallback)
+        return task
+
+    def printtofile(self, s3gpath):
+        value = self._config['common']['slicer']
+        if 'miraclegrue' == value:
+            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
+        elif 'skeinforge' == value:
+            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
+        else:
+            raise ValueError(value)
+        instance = self._getinstance_a()
+        objectpath = os.path.join(self._manifest.base, instance.object.name)
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
+            pass
+        gcodepath = gcodefp.name
+        os.unlink(gcodepath)
+        task1 = toolpath.generate(objectpath, gcodepath)
+        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        task2 = printer.printtofile(gcodepath, s3gpath)
+        def endcallback(task):
+            os.unlink(gcodepath)
+        task = conveyor.process.tasksequence([task1, task2])
+        task.endevent.attach(endcallback)
+        return task
+
+    def slice(self, gcodepath):
+        value = self._config['common']['slicer']
+        if 'miraclegrue' == value:
+            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
+        elif 'skeinforge' == value:
+            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
+        else:
+            raise ValueError(value)
+        instance = self._getinstance_a()
+        objectpath = os.path.join(self._manifest.base, instance.object.name)
+        task = toolpath.generate(objectpath, gcodepath)
         return task
 
 class _DualThingRecipe(_ThingRecipe):
