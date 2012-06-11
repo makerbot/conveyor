@@ -6,4 +6,4 @@ then
 fi
 
 . virtualenv/bin/activate
-pip install coverage doxypy lockfile python-daemon unittest-xml-reporting
+pip install --use-mirrors coverage doxypy lockfile python-daemon unittest-xml-reporting
