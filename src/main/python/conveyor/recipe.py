@@ -22,6 +22,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import os
 import os.path
 import tempfile
+import zipfile
 
 try:
     import unittest2 as unittest
@@ -61,20 +62,20 @@ class RecipeManager(object):
             raise Exception
         else:
             if not os.path.isdir(thing):
-                recipe = self._gterecipe_thing_zip(thing)
+                recipe = self._getrecipe_thing_zip(thing)
             else:
                 recipe = self._getrecipe_thing_dir(thing)
             return recipe
 
     def _getrecipe_thing_zip(self, thing):
-        directory = tempfile.mkdtep()
+        directory = tempfile.mkdtemp()
         with zipfile.ZipFile(thing, 'r') as zip:
             zip.extractall(directory)
         recipe = self._getrecipe_thing_dir(directory)
         return recipe
 
     def _getrecipe_thing_dir(self, thing):
-        elif not os.path.isdir(thing):
+        if not os.path.isdir(thing):
             raise Exception
         else:
             manifestpath = os.path.join(thing, 'manifest.json')
