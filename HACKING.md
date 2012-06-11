@@ -11,7 +11,7 @@ Prerequisites
 
 On Ubuntu these dependencies can be installed by issuing this command:
 
-        $ sudo apt-get install python-dev python-virtualenv
+        $ sudo apt-get install python-dev python-virtualenv python-serial
 
 Configuration
 -------------
