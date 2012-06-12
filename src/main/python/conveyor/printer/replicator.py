@@ -54,19 +54,29 @@ class ReplicatorPrinter(object):
                     parser.s3g = s3g.s3g()
                     parser.s3g.writer = s3g.Writer.StreamWriter(serialfp)
                     polltime = time.time()
+                    platformtemperature = parser.s3g.GetPlatformTemperature(0)
+                    toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
                     with open(gcodepath) as gcodefp:
                         for currentline, data in enumerate(gcodefp):
                             currentbyte = gcodefp.tell()
                             now = time.time()
                             if polltime <= now:
-                                toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
                                 platformtemperature = parser.s3g.GetPlatformTemperature(0)
-                                self._log.info('toolhead temperature: %r', toolheadtemperature)
+                                toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
                                 self._log.info('platform temperature: %r', platformtemperature)
+                                self._log.info('toolhead temperature: %r', toolheadtemperature)
                                 polltime = now + self._pollinterval
                             self._log.info('gcode: %s', data.strip())
                             parser.ExecuteLine(data)
-                            task.heartbeat((currentline, totallines, currentbyte, totalbytes))
+                            progress = {
+                                'currentline': currentline,
+                                'totallines': totallines,
+                                'currentbyte': currentbyte,
+                                'totalbytes': totalbytes,
+                                'platformtemperature': platformtemperature,
+                                'toolheadtemperature': toolheadtemperature
+                            }
+                            task.heartbeat(progress)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
@@ -92,7 +102,13 @@ class ReplicatorPrinter(object):
                             currentbyte = gcodefp.tell()
                             self._log.info('gcode: %s', data.strip())
                             parser.ExecuteLine(data)
-                            task.heartbeat((currentline, totallines, currentbyte, totalbytes))
+                            progress = {
+                                'currentline': currentline,
+                                'totallines': totallines,
+                                'currentbyte': currentbyte,
+                                'totalbytes': totalbytes
+                            }
+                            task.heartbeat(progress)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
