@@ -52,7 +52,12 @@ class MiracleGrueToolpath(object):
                 arguments = list(self._getarguments(
                     configuration, stlpath, gcodepath))
                 self._log.debug('arguments=%r', arguments)
-                popen = subprocess.Popen(arguments)
+                popen = subprocess.Popen(
+                    arguments, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+                for line in popen.stdout:
+                    line = line.strip()
+                    self._log.info('miracle grue: %s', line)
                 code = popen.wait()
                 self._log.debug(
                     'Miracle Grue terminated with status code %d', code)
