@@ -52,7 +52,7 @@ class _ServerMain(conveyor.main.AbstractMain):
         else:
             try:
                 import daemon
-                import lockfile.pidlockfile
+                import daemon.pidfile
             except ImportError:
                 self._log.debug('handled exception', exc_info=True)
                 code = self._run_server()
@@ -61,7 +61,7 @@ class _ServerMain(conveyor.main.AbstractMain):
                 pidfile = self._config['server']['pidfile']
                 dct = {
                     'files_preserve': files_preserve,
-                    'pidfile': lockfile.pidlockfile.PIDLockFile(pidfile)
+                    'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
                 }
                 if not self._config['server']['chdir']:
                     dct['working_directory'] = os.getcwd()
