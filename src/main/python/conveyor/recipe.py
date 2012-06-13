@@ -33,9 +33,10 @@ import conveyor.enum
 import conveyor.process
 import conveyor.task
 import conveyor.thing
-import conveyor.printer.replicator
+import conveyor.printer.s3g
 import conveyor.toolpath.miraclegrue
 import conveyor.toolpath.skeinforge
+import s3g
 
 class RecipeManager(object):
     def __init__(self, config):
@@ -96,9 +97,23 @@ class Recipe(object):
     def __init__(self, config):
         self._config = config
 
+    def _createtoolpath(self):
+        slicer = self._config['common']['slicer']
+        if 'miraclegrue' == slicer:
+            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
+        elif 'skeinforge' == slicer:
+            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
+        else:
+            raise ValueError(slicer)
+        return toolpath
+
     def _createprinter(self):
-        printer = conveyor.printer.replicator.ReplicatorPrinter(
-            self._config['server']['serialport'])
+        serialport = self._config['common']['serialport']
+        profilename = self._config['common']['profile']
+        profile = s3g.Profile(profilename)
+        baudrate = profile.values['driver']['baudrate']
+        printer = conveyor.printer.s3g.S3gPrinter(
+            profile, serialport, baudrate)
         return printer
 
     def print(self):
@@ -168,13 +183,7 @@ class _ThingRecipe(Recipe):
 
 class _SingleThingRecipe(_ThingRecipe):
     def print(self):
-        value = self._config['common']['slicer']
-        if 'miraclegrue' == value:
-            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
-        elif 'skeinforge' == value:
-            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
-        else:
-            raise ValueError(value)
+        toolpath = self._createtoolpath()
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
@@ -191,13 +200,7 @@ class _SingleThingRecipe(_ThingRecipe):
         return task
 
     def printtofile(self, s3gpath):
-        value = self._config['common']['slicer']
-        if 'miraclegrue' == value:
-            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
-        elif 'skeinforge' == value:
-            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
-        else:
-            raise ValueError(value)
+        toolpath = self._createtoolpath()
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
@@ -214,13 +217,7 @@ class _SingleThingRecipe(_ThingRecipe):
         return task
 
     def slice(self, gcodepath):
-        value = self._config['common']['slicer']
-        if 'miraclegrue' == value:
-            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
-        elif 'skeinforge' == value:
-            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
-        else:
-            raise ValueError(value)
+        toolpath = self._createtoolpath()
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
         task = toolpath.generate(objectpath, gcodepath)
