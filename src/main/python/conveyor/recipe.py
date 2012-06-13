@@ -96,6 +96,11 @@ class Recipe(object):
     def __init__(self, config):
         self._config = config
 
+    def _createprinter(self):
+        printer = conveyor.printer.replicator.ReplicatorPrinter(
+            self._config['server']['serialport'])
+        return printer
+
     def print(self):
         raise NotImplementedError
 
@@ -111,12 +116,12 @@ class _GcodeRecipe(Recipe):
         self._gcode = gcode
 
     def print(self):
-        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        printer = self._createprinter()
         task = printer.print(self._gcode)
         return task
 
     def printtofile(self, s3gpath):
-        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        printer = self._createprinter()
         task = printer.printtofile(self._gcode, s3gpath)
         return task
 
@@ -177,7 +182,7 @@ class _SingleThingRecipe(_ThingRecipe):
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
         task1 = toolpath.generate(objectpath, gcodepath)
-        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        printer = self._createprinter()
         task2 = printer.print(gcodepath)
         def endcallback(task):
             os.unlink(gcodepath)
@@ -200,7 +205,7 @@ class _SingleThingRecipe(_ThingRecipe):
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
         task1 = toolpath.generate(objectpath, gcodepath)
-        printer = conveyor.printer.replicator.ReplicatorPrinter()
+        printer = self._createprinter()
         task2 = printer.printtofile(gcodepath, s3gpath)
         def endcallback(task):
             os.unlink(gcodepath)

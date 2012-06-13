@@ -157,6 +157,7 @@ class AbstractMain(object):
             'pidfile', '/var/run/conveyor/conveyord.pid')
         self._config['server'].setdefault('chdir', True)
         self._config['server'].setdefault('eventthreads', 2)
+        self._config['server'].setdefault('serialport', '/dev/ttyACM0')
         self._config['server'].setdefault('logging', None)
         return None
 
