@@ -64,10 +64,13 @@ class _ClientThread(threading.Thread):
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
+        def heartbeatcallback(task):
+            self._log.info('%r', task.progress)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
         recipe = recipemanager.getrecipe(thing)
         task = recipe.print()
         task.runningevent.attach(runningcallback)
+        task.heartbeatevent.attach(heartbeatcallback)
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
@@ -77,10 +80,13 @@ class _ClientThread(threading.Thread):
         def runningcallback(task):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
+        def heartbeatcallback(task):
+            self._log.info('%r', task.progress)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
         recipe = recipemanager.getrecipe(thing)
         task = recipe.printtofile(s3g)
         task.runningevent.attach(runningcallback)
+        task.heartbeatevent.attach(heartbeatcallback)
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
