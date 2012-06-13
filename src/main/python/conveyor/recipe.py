@@ -111,7 +111,7 @@ class Recipe(object):
         serialport = self._config['common']['serialport']
         profilename = self._config['common']['profile']
         profile = s3g.Profile(profilename)
-        baudrate = profile.values['driver']['baudrate']
+        baudrate = profile.values['baudrate']
         printer = conveyor.printer.s3g.S3gPrinter(
             profile, serialport, baudrate)
         return printer
