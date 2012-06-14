@@ -7,11 +7,10 @@ Prerequisites
 -------------
 
 * Python 2.7
-* Virtualenv
 
 On Ubuntu these dependencies can be installed by issuing this command:
 
-        $ sudo apt-get install python-dev python-virtualenv python-serial
+        $ sudo apt-get install python-dev
 
 Configuration
 -------------
@@ -65,12 +64,10 @@ Kill conveyord
 Print and Slice
 ---------------
 
-Once the daemon is running you can print and slice[*]:
+Once the daemon is running you can print and slice:
 
         $ ./conveyor -c conveyor-user.conf print src/test/thing/rfc-4.1/
 
         $ ./conveyor -c conveyor-user.conf printtofile src/test/thing/rfc-4.1/ output.s3g
 
         $ ./conveyor -c conveyor-user.conf slice src/test/thing/rfc-4.1/ output.gcode
-
-[*] These commands may or may not actually do anything right now.
