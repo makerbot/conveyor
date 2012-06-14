@@ -93,13 +93,7 @@ class MiracleGrueToolpath(object):
         if None is configpath:
             configpath = os.path.abspath(os.path.join(
                 _CONVEYORDIR, 'submodule/Miracle-Grue/miracle-pla.config'))
-        startpath = os.path.abspath(os.path.join(
-            _CONVEYORDIR, 'submodule/Miracle-Grue/start_replicator_dual_pla.gcode'))
-        endpath = os.path.abspath(os.path.join(
-            _CONVEYORDIR, 'submodule/Miracle-Grue/end_replicator_dual.gcode'))
         yield ('-c', configpath,)
-        yield ('-s', startpath,)
-        yield ('-e', endpath,)
         yield ('-o', gcodepath,)
         yield (stlpath,)
 
