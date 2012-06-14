@@ -57,42 +57,51 @@ class S3gPrinter(object):
             bytes += len(data)
         return (lines, bytes)
 
+    def _genericprint(self, task, writer, polltemperature, gcodepath):
+        parser = s3g.Gcode.GcodeParser()
+        parser.state.profile = self._profile
+        parser.state.SetBuildName(str('xyzzy'))
+        parser.s3g = s3g.s3g()
+        parser.s3g.writer = writer
+        if polltemperature:
+            platformtemperature = parser.s3g.GetPlatformTemperature(0)
+            toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
+            now = time.time()
+            polltime = now + self._pollinterval
+        totallines, totalbytes = self._countgcodelines(gcodepath)
+        currentbyte = 0
+        for currentline, data in enumerate(self._gcodelines(gcodepath)):
+            currentbyte += len(data)
+            if polltemperature:
+                now = time.time()
+                if polltime <= now:
+                    platformtemperature = parser.s3g.GetPlatformTemperature(0)
+                    toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
+                    self._log.info('platform temperature: %r', platformtemperature)
+                    self._log.info('toolhead temperature: %r', toolheadtemperature)
+                    polltime = now + self._pollinterval
+            data = data.strip()
+            data = str(data)
+            self._log.info('gcode: %s', data)
+            parser.ExecuteLine(data)
+            progress = {
+                'currentline': currentline,
+                'totallines': totallines,
+                'currentbyte': currentbyte,
+                'totalbytes': totalbytes,
+            }
+            if polltemperature:
+                progress['platformtemperature'] = platformtemperature
+                progress['toolheadtemperature'] = toolheadtemperature
+            task.heartbeat(progress)
+
     def print(self, gcodepath):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
-                totallines, totalbytes = self._countgcodelines(gcodepath)
                 with serial.Serial(self._device, self._baudrate, timeout=0) as serialfp:
-                    parser = s3g.Gcode.GcodeParser()
-                    parser.state.SetBuildName(str('xyzzy'))
-                    parser.state.profile = self._profile
-                    parser.s3g = s3g.s3g()
-                    parser.s3g.writer = s3g.Writer.StreamWriter(serialfp)
-                    platformtemperature = parser.s3g.GetPlatformTemperature(0)
-                    toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
-                    now = time.time()
-                    polltime = now + self._pollinterval
-                    currentbyte = 0
-                    for currentline, data in enumerate(self._gcodelines(gcodepath)):
-                        currentbyte += len(data)
-                        now = time.time()
-                        if polltime <= now:
-                            platformtemperature = parser.s3g.GetPlatformTemperature(0)
-                            toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
-                            self._log.info('platform temperature: %r', platformtemperature)
-                            self._log.info('toolhead temperature: %r', toolheadtemperature)
-                            polltime = now + self._pollinterval
-                        self._log.info('gcode: %s', data.strip())
-                        parser.ExecuteLine(data)
-                        progress = {
-                            'currentline': currentline,
-                            'totallines': totallines,
-                            'currentbyte': currentbyte,
-                            'totalbytes': totalbytes,
-                            'platformtemperature': platformtemperature,
-                            'toolheadtemperature': toolheadtemperature
-                        }
-                        task.heartbeat(progress)
+                    writer = s3g.Writer.StreamWriter(serialfp)
+                    self._genericprint(task, writer, True, gcodepath)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
@@ -106,25 +115,9 @@ class S3gPrinter(object):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
-                totallines, totalbytes = self._countgcodelines(gcodepath)
                 with open(s3gpath, 'w') as s3gfp:
-                    parser = s3g.Gcode.GcodeParser()
-                    parser.state.SetBuildName(str('xyzzy'))
-                    parser.state.profile = self._profile
-                    parser.s3g = s3g.s3g()
-                    parser.s3g.writer = s3g.Writer.FileWriter(s3gfp)
-                    currentbyte = 0
-                    for currentline, data in enumerate(self._gcodelines(gcodepath)):
-                        currentbyte += len(data)
-                        self._log.info('gcode: %s', data.strip())
-                        parser.ExecuteLine(data)
-                        progress = {
-                            'currentline': currentline,
-                            'totallines': totallines,
-                            'currentbyte': currentbyte,
-                            'totalbytes': totalbytes
-                        }
-                        task.heartbeat(progress)
+                    writer = s3g.Writer.FileWriter(s3gfp)
+                    self._genericprint(task, writer, False, gcodepath)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
