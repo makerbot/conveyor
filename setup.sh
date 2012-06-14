@@ -2,7 +2,7 @@
 
 if [ ! -d virtualenv/ ]
 then
-	virtualenv virtualenv
+	python virtualenv.py virtualenv
 fi
 
 . virtualenv/bin/activate
