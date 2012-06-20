@@ -95,23 +95,28 @@ class S3gPrinter(object):
                 progress['toolheadtemperature'] = toolheadtemperature
             task.heartbeat(progress)
 
+    def _openserial(self):
+        serialfp = serial.Serial(self._device, self._baudrate, timeout=0.1)
+
+        # begin baud rate hack
+        #
+        # There is an interaction between the 8U2 firmware and
+        # PySerial where PySerial thinks the 8U2 is already running
+        # at the specified baud rate and it doesn't actually issue
+        # the ioctl calls to set the baud rate. We work around it
+        # by setting the baud rate twice, to two different values.
+        # This forces PySerial to issue the correct ioctl calls.
+        serialfp.baudrate = 9600
+        serialfp.baudrate = self._baudrate
+        # end baud rate hack
+
+        return serialfp
+
     def print(self, gcodepath):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
-                with serial.Serial(self._device, self._baudrate, timeout=0) as serialfp:
-                    # There is an interaction between the 8U2 firmware and
-                    # PySerial where PySerial thinks the 8U2 is already running
-                    # at the specified baud rate and it doesn't actually issue
-                    # the ioctl calls to set the baud rate. We work around it
-                    # by setting the baud rate twice, to two different values.
-                    # This forces PySerial to issue the correct ioctl calls.
-
-                    # begin baud rate hack
-                    serialfp.baudrate = 9600
-                    serialfp.baudrate = self._baudrate
-                    # end baud rate hack
-
+                with self._openserial() as serialfp:
                     writer = s3g.Writer.StreamWriter(serialfp)
                     self._genericprint(task, writer, True, gcodepath)
             except Exception as e:
