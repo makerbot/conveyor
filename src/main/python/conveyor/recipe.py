@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import logging
 import os
 import os.path
 import tempfile
@@ -96,6 +97,7 @@ class RecipeManager(object):
 class Recipe(object):
     def __init__(self, config):
         self._config = config
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def _createtoolpath(self):
         slicer = self._config['common']['slicer']
@@ -112,6 +114,9 @@ class Recipe(object):
         profilename = self._config['common']['profile']
         profile = s3g.Profile(profilename)
         baudrate = profile.values['baudrate']
+        self._log.debug(
+            'serialport=%r, profilename=%r, baudrate=%r', serialport,
+            profilename, baudrate)
         printer = conveyor.printer.s3g.S3gPrinter(
             profile, serialport, baudrate)
         return printer

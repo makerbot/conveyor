@@ -60,7 +60,7 @@ class _ClientThread(threading.Thread):
         self._jsonrpc.notify('notify', params)
 
     def _print(self, thing):
-        self._log.debug('thing=%r', thing)
+        self._log.info('requested print: %s (job %d)', thing, self._id)
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
@@ -76,7 +76,7 @@ class _ClientThread(threading.Thread):
         return None
 
     def _printtofile(self, thing, s3g):
-        self._log.debug('thing=%r, s3g=%r', thing, s3g)
+        self._log.info('requested print to file: %s -> %s (job %d)', thing, s3g, self._id)
         def runningcallback(task):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
@@ -92,7 +92,7 @@ class _ClientThread(threading.Thread):
         return None
 
     def _slice(self, thing, gcode):
-        self._log.debug('thing=%r, gcode=%r', thing, gcode)
+        self._log.info('requested slicing: %s -> %d (job %d)', thing, gcode, self._id)
         def runningcallback(task):
             self._log.info(
                 'slicing: %s -> %s (job %d)', thing, gcode, self._id)
@@ -167,6 +167,7 @@ class Server(object):
         self._config = config
         self._idcounter = 0
         self._lock = threading.Lock()
+        self._log = logging.getLogger(self.__class__.__name__)
         self._queue = Queue()
         self._sock = sock
 
@@ -194,9 +195,10 @@ class Server(object):
                     else:
                         raise
                 else:
-                    fp = conveyor.jsonrpc.socketadapter(conn)
                     id = self._idcounter
                     self._idcounter += 1
+                    self._log.info('accepted connection: addr=%r, id=%r', addr, id)
+                    fp = conveyor.jsonrpc.socketadapter(conn)
                     clientthread = _ClientThread.create(self._config, self, fp, id)
                     clientthread.start()
         finally:
