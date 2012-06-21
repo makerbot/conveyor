@@ -42,48 +42,60 @@ class RecipeManager(object):
     def __init__(self, config):
         self._config = config
 
-    def getrecipe(self, thing):
-        if thing.endswith('.gcode'):
-            recipe = self._getrecipe_gcode(thing)
+    def getrecipe(self, path):
+        root, ext = os.path.splitext(path)
+        if '.gcode' == ext:
+            recipe = self._getrecipe_gcode(path)
+        elif '.stl' == ext:
+            recipe = self._getrecipe_stl(path)
         else:
-            recipe = self._getrecipe_thing(thing)
+            recipe = self._getrecipe_thing(path)
         return recipe
 
-    def _getrecipe_gcode(self, gcode):
-        if not os.path.exists(gcode):
+    def _getrecipe_gcode(self, path):
+        if not os.path.exists(path):
             raise Exception
-        elif not os.path.isfile(gcode):
+        elif not os.path.isfile(path):
             raise Exception
         else:
-            recipe = _GcodeRecipe(self._config, gcode)
+            recipe = _GcodeRecipe(self._config, path)
             return recipe
 
-    def _getrecipe_thing(self, thing):
-        if not os.path.exists(thing):
+    def _getrecipe_stl(self, path):
+        if not os.path.exists(path):
+            raise Exception
+        elif not os.path.isfile(path):
             raise Exception
         else:
-            if not os.path.isdir(thing):
-                recipe = self._getrecipe_thing_zip(thing)
+            recipe = _StlRecipe(self._config, path)
+            return recipe
+
+    def _getrecipe_thing(self, path):
+        if not os.path.exists(path):
+            raise Exception
+        else:
+            if not os.path.isdir(path):
+                recipe = self._getrecipe_thing_zip(path)
             else:
-                recipe = self._getrecipe_thing_dir(thing)
+                recipe = self._getrecipe_thing_dir(path)
             return recipe
 
-    def _getrecipe_thing_zip(self, thing):
+    def _getrecipe_thing_zip(self, path):
         directory = tempfile.mkdtemp()
-        with zipfile.ZipFile(thing, 'r') as zip:
+        with zipfile.ZipFile(path, 'r') as zip:
             zip.extractall(directory)
         recipe = self._getrecipe_thing_dir(directory)
         return recipe
 
-    def _getrecipe_thing_dir(self, thing):
-        if not os.path.isdir(thing):
+    def _getrecipe_thing_dir(self, path):
+        if not os.path.isdir(path):
             raise Exception
         else:
-            manifestpath = os.path.join(thing, 'manifest.json')
+            manifestpath = os.path.join(path, 'manifest.json')
             if not os.path.exists(manifestpath):
                 raise Exception
             else:
-                manifest = conveyor.thing.Manifest.frompath(manifestpath)
+                manifest = conveyor.path.Manifest.frompath(manifestpath)
                 manifest.validate()
                 if 1 == len(manifest.instances):
                     recipe = _SingleThingRecipe(self._config, manifest)
@@ -126,18 +138,60 @@ class Recipe(object):
         raise NotImplementedError
 
 class _GcodeRecipe(Recipe):
-    def __init__(self, config, gcode):
+    def __init__(self, config, path):
         Recipe.__init__(self, config)
-        self._gcode = gcode
+        self._path = path
 
     def print(self):
         printer = self._createprinter()
-        task = printer.print(self._gcode)
+        task = printer.print(self._path)
         return task
 
     def printtofile(self, s3gpath):
         printer = self._createprinter()
-        task = printer.printtofile(self._gcode, s3gpath)
+        task = printer.printtofile(self._path, s3gpath)
+        return task
+
+# TODO: share code between _StlRecipe and _SingleThingRecipe.
+
+class _StlRecipe(Recipe):
+    def __init__(self, config, path):
+        Recipe.__init__(self, config)
+        self._path = path
+
+    def print(self):
+        toolpath = self._createtoolpath()
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
+            pass
+        gcodepath = gcodefp.name
+        os.unlink(gcodepath)
+        task1 = toolpath.generate(self._path, gcodepath)
+        printer = self._createprinter()
+        task2 = printer.print(gcodepath)
+        def endcallback(task):
+            os.unlink(gcodepath)
+        task = conveyor.process.tasksequence([task1, task2])
+        task.endevent.attach(endcallback)
+        return task
+
+    def printtofile(self, s3gpath):
+        toolpath = self._createtoolpath()
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
+            pass
+        gcodepath = gcodefp.name
+        os.unlink(gcodepath)
+        task1 = toolpath.generate(self._path, gcodepath)
+        printer = self._createprinter()
+        task2 = printer.printtofile(gcodepath, s3gpath)
+        def endcallback(task):
+            os.unlink(gcodepath)
+        task = conveyor.process.tasksequence([task1, task2])
+        task.endevent.attach(endcallback)
+        return task
+
+    def slice(self, gcodepath):
+        toolpath = self._createtoolpath()
+        task = toolpath.generate(self._path, gcodepath)
         return task
 
 class _ThingRecipe(Recipe):
@@ -148,9 +202,10 @@ class _ThingRecipe(Recipe):
     def _createtask(self, func):
         raise NotImplementedError
 
-    def _gcodefilename(self, stl):
-        gcode = ''.join((stl[:-4], '.gcode'))
-        return gcode
+    def _gcodefilename(self, path):
+        root, ext = os.path.splitext(path)
+        result = ''.join((root, '.gcode'))
+        return result
 
     def _getinstance(self, name):
         for instance in self._manifest.instances.itervalues():
