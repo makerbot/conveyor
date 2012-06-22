@@ -119,17 +119,7 @@ class SkeinforgeToolpath(object):
 
     def _postprocess(self, gcodepath, configuration, tmp_gcodepath):
         with open(gcodepath, 'w') as fp:
-            if configuration.bookend:
-                path = os.path.join(
-                    _CONVEYORDIR,
-                    'src/main/gcode/replicator/Single_Head_start.gcode')
-                self._appendgcode(fp, path)
             self._appendgcode(fp, tmp_gcodepath)
-            if configuration.bookend:
-                path = os.path.join(
-                    _CONVEYORDIR,
-                    'src/main/gcode/replicator/end.gcode')
-                self._appendgcode(fp, path)
 
     def _appendgcode(self, wfp, path):
         with open(path, 'r') as rfp:
