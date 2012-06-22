@@ -95,7 +95,7 @@ class RecipeManager(object):
             if not os.path.exists(manifestpath):
                 raise Exception
             else:
-                manifest = conveyor.path.Manifest.frompath(manifestpath)
+                manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
                 if 1 == len(manifest.instances):
                     recipe = _SingleThingRecipe(self._config, manifest)
