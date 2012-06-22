@@ -59,27 +59,27 @@ class _ClientMain(conveyor.main.AbstractMain):
             help='print in JSON format')
 
     def _initsubparser_print(self, subparsers):
-        parser = subparsers.add_parser('print', help='print a .thing')
+        parser = subparsers.add_parser('print', help='print an object')
         parser.set_defaults(func=self._run_print)
         self._initparser_common(parser)
         parser.add_argument(
-            'thing', help='the path to the .thing file', metavar='THING')
+            'thing', help='the path to the object file', metavar='PATH')
 
     def _initsubparser_printtofile(self, subparsers):
-        parser = subparsers.add_parser('printtofile', help='print a .thing to an .s3g file')
+        parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
         parser.set_defaults(func=self._run_printtofile)
         self._initparser_common(parser)
         parser.add_argument(
-            'thing', help='the path to the .thing file', metavar='THING')
+            'thing', help='the path to the object file', metavar='PATH')
         parser.add_argument(
             's3g', help='the output path for the .s3g file', metavar='S3G')
 
     def _initsubparser_slice(self, subparsers):
-        parser = subparsers.add_parser('slice', help='slice a .thing into .gcode')
+        parser = subparsers.add_parser('slice', help='slice an object into .gcode')
         parser.set_defaults(func=self._run_slice)
         self._initparser_common(parser)
         parser.add_argument(
-            'thing', help='the path to the .thing file', metavar='THING')
+            'thing', help='the path to the object file', metavar='PATH')
         parser.add_argument(
             'gcode', help='the output path for the .gcode file',
             metavar='GCODE')
