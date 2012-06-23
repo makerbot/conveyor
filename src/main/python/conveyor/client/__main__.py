@@ -83,6 +83,7 @@ class _ClientMain(conveyor.main.AbstractMain):
         parser.add_argument(
             'gcode', help='the output path for the .gcode file',
             metavar='GCODE')
+        parser.add_argument('--with-start-end', action='store_true', default=False, help='append start and end gcode to .gcode file')
 
     def _run(self):
         self._initeventqueue()
@@ -143,7 +144,8 @@ class _ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_slice(self):
-        params = [self._parsedargs.thing, self._parsedargs.gcode]
+        params = [self._parsedargs.thing, self._parsedargs.gcode, self._parsedargs.with_start_end]
+        self._log.info(params)
         self._log.info(
             'slicing to file: %s -> %s', self._parsedargs.thing,
             self._parsedargs.gcode)

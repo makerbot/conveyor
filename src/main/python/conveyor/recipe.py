@@ -189,9 +189,10 @@ class _StlRecipe(Recipe):
         task.endevent.attach(endcallback)
         return task
 
-    def slice(self, gcodepath):
+    def slice(self, gcodepath, with_start_end):
+        print('recipe 193 gcodepath=%r', gcodepath)
         toolpath = self._createtoolpath()
-        task = toolpath.generate(self._path, gcodepath)
+        task = toolpath.generate(self._path, gcodepath, with_start_end, self._config)
         return task
 
 class _ThingRecipe(Recipe):
@@ -271,11 +272,13 @@ class _SingleThingRecipe(_ThingRecipe):
         task.endevent.attach(endcallback)
         return task
 
-    def slice(self, gcodepath):
+    def slice(self, gcodepath, with_start_end):
+        print('recipe 277 gcodepath=%r', gcodepath)
+
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
-        task = toolpath.generate(objectpath, gcodepath)
+        task = toolpath.generate(objectpath, gcodepath, with_start_end, self._config)
         return task
 
 class _DualThingRecipe(_ThingRecipe):

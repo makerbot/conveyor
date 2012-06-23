@@ -91,14 +91,14 @@ class _ClientThread(threading.Thread):
         self._server.appendtask(task)
         return None
 
-    def _slice(self, thing, gcode):
-        self._log.debug('thing=%r, gcode=%r', thing, gcode)
+    def _slice(self, thing, gcode, with_start_end):
+        self._log.debug('thing=%r, gcode=%r, with_start_end=%r', thing, gcode,with_start_end)
         def runningcallback(task):
             self._log.info(
                 'slicing: %s -> %s (job %d)', thing, gcode, self._id)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
         recipe = recipemanager.getrecipe(thing)
-        task = recipe.slice(gcode)
+        task = recipe.slice(gcode, with_start_end)
         task.runningevent.attach(runningcallback)
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)

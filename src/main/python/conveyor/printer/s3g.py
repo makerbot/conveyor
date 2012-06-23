@@ -48,7 +48,16 @@ class S3gPrinter(object):
         if None is not endgcode:
             for data in endgcode:
                 yield data
-
+    def _startlines(self):
+        startgcode = self._profile.values['print_start_sequence']
+        if None is not startgcode:
+            for data in startgcode:
+                yield data
+    def _endlines(self):
+        endgcode = self._profile.values['print_end_sequence']
+        if None is not endgcode:
+            for data in endgcode:
+                yield data
     def _countgcodelines(self, gcodepath):
         lines = 0
         bytes = 0
