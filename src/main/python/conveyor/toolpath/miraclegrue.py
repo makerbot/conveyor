@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import threading
+import s3g
 
 import conveyor.event
 import conveyor.task
@@ -42,8 +43,9 @@ class MiracleGrueConfiguration(object):
 class MiracleGrueToolpath(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
-
-    def generate(self, stlpath, gcodepath, configuration=None):
+    def _postprocessStartEnd(self, gcodepath):
+        pass
+    def generate(self, stlpath, gcodepath, with_start_end, with_start_end_config, configuration=None):
         if None is configuration:
             configuration = MiracleGrueConfiguration()
         def runningcallback(task):
@@ -62,11 +64,29 @@ class MiracleGrueToolpath(object):
                 self._log.exception('unhandled exception')
                 task.fail(e)
             else:
-                task.end(None)
+                if with_start_end:
+                    try:
+                        serialport = with_start_end_config['common']['serialport']
+                        profilename = with_start_end_config['common']['profile']
+                        profile = s3g.Profile(profilename)
+                        baudrate = profile.values['baudrate']
+                        printer = conveyor.printer.s3g.S3gPrinter(profile, serialport, baudrate)
+                        f = open(gcodepath, 'r')
+                        temp = f.read()
+                        f.close()
+                        f = open(gcodepath, 'w')
+                        f.write(printer._startlines())
+                        f.write(temp)
+                        f.write(printer._endlines())
+                        f.close()
+                        task.end(None)
+                    except Exception as e:
+                        self._log.exception('unhandled exception')
+                        task.fail(e)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
-
+   
     def _getarguments(self, configuration, stlpath, gcodepath):
         for method in (
             self._getarguments_executable,
