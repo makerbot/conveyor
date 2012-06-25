@@ -190,7 +190,6 @@ class _StlRecipe(Recipe):
         return task
 
     def slice(self, gcodepath, with_start_end):
-        print('recipe 193 gcodepath=%r', gcodepath)
         toolpath = self._createtoolpath()
         if with_start_end:
             printer = self._createprinter()
@@ -278,8 +277,6 @@ class _SingleThingRecipe(_ThingRecipe):
         return task
 
     def slice(self, gcodepath, with_start_end):
-        print('recipe 277 gcodepath=%r', gcodepath)
-
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
