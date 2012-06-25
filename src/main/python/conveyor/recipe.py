@@ -128,10 +128,10 @@ class Recipe(object):
             profile, serialport, baudrate)
         return printer
 
-    def print(self):
+    def print(self, skip_start_end=False):
         raise NotImplementedError
 
-    def printtofile(self, s3g):
+    def printtofile(self, s3g, skip_start_end=False):
         raise NotImplementedError
 
     def slice(self, gcode):
@@ -142,14 +142,14 @@ class _GcodeRecipe(Recipe):
         Recipe.__init__(self, config)
         self._path = path
 
-    def print(self):
+    def print(self, skip_start_end):
         printer = self._createprinter()
-        task = printer.print(self._path)
+        task = printer.print(self._path, skip_start_end)
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end):
         printer = self._createprinter()
-        task = printer.printtofile(self._path, s3gpath)
+        task = printer.printtofile(self._path, s3gpath, skip_start_end)
         return task
 
 # TODO: share code between _StlRecipe and _SingleThingRecipe.
@@ -159,7 +159,7 @@ class _StlRecipe(Recipe):
         Recipe.__init__(self, config)
         self._path = path
 
-    def print(self):
+    def print(self, skip_start_end):
         toolpath = self._createtoolpath()
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
             pass

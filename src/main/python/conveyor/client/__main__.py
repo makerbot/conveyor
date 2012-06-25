@@ -64,6 +64,8 @@ class _ClientMain(conveyor.main.AbstractMain):
         self._initparser_common(parser)
         parser.add_argument(
             'thing', help='the path to the object file', metavar='PATH')
+        parser.add_argument('--skip-start-end', action='store_true', default=False, help='use start/end gcode provided by file')
+
 
     def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
@@ -73,6 +75,8 @@ class _ClientMain(conveyor.main.AbstractMain):
             'thing', help='the path to the object file', metavar='PATH')
         parser.add_argument(
             's3g', help='the output path for the .s3g file', metavar='S3G')
+        parser.add_argument('--skip-start-end', action='store_true', default=False, help='use start/end gcode provided by file')
+
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser('slice', help='slice an object into .gcode')
@@ -99,7 +103,7 @@ class _ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_print(self):
-        params = [self._parsedargs.thing]
+        params = [self._parsedargs.thing, self._parsedargs.skip_start_end]
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
         return code
@@ -136,7 +140,7 @@ class _ClientMain(conveyor.main.AbstractMain):
         return 0
 
     def _run_printtofile(self):
-        params = [self._parsedargs.thing, self._parsedargs.s3g]
+        params = [self._parsedargs.thing, self._parsedargs.s3g, self._parsedargs.skip_start_end]
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.thing,
             self._parsedargs.s3g)
