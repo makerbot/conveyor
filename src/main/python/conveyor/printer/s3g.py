@@ -36,10 +36,25 @@ class S3gPrinter(object):
         self._pollinterval = 5.0
         self._profile = profile
 
-    def _gcodelines(self, gcodepath):
-        yield _startlines()
-        yield _bodylines(gcodepath)
-        yield _endlines()
+    def _gcodelines(self, gcodepath, skip_start_end=False):
+        startgcode = self._profile.values['print_start_sequence']
+        if None is not startgcode and not skip_start_end:
+            for data in startgcode:
+                yield data
+        with open(gcodepath, 'r') as gcodefp:
+            for data in gcodefp:
+                yield data
+        endgcode = self._profile.values['print_end_sequence']
+        if None is not endgcode and not skip_start_end:
+            for data in endgcode:
+                yield data
+    '''
+    TODO: make this method work
+        def _gcodelines(self, gcodepath, skip_start_end=False):
+            if not skip_start_end: yield self._startlines()
+            yield self._bodylines()
+            if not skip_start_end: yield self._endlines()
+    '''
     def _bodylines(self, gcodepath):
         with open(gcodepath, 'r') as gcodefp:
             for data in gcodefp:
@@ -54,15 +69,15 @@ class S3gPrinter(object):
         if None is not endgcode:
             for data in endgcode:
                 yield data
-    def _countgcodelines(self, gcodepath):
+    def _countgcodelines(self, gcodepath, skip_start_end=False):
         lines = 0
         bytes = 0
-        for data in self._gcodelines(gcodepath):
+        for data in enumerate(self._gcodelines(gcodepath, skip_start_end)):
             lines += 1
             bytes += len(data)
         return (lines, bytes)
 
-    def _genericprint(self, task, writer, polltemperature, gcodepath):
+    def _genericprint(self, task, writer, polltemperature, gcodepath, skip_start_end):
         parser = s3g.Gcode.GcodeParser()
         parser.state.profile = self._profile
         parser.state.SetBuildName(str('xyzzy'))
@@ -73,9 +88,10 @@ class S3gPrinter(object):
             toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
             now = time.time()
             polltime = now + self._pollinterval
-        totallines, totalbytes = self._countgcodelines(gcodepath)
+        totallines, totalbytes = self._countgcodelines(gcodepath, skip_start_end)
         currentbyte = 0
-        for currentline, data in enumerate(self._gcodelines(gcodepath)):
+
+        for currentline, data in enumerate(self._gcodelines(gcodepath, skip_start_end)):
             currentbyte += len(data)
             if polltemperature:
                 now = time.time()
@@ -117,13 +133,13 @@ class S3gPrinter(object):
 
         return serialfp
 
-    def print(self, gcodepath):
+    def print(self, gcodepath, skip_start_end=False):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
                 with self._openserial() as serialfp:
                     writer = s3g.Writer.StreamWriter(serialfp)
-                    self._genericprint(task, writer, True, gcodepath)
+                    self._genericprint(task, writer, True, gcodepath, skip_start_end)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
@@ -133,13 +149,13 @@ class S3gPrinter(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def printtofile(self, gcodepath, s3gpath):
+    def printtofile(self, gcodepath, s3gpath, skip_start_end=False):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
                 with open(s3gpath, 'w') as s3gfp:
                     writer = s3g.Writer.FileWriter(s3gfp)
-                    self._genericprint(task, writer, False, gcodepath)
+                    self._genericprint(task, writer, False, gcodepath, skip_start_end)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
