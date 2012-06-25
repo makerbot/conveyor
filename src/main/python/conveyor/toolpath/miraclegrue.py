@@ -52,11 +52,10 @@ class MiracleGrueToolpath(object):
         self.start_temp_file = tempfile.NamedTemporaryFile(mode='w')
         self.end_temp_file = tempfile.NamedTemporaryFile(mode='w')
         start = '\n'.join(x for x in printer._startlines())
-        self._log.info(start)
         end = '\n'.join(x for x in printer._endlines())
         self.start_temp_file.write(start)
         self.end_temp_file.write(end)
-        self.start_temp_file.flush()
+        self.start_temp_file.flush() #flush me so that I don't stay in the buffer never to be seen again!
         self.end_temp_file.flush()
 
 
@@ -66,15 +65,13 @@ class MiracleGrueToolpath(object):
         def runningcallback(task):
             self._log.info('slicing with Miracle Grue')
             try:
-                self._log.info('HERE1 %i', with_start_end)
                 if with_start_end:
-                    self._log.info('HERE2')
                     self._setup_start_end(printer)
                 arguments = list(self._getarguments(
                     configuration, stlpath, gcodepath, with_start_end))
-                self._log.info('arguments=%r', arguments)
+                self._log.debug('arguments=%r', arguments)
                 if with_start_end:
-                    self._log.info('start exists: %i , end exists %i', os.path.exists(self.start_temp_file.name), os.path.exists(self.end_temp_file.name))
+                    self._log.debug('start exists: %i , end exists %i', os.path.exists(self.start_temp_file.name), os.path.exists(self.end_temp_file.name))
                 popen = subprocess.Popen(arguments, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 
                 code = popen.wait()
@@ -89,7 +86,7 @@ class MiracleGrueToolpath(object):
                         if '' == line:
                             break
                         else:
-                            self._log.info('miracle-grue: %s', line)
+                            self._log.debug('miracle-grue: %s', line)
                     raise Exception(code)
             except Exception as e:
                 self._log.exception('unhandled exception')
