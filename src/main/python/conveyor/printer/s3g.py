@@ -37,16 +37,12 @@ class S3gPrinter(object):
         self._profile = profile
 
     def _gcodelines(self, gcodepath):
-        startgcode = self._profile.values['print_start_sequence']
-        if None is not startgcode:
-            for data in startgcode:
-                yield data
+        yield _startlines()
+        yield _bodylines(gcodepath)
+        yield _endlines()
+    def _bodylines(self, gcodepath):
         with open(gcodepath, 'r') as gcodefp:
             for data in gcodefp:
-                yield data
-        endgcode = self._profile.values['print_end_sequence']
-        if None is not endgcode:
-            for data in endgcode:
                 yield data
     def _startlines(self):
         startgcode = self._profile.values['print_start_sequence']
