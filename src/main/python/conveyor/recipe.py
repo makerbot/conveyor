@@ -285,9 +285,9 @@ class _SingleThingRecipe(_ThingRecipe):
         objectpath = os.path.join(self._manifest.base, instance.object.name)
         if with_start_end:
             printer = self._createprinter()
-            task = toolpath.generate(self._path, gcodepath, with_start_end, printer)
+            task = toolpath.generate(objectpath, gcodepath, with_start_end, printer)
         else:
-            task = toolpath.generate(self._path, gcodepath, with_start_end)
+            task = toolpath.generate(objectpath, gcodepath, with_start_end)
         return task
 
 class _DualThingRecipe(_ThingRecipe):
