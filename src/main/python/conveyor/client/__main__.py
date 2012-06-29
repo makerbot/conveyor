@@ -65,7 +65,7 @@ class _ClientMain(conveyor.main.AbstractMain):
         parser.add_argument(
             'thing', help='the path to the object file', metavar='PATH')
         parser.add_argument(
-            '--preprocessor'
+            '--preprocessor',
             dest='preprocessor',
             default=False,
             help='preprocessor to run on gcode file.')
@@ -79,7 +79,7 @@ class _ClientMain(conveyor.main.AbstractMain):
         parser.add_argument(
             's3g', help='the output path for the .s3g file', metavar='S3G')
         parser.add_argument(
-            '--preprocessor'
+            '--preprocessor',
             dest='preprocessor',
             default=False,
             help='preprocessor to run on gcode file.')
@@ -94,7 +94,7 @@ class _ClientMain(conveyor.main.AbstractMain):
             'gcode', help='the output path for the .gcode file',
             metavar='GCODE')
         parser.add_argument(
-            '--preprocessor'
+            '--preprocessor',
             dest='preprocessor',
             default=False,
             help='preprocessor to run on gcode file.')

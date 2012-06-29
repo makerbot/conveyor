@@ -314,7 +314,7 @@ class _SingleThingRecipe(_ThingRecipe):
         os.unlink(gcodepath)
         tasks.append(toolpath.generate(objectpath, gcodepath))
         if self.preprocessor:
-            while tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
+            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
