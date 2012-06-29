@@ -59,15 +59,15 @@ class _ClientThread(threading.Thread):
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
 
-    def _print(self, thing, skip_start_end):
-        self._log.debug('thing=%r s', thing)
+    def _print(self, thing, skip_start_end, preprocessor):
+        self._log.debug('thing=%r', thing)
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
         def heartbeatcallback(task):
             self._log.info('%r', task.progress)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
-        recipe = recipemanager.getrecipe(thing)
+        recipe = recipemanager.getrecipe(thing, preprocessor)
         task = recipe.print(skip_start_end)
         task.runningevent.attach(runningcallback)
         task.heartbeatevent.attach(heartbeatcallback)
@@ -75,7 +75,7 @@ class _ClientThread(threading.Thread):
         self._server.appendtask(task)
         return None
 
-    def _printtofile(self, thing, s3g, skip_start_end):
+    def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
         self._log.debug('thing=%r, s3g=%r', thing, s3g)
         def runningcallback(task):
             self._log.info(
@@ -83,7 +83,7 @@ class _ClientThread(threading.Thread):
         def heartbeatcallback(task):
             self._log.info('%r', task.progress)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
-        recipe = recipemanager.getrecipe(thing)
+        recipe = recipemanager.getrecipe(thing, preprocessor)
         task = recipe.printtofile(s3g, skip_start_end)
         task.runningevent.attach(runningcallback)
         task.heartbeatevent.attach(heartbeatcallback)
@@ -91,13 +91,13 @@ class _ClientThread(threading.Thread):
         self._server.appendtask(task)
         return None
 
-    def _slice(self, thing, gcode, with_start_end):
-        self._log.debug('thing=%r, gcode=%r, with_start_end=%r', thing, gcode,with_start_end)
+    def _slice(self, thing, gcode, with_start_end, preprocessor):
+        self._log.debug('thing=%r, gcode=%r', thing, gcode, with_start_end):
         def runningcallback(task):
             self._log.info(
                 'slicing: %s -> %s (job %d)', thing, gcode, self._id)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
-        recipe = recipemanager.getrecipe(thing)
+        recipe = recipemanager.getrecipe(thing, preprocessor)
         task = recipe.slice(gcode, with_start_end)
         task.runningevent.attach(runningcallback)
         task.stoppedevent.attach(self._stoppedcallback)
