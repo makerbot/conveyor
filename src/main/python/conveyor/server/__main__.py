@@ -31,7 +31,7 @@ import conveyor.log
 import conveyor.main
 import conveyor.server
 
-class _ServerMain(conveyor.main.AbstractMain):
+class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
         conveyor.main.AbstractMain.__init__(self, 'conveyord', 'server')
 
@@ -84,12 +84,15 @@ class _ServerMain(conveyor.main.AbstractMain):
             code = server.run()
             return code
 
-class _ServerMainTestCase(unittest.TestCase):
+class ServerMainTestCase(unittest.TestCase):
     pass
+
+def foo(argv):
+	_main(argv):
 
 def _main(argv): # pragma: no cover
     conveyor.log.earlylogging('conveyord')
-    main = _ServerMain()
+    main = ServerMain()
     code = main.main(argv)
     return code
 
