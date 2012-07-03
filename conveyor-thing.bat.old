@@ -1,0 +1,4 @@
+set PYTHONDONTWRITEBYTECODE=1
+set PYTHONPATH=%PYTHONPATH%;C:\Users\Ted\Documents\git\conveyor\src\main\python
+
+python src\main\python\conveyor\client\__main__.py -c conveyor-ted.conf -l DEBUG printtofile C:\Users\Ted\AppData\Local\Temp\things\thingtoprint.thing.dir test.s3g
