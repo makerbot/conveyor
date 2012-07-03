@@ -1,0 +1,4 @@
+set PYTHONDONTWRITEBYTECODE=1
+set PYTHONPATH=%PYTHONPATH%;C:\Users\Ted\Documents\git\conveyor\src\main\python;submodule/s3g/
+
+python src\main\python\conveyor\client\__main__.py -c conveyor-user.conf -l DEBUG printtofile src\test\thing\rfc-5.4 test.s3g
