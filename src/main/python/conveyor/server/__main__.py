@@ -29,67 +29,11 @@ except ImportError:
 
 import conveyor.log
 import conveyor.main
-import conveyor.server
-
-class _ServerMain(conveyor.main.AbstractMain):
-    def __init__(self):
-        conveyor.main.AbstractMain.__init__(self, 'conveyord', 'server')
-
-    def _initparser_common(self, parser):
-        conveyor.main.AbstractMain._initparser_common(self, parser)
-        parser.add_argument(
-            '--nofork',
-            action='store_true',
-            default=False,
-            help='do not fork nor detach from the terminal')
-
-    def _initsubparsers(self):
-        return None
-
-    def _run(self):
-        if self._parsedargs.nofork:
-            code = self._run_server()
-        else:
-            try:
-                import daemon
-                import daemon.pidfile
-            except ImportError:
-                self._log.debug('handled exception', exc_info=True)
-                code = self._run_server()
-            else:
-                files_preserve = list(conveyor.log.getfiles())
-                pidfile = self._config['server']['pidfile']
-                dct = {
-                    'files_preserve': files_preserve,
-                    'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
-                }
-                if not self._config['server']['chdir']:
-                    dct['working_directory'] = os.getcwd()
-                context = daemon.DaemonContext(**dct)
-                def terminate(signal_number, stack_frame):
-                    # The daemon module's implementation of terminate()
-                    # raises a SystemExit with a string message instead of
-                    # an exit code. This monkey patch fixes it.
-                    sys.exit(0)
-                context.terminate = terminate # monkey patch!
-                with context:
-                    code = self._run_server()
-        return code
-
-    def _run_server(self):
-        self._initeventqueue()
-        with self._address:
-            self._socket = self._address.listen()
-            server = conveyor.server.Server(self._config, self._socket)
-            code = server.run()
-            return code
-
-class _ServerMainTestCase(unittest.TestCase):
-    pass
+import conveyor.server.ServerMain as ServerMain
 
 def _main(argv): # pragma: no cover
     conveyor.log.earlylogging('conveyord')
-    main = _ServerMain()
+    main = ServerMain()
     code = main.main(argv)
     return code
 

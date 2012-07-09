@@ -2,7 +2,7 @@
 # conveyor/src/main/python/conveyor/client/__main__.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.
-# Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
+# Copyright ¬© 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License as published by the Free
@@ -22,14 +22,10 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import json
 import sys
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import conveyor.client
 import conveyor.log
-import conveyor.main
+import conveyor.main.ClientMain as ClientMain
 
 class _ClientMain(conveyor.main.AbstractMain):
     def __init__(self):
@@ -179,7 +175,7 @@ class _ClientMainTestCase(unittest.TestCase):
 
 def _main(argv): # pragma: no cover
     conveyor.log.earlylogging('conveyor')
-    main = _ClientMain()
+    main = ClientMain()
     code = main.main(argv)
     return code
 
