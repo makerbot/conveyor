@@ -14,4 +14,4 @@ import conveyor.main
 conveyor.log.earlylogging('conveyord')
 main = conveyor.client.ClientMain()
 code = main.main(sys.argv)
-
+exit(code)
