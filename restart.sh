@@ -4,4 +4,4 @@
 
 ./stop.sh
 rm conveyord.log
-./conveyord -c conveyor-user.conf
+./conveyord -c conveyor-user.conf "${@}"
