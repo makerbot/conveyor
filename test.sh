@@ -5,7 +5,6 @@
 _modules='
 	conveyor
 	conveyor.client
-	conveyor.client.__main__
 	conveyor.debug
 	conveyor.enum
 	conveyor.event
@@ -16,7 +15,6 @@ _modules='
 	conveyor.process
 	conveyor.recipe
 	conveyor.server
-	conveyor.server.__main__
 	conveyor.task
 	conveyor.test
 	conveyor.thing
