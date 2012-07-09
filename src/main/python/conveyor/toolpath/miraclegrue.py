@@ -26,6 +26,9 @@ import os
 import subprocess
 import sys
 import threading
+import s3g
+import tempfile
+import traceback
 
 import conveyor.event
 import conveyor.task
@@ -42,56 +45,87 @@ class MiracleGrueConfiguration(object):
 class MiracleGrueToolpath(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
+        self.start_temp_file = None
+        self.end_temp_file = None
+    def _setup_start_end(self, printer):
+        self._log.debug('_setup_start_end running')
+        self.start_temp_file = tempfile.NamedTemporaryFile(mode='w')
+        self.end_temp_file = tempfile.NamedTemporaryFile(mode='w')
+        start = '\n'.join(x for x in printer._startlines())
+        end = '\n'.join(x for x in printer._endlines())
+        self.start_temp_file.write(start)
+        self.end_temp_file.write(end)
+        self.start_temp_file.flush() #flush me so that I don't stay in the buffer never to be seen again!
+        self.end_temp_file.flush()
 
-    def generate(self, stlpath, gcodepath, configuration=None):
+
+    def generate(self, stlpath, gcodepath, with_start_end, printer=None, configuration=None):
         if None is configuration:
             configuration = MiracleGrueConfiguration()
         def runningcallback(task):
             self._log.info('slicing with Miracle Grue')
             try:
+                if with_start_end:
+                    self._setup_start_end(printer)
                 arguments = list(self._getarguments(
-                    configuration, stlpath, gcodepath))
+                    configuration, stlpath, gcodepath, with_start_end))
                 self._log.debug('arguments=%r', arguments)
-                popen = subprocess.Popen(arguments)
+                if with_start_end:
+                    self._log.debug('start exists: %i , end exists %i', os.path.exists(self.start_temp_file.name), os.path.exists(self.end_temp_file.name))
+                popen = subprocess.Popen(arguments, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                
                 code = popen.wait()
                 self._log.debug(
                     'Miracle Grue terminated with status code %d', code)
+                if with_start_end:
+                    self.start_temp_file.close()
+                    self.end_temp_file.close()
                 if 0 != code:
+                    while True:
+                        line = popen.stdout.readline()
+                        if '' == line:
+                            break
+                        else:
+                            self._log.debug('miracle-grue: %s', line)
                     raise Exception(code)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
+                raise
             else:
                 task.end(None)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
-
-    def _getarguments(self, configuration, stlpath, gcodepath):
+   
+    def _getarguments(self, configuration, stlpath, gcodepath, with_start_end):
         for method in (
             self._getarguments_executable,
             self._getarguments_miraclegrue,
             ):
-                for iterable in method(configuration, stlpath, gcodepath):
+                for iterable in method(configuration, stlpath, gcodepath, with_start_end):
                     for value in iterable:
                         yield value
 
-    def _getarguments_executable(self, configuration, stlpath, gcodepath):
+    def _getarguments_executable(self, configuration, stlpath, gcodepath, with_start_end):
         path = configuration.miraclegruepath
         if None is path:
             path = os.path.abspath(os.path.join(
                 _CONVEYORDIR, 'submodule/Miracle-Grue/bin/miracle_grue'))
         yield (path,)
 
-    def _getarguments_miraclegrue(self, configuration, stlpath, gcodepath):
+    def _getarguments_miraclegrue(self, configuration, stlpath, gcodepath, with_start_end):
         configpath = configuration.miraclegruepath
         if None is configpath:
             configpath = os.path.abspath(os.path.join(
                 _CONVEYORDIR, 'submodule/Miracle-Grue/miracle-pla.config'))
         yield ('-c', configpath,)
         yield ('-o', gcodepath,)
+        if with_start_end:
+            yield('-s', self.start_temp_file.name,)
+            yield('-e', self.end_temp_file.name,)
         yield (stlpath,)
-
+        
 def _main(argv):
     if 3 != len(argv):
         print('usage: %s STL GCODE' % (argv[0],), file=sys.stderr)

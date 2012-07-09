@@ -129,13 +129,13 @@ class Recipe(object):
             profile, serialport, baudrate)
         return printer
 
-    def print(self):
+    def print(self, skip_start_end):
         raise NotImplementedError
 
-    def printtofile(self, s3g):
+    def printtofile(self, s3g, skip_start_end):
         raise NotImplementedError
 
-    def slice(self, gcode):
+    def slice(self, gcode, with_start_end):
         raise NotImplementedError
 
 class _GcodeRecipe(Recipe):
@@ -144,7 +144,7 @@ class _GcodeRecipe(Recipe):
         self._path = path
         self.preprocessor = preprocessor
 
-    def print(self):
+    def print(self, skip_start_end):
         tasks = []
         printer = self._createprinter()
         if self.preprocessor: 
@@ -153,11 +153,11 @@ class _GcodeRecipe(Recipe):
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(self._path, processed_gcodepath))
-        tasks.append(printer.print(processed_gcodepath))
+        tasks.append(printer.print(processed_gcodepath, skip_start_end))
         task = conveyor.process.tasksequence(tasks)
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end):
         tasks = []
         if self.preprocessor:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
@@ -166,7 +166,7 @@ class _GcodeRecipe(Recipe):
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(self._path, processed_gcodepath))
         printer = self._createprinter()
-        tasks.append(printer.printtofile(processed_gcodepath, s3gpath))
+        tasks.append(printer.printtofile(processed_gcodepath, s3gpath, skip_start_end))
         task = conveyor.process.tasksequence(tasks)
         return task
 
@@ -178,7 +178,7 @@ class _StlRecipe(Recipe):
         self._path = path
         self.preprocessor = preprocessor
 
-    def print(self):
+    def print(self, skip_start_end):
         tasks = []
         toolpath = self._createtoolpath()
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
@@ -193,14 +193,14 @@ class _StlRecipe(Recipe):
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepathff, processed_gcodepath))
         printer = self._createprinter()
-        tasks.append(printer.print(processed_gcodepath))
+        tasks.append(printer.print(processed_gcodepath, skip_start_end))
         def endcallback(task):
             os.unlink(gcodepath)
         task = conveyor.process.tasksequence(tasks)
         task.endevent.attach(endcallback)
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end):
         tasks = []
         toolpath = self._createtoolpath()
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
@@ -215,17 +215,20 @@ class _StlRecipe(Recipe):
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
         printer = self._createprinter()
-        tasks.append(printer.printtofile(processed_gcodepath, s3gpath))
+        tasks.append(printer.printtofile(processed_gcodepath, s3gpath, skip_start_end))
         def endcallback(task):
             os.unlink(processed_gcodepath)
         task = conveyor.process.tasksequence(tasks)
         task.endevent.attach(endcallback)
         return task
 
-    def slice(self, gcodepath):
+    def slice(self, gcodepath, with_start_end):
         tasks = []
         toolpath = self._createtoolpath()
-        tasks.append(toolpath.generate(self._path, gcodepath))
+        printer = None
+        if with_start_end:
+            printer = self._createprinter()
+        tasks.append(toolpath.generate(self._path, gcodepath, with_start_end, printer))
         if self.preprocessor:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
@@ -270,16 +273,16 @@ class _ThingRecipe(Recipe):
         task.runningevent.attach(runningcallback)
         return task
 
-    def print(self):
+    def print(self, skip_start_end):
         task = self._faketask()
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end):
         task = self._faketask()
         return task
 
 class _SingleThingRecipe(_ThingRecipe):
-    def print(self):
+    def print(self, skip_start_end):
         tasks = []
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
@@ -296,14 +299,14 @@ class _SingleThingRecipe(_ThingRecipe):
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
         printer = self._createprinter()
-        tasks.append(printer.print(processed_gcodepath))
+        tasks.append(printer.print(processed_gcodepath, skip_start_end))
         def endcallback(task):
             os.unlink(gcodepath)
         task = conveyor.process.tasksequence(tasks)
         task.endevent.attach(endcallback)
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end):
         tasks = []
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
@@ -320,19 +323,22 @@ class _SingleThingRecipe(_ThingRecipe):
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
         printer = self._createprinter()
-        tasks.append(printer.printtofile(processed_gcodepath, s3gpath))
+        tasks.append(printer.printtofile(processed_gcodepath, s3gpath, skip_start_end))
         def endcallback(task):
             os.unlink(gcodepath)
         task = conveyor.process.tasksequence(tasks)
         task.endevent.attach(endcallback)
         return task
 
-    def slice(self, gcodepath):
+    def slice(self, gcodepath, with_start_end):
         tasks = []
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
-        tasks.append(toolpath.generate(objectpath, gcodepath))
+        printer = None
+        if with_start_end:
+            printer = self._createprinter()
+        tasks.append(toolpath.generate(objectpath, gcodepath, with_start_end, printer))
         if self.preprocessor:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
