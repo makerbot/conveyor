@@ -57,14 +57,13 @@ class SkeinforgeConfiguration(object):
         self.shells = 1
 
 class SkeinforgeToolpath(object):
-    def __init__(self):
+    def __init__(self, configuration):
+        self._configuration = configuration
         self._log = logging.getLogger(self.__class__.__name__)
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
-    def generate(self, stlpath, gcodepath, configuration=None):
-        if None is configuration:
-            configuration = SkeinforgeConfiguration()
+    def generate(self, stlpath, gcodepath):
         def runningcallback(task):
             self._log.info('slicing with Skeinforge')
             try:
@@ -74,7 +73,7 @@ class SkeinforgeToolpath(object):
                         directory, os.path.basename(stlpath))
                     shutil.copy2(stlpath, tmp_stlpath)
                     arguments = list(
-                        self._getarguments(configuration, tmp_stlpath))
+                        self._getarguments(tmp_stlpath))
                     self._log.debug('arguments=%r', arguments)
                     popen = subprocess.Popen(
                         arguments, executable=sys.executable,
@@ -99,8 +98,7 @@ class SkeinforgeToolpath(object):
                         raise Exception(code)
                     else:
                         tmp_gcodepath = self._gcodepath(tmp_stlpath)
-                        self._postprocess(
-                            gcodepath, configuration, tmp_gcodepath)
+                        self._postprocess(gcodepath, tmp_gcodepath)
                 finally:
                     shutil.rmtree(directory)
             except Exception as e:
@@ -117,7 +115,7 @@ class SkeinforgeToolpath(object):
         gcode = ''.join((root, '.gcode'))
         return gcode
 
-    def _postprocess(self, gcodepath, configuration, tmp_gcodepath):
+    def _postprocess(self, gcodepath, tmp_gcodepath):
         with open(gcodepath, 'w') as fp:
             self._appendgcode(fp, tmp_gcodepath)
 
@@ -130,30 +128,30 @@ class SkeinforgeToolpath(object):
         yield '--option'
         yield ''.join((module, ':', preference, '=', unicode(value)))
 
-    def _getarguments(self, configuration, stlpath):
+    def _getarguments(self, stlpath):
         for method in (
             self._getarguments_executable,
             self._getarguments_python,
             self._getarguments_skeinforge,
             ):
-                for iterable in method(configuration, stlpath):
+                for iterable in method(stlpath):
                     for value in iterable:
                         yield value
 
-    def _getarguments_executable(self, configuration, stlpath):
+    def _getarguments_executable(self, stlpath):
         yield (sys.executable,)
 
-    def _getarguments_python(self, configuration, stlpath):
+    def _getarguments_python(self, stlpath):
         yield ('-u',)
-        skeinforgepath = configuration.skeinforgepath
-        if None is configuration.skeinforgepath:
+        skeinforgepath = self._configuration.skeinforgepath
+        if None is self._configuration.skeinforgepath:
             skeinforgepath = os.path.join(
                 _CONVEYORDIR,
                 'submodule/skeinforge/skeinforge_application/skeinforge.py')
         yield (skeinforgepath,)
 
-    def _getarguments_skeinforge(self, configuration, stlpath):
-        profile = configuration.profile
+    def _getarguments_skeinforge(self, stlpath):
+        profile = self._configuration.profile
         if None is profile:
             profile = os.path.join(
                 _CONVEYORDIR,
@@ -166,66 +164,66 @@ class SkeinforgeToolpath(object):
             self._getarguments_printomatic,
             self._getarguments_stl,
             ):
-                for iterable in method(configuration, stlpath):
+                for iterable in method(stlpath):
                     yield iterable
 
-    def _getarguments_raft(self, configuration, stlpath):
+    def _getarguments_raft(self, stlpath):
         yield self._option(
-            'raft.csv', 'Add Raft, Elevate Nozzle, Orbit:', configuration.raft)
+            'raft.csv', 'Add Raft, Elevate Nozzle, Orbit:', self._configuration.raft)
 
-    def _getarguments_support(self, configuration, stlpath):
-        if SkeinforgeSupport.NONE == configuration.support:
+    def _getarguments_support(self, stlpath):
+        if SkeinforgeSupport.NONE == self._configuration.support:
             yield self._option('raft.csv', 'None', 'true')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'false')
             yield self._option('raft.csv', 'Exterior Only', 'false')
-        elif SkeinforgeSupport.EXTERIOR == configuration.support:
+        elif SkeinforgeSupport.EXTERIOR == self._configuration.support:
             yield self._option('raft.csv', 'None', 'false')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'false')
             yield self._option('raft.csv', 'Exterior Only', 'true')
-        elif SkeinforgeSupport.FULL == configuration.support:
+        elif SkeinforgeSupport.FULL == self._configuration.support:
             yield self._option('raft.csv', 'None', 'false')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'true')
             yield self._option('raft.csv', 'Exterior Only', 'false')
         else:
-            raise ValueError(configuration.support)
+            raise ValueError(self._configuration.support)
 
-    def _getarguments_bookend(self, configuration, stlpath):
-        if configuration.bookend:
+    def _getarguments_bookend(self, stlpath):
+        if self._configuration.bookend:
             yield self._option('alteration.csv', 'Name of Start File:', '')
             yield self._option('alteration.csv', 'Name of End File:', '')
 
-    def _getarguments_printomatic(self, configuration, stlpath):
+    def _getarguments_printomatic(self, stlpath):
         yield self._option(
-            'fill.csv', 'Infill Solidity (ratio):', configuration.infillratio)
+            'fill.csv', 'Infill Solidity (ratio):', self._configuration.infillratio)
         yield self._option(
-            'speed.csv', 'Feed Rate (mm/s):', configuration.feedrate)
+            'speed.csv', 'Feed Rate (mm/s):', self._configuration.feedrate)
         yield self._option(
-            'speed.csv', 'Travel Feed Rate (mm/s):', configuration.travelrate)
+            'speed.csv', 'Travel Feed Rate (mm/s):', self._configuration.travelrate)
         yield self._option(
-            'speed.csv', 'Flow Rate Setting (float):', configuration.feedrate)
+            'speed.csv', 'Flow Rate Setting (float):', self._configuration.feedrate)
         yield self._option(
             'dimension.csv', 'Filament Diameter (mm):',
-            configuration.filamentdiameter)
-        ratio = configuration.pathwidth / configuration.layerheight
+            self._configuration.filamentdiameter)
+        ratio = self._configuration.pathwidth / self._configuration.layerheight
         yield self._option(
             'carve.csv', 'Perimeter Width over Thickness (ratio):', ratio)
         yield self._option(
             'fill.csv', 'Infill Width over Thickness (ratio):', ratio)
         yield self._option(
-            'carve.csv', 'Layer Thickness (mm):', configuration.layerheight)
+            'carve.csv', 'Layer Thickness (mm):', self._configuration.layerheight)
         yield self._option(
             'fill.csv', 'Extra Shells on Alternating Solid Layer (layers):',
-            configuration.shells)
+            self._configuration.shells)
         yield self._option(
-            'fill.csv', 'Extra Shells on Base (layers):', configuration.shells)
+            'fill.csv', 'Extra Shells on Base (layers):', self._configuration.shells)
         yield self._option(
             'fill.csv', 'Extra Shells on Sparse Layer (layers):',
-            configuration.shells)
+            self._configuration.shells)
 
-    def _getarguments_stl(self, configuration, stlpath):
+    def _getarguments_stl(self, stlpath):
         yield (stlpath,)
 
 def _main(argv):

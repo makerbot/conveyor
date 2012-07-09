@@ -140,6 +140,7 @@ class AbstractMain(object):
     def _setconfigdefaults(self):
         code = self._sequence(
             self._setconfigdefaults_common,
+            self._setconfigdefaults_miraclegrue,
             self._setconfigdefaults_server,
             self._setconfigdefaults_client)
         return code
@@ -152,6 +153,19 @@ class AbstractMain(object):
         self._config['common'].setdefault('serialport', '/dev/ttyACM0')
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
         return None
+
+    def _setconfigdefaults_miraclegrue(self):
+        self._config.setdefault('miraclegrue', {})
+        conveyordir = os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), '../../../../')
+        path = os.path.abspath(
+            os.path.join(
+                conveyordir, 'submodule/Miracle-Grue/bin/miracle_grue'))
+        self._config['miraclegrue'].setdefault('path', path)
+        config = os.path.abspath(
+            os.path.join(
+                conveyordir, 'submodule/Miracle-Grue/miracle-pla.config'))
+        self._config['miraclegrue'].setdefault('config', config)
 
     def _setconfigdefaults_server(self):
         self._config.setdefault('server', {})
@@ -171,6 +185,7 @@ class AbstractMain(object):
     def _checkconfig(self):
         code = self._sequence(
             self._checkconfig_common,
+            self._checkconfig_miraclegrue,
             self._checkconfig_server,
             self._checkconfig_client)
         return code
@@ -193,6 +208,20 @@ class AbstractMain(object):
                 code = 1
                 self._log.critical(
                     "unsupported value for 'common/slicer': %s", value)
+        return code
+
+    def _checkconfig_miraclegrue(self):
+        code = self._sequence(
+            self._checkconfig_miraclegrue_path,
+            self._checkconfig_miraclegrue_config)
+        return code
+
+    def _checkconfig_miraclegrue_path(self):
+        code = self._require_string('miraclegrue', 'path')
+        return code
+
+    def _checkconfig_miraclegrue_config(self):
+        code = self._require_string('miraclegrue', 'config')
         return code
 
     def _checkconfig_server(self):

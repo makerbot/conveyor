@@ -113,9 +113,13 @@ class Recipe(object):
     def _createtoolpath(self):
         slicer = self._config['common']['slicer']
         if 'miraclegrue' == slicer:
-            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath()
+            configuration = conveyor.toolpath.miraclegrue.MiracleGrueConfiguration()
+            configuration.miraclegruepath = self._config['miraclegrue']['path']
+            configuration.miracleconfigpath = self._config['miraclegrue']['config']
+            toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
         elif 'skeinforge' == slicer:
-            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath()
+            configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+            toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
         else:
             raise ValueError(slicer)
         return toolpath
@@ -140,9 +144,8 @@ class Recipe(object):
 
 class _GcodeRecipe(Recipe):
     def __init__(self, config, path, preprocessor):
-        Recipe.__init__(self, config)
+        Recipe.__init__(self, config, preprocessor)
         self._path = path
-        self.preprocessor = preprocessor
 
     def print(self, skip_start_end):
         tasks = []
@@ -174,9 +177,8 @@ class _GcodeRecipe(Recipe):
 
 class _StlRecipe(Recipe):
     def __init__(self, config, path, preprocessor):
-        Recipe.__init__(self, config)
+        Recipe.__init__(self, config, preprocessor)
         self._path = path
-        self.preprocessor = preprocessor
 
     def print(self, skip_start_end):
         tasks = []
@@ -240,9 +242,8 @@ class _StlRecipe(Recipe):
 
 class _ThingRecipe(Recipe):
     def __init__(self, config, manifest, preprocessor):
-        Recipe.__init__(self, config)
+        Recipe.__init__(self, config, preprocessor)
         self._manifest = manifest
-        self.preprocessor = preprocessor
 
     def _createtask(self, func):
         raise NotImplementedError
