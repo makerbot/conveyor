@@ -34,7 +34,6 @@ import conveyor.jsonrpc
 import conveyor.recipe
 import conveyor.main
 
-
 class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
         conveyor.main.AbstractMain.__init__(self, 'conveyord', 'server')

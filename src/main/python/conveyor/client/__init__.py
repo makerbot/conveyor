@@ -160,7 +160,6 @@ class ClientMain(conveyor.main.AbstractMain):
 class _ClientMainTestCase(unittest.TestCase):
     pass
 
-
 class Client(object):
     @classmethod
     def create(cls, sock, method, params):
