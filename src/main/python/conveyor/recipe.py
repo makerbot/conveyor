@@ -150,7 +150,9 @@ class _GcodeRecipe(Recipe):
     def print(self, skip_start_end):
         tasks = []
         printer = self._createprinter()
-        if self.preprocessor: 
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
@@ -162,7 +164,9 @@ class _GcodeRecipe(Recipe):
 
     def printtofile(self, s3gpath, skip_start_end):
         tasks = []
-        if self.preprocessor:
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
@@ -188,7 +192,9 @@ class _StlRecipe(Recipe):
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
         tasks.append(toolpath.generate(self._path, gcodepath))
-        if self.preprocessor:
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
@@ -210,7 +216,9 @@ class _StlRecipe(Recipe):
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
         tasks.append(toolpath.generate(self._path, gcodepath))
-        if self.preprocessor:
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
@@ -293,7 +301,9 @@ class _SingleThingRecipe(_ThingRecipe):
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
         tasks.append(toolpath.generate(objectpath, gcodepath)) 
-        if self.preprocessor:
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath= processed_gcodefp.name
@@ -317,7 +327,9 @@ class _SingleThingRecipe(_ThingRecipe):
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
         tasks.append(toolpath.generate(objectpath, gcodepath))
-        if self.preprocessor:
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
