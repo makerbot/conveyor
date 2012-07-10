@@ -153,7 +153,7 @@ class _ClientThread(threading.Thread):
         return None
 
     def _slice(self, thing, gcode, with_start_end, preprocessor):
-        self._log.debug('thing=%r, gcode=%r', thing, gcode, with_start_end):
+        self._log.debug('thing=%r, gcode=%r start_end = %r', thing, gcode, with_start_end)
         def runningcallback(task):
             self._log.info(
                 'slicing: %s -> %s (job %d)', thing, gcode, self._id)
