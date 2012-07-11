@@ -139,7 +139,7 @@ class Recipe(object):
     def printtofile(self, s3g, skip_start_end=False):
         raise NotImplementedError
 
-    def slice(self, gcode):
+    def slice(self, gcode, with_start_end=False):
         raise NotImplementedError
 
 class _GcodeRecipe(Recipe):
@@ -147,10 +147,12 @@ class _GcodeRecipe(Recipe):
         Recipe.__init__(self, config, preprocessor)
         self._path = path
 
-    def print(self, skip_start_end):
+    def print(self, skip_start_end=False):
         tasks = []
         printer = self._createprinter()
-        if self.preprocessor: 
+        if not self.preprocessor: 
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
@@ -160,9 +162,11 @@ class _GcodeRecipe(Recipe):
         task = conveyor.process.tasksequence(tasks)
         return task
 
-    def printtofile(self, s3gpath, skip_start_end):
+    def printtofile(self, s3gpath, skip_start_end=False):
         tasks = []
-        if self.preprocessor:
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
@@ -180,21 +184,23 @@ class _StlRecipe(Recipe):
         Recipe.__init__(self, config, preprocessor)
         self._path = path
 
-    def print(self, skip_start_end):
+    def print(self, skip_start_end=False):
         tasks = []
         toolpath = self._createtoolpath()
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
-        tasks.append(toolpath.generate(self._path, gcodepath))
-        if self.preprocessor:
+        printer = self._createprinter()
+        tasks.append(toolpath.generate(self._path, gcodepath, not skip_start_end, printer))
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepathff, processed_gcodepath))
-        printer = self._createprinter()
         tasks.append(printer.print(processed_gcodepath, skip_start_end))
         def endcallback(task):
             os.unlink(gcodepath)
@@ -202,21 +208,23 @@ class _StlRecipe(Recipe):
         task.endevent.attach(endcallback)
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end=False):
         tasks = []
         toolpath = self._createtoolpath()
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as gcodefp:
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
-        tasks.append(toolpath.generate(self._path, gcodepath))
-        if self.preprocessor:
+        printer = self._createprinter()
+        tasks.append(toolpath.generate(self._path, gcodepath, not skip_start_end, printer))
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
-        printer = self._createprinter()
         tasks.append(printer.printtofile(processed_gcodepath, s3gpath))
         def endcallback(task):
             os.unlink(processed_gcodepath)
@@ -224,11 +232,14 @@ class _StlRecipe(Recipe):
         task.endevent.attach(endcallback)
         return task
 
-    def slice(self, gcodepath, with_start_end):
+    def slice(self, gcodepath, with_start_end=False):
         tasks = []
         toolpath = self._createtoolpath()
-        tasks.append(toolpath.generate(self._path, gcodepath, with_start_end))
-        if self.preprocessor:
+        printer = self._createprinter()
+        tasks.append(toolpath.generate(self._path, gcodepath, with_start_end, printer))
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
@@ -275,12 +286,12 @@ class _ThingRecipe(Recipe):
         task = self._faketask()
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end=False):
         task = self._faketask()
         return task
 
 class _SingleThingRecipe(_ThingRecipe):
-    def print(self):
+    def print(self, skip_start_end=False):
         tasks = []
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
@@ -289,14 +300,16 @@ class _SingleThingRecipe(_ThingRecipe):
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
-        tasks.append(toolpath.generate(objectpath, gcodepath)) 
-        if self.preprocessor:
+        printer = self._createprinter()
+        tasks.append(toolpath.generate(objectpath, gcodepath, not skip_start_end, printer))
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
-            processed_gcodepath= processed_gcodefp.name
+            processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
-        printer = self._createprinter()
         tasks.append(printer.print(processed_gcodepath))
         def endcallback(task):
             os.unlink(gcodepath)
@@ -304,7 +317,7 @@ class _SingleThingRecipe(_ThingRecipe):
         task.endevent.attach(endcallback)
         return task
 
-    def printtofile(self, s3gpath):
+    def printtofile(self, s3gpath, skip_start_end=False):
         tasks = []
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
@@ -313,14 +326,16 @@ class _SingleThingRecipe(_ThingRecipe):
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
-        tasks.append(toolpath.generate(objectpath, gcodepath))
-        if self.preprocessor:
+        printer = self._createprinter()
+        tasks.append(toolpath.generate(objectpath, gcodepath, not skip_start_end, printer))
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
-        printer = self._createprinter()
         tasks.append(printer.printtofile(processed_gcodepath, s3gpath))
         def endcallback(task):
             os.unlink(gcodepath)
@@ -328,13 +343,16 @@ class _SingleThingRecipe(_ThingRecipe):
         task.endevent.attach(endcallback)
         return task
 
-    def slice(self, gcodepath, with_start_end):
+    def slice(self, gcodepath, with_start_end=False):
         tasks = []
         toolpath = self._createtoolpath()
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
-        tasks.append(toolpath.generate(objectpath, gcodepath, with_start_end))
-        if self.preprocessor:
+        printer = self._createprinter()
+        tasks.append(toolpath.generate(objectpath, gcodepath, with_start_end, printer))
+        if not self.preprocessor:
+            processed_gcodepath = self._path
+        else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
             processed_gcodepath = processed_gcodefp.name
