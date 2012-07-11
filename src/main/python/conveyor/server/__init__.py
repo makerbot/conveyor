@@ -22,6 +22,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import collections
 import errno
 import logging
+import os
 import sys
 import threading
 
@@ -136,7 +137,7 @@ class _ClientThread(threading.Thread):
         self._server.appendtask(task)
         return None
 
-    def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
+    def _printtofile(self, thing, s3g, skip_start_end, preprocessor):
         self._log.debug('thing=%r, s3g=%r', thing, s3g)
         def runningcallback(task):
             self._log.info(

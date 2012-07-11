@@ -66,14 +66,13 @@ class ClientMain(conveyor.main.AbstractMain):
         self._initparser_common(parser)
         parser.add_argument(
             'thing', help='the path to the object file', metavar='PATH')
-        parser.add_argument('--skip-start-end', action='store_true', default=False, 
-			help='use start/end gcode provided by file')
-		parser.add_argument(
-			'--preprocessor', dest='preprocessor', default=False, 
-				help='preprocessor to run on the gcode file')
+        parser.add_argument(
+            '--skip-start-end', action='store_true', default=False,
+            help='use start/end gcode provided by file')
+        parser.add_argument('--preprocessor', dest='preprocessor',
+            default=False, help='preprocessor to run on the gcode file')
 
-
-	def _initsubparser_printtofile(self, subparsers):
+    def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
         parser.set_defaults(func=self._run_printtofile)
         self._initparser_common(parser)
@@ -81,28 +80,26 @@ class ClientMain(conveyor.main.AbstractMain):
             'thing', help='the path to the object file', metavar='PATH')
         parser.add_argument(
             's3g', help='the output path for the .s3g file', metavar='S3G')
-        parser.add_argument('--skip-start-end', action='store_true', default=False, 
-			help='use start/end gcode provided by file')
-		parser.add_argument(
-			'--preprocessor', dest='preprocessor', default=False, 
-				help='preprocessor to run on the gcode file')
-
+        parser.add_argument(
+            '--skip-start-end', action='store_true', default=False,
+            help='use start/end gcode provided by file')
+        parser.add_argument('--preprocessor', dest='preprocessor',
+            default=False, help='preprocessor to run on the gcode file')
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser('slice', help='slice an object into .gcode')
         parser.set_defaults(func=self._run_slice)
         self._initparser_common(parser)
-        parser.add_argument(
-            'thing', help='the path to the object file', metavar='PATH')
+        parser.add_argument('thing', help='the path to the object file', metavar='PATH')
         parser.add_argument(
             'gcode', help='the output path for the .gcode file',
             metavar='GCODE')
-        parser.add_argument('--skip-start-end', action='store_true', default=False, 
-			help='use start/end gcode provided by file')
-		parser.add_argument(
-			'--preprocessor', dest='preprocessor', default=False, 
-				help='preprocessor to run on the gcode file')
-
+        parser.add_argument(
+            '--with-start-end', action='store_true', default=False,
+            help='append start and end gcode to .gcode file')
+        parser.add_argument(
+            '--preprocessor', dest='preprocessor', default=False,
+            help='preprocessor to run on the gcode file')
 
     def _run(self):
         self._initeventqueue()
@@ -118,7 +115,9 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_print(self):
-        params = [self._parsedargs.thing]
+        params = [
+            self._parsedargs.thing, self._parsedargs.skip_start_end,
+            self._parsedargs.preprocessor]
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
         return code
@@ -155,7 +154,9 @@ class ClientMain(conveyor.main.AbstractMain):
         return 0
 
     def _run_printtofile(self):
-        params = [self._parsedargs.thing, self._parsedargs.s3g]
+        params = [
+            self._parsedargs.thing, self._parsedargs.s3g,
+            self._parsedargs.skip_start_end, self._parsedargs.preprocessor]
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.thing,
             self._parsedargs.s3g)
@@ -163,8 +164,9 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_slice(self):
-        params = [self._parsedargs.thing, self._parsedargs.gcode, self._parsedargs.skip_start_end, 
-				self._parsedargs.preprocessor]
+        params = [
+            self._parsedargs.thing, self._parsedargs.gcode,
+            self._parsedargs.with_start_end, self._parsedargs.preprocessor]
         self._log.info(
             'slicing to file: %s -> %s', self._parsedargs.thing,
             self._parsedargs.gcode)
