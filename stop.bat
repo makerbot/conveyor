@@ -1,4 +1,4 @@
-@ECHO OFF
+REM @ECHO OFF
 
 IF EXIST conveyord.pid GOTO KILLSUCCEED
 ECHO No such file or directory: conveyord.pid
