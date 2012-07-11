@@ -1,6 +1,7 @@
 *,cover
 *.pyc
 .*.sw?
+.sconsign.dblite
 /.coverage
 /conveyord.log
 /conveyord.pid
