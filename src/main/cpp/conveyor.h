@@ -22,6 +22,12 @@ namespace conveyor
     typedef QSharedPointer<Job> JobPointer;
     typedef QSharedPointer<Printer> PrinterPointer;
 
+    enum ConnectionStatus
+    {
+        CONNECTED,
+        NOT_CONNECTED
+    };
+
     class Address : public QObject
     {
         Q_OBJECT
@@ -64,8 +70,26 @@ namespace conveyor
 
     public:
         Printer (ConveyorPointer conveyorPointer, QString const & name);
+        ~Printer ();
 
-        QList<JobPointer> jobs (void);
+        QList<JobPointer> jobs ();
+
+        /** A human readable name for the printer, for display in GUI elements */
+        QString const & displayName () const;
+        /** A name for the printer guaranteed to be distinct from all other
+            printer names */
+        QString const & uniqueName () const;
+
+        /** Can this printer create physical objects? false for virtual printers */
+        bool canPrint () const;
+        /** Can this printer print to a file? */
+        bool canPrintToFile () const;
+
+        /** Details about our connection to the printer */
+        ConnectionStatus connectionStatus () const;
+        /** A human readable version of the connection status, possibly with
+            additional details */
+        QString connectionStatusString() const;
 
         JobPointer print       (QString const & inputFile);
         JobPointer printToFile (QString const & inputFile, QString const & outputFile);
