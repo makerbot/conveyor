@@ -1,0 +1,4 @@
+set PYTHONDONTWRITEBYTECODE=1
+set PYTHONPATH=%PYTHONPATH%;C:\Users\Ted\Documents\git\conveyor\src\main\python;submodule/s3g/
+
+python src/main/python/conveyor/server/__main__.py -l DEBUG -c conveyor-user.conf

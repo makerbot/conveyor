@@ -1,7 +1,9 @@
 @ECHO OFF
 IF NOT EXIST virtualenv GOTO DIRNOTEXISTS
+
 :DIREXISTS
 virtualenv\scripts\activate
+
 pip install --use-mirrors argparse coverage doxypy lockfile pyserial unittest-xml-reporting
 GOTO DONE
 
