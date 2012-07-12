@@ -1,3 +1,0 @@
-#! /bin/sh
-
-exec /usr/bin/env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ python src/main/python/conveyor/server/__main__.py "${@}"

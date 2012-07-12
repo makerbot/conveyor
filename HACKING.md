@@ -52,26 +52,22 @@ Run conveyord ( Conveyor Service Daemon )
 conveyord is the Conveyor Service Daemon. This process runs in the background and dispatches
 tasks to various engines/processes/tasks based on recipe. 
 
-The file `conveyor-userland-service.conf` contains configuration information for the 
-deamon service. This configuration is designed to let you run `conveyord` out of the
-source tree. It writes the socket, log file, and PID file to the current
+The file `conveyor.conf` contains configuration information for the 
+deamon service. This configuration is designed to let you run `conveyord` out of the source tree. It writes the socket, log file, and PID file to the current
 directory.
 
-NOTE: the 'common' section of conveyor-userland-service.conf *must match* the 
-'common' section of conveyor-userland-cmdline-client.conf
-
 In Linux/Mac To launch the service daemon in userland, use 
-        $ python conveyord.py -c conveyor-user.conf
+        $ python conveyord.py -c conveyor.conf
 
-In Windows you must specify to 'nofork' due to some OS restrictions.  
-        $ python conveyord.py -c conveyor-user.conf --nofork
+In Windows you must specify to 'nofork' and the win32 config due to some OS restrictions.  
+        $ python conveyord.py -c conveyor-win32.conf --nofork
 
 The daemon will detach from the controlling terminal and run in the background.
 You can prevent that by running it with the `--nofork` option:
-        $ ./conveyord -c conveyor-user.conf --nofork
+        $ ./conveyord -c conveyor.conf --nofork
 
 The daemon also accepts a command-line option to specify the log level:
-        $ ./conveyord -c conveyor-user.conf -l DEBUG
+        $ ./conveyord -c conveyor.conf -l DEBUG
 
 What Threads Are Running in conveyord?
 --------------------------------------
@@ -101,18 +97,18 @@ run various operations.
 View client options: 
 ---------------
 To see what options are available in your client, you can simply run 
-        $ python conveyor.py -c conveyor-user.conf -h 
+        $ python conveyor.py -c conveyor.conf -h 
 
 Printing and slicing 
 ---------------
 A couple of common uses for conveyor client are to: 
 
 Print a 'thing' directory to a s3g file:
-        $ python conveyor.py -c conveyor-user.conf printtofile src/test/thing/rfc-4.1/ output.s3g
+        $ python conveyor.py -c conveyor.conf printtofile src/test/thing/rfc-4.1/ output.s3g
 
 Convert a gcode file into an s3g file:
-        $ python conveyor.py -c conveyor-user.conf printtofile ./src/test/gcode/single.gcode test.s3g
+        $ python conveyor.py -c conveyor.conf printtofile ./src/test/gcode/single.gcode test.s3g
 
 Slice a stl file into a gcode file: 
-		$ python conveyor_cmdline_client.py -c conveyor-userland-client.conf slice ./src/test/stl/single.stl test.gcode
+		$ python conveyor_cmdline_client.py -c conveyor.conf slice ./src/test/stl/single.stl test.gcode
         

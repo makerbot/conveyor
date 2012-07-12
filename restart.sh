@@ -4,4 +4,5 @@
 
 ./stop.sh
 rm conveyord.log
-./conveyord -c conveyor-user.conf "${@}"
+python conveyor_service.py -l DEBUG -c conveyor.conf "${@}"
+
