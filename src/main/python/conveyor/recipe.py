@@ -39,10 +39,10 @@ import conveyor.toolpath.skeinforge
 import s3g
 
 class RecipeManager(object):
-def __init__(self, config):
-	self._config = config
+    def __init__(self, config):
+		self._config = config
 
-def getrecipe(self, path, preprocessor):
+    def getrecipe(self, path, preprocessor):
         root, ext = os.path.splitext(path)
         if '.gcode' == ext:
             recipe = self._getrecipe_gcode(path, preprocessor)
@@ -53,13 +53,13 @@ def getrecipe(self, path, preprocessor):
         return recipe
 
     def _getrecipe_gcode(self, path, preprocessor):
-        if not os.path.exists(path):
-            raise Exception
-        elif not os.path.isfile(path):
-            raise Exception
-        else:
-            recipe = _GcodeRecipe(self._config, path, preprocessor)
-            return recipe
+		if not os.path.exists(path):
+			raise Exception
+		elif not os.path.isfile(path):
+			raise Exception
+		else:
+			recipe = _GcodeRecipe(self._config, path, preprocessor)
+		return recipe
 
     def _getrecipe_stl(self, path, preprocessor):
         if not os.path.exists(path):
