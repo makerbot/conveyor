@@ -38,9 +38,6 @@ import conveyor.task
 
 SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 'FULL')
 
-_CONVEYORDIR = os.path.join(
-    os.path.abspath(os.path.dirname(__file__)), '../../../../../')
-
 class SkeinforgeConfiguration(object):
     def __init__(self):
         self.skeinforgepath = None
@@ -150,20 +147,10 @@ class SkeinforgeToolpath(object):
 
     def _getarguments_python(self, stlpath):
         yield ('-u',)
-        skeinforgepath = self._configuration.skeinforgepath
-        if None is self._configuration.skeinforgepath:
-            skeinforgepath = os.path.join(
-                _CONVEYORDIR,
-                'submodule/skeinforge/skeinforge_application/skeinforge.py')
-        yield (skeinforgepath,)
+        yield (self._configuration.skeinforgepath,)
 
     def _getarguments_skeinforge(self, stlpath):
-        profile = self._configuration.profile
-        if None is profile:
-            profile = os.path.join(
-                _CONVEYORDIR,
-                'src/main/skeinforge/Replicator slicing defaults')
-        yield ('-p', profile)
+        yield ('-p', self._configuration.profile,)
         for method in (
             self._getarguments_raft,
             self._getarguments_support,

@@ -36,39 +36,21 @@ class S3gPrinter(object):
         self._pollinterval = 5.0
         self._profile = profile
 
-    def _gcodelines(self, gcodepath, skip_start_end=False):
-        startgcode = self._profile.values['print_start_sequence']
-        if None is not startgcode and not skip_start_end:
-            for data in startgcode:
-                yield data
+    def _gcodelines(self, gcodepath, skip_start_end):
+        if not skip_start_end:
+            startgcode = self._profile.values['print_start_sequence']
+            if None is not startgcode:
+                for data in startgcode:
+                    yield data
         with open(gcodepath, 'r') as gcodefp:
             for data in gcodefp:
                 yield data
-        endgcode = self._profile.values['print_end_sequence']
-        if None is not endgcode and not skip_start_end:
-            for data in endgcode:
-                yield data
-    '''
-    TODO: make this method work
-        def _gcodelines(self, gcodepath, skip_start_end=False):
-            if not skip_start_end: yield self._startlines()
-            yield self._bodylines()
-            if not skip_start_end: yield self._endlines()
-    '''
-    def _bodylines(self, gcodepath):
-        with open(gcodepath, 'r') as gcodefp:
-            for data in gcodefp:
-                yield data
-    def _startlines(self):
-        startgcode = self._profile.values['print_start_sequence']
-        if None is not startgcode:
-            for data in startgcode:
-                yield data
-    def _endlines(self):
-        endgcode = self._profile.values['print_end_sequence']
-        if None is not endgcode:
-            for data in endgcode:
-                yield data
+        if not skip_start_end:
+            endgcode = self._profile.values['print_end_sequence']
+            if None is not endgcode:
+                for data in endgcode:
+                    yield data
+
     def _countgcodelines(self, gcodepath, skip_start_end=False):
         lines = 0
         bytes = 0
@@ -133,7 +115,7 @@ class S3gPrinter(object):
 
         return serialfp
 
-    def print(self, gcodepath, skip_start_end=False):
+    def print(self, gcodepath, skip_start_end):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
@@ -149,7 +131,7 @@ class S3gPrinter(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def printtofile(self, gcodepath, s3gpath, skip_start_end=False):
+    def printtofile(self, gcodepath, s3gpath, skip_start_end):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
