@@ -122,7 +122,6 @@ class _ClientThread(threading.Thread):
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
 
-
     def _print(self, thing, preprocessor, skip_start_end):
         self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
         def runningcallback(task):
