@@ -117,8 +117,9 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_print(self):
         params = [
-            self._parsedargs.thing, self._parsedargs.skip_start_end,
-            self._parsedargs.preprocessor]
+            self._parsedargs.thing,
+            self._parsedargs.preprocessor,
+            self._parsedargs.skip_start_end]
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
         return code
@@ -156,8 +157,10 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_printtofile(self):
         params = [
-            self._parsedargs.thing, self._parsedargs.s3g,
-            self._parsedargs.skip_start_end, self._parsedargs.preprocessor]
+            self._parsedargs.thing,
+            self._parsedargs.s3g,
+            self._parsedargs.preprocessor,
+            self._parsedargs.skip_start_end]
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.thing,
             self._parsedargs.s3g)
@@ -166,8 +169,10 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_slice(self):
         params = [
-            self._parsedargs.thing, self._parsedargs.gcode,
-            self._parsedargs.with_start_end, self._parsedargs.preprocessor]
+            self._parsedargs.thing,
+            self._parsedargs.gcode,
+            self._parsedargs.preprocessor,
+            self._parsedargs.with_start_end]
         self._log.info(
             'slicing to file: %s -> %s', self._parsedargs.thing,
             self._parsedargs.gcode)
