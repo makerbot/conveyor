@@ -80,41 +80,41 @@ class S3gPrinter(object):
     def _genericprint(self, task, writer, polltemperature, gcodepath, skip_start_end):
         parser = s3g.Gcode.GcodeParser()
         parser.state.profile = self._profile
-        parser.state.SetBuildName(str('xyzzy'))
+        parser.state.set_build_name(str('xyzzy'))
         parser.s3g = s3g.s3g()
         parser.s3g.writer = writer
+        now = time.time()
+        polltime = now + self._pollinterval
         if polltemperature:
-            platformtemperature = parser.s3g.GetPlatformTemperature(0)
-            toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
-            now = time.time()
-            polltime = now + self._pollinterval
+            platformtemperature = parser.s3g.get_platform_temperature(0)
+            toolheadtemperature = parser.s3g.get_toolhead_temperature(0)
         totallines, totalbytes = self._countgcodelines(gcodepath, skip_start_end)
         currentbyte = 0
-
         for currentline, data in enumerate(self._gcodelines(gcodepath, skip_start_end)):
             currentbyte += len(data)
+            now = time.time()
             if polltemperature:
-                now = time.time()
                 if polltime <= now:
-                    platformtemperature = parser.s3g.GetPlatformTemperature(0)
-                    toolheadtemperature = parser.s3g.GetToolheadTemperature(0)
+                    platformtemperature = parser.s3g.get_platform_temperature(0)
+                    toolheadtemperature = parser.s3g.get_toolhead_temperature(0)
                     self._log.info('platform temperature: %r', platformtemperature)
                     self._log.info('toolhead temperature: %r', toolheadtemperature)
-                    polltime = now + self._pollinterval
             data = data.strip()
+            self._log.info('gcode: %r', data)
             data = str(data)
-            self._log.info('gcode: %s', data)
-            parser.ExecuteLine(data)
+            parser.execute_line(data)
             progress = {
                 'currentline': currentline,
                 'totallines': totallines,
                 'currentbyte': currentbyte,
                 'totalbytes': totalbytes,
             }
-            if polltemperature:
-                progress['platformtemperature'] = platformtemperature
-                progress['toolheadtemperature'] = toolheadtemperature
-            task.heartbeat(progress)
+            if polltime <= now:
+                polltime = now + self._pollinterval
+                if polltemperature:
+                    progress['platformtemperature'] = platformtemperature
+                    progress['toolheadtemperature'] = toolheadtemperature
+                task.heartbeat(progress)
 
     def _openserial(self):
         serialfp = serial.Serial(self._device, self._baudrate, timeout=0.1)
