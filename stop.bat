@@ -13,4 +13,4 @@ IF EXIST conveyord.pid DEL /F /Q conveyord.pid
 IF EXIST conveyord.socket DEL /F /Q conveyord.socket
 
 :DONE
-IF EXIST virtualenv virtualenv\Scripts\deactivate
+IF EXIST virtualenv call virtualenv\Scripts\deactivate
