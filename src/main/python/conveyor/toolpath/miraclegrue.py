@@ -47,18 +47,16 @@ class MiracleGrueToolpath(object):
         def runningcallback(task):
             self._log.info('slicing with Miracle Grue')
             try:
-                if not with_start_end:
-                    startpath = None
-                    endpath = None
-                else:
-                    with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
-                        for line in self._printer._profile.values['print_start_sequence']:
-                            print(line, file=fp)
-                    with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
-                        for line in self._printer._profile.values['print_end_sequence']:
-                            print(line, file=fp)
-                    startpath = startfp.name
-                    endpath = endfp.name
+                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
+                    if with_start_end:
+                        for line in printer._profile.values['print_start_sequence']:
+                            print(line, file=startfp)
+                startpath = startfp.name
+                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
+                    if with_start_end:
+                        for line in printer._profile.values['print_end_sequence']:
+                            print(line, file=endfp)
+                endpath = endfp.name
                 arguments = list(
                     self._getarguments(stlpath, gcodepath, startpath, endpath))
                 self._log.debug('arguments=%r', arguments)
@@ -67,10 +65,8 @@ class MiracleGrueToolpath(object):
                 self._log.debug(
                     'Miracle Grue terminated with status code %d', code)
                 if 0 == code:
-                    if None is not startpath:
-                        os.unlink(startpath)
-                    if None is not endpath:
-                        os.unlink(endpath)
+                    os.unlink(startpath)
+                    os.unlink(endpath)
                 else:
                     while True:
                         line = popen.stdout.readline()
@@ -104,10 +100,8 @@ class MiracleGrueToolpath(object):
     def _getarguments_miraclegrue(self, stlpath, gcodepath, startpath, endpath):
         yield ('-c', self._configuration.miracleconfigpath,)
         yield ('-o', gcodepath,)
-        if None is not startpath:
-            yield('-s', startpath,)
-        if None is not endpath:
-            yield('-e', endpath,)
+        yield ('-s', startpath,)
+        yield('-e', endpath,)
         yield (stlpath,)
 
 def _main(argv):
