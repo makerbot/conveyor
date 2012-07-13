@@ -63,7 +63,7 @@ class SkeinforgeToolpath(object):
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
-    def generate(self, stlpath, gcodepath):
+    def generate(self, stlpath, gcodepath, with_start_end, printer):
         def runningcallback(task):
             self._log.info('slicing with Skeinforge')
             try:
@@ -78,6 +78,7 @@ class SkeinforgeToolpath(object):
                     popen = subprocess.Popen(
                         arguments, executable=sys.executable,
                         stdout=subprocess.PIPE)
+                    log = ''
                     buffer = ''
                     while True:
                         data = popen.stdout.read(1) # :(
@@ -98,7 +99,7 @@ class SkeinforgeToolpath(object):
                         raise Exception(code)
                     else:
                         tmp_gcodepath = self._gcodepath(tmp_stlpath)
-                        self._postprocess(gcodepath, tmp_gcodepath)
+                        self._postprocess(gcodepath, tmp_gcodepath, with_start_end, printer)
                 finally:
                     shutil.rmtree(directory)
             except Exception as e:
@@ -115,9 +116,15 @@ class SkeinforgeToolpath(object):
         gcode = ''.join((root, '.gcode'))
         return gcode
 
-    def _postprocess(self, gcodepath, tmp_gcodepath):
+    def _postprocess(self, gcodepath, tmp_gcodepath, with_start_end, printer):
         with open(gcodepath, 'w') as fp:
+            if with_start_end:
+                for line in printer._startlines(): # TODO: replace this hack
+                    print(line, file=fp)
             self._appendgcode(fp, tmp_gcodepath)
+            if with_start_end:
+                for line in printer._endlines():
+                    print(line, file=fp)
 
     def _appendgcode(self, wfp, path):
         with open(path, 'r') as rfp:

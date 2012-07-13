@@ -60,7 +60,7 @@ class MiracleGrueToolpath(object):
         self.start_temp_file.flush() #flush me so that I don't stay in the buffer never to be seen again!
         self.end_temp_file.flush()
 
-    def generate(self, stlpath, gcodepath, with_start_end, printer=None):
+    def generate(self, stlpath, gcodepath, with_start_end, printer):
         def runningcallback(task):
             self._log.info('slicing with Miracle Grue')
             try:

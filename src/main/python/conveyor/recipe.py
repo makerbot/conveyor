@@ -119,6 +119,8 @@ class Recipe(object):
             toolpath = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
         elif 'skeinforge' == slicer:
             configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+            configuration.skeinforgepath = self._config['skeinforge']['path']
+            configuration.profile = self._config['skeinforge']['profile']
             toolpath = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
         else:
             raise ValueError(slicer)

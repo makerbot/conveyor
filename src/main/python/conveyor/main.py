@@ -141,6 +141,7 @@ class AbstractMain(object):
         code = self._sequence(
             self._setconfigdefaults_common,
             self._setconfigdefaults_miraclegrue,
+            self._setconfigdefaults_skeinforge,
             self._setconfigdefaults_server,
             self._setconfigdefaults_client)
         return code
@@ -154,10 +155,14 @@ class AbstractMain(object):
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
         return None
 
-    def _setconfigdefaults_miraclegrue(self):
-        self._config.setdefault('miraclegrue', {})
+    def _getconveyordir(self):
         conveyordir = os.path.join(
             os.path.abspath(os.path.dirname(__file__)), '../../../../')
+        return conveyordir
+
+    def _setconfigdefaults_miraclegrue(self):
+        self._config.setdefault('miraclegrue', {})
+        conveyordir = self._getconveyordir()
         path = os.path.abspath(
             os.path.join(
                 conveyordir, 'submodule/Miracle-Grue/bin/miracle_grue'))
@@ -166,6 +171,20 @@ class AbstractMain(object):
             os.path.join(
                 conveyordir, 'submodule/Miracle-Grue/miracle-pla.config'))
         self._config['miraclegrue'].setdefault('config', config)
+
+    def _setconfigdefaults_skeinforge(self):
+        self._config.setdefault('skeinforge', {})
+        conveyordir = self._getconveyordir()
+        path = os.path.abspath(
+            os.path.join(
+                conveyordir,
+                'submodule/skeinforge/skeinforge_application/skeinforge.py'))
+        self._config['skeinforge'].setdefault('path', path)
+        profile = os.path.abspath(
+            os.path.join(
+                conveyordir,
+                'src/main/skeinforge/Replicator slicing defaults'))
+        self._config['skeinforge'].setdefault('profile', profile)
 
     def _setconfigdefaults_server(self):
         self._config.setdefault('server', {})
@@ -186,6 +205,7 @@ class AbstractMain(object):
         code = self._sequence(
             self._checkconfig_common,
             self._checkconfig_miraclegrue,
+            self._checkconfig_skeinforge,
             self._checkconfig_server,
             self._checkconfig_client)
         return code
@@ -222,6 +242,20 @@ class AbstractMain(object):
 
     def _checkconfig_miraclegrue_config(self):
         code = self._require_string('miraclegrue', 'config')
+        return code
+
+    def _checkconfig_skeinforge(self):
+        code = self._sequence(
+            self._checkconfig_skeinforge_path,
+            self._checkconfig_skeinforge_profile)
+        return code
+
+    def _checkconfig_skeinforge_path(self):
+        code = self._require_string('skeinforge', 'path')
+        return code
+
+    def _checkconfig_skeinforge_profile(self):
+        code = self._require_string('skeinforge', 'profile')
         return code
 
     def _checkconfig_server(self):
