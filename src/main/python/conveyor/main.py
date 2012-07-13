@@ -146,6 +146,11 @@ class AbstractMain(object):
             self._setconfigdefaults_client)
         return code
 
+    def _getconveyordir(self):
+        conveyordir = os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), '../../../../')
+        return conveyordir
+
     def _setconfigdefaults_common(self):
         self._config.setdefault('common', {})
         self._config['common'].setdefault(
@@ -153,12 +158,8 @@ class AbstractMain(object):
         self._config['common'].setdefault('slicer', 'miraclegrue')
         self._config['common'].setdefault('serialport', '/dev/ttyACM0')
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
+        self._config['common'].setdefault('profiledir', 'submodule/s3g/s3g/profiles')
         return None
-
-    def _getconveyordir(self):
-        conveyordir = os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), '../../../../')
-        return conveyordir
 
     def _setconfigdefaults_miraclegrue(self):
         self._config.setdefault('miraclegrue', {})
@@ -212,12 +213,18 @@ class AbstractMain(object):
 
     def _checkconfig_common(self):
         code = self._sequence(
-            self._checkconfig_common_socket,
-            self._checkconfig_common_slicer)
+            self._checkconfig_common_profile,
+            self._checkconfig_common_profiledir,
+            self._checkconfig_common_slicer,
+            self._checkconfig_common_socket)
         return code
 
-    def _checkconfig_common_socket(self):
-        code = self._require_string('common', 'socket')
+    def _checkconfig_common_profile(self):
+        code = self._require_string('common', 'profile')
+        return code
+
+    def _checkconfig_common_profiledir(self):
+        code = self._require_string('common', 'profiledir')
         return code
 
     def _checkconfig_common_slicer(self):
@@ -228,6 +235,10 @@ class AbstractMain(object):
                 code = 1
                 self._log.critical(
                     "unsupported value for 'common/slicer': %s", value)
+        return code
+
+    def _checkconfig_common_socket(self):
+        code = self._require_string('common', 'socket')
         return code
 
     def _checkconfig_miraclegrue(self):
