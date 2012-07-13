@@ -360,7 +360,7 @@ class _SingleThingRecipe(_ThingRecipe):
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
-        task = conveyor.process.tasksequence(task)
+        task = conveyor.process.tasksequence(tasks)
         return task
 
 class _DualThingRecipe(_ThingRecipe):
