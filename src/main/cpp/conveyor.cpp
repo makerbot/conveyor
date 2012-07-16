@@ -150,4 +150,9 @@ namespace conveyor
         JobPointer jobPointer;
         return jobPointer;
     }
+    void Printer::jog(float x, float y, float z, float f)
+    {
+        qDebug() << "jogging x" << x << " y" << y << " z" << z << " f" << f;
+        //Jogz
+    }
 }

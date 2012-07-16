@@ -1,2 +1,2 @@
 #! /bin/bash
-cp bin/libconveyor.so* /usr/lib 
+kdesudo cp bin/libconveyor.so* /usr/lib 

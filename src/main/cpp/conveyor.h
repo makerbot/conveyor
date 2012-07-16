@@ -6,6 +6,7 @@
 #include <QList>
 #include <QObject>
 #include <QSharedPointer>
+#include <QDebug>
 
 namespace conveyor
 {
@@ -94,6 +95,8 @@ namespace conveyor
         JobPointer print       (QString const & inputFile);
         JobPointer printToFile (QString const & inputFile, QString const & outputFile);
         JobPointer slice       (QString const & inputFile, QString const & outputFile);
+
+        void jog (float x, float y, float z, float f);
 
         friend class Conveyor;
         friend class Job;
