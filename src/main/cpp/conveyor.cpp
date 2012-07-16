@@ -21,6 +21,9 @@ namespace conveyor
 
         bool m_canPrint;
         bool m_canPrintToFile;
+        bool m_hasPlatform;
+
+        int m_numberOfToolheads;
 
         ConnectionStatus m_connectionStatus;
     };
@@ -63,6 +66,8 @@ namespace conveyor
         m_private->m_connectionStatus = NOT_CONNECTED;
         m_private->m_displayName = "Dummy Printer";
         m_private->m_uniqueName = QUuid::createUuid().toString();
+        m_private->m_numberOfToolheads = 2;
+        m_private->m_hasPlatform = true;
     }
 
     Printer::~Printer ()
@@ -94,13 +99,20 @@ namespace conveyor
     {
         return m_private->m_canPrint;
     }
-
+    bool Printer::hasPlatform() const
+    {
+        return m_private->m_hasPlatform;
+    }
     bool
     Printer::canPrintToFile () const
     {
         return m_private->m_canPrintToFile;
     }
 
+    int Printer::getNumberOfExtruders() const
+    {
+        return m_private->m_numberOfToolheads;
+    }
     ConnectionStatus
     Printer::connectionStatus () const
     {

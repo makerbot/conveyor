@@ -96,6 +96,10 @@ namespace conveyor
         JobPointer printToFile (QString const & inputFile, QString const & outputFile);
         JobPointer slice       (QString const & inputFile, QString const & outputFile);
 
+        int getNumberOfExtruders() const;
+
+        bool hasPlatform() const;
+
         void jog (float x, float y, float z, float f);
 
         friend class Conveyor;
