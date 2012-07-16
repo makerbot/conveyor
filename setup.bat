@@ -4,7 +4,7 @@ IF NOT EXIST virtualenv GOTO DIRNOTEXISTS
 :DIREXISTS
 call virtualenv\scripts\activate
 
-pip install --use-mirrors argparse coverage doxypy lockfile pyserial unittest-xml-reporting
+pip install --use-mirrors argparse coverage doxypy lockfile mock pyserial unittest-xml-reporting
 GOTO DONE
 
 :DIRNOTEXISTS
