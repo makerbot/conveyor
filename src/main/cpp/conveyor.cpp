@@ -19,7 +19,7 @@ namespace conveyor
         QString m_displayName;
         QString m_uniqueName;
         QString m_printerType;
-        QList<JobPointer> m_jobs;
+        QList<Job *> m_jobs;
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasPlatform;
@@ -34,22 +34,22 @@ namespace conveyor
     {
     }
 
-    QList<JobPointer>
+    QList<Job *>
     Conveyor::jobs ()
     {
-        QList<JobPointer> list;
+        QList<Job *> list;
         return list;
     }
 
-    QList<PrinterPointer>
+    QList<Printer *>
     Conveyor::printers ()
     {
-        QList<PrinterPointer> list;
+        QList<Printer *> list;
         return list;
     }
 
     Job::Job
-        ( PrinterPointer printerPointer __attribute__ ((unused))
+        ( Printer * printer __attribute__ ((unused))
         , QString const & id __attribute__ ((unused))
         )
         : m_private (0)
@@ -58,7 +58,7 @@ namespace conveyor
 
 
     Printer::Printer
-        ( ConveyorPointer conveyorPointer __attribute__ ((unused))
+        ( Conveyor  * conveyor __attribute__ ((unused))
         , QString const & name __attribute__ ((unused))
         )
         : m_private (new PrinterPrivate())
@@ -71,7 +71,7 @@ namespace conveyor
         m_private->m_uniqueName = QUuid::createUuid().toString();
         m_private->m_numberOfToolheads = 2;
         m_private->m_hasPlatform = true;
-        m_private->m_jobs = conveyorPointer->jobs();
+        m_private->m_jobs = conveyor->jobs();
     }
 
     Printer::~Printer ()
@@ -79,7 +79,7 @@ namespace conveyor
         delete m_private;
     }
 
-    QList<JobPointer>
+    QList<Job *>
     Printer::jobs ()
     {
        return m_private->m_jobs;
@@ -149,33 +149,36 @@ namespace conveyor
         return status;
     }
 
-    JobPointer
+    Job *
     Printer::print
         ( QString const & inputFile __attribute__ ((unused))
         )
     {
-        JobPointer jobPointer;
-        return jobPointer;
+        QString jobID("fakePrintID:" + QUuid::createUuid().toString());
+        Job * job = new Job(this, jobID);
+        return job;
     }
 
-    JobPointer
+    Job *
     Printer::printToFile
         ( QString const & inputFile __attribute__ ((unused))
         , QString const & outputFile __attribute__ ((unused))
         )
     {
-        JobPointer jobPointer;
-        return jobPointer;
+        QString jobID("fakePrintToFileID:" + QUuid::createUuid().toString());
+        Job * job = new Job(this, jobID);
+        return job;
     }
 
-    JobPointer
+    Job *
     Printer::slice
         ( QString const & inputFile __attribute__ ((unused))
         , QString const & outputFile __attribute__ ((unused))
         )
     {
-        JobPointer jobPointer;
-        return jobPointer;
+        QString jobID("fakeSliceID:" + QUuid::createUuid().toString());
+        Job * job = new Job(this, jobID);
+        return job;
     }
 
     void
