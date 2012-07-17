@@ -60,7 +60,8 @@ namespace conveyor
 
         friend class Conveyor;
         friend class Printer;
-
+    signals:
+        void JobPercentageChanged(int percent);
     private:
         JobPrivate * const m_private;
     };

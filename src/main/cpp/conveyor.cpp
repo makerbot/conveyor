@@ -56,6 +56,7 @@ namespace conveyor
     {
     }
 
+
     Printer::Printer
         ( ConveyorPointer conveyorPointer __attribute__ ((unused))
         , QString const & name __attribute__ ((unused))
