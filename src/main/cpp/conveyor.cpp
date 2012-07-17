@@ -95,30 +95,35 @@ namespace conveyor
     {
         return m_private->m_uniqueName;
     }
+
     QString const &
     Printer::printerType () const
     {
         return m_private->m_printerType;
     }
+
     bool
     Printer::canPrint () const
     {
         return m_private->m_canPrint;
     }
-    bool Printer::hasPlatform() const
+
+    bool Printer::hasHeatedPlatform() const
     {
         return m_private->m_hasPlatform;
     }
+
     bool
     Printer::canPrintToFile () const
     {
         return m_private->m_canPrintToFile;
     }
 
-    int Printer::getNumberOfExtruders() const
+    int Printer::numberOfExtruders() const
     {
         return m_private->m_numberOfToolheads;
     }
+
     ConnectionStatus
     Printer::connectionStatus () const
     {
@@ -143,7 +148,8 @@ namespace conveyor
         return status;
     }
 
-    JobPointer Printer::print
+    JobPointer
+    Printer::print
         ( QString const & inputFile __attribute__ ((unused))
         )
     {
@@ -151,7 +157,8 @@ namespace conveyor
         return jobPointer;
     }
 
-    JobPointer Printer::printToFile
+    JobPointer
+    Printer::printToFile
         ( QString const & inputFile __attribute__ ((unused))
         , QString const & outputFile __attribute__ ((unused))
         )
@@ -160,7 +167,8 @@ namespace conveyor
         return jobPointer;
     }
 
-    JobPointer Printer::slice
+    JobPointer
+    Printer::slice
         ( QString const & inputFile __attribute__ ((unused))
         , QString const & outputFile __attribute__ ((unused))
         )
@@ -168,9 +176,11 @@ namespace conveyor
         JobPointer jobPointer;
         return jobPointer;
     }
-    void Printer::jog(float x, float y, float z, float f)
+
+    void
+    Printer::jog(float x, float y, float z, float a, float b, float f)
     {
-        qDebug() << "jogging x" << x << " y" << y << " z" << z << " f" << f;
+        qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
         //Jogz
     }
 }
