@@ -19,10 +19,6 @@ namespace conveyor
     struct JobPrivate;
     struct PrinterPrivate;
 
-    typedef QSharedPointer<Conveyor> ConveyorPointer;
-    typedef QSharedPointer<Job> JobPointer;
-    typedef QSharedPointer<Printer> PrinterPointer;
-
     enum ConnectionStatus
     {
         CONNECTED,
@@ -52,11 +48,17 @@ namespace conveyor
     public:
         explicit Conveyor (Address const & address);
 
-        QList<JobPointer>     jobs     (void);
-        QList<PrinterPointer> printers (void);
+        QList<Job *>     jobs     (void);
+        QList<Printer *> printers (void);
 
         friend class Job;
         friend class Printer;
+
+    signals:
+        /** Signals that a new job has been created */
+        void jobAdded (Job *);
+        /** Signals that one or more jobs have been removed */
+        void jobRemoved ();
 
     private:
         ConveyorPrivate const * m_private;
@@ -67,7 +69,7 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        Job (PrinterPointer printerPointer, QString const & id);
+        Job (Printer * printer, QString const & id);
 
         JobStatus jobStatus () const;
 
@@ -88,14 +90,14 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        Printer (ConveyorPointer conveyorPointer, QString const & name);
+        Printer (Conveyor * convey, QString const & name);
         ~Printer ();
 
         /** A list of all the jobs the printer has queued */
-        QList<JobPointer> jobs ();
+        QList<Job *> jobs ();
 
         /** A Pointer to the current job */
-        JobPointer getCurrentJob();
+        Job * getCurrentJob();
         /** A human readable name for the printer, for display in GUI elements */
         QString const & displayName () const;
         /** A name for the printer guaranteed to be distinct from all other
@@ -124,9 +126,9 @@ namespace conveyor
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);
 
-        JobPointer print       (QString const & inputFile);
-        JobPointer printToFile (QString const & inputFile, QString const & outputFile);
-        JobPointer slice       (QString const & inputFile, QString const & outputFile);
+        Job * print       (QString const & inputFile);
+        Job * printToFile (QString const & inputFile, QString const & outputFile);
+        Job * slice       (QString const & inputFile, QString const & outputFile);
 
         friend class Conveyor;
         friend class Job;
@@ -137,7 +139,7 @@ namespace conveyor
         void connectionStatusChanged(ConnectionStatus);
 
         /** Emitted when the printer switches jobs */
-        void currentJobChanged(JobPointer const);
+        void currentJobChanged(Job *);
 
     private:
         PrinterPrivate * const m_private;
