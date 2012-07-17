@@ -73,8 +73,11 @@ namespace conveyor
         Printer (ConveyorPointer conveyorPointer, QString const & name);
         ~Printer ();
 
+        /** A list of all the jobs the printer has queued */
         QList<JobPointer> jobs ();
 
+        /** A Pointer to the current job */
+        JobPointer getCurrentJob();
         /** A human readable name for the printer, for display in GUI elements */
         QString const & displayName () const;
         /** A name for the printer guaranteed to be distinct from all other
