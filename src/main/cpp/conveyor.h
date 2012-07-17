@@ -29,6 +29,17 @@ namespace conveyor
         NOT_CONNECTED
     };
 
+    enum JobStatus
+    {
+        QUEUED,
+        STARTING,
+        PRINTING,
+        ENDING,
+        FINISHED,
+        CANCELLED,
+        PAUSED
+    };
+
     class Address : public QObject
     {
         Q_OBJECT
@@ -58,8 +69,15 @@ namespace conveyor
     public:
         Job (PrinterPointer printerPointer, QString const & id);
 
+        JobStatus jobStatus () const;
+
         friend class Conveyor;
         friend class Printer;
+
+    signals:
+
+        /** Emitted when the jobStatus changes */
+        void jobStatusChanged(JobStatus);
 
     private:
         JobPrivate * const m_private;
@@ -109,6 +127,14 @@ namespace conveyor
 
         friend class Conveyor;
         friend class Job;
+
+    signals:
+
+        /** Emitted when the connectionStatus changes. */
+        void connectionStatusChanged(ConnectionStatus);
+
+        /** Emitted when the printer switches jobs */
+        void currentJobChanged(JobPointer const);
 
     private:
         PrinterPrivate * const m_private;
