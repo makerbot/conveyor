@@ -19,7 +19,7 @@ namespace conveyor
         QString m_displayName;
         QString m_uniqueName;
         QString m_printerType;
-
+        QList<JobPointer> m_jobs;
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasPlatform;
@@ -70,6 +70,7 @@ namespace conveyor
         m_private->m_uniqueName = QUuid::createUuid().toString();
         m_private->m_numberOfToolheads = 2;
         m_private->m_hasPlatform = true;
+        m_private->m_jobs = conveyorPointer->jobs();
     }
 
     Printer::~Printer ()
@@ -80,8 +81,7 @@ namespace conveyor
     QList<JobPointer>
     Printer::jobs ()
     {
-        QList<JobPointer> list;
-        return list;
+       return m_private->m_jobs;
     }
 
     QString const &
