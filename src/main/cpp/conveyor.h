@@ -80,6 +80,8 @@ namespace conveyor
         /** A name for the printer guaranteed to be distinct from all other
             printer names */
         QString const & uniqueName () const;
+        /** A string represenetation of the type of printer this is */
+        QString const & printerType () const;
 
         /** Can this printer create physical objects? false for virtual printers */
         bool canPrint () const;

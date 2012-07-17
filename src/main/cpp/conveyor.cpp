@@ -18,6 +18,7 @@ namespace conveyor
     {
         QString m_displayName;
         QString m_uniqueName;
+        QString m_printerType;
 
         bool m_canPrint;
         bool m_canPrintToFile;
@@ -65,6 +66,7 @@ namespace conveyor
         m_private->m_canPrintToFile = true;
         m_private->m_connectionStatus = NOT_CONNECTED;
         m_private->m_displayName = "Dummy Printer";
+        m_private->m_printerType = "Replicator";
         m_private->m_uniqueName = QUuid::createUuid().toString();
         m_private->m_numberOfToolheads = 2;
         m_private->m_hasPlatform = true;
@@ -93,7 +95,11 @@ namespace conveyor
     {
         return m_private->m_uniqueName;
     }
-
+    QString const &
+    Printer::printerType () const
+    {
+        return m_private->m_printerType;
+    }
     bool
     Printer::canPrint () const
     {
