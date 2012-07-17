@@ -85,6 +85,15 @@ namespace conveyor
        return m_private->m_jobs;
     }
 
+    Job *
+    Printer::currentJob ()
+    {
+        if(m_private->m_jobs.isEmpty())
+            return 0;
+
+        return m_private->m_jobs.first();
+    }
+
     QString const &
     Printer::displayName () const
     {
