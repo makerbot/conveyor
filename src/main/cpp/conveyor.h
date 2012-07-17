@@ -92,17 +92,20 @@ namespace conveyor
         ConnectionStatus connectionStatus () const;
         /** A human readable version of the connection status, possibly with
             additional details */
-        QString connectionStatusString() const;
+        QString connectionStatusString () const;
+
+        /** The number of extruders the printer has. Usually 1 or 2. */
+        int numberOfExtruders () const;
+
+        /** True if this printer can set the temperature of its platform */
+        bool hasHeatedPlatform () const;
+
+        /** Ask the machine to move by some amount at a given speed */
+        void jog (float x, float y, float z, float a, float b, float f);
 
         JobPointer print       (QString const & inputFile);
         JobPointer printToFile (QString const & inputFile, QString const & outputFile);
         JobPointer slice       (QString const & inputFile, QString const & outputFile);
-
-        int getNumberOfExtruders() const;
-
-        bool hasPlatform() const;
-
-        void jog (float x, float y, float z, float f);
 
         friend class Conveyor;
         friend class Job;
