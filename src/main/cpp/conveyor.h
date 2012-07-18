@@ -144,6 +144,8 @@ namespace conveyor
     private:
         PrinterPrivate * const m_private;
     };
+
+    Address& defaultAddress();
 }
 
 #endif
