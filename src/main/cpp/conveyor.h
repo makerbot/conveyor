@@ -80,6 +80,8 @@ namespace conveyor
         /** A name for the printer guaranteed to be distinct from all other
             printer names */
         QString const & uniqueName () const;
+        /** A string represenetation of the type of printer this is */
+        QString const & printerType () const;
 
         /** Can this printer create physical objects? false for virtual printers */
         bool canPrint () const;
@@ -95,6 +97,10 @@ namespace conveyor
         JobPointer print       (QString const & inputFile);
         JobPointer printToFile (QString const & inputFile, QString const & outputFile);
         JobPointer slice       (QString const & inputFile, QString const & outputFile);
+
+        int getNumberOfExtruders() const;
+
+        bool hasPlatform() const;
 
         void jog (float x, float y, float z, float f);
 
