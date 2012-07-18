@@ -60,7 +60,8 @@ namespace conveyor
     {
     }
     Job::Job
-    (Printer * printer, QString const &name,
+    (Printer * printer __attribute__ ((unused)),
+	 QString const &name,
      int const &progress):m_private(new JobPrivate())
     {
         m_private->m_displayName = name;
@@ -89,8 +90,17 @@ namespace conveyor
         m_private->m_hasPlatform = true;
         m_private->m_jobs = conveyor->jobs();
     }
-    Printer::Printer (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
-                      const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform): m_private(new PrinterPrivate())
+    Printer::Printer
+		(Conveyor *convey
+		, const QString &name
+		, const bool &canPrint
+		, const bool &canPrintToFile
+		, const ConnectionStatus &cs
+		, const QString &printerType
+		, const int &numberOfExtruders
+		, const bool &hasHeatedPlatform
+		)
+		: m_private(new PrinterPrivate())
     {
         m_private->m_canPrint = canPrint;
         m_private->m_canPrintToFile = canPrintToFile;
@@ -220,7 +230,14 @@ namespace conveyor
     }
 
     void
-    Printer::jog(float x, float y, float z, float a, float b, float f)
+    Printer::jog
+		( float x
+		, float y
+		, float z
+		, float a
+		, float b
+		, float f
+		)
     {
         qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
         //Jogz
