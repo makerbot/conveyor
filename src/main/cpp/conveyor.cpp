@@ -12,6 +12,10 @@ namespace conveyor
 
     struct JobPrivate
     {
+
+        QString m_displayName;
+        QString m_uniqueName;
+        int m_Progress;
     };
 
     struct PrinterPrivate
@@ -55,6 +59,18 @@ namespace conveyor
         : m_private (0)
     {
     }
+    Job::Job
+    (Printer * printer, QString const &name,
+     int const &progress):m_private(new JobPrivate())
+    {
+        m_private->m_displayName = name;
+        m_private->m_Progress = progress;
+        m_private->m_uniqueName = QUuid::createUuid().toString();
+    }
+    int Job::progress()
+    {
+        return m_private->m_Progress;
+    }
 
 
     Printer::Printer
@@ -93,9 +109,9 @@ namespace conveyor
     }
 
     QList<Job *>
-    Printer::jobs ()
+    * Printer::jobs ()
     {
-       return m_private->m_jobs;
+       return &m_private->m_jobs;
     }
 
     Job *

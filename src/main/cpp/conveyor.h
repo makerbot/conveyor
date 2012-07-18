@@ -70,6 +70,9 @@ namespace conveyor
 
     public:
         Job (Printer * printer, QString const & id);
+        Job (Printer * printer, QString const &name, int const &progress);
+
+        int progress();
 
         JobStatus jobStatus () const;
 
@@ -96,7 +99,7 @@ namespace conveyor
         ~Printer ();
 
         /** A list of all the jobs the printer has queued */
-        QList<Job *> jobs ();
+        QList<Job *> * jobs ();
 
         /** A Pointer to the current job */
         Job * currentJob();
