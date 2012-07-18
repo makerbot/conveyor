@@ -222,4 +222,24 @@ namespace conveyor
         qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
         //Jogz
     }
+
+
+    Address WindowsDefaultAddress;
+    Address UNIXDefaultAddress;
+
+    Address&
+    defaultAddress()
+    {
+        #if defined(CONVEYOR_ADDRESS)
+            return CONVEYOR_ADDRESS;
+        #elif defined(Q_OS_WIN32)
+            return WindowsDefaultAddress;
+        #elif defined(Q_OS_MAC)
+            return UNIXDefaultAddress;
+        #elif defined(Q_OS_LINUX)
+            return UNIXDefaultAddress;
+        #else
+            #error No CONVEYOR_ADDRESS defined and no default location known for this platform
+        #endif
+    }
 }
