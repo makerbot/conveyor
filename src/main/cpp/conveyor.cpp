@@ -73,6 +73,19 @@ namespace conveyor
         m_private->m_hasPlatform = true;
         m_private->m_jobs = conveyor->jobs();
     }
+    Printer::Printer (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
+                      const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform): m_private(new PrinterPrivate())
+    {
+        m_private->m_canPrint = canPrint;
+        m_private->m_canPrintToFile = canPrintToFile;
+        m_private->m_connectionStatus = cs;
+        m_private->m_displayName = name;
+        m_private->m_printerType = printerType;
+        m_private->m_uniqueName = QUuid::createUuid().toString();
+        m_private->m_numberOfToolheads = numberOfExtruders;
+        m_private->m_hasPlatform = hasHeatedPlatform;
+        m_private->m_jobs = convey->jobs();
+    }
 
     Printer::~Printer ()
     {
