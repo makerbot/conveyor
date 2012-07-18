@@ -21,6 +21,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import logging
+import os.path
 import socket
 import threading
 
@@ -117,7 +118,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_print(self):
         params = [
-            self._parsedargs.thing,
+            os.path.abspath(self._parsedargs.thing),
             self._parsedargs.preprocessor,
             self._parsedargs.skip_start_end]
         self._log.info('printing: %s', self._parsedargs.thing)
@@ -157,8 +158,8 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_printtofile(self):
         params = [
-            self._parsedargs.thing,
-            self._parsedargs.s3g,
+            os.path.abspath(self._parsedargs.thing),
+            os.path.abspath(self._parsedargs.s3g),
             self._parsedargs.preprocessor,
             self._parsedargs.skip_start_end]
         self._log.info(
@@ -169,8 +170,8 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_slice(self):
         params = [
-            self._parsedargs.thing,
-            self._parsedargs.gcode,
+            os.path.abspath(self._parsedargs.thing),
+            os.path.abspath(self._parsedargs.gcode),
             self._parsedargs.preprocessor,
             self._parsedargs.with_start_end]
         self._log.info(
