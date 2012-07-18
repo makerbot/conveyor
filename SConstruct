@@ -16,12 +16,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import sys, os
 AddOption('--test', action='store_true', dest='test')
 run_test = GetOption('test')
 
-env = Environment()
+env = Environment(ENV=os.environ)
 
-env.Command('virtualenv', 'setup.sh', './setup.sh')
+if 'win32' == sys.platform:
+   	env.Command('virtualenv', 'setup.bat', 'setup.bat')
+else:
+	env.Command('virtualenv', 'setup.sh', './setup.sh')
 
 if run_test:
     env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
