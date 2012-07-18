@@ -72,6 +72,8 @@ namespace conveyor
         Job (Printer * printer, QString const & id);
         Job (Printer * printer, QString const &name, int const &progress);
 
+        int progress();
+
         JobStatus jobStatus () const;
 
         friend class Conveyor;

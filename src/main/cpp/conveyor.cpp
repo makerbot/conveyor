@@ -67,7 +67,10 @@ namespace conveyor
         m_private->m_Progress = progress;
         m_private->m_uniqueName = QUuid::createUuid().toString();
     }
-
+    int Job::progress()
+    {
+        return m_private->m_Progress;
+    }
 
 
     Printer::Printer
