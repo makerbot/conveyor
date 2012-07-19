@@ -219,7 +219,7 @@ def generate(env):
     def locateQt4Command(env, command) :
         try :
             fullpath = env.backtick(
-                'pkg-config --variable %s_location QCore'%command).strip()
+                'pkg-config --variable %s_location QtCore'%command).strip()
             if fullpath and os.access(fullpath, os.X_OK) :
                     return fullpath
         except OSError: pass
