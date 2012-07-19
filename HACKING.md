@@ -69,6 +69,7 @@ You can prevent that by running it with the `--nofork` option:
 The daemon also accepts a command-line option to specify the log level:
         $ ./conveyord -c conveyor.conf -l DEBUG
 
+
 What Threads Are Running in conveyord?
 --------------------------------------
 
@@ -77,6 +78,9 @@ Linux/Mac:
 platforms that have `SIGUSR1`):
 
         $ kill -USR1 `cat conveyord.pid`
+
+'conveyord' will also create a lock file at a location sepecified in the configuration file's 'common' section, under the key 'daemon_lock'. If that lock file exists, 
+it indicates that conveyord is running, and may accept jobs
 
 
 To stop conveyord running (kill it!) 
