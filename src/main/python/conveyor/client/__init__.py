@@ -194,7 +194,6 @@ class ClientMain(conveyor.main.AbstractMain):
 			lock_filename = self._config['common']['daemon_lockfile']
 		except KeyError as e:
 			self._log.critical("no config['common'][daemon_lockfile'] found")
-		return False	 
 		return os.path.isfile(lock_filename)
 
 class _ClientMainTestCase(unittest.TestCase):
