@@ -152,6 +152,7 @@ class AbstractMain(object):
         self._config['common'].setdefault('slicer', 'miraclegrue')
         self._config['common'].setdefault('serialport', '/dev/ttyACM0')
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
+        self._config['common'].setdefault('daemon_lockfile', 'conveyord.avail.lock')
         return None
 
     def _setconfigdefaults_miraclegrue(self):
@@ -193,7 +194,13 @@ class AbstractMain(object):
     def _checkconfig_common(self):
         code = self._sequence(
             self._checkconfig_common_socket,
-            self._checkconfig_common_slicer)
+            self._checkconfig_common_slicer
+			self._checkconfig_common_daemonfile)
+
+        return code
+
+    def _checkconfig_common_daemonfile(self):
+        code = self._require_string('common', 'daemon_lockfile')
         return code
 
     def _checkconfig_common_socket(self):
