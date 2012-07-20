@@ -1,7 +1,8 @@
-# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:syntax=python:ts=4:
-# conveyor/SConstruct
+# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
+# conveyor/pic_test.py
 #
-# Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
+# conveyor - Printing dispatch engine for 3D objects and their friends.
+# Copyright Â© 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License as published by the Free
@@ -16,19 +17,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import sys, os
-AddOption('--test', action='store_true', dest='test')
-run_test = GetOption('test')
+from __future__ import (absolute_import, print_function, unicode_literals)
 
-env = Environment(ENV=os.environ)
+import sys
 
-if 'win32' == sys.platform:
-   	env.Command('virtualenv', 'setup.bat', 'setup.bat')
-else:
-	env.Command('virtualenv', 'setup.sh', './setup.sh')
+def _main(argv):
+    code = 0
+    return code
 
-if run_test:
-    env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
-
-## For building C++/Qt creation
-SConscript('SConscript', variant_dir='obj', duplicate=1)
+if '__main__' == __name__:
+    code = _main(sys.argv)
+    if None is code:
+        code = 0
+    sys.exit(code)

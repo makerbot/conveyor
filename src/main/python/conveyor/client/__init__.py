@@ -21,6 +21,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import logging
+import os.path
 import socket
 import threading
 
@@ -111,13 +112,16 @@ class ClientMain(conveyor.main.AbstractMain):
             self._log.critical(
                 'failed to open socket: %s: %s',
                 self._config['common']['socket'], e.strerror, exc_info=True)
+			if not self._has_daemon_lock():
+              self._log.critical(
+				'no server lock found. Verify conveyor service is running')
         else:
             code = self._parsedargs.func()
         return code
 
     def _run_print(self):
         params = [
-            self._parsedargs.thing,
+            os.path.abspath(self._parsedargs.thing),
             self._parsedargs.preprocessor,
             self._parsedargs.skip_start_end]
         self._log.info('printing: %s', self._parsedargs.thing)
@@ -157,8 +161,8 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_printtofile(self):
         params = [
-            self._parsedargs.thing,
-            self._parsedargs.s3g,
+            os.path.abspath(self._parsedargs.thing),
+            os.path.abspath(self._parsedargs.s3g),
             self._parsedargs.preprocessor,
             self._parsedargs.skip_start_end]
         self._log.info(
@@ -169,8 +173,8 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_slice(self):
         params = [
-            self._parsedargs.thing,
-            self._parsedargs.gcode,
+            os.path.abspath(self._parsedargs.thing),
+            os.path.abspath(self._parsedargs.gcode),
             self._parsedargs.preprocessor,
             self._parsedargs.with_start_end]
         self._log.info(
@@ -183,6 +187,20 @@ class ClientMain(conveyor.main.AbstractMain):
         client = conveyor.client.Client.create(self._socket, method, params)
         code = client.run()
         return code
+
+	def _has_daemon_lock(self):
+		""" 
+		Returns true of a conveyor service 'lock' file is found,
+		indicating converyor daemon is running
+		@param self
+		@returns True if lockfile found, false otherwise
+		"""
+		lock_filename = 'conveyord.lock'
+		try: 
+			lock_filename = self._config['common']['daemon_lockfile']
+		except KeyError as e:
+			self._log.critical("no config['common'][daemon_lockfile'] found")
+		return os.path.isfile(lock_filename)
 
 class _ClientMainTestCase(unittest.TestCase):
     pass
