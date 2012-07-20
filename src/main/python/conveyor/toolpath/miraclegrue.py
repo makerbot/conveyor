@@ -29,9 +29,21 @@ import threading
 import s3g
 import tempfile
 import traceback
+import exceptions
 
 import conveyor.event
 import conveyor.task
+
+class ResourceNotExecutableException(exceptions.Exception):
+	def __init__(self, path, message='Resource not Available'):
+		exceptions.Exception.__init__(self)
+		self.message = str(message) + " : " + str(path) 
+
+class ResourceNotAvailableException(exceptions.Exception):
+	def __init__(self, path, message='Resource not Available'):
+		exceptions.Exception.__init__(self)
+		self.message = str(message) + " : " + str(path) 
+
 
 class MiracleGrueConfiguration(object):
     def __init__(self):
@@ -42,9 +54,21 @@ class MiracleGrueToolpath(object):
     def __init__(self, configuration):
         self._configuration = configuration
         self._log = logging.getLogger(self.__class__.__name__)
+	
+	def verifyresource(self):
+		def is_exe(fpath):
+			return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+		if not os.path.isfile(self._configuration.miraclegruepath): 
+			raise ResourceNotAvailableException(self._configuration.miraclegruepath)
+		if not is_exe(self._configuration.miraclegruepath):
+			raise ResourceNotExecutableException(self._configuration.miraclegruepath)
+		return True
+
 
     def generate(self, stlpath, gcodepath, with_start_end, printer):
-        def runningcallback(task):
+		self.verifyresource()
+		def runningcallback(task):
             self._log.info('slicing with Miracle Grue')
             try:
                 with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
