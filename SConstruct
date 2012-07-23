@@ -30,7 +30,7 @@ else:
 
 if run_test:
     if 'win32' == sys.platform:
-        env.Command('virtualenv', 'test.bat', 'test.bat')
+        env.Command('test', 'test.bat', 'test.bat')
     else: 
         env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
 
