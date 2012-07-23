@@ -20,6 +20,7 @@ import sys, os
 AddOption('--test', action='store_true', dest='test')
 run_test = GetOption('test')
 
+
 env = Environment(ENV=os.environ)
 
 if 'win32' == sys.platform:
@@ -28,7 +29,10 @@ else:
 	env.Command('virtualenv', 'setup.sh', './setup.sh')
 
 if run_test:
-    env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
+    if 'win32' == sys.platform:
+        env.Command('virtualenv', 'test.bat', 'test.bat')
+    else: 
+        env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
 
 ## For building C++/Qt creation
 SConscript('SConscript', variant_dir='obj', duplicate=1)
