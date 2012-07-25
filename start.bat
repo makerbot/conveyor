@@ -2,5 +2,5 @@
 
 CALL setup.bat
 
-ECHO Starting Conveyor Service
-net start Conveyor
+ECHO Starting conveyor backend from start.bat
+python conveyor_service.py -c conveyor-win32.conf
