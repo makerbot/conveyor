@@ -53,64 +53,65 @@ class ServerMain(conveyor.main.AbstractMain):
         return None
 
     def _run(self):
-		has_daemon = False
-		code = -17 #failed to run err
-		try:
-			import daemon
-			import daemon.pidfile
-			has_daemon = True
-		except ImportError:
-			self._log.debug('handled exception', exc_info=True)
+        has_daemon = False
+        code = -17 #failed to run err
+        try:
+            import daemon
+            import daemon.pidfile
+            has_daemon = True
+        except ImportError:
+            self._log.debug('handled exception', exc_info=True)
 
-		if self._parsedargs.nofork or (not has_daemon):
-			code = self._run_server()
-		else:
-			files_preserve = list(conveyor.log.getfiles())
-			pidfile = self._config['server']['pidfile']
-			dct = {
-				'files_preserve': files_preserve,
-				'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
-			}
-			if not self._config['server']['chdir']:
-				dct['working_directory'] = os.getcwd()
-			context = daemon.DaemonContext(**dct)
-			def terminate(signal_number, stack_frame):
-				# The daemon module's implementation of terminate()
-				# raises a SystemExit with a string message instead of
-				# an exit code. This monkey patch fixes it.
-				sys.exit(0)
-			context.terminate = terminate # monkey patch!
-			try:		
-				with context:
-					code = self._run_server()
-			except NotLocked as e:
-				self._log.critical('deamon file is not locked: %r',e);
-				code = 0 #assume we closed the thread ...
-		return code
+        if self._parsedargs.nofork or (not has_daemon):
+            code = self._run_server()
+        else:
+            files_preserve = list(conveyor.log.getfiles())
+            pidfile = self._config['server']['pidfile']
+            dct = {
+                'files_preserve': files_preserve,
+                'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
+            }
+            if not self._config['server']['chdir']:
+                dct['working_directory'] = os.getcwd()
+            context = daemon.DaemonContext(**dct)
+            def terminate(signal_number, stack_frame):
+                # The daemon module's implementation of terminate()
+                # raises a SystemExit with a string message instead of
+                # an exit code. This monkey patch fixes it.
+                sys.exit(0)
+            context.terminate = terminate # monkey patch!
+            try:
+                with context:
+                    code = self._run_server()
+            except NotLocked as e:
+                self._log.critical('deamon file is not locked: %r',e);
+                code = 0 #assume we closed the thread ...
+        return code
 
     def _run_server(self):
-		self._initeventqueue()
-		with self._address:
-			self._socket = self._address.listen()
-			with self._advertise_deamon() as lockfile:
-				try:
-					server = conveyor.server.Server(self._config, self._socket)
-					code = server.run()
-					return code
-				finally:
-					os.unlink(lockfile.name) 
-		return 0	
-	def _advertise_deamon(self):
-		"""
-		Advertise that the deamon is available
-		by writing a conveyord.lock file to advertise that conveyord is available
-		Existance of that file indicates that the conveyor service is up and running
-		@return a file object pointing to the lockfile
-		"""
-		if not self._config['common']['daemon_lockfile']:
-			return None
-		lock_filename = self._config['common']['daemon_lockfile']
-		return open(lock_filename, 'w+')
+        self._initeventqueue()
+        with self._address:
+            self._socket = self._address.listen()
+            with self._advertise_deamon() as lockfile:
+                try:
+                    server = conveyor.server.Server(self._config, self._socket)
+                    code = server.run()
+                    return code
+                finally:
+                    os.unlink(lockfile.name) 
+        return 0
+
+    def _advertise_deamon(self):
+        """
+        Advertise that the deamon is available
+        by writing a conveyord.lock file to advertise that conveyord is available
+        Existance of that file indicates that the conveyor service is up and running
+        @return a file object pointing to the lockfile
+        """
+        if not self._config['common']['daemon_lockfile']:
+            return None
+        lock_filename = self._config['common']['daemon_lockfile']
+        return open(lock_filename, 'w+')
 
 class ServerMainTestCase(unittest.TestCase):
     pass
