@@ -2,7 +2,7 @@
 IF NOT EXIST virtualenv GOTO DIRNOTEXISTS
 
 :DIREXISTS
-call virtualenv\scripts\activate
+CALL virtualenv\scripts\activate
 
 pip install -q --use-mirrors argparse coverage doxypy lockfile mock pyserial unittest-xml-reporting
 GOTO DONE

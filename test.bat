@@ -35,6 +35,4 @@ coverage html -d obj\ --include 'src\main\python\*'
 coverage xml -o obj\coverage.xml --include 'src\main\python\*'
 coverage report --include 'src\main\python\*'
 
-CALL stop.bat
-
 ENDLOCAL EnableDelayedExpansion
