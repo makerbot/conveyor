@@ -19,7 +19,7 @@
 import os.path
 import sys
 
-env = Environment()
+env = Environment(ENV=os.environ)
 
 if 'win32' == sys.platform:
     env.Tool('mingw')
