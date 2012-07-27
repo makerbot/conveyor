@@ -7,7 +7,7 @@
 #include <QObject>
 #include <QSharedPointer>
 #include <QDebug>
-
+#include <QTimer>
 namespace conveyor
 {
     class Address;
@@ -16,7 +16,9 @@ namespace conveyor
     class Printer;
 
     struct ConveyorPrivate;
+
     struct JobPrivate;
+
     struct PrinterPrivate;
 
     enum ConnectionStatus
@@ -83,7 +85,8 @@ namespace conveyor
 
         /** Emitted when the jobStatus changes */
         void jobStatusChanged(JobStatus);
-
+     public slots:
+        void incrementProgress();
     private:
         JobPrivate * const m_private;
     };
@@ -137,6 +140,7 @@ namespace conveyor
 
         friend class Conveyor;
         friend class Job;
+        friend class FakePrinter;
 
     signals:
 
@@ -145,9 +149,23 @@ namespace conveyor
 
         /** Emitted when the printer switches jobs */
         void currentJobChanged(Job *);
+    public slots:
+         virtual void togglePaused();
 
     private:
         PrinterPrivate * const m_private;
+    };
+    class FakePrinter : public Printer
+    {
+            Q_OBJECT
+    public:
+        FakePrinter (Conveyor * convey, QString const & name);
+        FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
+    const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform);
+        void startFiringEvents();
+        void stopFiringEvents();
+    private:
+        QTimer m_timer;
     };
 
     Address& defaultAddress();
