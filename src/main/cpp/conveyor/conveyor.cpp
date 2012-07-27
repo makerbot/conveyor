@@ -96,7 +96,7 @@ namespace conveyor
 		, const bool &canPrint
 		, const bool &canPrintToFile
 		, const ConnectionStatus &cs
-		, const QString &printerType
+        , const QString &printerType
 		, const int &numberOfExtruders
 		, const bool &hasHeatedPlatform
 		)
@@ -235,7 +235,7 @@ namespace conveyor
 		, float y
 		, float z
 		, float a
-		, float b
+        , float b
 		, float f
 		)
     {
@@ -243,6 +243,27 @@ namespace conveyor
         //Jogz
     }
 
+    FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
+        {
+            qDebug() << "y me no work :(";
+        }
+    FakePrinter::FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
+             const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform)
+    :Printer(convey, name , canPrint, canPrintToFile, cs, printerType, numberOfExtruders, hasHeatedPlatform)
+    {
+        qDebug() << m_private->m_displayName;
+    }
+    void FakePrinter::startFiringEvents()
+    {
+        static int progress = 0;
+        ++progress;
+        connect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(JobPercentageChanged(progress)));
+        m_timer.start(1000);
+    }
+    void FakePrinter::stopFiringEvents()
+    {
+        m_timer.stop();
+    }
 
     Address WindowsDefaultAddress;
     Address UNIXDefaultAddress;
