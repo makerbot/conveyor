@@ -26,7 +26,6 @@ import os
 import sys
 import threading
 
-
 try:
     import unittest2 as unittest
 except ImportError:
@@ -36,8 +35,6 @@ import conveyor.jsonrpc
 import conveyor.main
 import conveyor.recipe
 import conveyor.main
-
-from lockfile import ( NotLocked, UnlockError)
 
 class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
@@ -58,10 +55,10 @@ class ServerMain(conveyor.main.AbstractMain):
         try:
             import daemon
             import daemon.pidfile
+            import lockfile
             has_daemon = True
         except ImportError:
             self._log.debug('handled exception', exc_info=True)
-
         if self._parsedargs.nofork or (not has_daemon):
             code = self._run_server()
         else:
@@ -83,7 +80,7 @@ class ServerMain(conveyor.main.AbstractMain):
             try:
                 with context:
                     code = self._run_server()
-            except NotLocked as e:
+            except lockfile.NotLocked as e:
                 self._log.critical('deamon file is not locked: %r',e);
                 code = 0 #assume we closed the thread ...
         return code
