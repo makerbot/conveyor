@@ -34,12 +34,15 @@ import conveyor.test
 _eventqueue = None
 
 def geteventqueue():
+	"""@returns global singleton EventQueue object."""
     global _eventqueue
     if None is _eventqueue:
         _eventqueue = EventQueue()
     return _eventqueue
 
+
 class EventQueue(object):
+	""" Class represents an Event Queue."""
     def __init__(self):
         self._lock = threading.Lock()
         self._log = logging.getLogger(self.__class__.__name__)
@@ -67,6 +70,10 @@ class EventQueue(object):
         return result
 
     def run(self):
+		""" main loop for queue. Loop consumes events
+			until exiting.
+		@return undefined 
+		"""
         self._log.debug('starting')
         self._quit = False
         while not self._quit:
@@ -88,7 +95,8 @@ class EventQueue(object):
             self._condition.notify_all()
 
 class Event(object):
-    def __init__(self, name, eventqueue=None):
+
+    def __init__(self, name="anon event", eventqueue=None):
         self._name = name
         self._eventqueue = eventqueue
         self._handles = {}

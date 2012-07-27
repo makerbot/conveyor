@@ -26,15 +26,9 @@ import os
 import sys
 import threading
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 import conveyor.jsonrpc
 import conveyor.main
 import conveyor.recipe
-import conveyor.main
 
 class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
@@ -59,10 +53,10 @@ class ServerMain(conveyor.main.AbstractMain):
             has_daemon = True
         except ImportError:
             self._log.debug('handled exception', exc_info=True)
-        if self._parsedargs.nofork or (not has_daemon):
+		if (self._parsedargs and self._parsedargs.nofork) or (not has_daemon):
             code = self._run_server()
         else:
-            files_preserve = list(conveyor.log.getfiles())
+            files_preserve = list(conveyor._log.getfiles())
             pidfile = self._config['server']['pidfile']
             dct = {
                 'files_preserve': files_preserve,
@@ -110,13 +104,12 @@ class ServerMain(conveyor.main.AbstractMain):
         lock_filename = self._config['common']['daemon_lockfile']
         return open(lock_filename, 'w+')
 
-class ServerMainTestCase(unittest.TestCase):
-    pass
-
 
 class _ClientThread(threading.Thread):
+	
+
     @classmethod
-    def create(cls, config, server, fp, id):
+    def factory(cls, config, server, fp, id):
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
         clientthread = _ClientThread(config, server, jsonrpc, id)
         return clientthread
@@ -289,3 +282,4 @@ class Server(object):
             self._queue.quit()
             taskqueuethread.join(5)
         return 0
+
