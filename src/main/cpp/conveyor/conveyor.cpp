@@ -16,6 +16,7 @@ namespace conveyor
         QString m_displayName;
         QString m_uniqueName;
         int m_Progress;
+        JobStatus m_Status;
     };
 
     struct PrinterPrivate
@@ -77,6 +78,12 @@ namespace conveyor
         m_private->m_Progress++;
         emit JobPercentageChanged(m_private->m_Progress);
     }
+
+    JobStatus Job::jobStatus() const
+    {
+        return m_private->m_Status;
+    }
+
 
     Printer::Printer
         ( Conveyor  * conveyor __attribute__ ((unused))
@@ -246,6 +253,17 @@ namespace conveyor
         qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
         //Jogz
     }
+    void Printer::togglePaused()
+    {
+        if(this->currentJob()->jobStatus() == PAUSED)
+        {
+            this->currentJob()->m_private->m_Status = PRINTING;
+        }
+        else if(this->currentJob()->jobStatus() == PAUSED)
+        {
+            this->currentJob()->m_private->m_Status = PRINTING;
+        }
+    }
 
     FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
         {
@@ -259,6 +277,21 @@ namespace conveyor
     }
     void FakePrinter::startFiringEvents()
     {
+
+
+    FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
+        {
+            qDebug() << "y me no work :(";
+        }
+    FakePrinter::FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
+             const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform)
+    :Printer(convey, name , canPrint, canPrintToFile, cs, printerType, numberOfExtruders, hasHeatedPlatform)
+    {
+        qDebug() << m_private->m_displayName;
+    }
+    void FakePrinter::startFiringEvents()
+    {
+
 
         connect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(incrementProgress()));
         m_timer.start(1000);

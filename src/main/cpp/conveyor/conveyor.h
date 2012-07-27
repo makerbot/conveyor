@@ -149,6 +149,8 @@ namespace conveyor
 
         /** Emitted when the printer switches jobs */
         void currentJobChanged(Job *);
+    public slots:
+         virtual void togglePaused();
 
     private:
         PrinterPrivate * const m_private;
