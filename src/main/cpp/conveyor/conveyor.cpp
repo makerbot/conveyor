@@ -3,7 +3,7 @@
 #include "conveyor.h"
 
 #include <QUuid>
-
+#include <QTime>
 namespace conveyor
 {
     struct ConveyorPrivate
@@ -219,6 +219,7 @@ namespace conveyor
     {
         QString jobID("fakePrintID:" + QUuid::createUuid().toString());
         Job * job = new Job(this, jobID);
+        m_private->m_jobs.append(job);
         return job;
     }
 
@@ -230,6 +231,7 @@ namespace conveyor
     {
         QString jobID("fakePrintToFileID:" + QUuid::createUuid().toString());
         Job * job = new Job(this, jobID);
+        m_private->m_jobs.append(job);
         return job;
     }
 
@@ -241,6 +243,7 @@ namespace conveyor
     {
         QString jobID("fakeSliceID:" + QUuid::createUuid().toString());
         Job * job = new Job(this, jobID);
+        m_private->m_jobs.append(job);
         return job;
     }
 
@@ -275,27 +278,47 @@ namespace conveyor
     FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
         {
             qDebug() << "y me no work :(";
-            m_timer.setInterval(1000);
+            connect(&m_ConnectionTimer, SIGNAL(timeout()), this, SLOT(emitRandomConnectionStatus()));
         }
     FakePrinter::FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
              const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform)
     :Printer(convey, name , canPrint, canPrintToFile, cs, printerType, numberOfExtruders, hasHeatedPlatform)
     {
         qDebug() << m_private->m_displayName;
-        m_timer.setInterval(1000);
+        connect(&m_ConnectionTimer, SIGNAL(timeout()), this, SLOT(emitRandomConnectionStatus()));
 
     }
+    void FakePrinter::startRandomConnectionStatus()
+    {
+        m_ConnectionTimer.start(1000);
+        qsrand(QTime::currentTime().msec());
+
+    }
+    void FakePrinter::stopRandomConnectionStatus()
+    {
+        m_ConnectionTimer.stop();
+    }
+    void FakePrinter::emitRandomConnectionStatus()
+    {
+        qDebug() << "1. connection status: " << m_private->m_connectionStatus;
+        int rnd = qrand();
+        if(rnd % 4 == 0) //one fourth of the time actually swap stuff
+        {
+           m_private->m_connectionStatus = m_private->m_connectionStatus == CONNECTED ? NOT_CONNECTED : CONNECTED;
+           qDebug() << "emitting change!";
+           emit connectionStatusChanged(m_private->m_connectionStatus);
+        }
+        qDebug() << "2. connection status: " << m_private->m_connectionStatus;
+
+    }
+
     void FakePrinter::startCurrentJob()
     {
-        connect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(incrementProgress()));
-
-        m_timer.start();
-
+        m_JobTimer.start(1000);
     }
     void FakePrinter::stopCurrentJob()
     {
-        disconnect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(incrementProgress()));
-        m_timer.stop();
+        m_JobTimer.stop();
     }
     void FakePrinter::togglePaused()
     {
@@ -318,6 +341,7 @@ namespace conveyor
         )
     {
         Job * job = Printer::print(inputFile);
+        connect(&m_JobTimer, SIGNAL(timeout()), job, SLOT(incrementProgress()));
         return job;
     }
 
@@ -329,17 +353,18 @@ namespace conveyor
     {
 
         Job * job = Printer::printToFile(inputFile,outputFile);
+        connect(&m_JobTimer, SIGNAL(timeout()), job, SLOT(incrementProgress()));
         return job;
     }
 
     Job *
     FakePrinter::slice
-        ( QString const & inputFile __attribute__ ((unused))
-        , QString const & outputFile __attribute__ ((unused))
+        ( QString const & inputFile
+        , QString const & outputFile
         )
     {
-        QString jobID("fakeSliceID:" + QUuid::createUuid().toString());
-        Job * job = new Job(this, jobID);
+        Job * job = Printer::slice(inputFile,outputFile);
+        connect(&m_JobTimer, SIGNAL(timeout()), job, SLOT(incrementProgress()));
         return job;
     }
     Address WindowsDefaultAddress;

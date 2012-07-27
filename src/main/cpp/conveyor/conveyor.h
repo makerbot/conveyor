@@ -164,13 +164,18 @@ namespace conveyor
     const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform);
         void startCurrentJob();
         void stopCurrentJob();
+        void startRandomConnectionStatus();
+        void stopRandomConnectionStatus();
         Job * print       (QString const & inputFile);
         Job * printToFile (QString const & inputFile, QString const & outputFile);
         Job * slice       (QString const & inputFile, QString const & outputFile);
+    private slots:
+       void emitRandomConnectionStatus();
     public slots:
         virtual void togglePaused();
     private:
-        QTimer m_timer;
+        QTimer m_JobTimer;
+        QTimer m_ConnectionTimer;
     };
 
     Address& defaultAddress();
