@@ -42,7 +42,7 @@ class RecipeManager(object):
     def __init__(self, config):
         self._config = config
 
-    def getrecipe(self, path, preprocessor):
+	def getrecipe(self, path, preprocessor):
         root, ext = os.path.splitext(path)
         if '.gcode' == ext:
             recipe = self._getrecipe_gcode(path, preprocessor)
@@ -144,6 +144,16 @@ class Recipe(object):
 
     def slice(self, gcode, with_start_end):
         raise NotImplementedError
+
+    def build_ping(self):
+        raise NotImplementedError
+
+    def build_dir(self):
+        raise NotImplementedError
+
+    def build_scan(self):
+        raise NotImplementedError
+		
 
 class _GcodeRecipe(Recipe):
     def __init__(self, config, path, preprocessor):

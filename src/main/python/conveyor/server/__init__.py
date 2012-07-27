@@ -36,6 +36,15 @@ import conveyor.main
 import conveyor.recipe
 import conveyor.main
 
+#class exportedFunction(object):
+#	""" Empty decorator to flag what functions are callable
+#		from a client program
+#	"""
+#    def __init__(self,f):
+#        self.func = f 
+#    def __call__(self, *args, **kwargs):
+#        self.func(*args, **kwargs)
+
 class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
         conveyor.main.AbstractMain.__init__(self, 'conveyord', 'server')
@@ -190,11 +199,71 @@ class _ClientThread(threading.Thread):
         self._server.appendtask(task)
         return None
 
+#    @exportedFunction
+    def _ping(self, *args, **kwargs):
+		import pdb
+		pdb.set_trace()
+		self._log.debug("doing a ping to conveyor service")
+		def ping_callback(task):
+			self._log.debug("doing a ping to task")	
+		task = conveyor.task.Task()
+		task.runningevent.attach(ping_callback)
+		task.stoppedevent.attach(self._stoppedcallback)
+		self._server.appendtask(task)
+		return None	
+
+#    @exportedFunction
+    def _printer_scan(self,*args,**kwargs):
+		import pdb
+		pdb.set_trace()
+		self._log.debug("doing a printer scan via conveyor service")
+		task = conveyor.task.Task()
+		def scan_callback(task):
+			pdb.set_trace()
+			self._log.debug("doing a scan to task")	
+			vid = None
+			pid = None
+			if 'vid' in kwargs:
+				vid = int(kwargs['vid'],16)
+			if 'pid' in kwargs:
+				pid = int(kwargs['pid'],16)
+			try:
+                import serial.tools.list_ports as lp
+				ports = lp.list_ports_by_vid_pid(vid,pid)
+                #for port in ports:	
+                  #self._log.error("port= %r", port)
+            except Exception as e:
+                #self._log.exception('unhandled exception')
+                task.fail(e)
+            else:
+			    task.end(None)
+		task.runningevent.attach(scan_callback)
+		task.stoppedevent.attach(self._stoppedcallback)
+		self._server.appendtask(task)
+		return None
+
+   
+#    @exportedFunction
+	def _dir(self, *args, **kwards):
+		self._log.debug("doing a services dir conveyor service")
+		def dir_callback(task):
+			self._log.debug("doing a dir to task")	
+		task = conveyor.task.Task()
+		task.runningevent.attach(dir_callback)
+		task.stoppedevent.attach(self._stoppedcallback)
+		return None
+
+
     def run(self):
+		# add our available functions to the json methods list
         self._jsonrpc.addmethod('hello', self._hello)
         self._jsonrpc.addmethod('print', self._print)
         self._jsonrpc.addmethod('printtofile', self._printtofile)
         self._jsonrpc.addmethod('slice', self._slice)
+		self._jsonrpc.addmethod('ping', self._ping)
+		self._jsonrpc.addmethod('printer_scan', self._printer_scan)
+		self._jsonrpc.addmethod('dir', self._dir)
+
         self._server.appendclientthread(self)
         try:
             self._jsonrpc.run()

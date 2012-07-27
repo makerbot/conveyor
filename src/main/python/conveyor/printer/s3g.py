@@ -115,19 +115,48 @@ class S3gPrinter(object):
 
         return serialfp
 
+    def ping_builder():
+		""" builds a ping task object, and returns it to the caller
+		to be run in the context of a task manager
+		"""
+        #self._log.debug('gcodepath=%r', gcodepath)
+		
+        def runningcallback(task):
+            #self._log.error("runningcallback ping")
+            try:
+                vid = int('23c1', 16)
+                pid = int('d314', 16)
+                import serial.tools.list_ports as lp
+				ports = lp.get_ports_by_vid_pid(vid,pid)
+                #for port in ports:	
+                  #self._log.error("port= %r", port)
+            except Exception as e:
+                #self._log.exception('unhandled exception')
+                task.fail(e)
+            else:
+                task.end(None)
+        task = conveyor.task.Task()
+        self._log.exception('attaching')
+        task.runningevent.attach(runningcallback)
+        return task
+
+
     def print(self, gcodepath, skip_start_end):
         self._log.debug('gcodepath=%r', gcodepath)
+		
         def runningcallback(task):
+            self._log.error("runningcallback ping")
             try:
-                with self._openserial() as serialfp:
-                    writer = s3g.Writer.StreamWriter(serialfp)
-                    self._genericprint(task, writer, True, gcodepath, skip_start_end)
+		       with self._openserial() as serialfp:
+				 writer = s3g.Writer.StreamWriter(serialfp)
+                 self._genericprint(task, writer, True, gcodepath, skip_start_end)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)
             else:
                 task.end(None)
         task = conveyor.task.Task()
+        self._log.exception('attaching')
         task.runningevent.attach(runningcallback)
         return task
 
@@ -146,3 +175,28 @@ class S3gPrinter(object):
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
+
+    def ping_builder(self, botname):
+		def runningcallback(task):
+            self._log.exception('ping runningcallback')
+			pass
+		task = conveyor.task.Task()
+		task.runningevent.attach(runningcallback)
+		return task
+
+	def scan_builder(self, vid=None, pid=None):
+		def runningcallback(task):
+            self._log.exception('scans runningcallback')
+			pass
+		task = conveyor.task.Task()
+		task.runningevent.attach(runningcallback)
+		return task
+
+	
+	def dir_builder(self):
+		def runningcallback(task):
+            self._log.exception('dir runningcallback')
+			pass
+		task = conveyor.task.Task()
+		task.runningevent.attach(runningcallback)
+		return task

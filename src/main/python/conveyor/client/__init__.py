@@ -49,8 +49,26 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_printers,
             self._initsubparser_printtofile,
             self._initsubparser_slice,
+			self._initsubparser_ping,
+			self._initsubparser_scan,
+			self._initsubparser_dir
             ):
                 method(subparsers)
+
+	def _initsubparser_ping(self,subparsers):
+		parser = subparsers.add_parser('ping',help='ping a service or tool')
+		parser.set_defaults(func=self._run_ping)
+		self._initparser_common(parser)
+
+	def _initsubparser_scan(self,subparsers):
+		parser = subparsers.add_parser('scan',help='ping a service or tool')
+		parser.set_defaults(func=self._run_scan)
+		self._initparser_common(parser)
+
+	def _initsubparser_dir(self,subparsers):
+		parser = subparsers.add_parser('dir',help='ping a service or tool')
+		parser.set_defaults(func=self._run_dir)
+		self._initparser_common(parser)
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser('printers', help='list connected printers')
@@ -128,36 +146,25 @@ class ClientMain(conveyor.main.AbstractMain):
         code = self._run_client('print', params)
         return code
 
+    def _run_ping(self):
+		params = ['fail','sauce']
+        code = self._run_client('ping',params) #from server/__init__.py
+		return code	
+  
+    def _run_scan(self):
+		params = ['fail','sauce']
+        code = self._run_client('printer_scan',params) #from server/__init__.py
+		return code 
+  
+    def _run_dir(self):
+		params = ['fail','sauce']
+        code = self._run_client('dir',params) #from server/__init__.py
+		return code
+  
+
     def _run_printers(self):
-        printers = [
-            {
-                'name': 'bot 1',
-                'displayname': 'Bot 1',
-                'kind': 'Replicator',
-                'extruders': 2,
-                'printtofile': True
-            },
-            {
-                'name': 'bot 2',
-                'displayname': 'Bot 2',
-                'kind': 'Replicator',
-                'extruders': 2,
-                'printtofile': True
-            }
-        ]
-        if self._parsedargs.json:
-            json.dump(printers, sys.stdout)
-            print('')
-        else:
-            for i, printer in enumerate(printers):
-                if 0 != i:
-                    print('')
-                print('Name: %s' % (printer['name'],))
-                print('Display Name: %s' % (printer['displayname'],))
-                print('Kind: %s' % (printer['kind'],))
-                print('Extruders: %s' % (printer['extruders'],))
-                print('Print to File: %s' % (printer['printtofile'],))
-        return 0
+        code = self.run_client('printer_scan') 
+        return code
 
     def _run_printtofile(self):
         params = [
