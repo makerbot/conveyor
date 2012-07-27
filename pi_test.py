@@ -22,15 +22,46 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import sys
 
 def _main(argv):
+	
+	code = 0 # no err
     try:
         import conveyor
-        import s3g
-    except ImportError:
-        code = 1
+    except ImportError as e:
+        print(e)
+	    code +=1
     else:
         code = 0
-    return code
+    
+    try:
+        import s3g
+    except ImportError as e:
+		print(e)
+	    code +=1
+    else:
+        code = 0
 
+    try:
+        import serial	
+	    if(serial.__version__.index('mb') < 0):
+			code +=1 # not makerbot's serial
+    except ImportError as e :
+		print(e)
+	    code +=1
+    else:
+        code = 0 
+    return code
+	
+    try:
+        import serial.tools.list_ports as lp
+		vid_pid_scan = lp.get_ports_by_vid_pid 
+    except ImportError as e :
+		print(e)
+	    code +=1
+    else:
+        code = 0 
+    return code
+	
+	
 if '__main__' == __name__:
     code = _main(sys.argv)
     if None is code:
