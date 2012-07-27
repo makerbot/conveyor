@@ -134,9 +134,9 @@ namespace conveyor
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);
 
-        Job * print       (QString const & inputFile);
-        Job * printToFile (QString const & inputFile, QString const & outputFile);
-        Job * slice       (QString const & inputFile, QString const & outputFile);
+        virtual Job * print       (QString const & inputFile);
+        virtual Job * printToFile (QString const & inputFile, QString const & outputFile);
+        virtual Job * slice       (QString const & inputFile, QString const & outputFile);
 
         friend class Conveyor;
         friend class Job;
@@ -162,8 +162,13 @@ namespace conveyor
         FakePrinter (Conveyor * convey, QString const & name);
         FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
     const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform);
-        void startFiringEvents();
-        void stopFiringEvents();
+        void startCurrentJob();
+        void stopCurrentJob();
+        Job * print       (QString const & inputFile);
+        Job * printToFile (QString const & inputFile, QString const & outputFile);
+        Job * slice       (QString const & inputFile, QString const & outputFile);
+    public slots:
+        virtual void togglePaused();
     private:
         QTimer m_timer;
     };

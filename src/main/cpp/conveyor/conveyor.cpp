@@ -55,10 +55,13 @@ namespace conveyor
 
     Job::Job
         ( Printer * printer __attribute__ ((unused))
-        , QString const & id __attribute__ ((unused))
+        , QString const & id
         )
-        : m_private (0)
+        :m_private(new JobPrivate())
     {
+        m_private->m_Progress = 0;
+        m_private->m_uniqueName = id;
+        m_private->m_Status = PRINTING;
     }
     Job::Job
     (Printer * printer __attribute__ ((unused)),
@@ -68,6 +71,7 @@ namespace conveyor
         m_private->m_displayName = name;
         m_private->m_Progress = progress;
         m_private->m_uniqueName = QUuid::createUuid().toString();
+        m_private->m_Status = PRINTING;
     }
     int Job::progress()
     {
@@ -255,52 +259,89 @@ namespace conveyor
     }
     void Printer::togglePaused()
     {
-        if(this->currentJob()->jobStatus() == PAUSED)
+        qDebug() << "1. jobstatus" << this->currentJob()->jobStatus();
+        if(this->currentJob()->jobStatus() == PRINTING)
         {
-            this->currentJob()->m_private->m_Status = PRINTING;
+            this->currentJob()->m_private->m_Status = PAUSED;
         }
         else if(this->currentJob()->jobStatus() == PAUSED)
         {
             this->currentJob()->m_private->m_Status = PRINTING;
         }
+        qDebug() << "2. jobstatus" << this->currentJob()->jobStatus();
+
     }
 
     FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
         {
             qDebug() << "y me no work :(";
+            m_timer.setInterval(1000);
         }
     FakePrinter::FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
              const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform)
     :Printer(convey, name , canPrint, canPrintToFile, cs, printerType, numberOfExtruders, hasHeatedPlatform)
     {
         qDebug() << m_private->m_displayName;
+        m_timer.setInterval(1000);
+
     }
-    void FakePrinter::startFiringEvents()
+    void FakePrinter::startCurrentJob()
     {
-
-
-    FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
-        {
-            qDebug() << "y me no work :(";
-        }
-    FakePrinter::FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
-             const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform)
-    :Printer(convey, name , canPrint, canPrintToFile, cs, printerType, numberOfExtruders, hasHeatedPlatform)
-    {
-        qDebug() << m_private->m_displayName;
-    }
-    void FakePrinter::startFiringEvents()
-    {
-
-
         connect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(incrementProgress()));
-        m_timer.start(1000);
+
+        m_timer.start();
+
     }
-    void FakePrinter::stopFiringEvents()
+    void FakePrinter::stopCurrentJob()
     {
+        disconnect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(incrementProgress()));
         m_timer.stop();
     }
+    void FakePrinter::togglePaused()
+    {
 
+        Printer::togglePaused();
+        qDebug() << "3. jobstatus" << this->currentJob()->jobStatus();
+
+        if(this->currentJob()->jobStatus() == PAUSED)
+        {
+            stopCurrentJob();
+        }
+        else if(this->currentJob()->jobStatus() == PRINTING)
+        {
+            startCurrentJob();
+        }
+    }
+    Job *
+    FakePrinter::print
+        ( QString const & inputFile
+        )
+    {
+        Job * job = Printer::print(inputFile);
+        return job;
+    }
+
+    Job *
+    FakePrinter::printToFile
+        ( QString const & inputFile
+        , QString const & outputFile
+        )
+    {
+
+        Job * job = Printer::printToFile(inputFile,outputFile);
+        return job;
+    }
+
+    Job *
+    FakePrinter::slice
+        ( QString const & inputFile __attribute__ ((unused))
+        , QString const & outputFile __attribute__ ((unused))
+        )
+    {
+        QString jobID("fakeSliceID:" + QUuid::createUuid().toString());
+        Job * job = new Job(this, jobID);
+        return job;
+    }
     Address WindowsDefaultAddress;
     Address UNIXDefaultAddress;
 
