@@ -85,7 +85,8 @@ namespace conveyor
 
         /** Emitted when the jobStatus changes */
         void jobStatusChanged(JobStatus);
-
+     public slots:
+        void incrementProgress();
     private:
         JobPrivate * const m_private;
     };

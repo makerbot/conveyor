@@ -72,7 +72,11 @@ namespace conveyor
     {
         return m_private->m_Progress;
     }
-
+    void Job::incrementProgress()
+    {
+        m_private->m_Progress++;
+        emit JobPercentageChanged(m_private->m_Progress);
+    }
 
     Printer::Printer
         ( Conveyor  * conveyor __attribute__ ((unused))
@@ -255,9 +259,8 @@ namespace conveyor
     }
     void FakePrinter::startFiringEvents()
     {
-        static int progress = 0;
-        ++progress;
-        connect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(JobPercentageChanged(progress)));
+
+        connect(&m_timer, SIGNAL(timeout()), this->currentJob(), SLOT(incrementProgress()));
         m_timer.start(1000);
     }
     void FakePrinter::stopFiringEvents()
