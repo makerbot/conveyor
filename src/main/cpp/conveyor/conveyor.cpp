@@ -37,6 +37,8 @@ namespace conveyor
     Conveyor::Conveyor (Address const & address __attribute__ ((unused)))
         : m_private (0)
     {
+        qsrand(QTime::currentTime().msec());
+
     }
 
     QList<Job *>
@@ -277,7 +279,7 @@ namespace conveyor
 
     FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
         {
-            qDebug() << "y me no work :(";
+            //qDebug() << "y me no work :(";
             connect(&m_ConnectionTimer, SIGNAL(timeout()), this, SLOT(emitRandomConnectionStatus()));
         }
     FakePrinter::FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
@@ -291,7 +293,6 @@ namespace conveyor
     void FakePrinter::startRandomConnectionStatus()
     {
         m_ConnectionTimer.start(1000);
-        qsrand(QTime::currentTime().msec());
 
     }
     void FakePrinter::stopRandomConnectionStatus()
@@ -300,15 +301,15 @@ namespace conveyor
     }
     void FakePrinter::emitRandomConnectionStatus()
     {
-        qDebug() << "1. connection status: " << m_private->m_connectionStatus;
+        //qDebug() << "1. connection status: " << m_private->m_connectionStatus;
         int rnd = qrand();
         if(rnd % 4 == 0) //one fourth of the time actually swap stuff
         {
            m_private->m_connectionStatus = m_private->m_connectionStatus == CONNECTED ? NOT_CONNECTED : CONNECTED;
-           qDebug() << "emitting change!";
+           qDebug() << "emitting change! for printer:" << m_private->m_displayName;
            emit connectionStatusChanged(m_private->m_connectionStatus);
         }
-        qDebug() << "2. connection status: " << m_private->m_connectionStatus;
+        //qDebug() << "2. connection status: " << m_private->m_connectionStatus;
 
     }
 
