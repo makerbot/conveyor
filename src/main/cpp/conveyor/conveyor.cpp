@@ -28,7 +28,7 @@ namespace conveyor
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasPlatform;
-
+        Conveyor * m_Conveyor;
         int m_numberOfToolheads;
 
         ConnectionStatus m_connectionStatus;
@@ -106,6 +106,7 @@ namespace conveyor
         m_private->m_numberOfToolheads = 2;
         m_private->m_hasPlatform = true;
         m_private->m_jobs = conveyor->jobs();
+        m_private->m_Conveyor = conveyor;
     }
     Printer::Printer
 		(Conveyor *convey
@@ -127,7 +128,11 @@ namespace conveyor
         m_private->m_uniqueName = QUuid::createUuid().toString();
         m_private->m_numberOfToolheads = numberOfExtruders;
         m_private->m_hasPlatform = hasHeatedPlatform;
+
         m_private->m_jobs = convey->jobs();
+        m_private->m_Conveyor = convey;
+
+
     }
 
     Printer::~Printer ()
@@ -213,6 +218,10 @@ namespace conveyor
 
         return status;
     }
+    Conveyor * Printer::conveyor()
+    {
+        return m_private->m_Conveyor;
+    }
 
     Job *
     Printer::print
@@ -279,7 +288,7 @@ namespace conveyor
     void Printer::cancelCurrentJob()
     {
         this->m_private->m_jobs.first()->m_private->m_Status = CANCELLED;
-
+        emit m_private->m_Conveyor->jobRemoved();
 
 
     }

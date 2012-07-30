@@ -119,6 +119,7 @@ namespace conveyor
         /** Can this printer print to a file? */
         bool canPrintToFile () const;
 
+        Conveyor* conveyor();
         /** Details about our connection to the printer */
         ConnectionStatus connectionStatus () const;
         /** A human readable version of the connection status, possibly with
