@@ -10,3 +10,6 @@
 [submodule "submodule/conveyor_bins"]
 	path = submodule/conveyor_bins
 	url = git@github.com:makerbot/conveyor_bins.git
+[submodule "submodule/pyserial"]
+	path = submodule/pyserial
+	url = git@github.com:makerbot/pyserial.git

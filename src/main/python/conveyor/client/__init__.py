@@ -24,7 +24,8 @@ import logging
 import os.path
 import socket
 import threading
-
+import pdb
+import tempfile
 try:
     import unittest2 as unittest
 except ImportError:
@@ -64,6 +65,13 @@ class ClientMain(conveyor.main.AbstractMain):
 		parser = subparsers.add_parser('scan',help='ping a service or tool')
 		parser.set_defaults(func=self._run_scan)
 		self._initparser_common(parser)
+        pdb.set_trace()
+        parser.add_argument('--vid', action='store', 
+                            type=int, default = 0x23C1,
+                            help='Limit printer scan by USB VendorId')
+        parser.add_argument('--pid', action='store', 
+                            type=int, default = None,
+                            help='Limit printer scan by USB ProductId')
 
 	def _initsubparser_dir(self,subparsers):
 		parser = subparsers.add_parser('dir',help='ping a service or tool')
@@ -152,7 +160,8 @@ class ClientMain(conveyor.main.AbstractMain):
 		return code	
   
     def _run_scan(self):
-		params = ['fail','sauce']
+        pdb.set_trace()
+		params = {"vid":self._parsedargs.vid, "pid":self._parsedargs.pid}
         code = self._run_client('printer_scan',params) #from server/__init__.py
 		return code 
   
@@ -163,7 +172,7 @@ class ClientMain(conveyor.main.AbstractMain):
   
 
     def _run_printers(self):
-        code = self.run_client('printer_scan') 
+        code = self.run_client('printer_scan',params)
         return code
 
     def _run_printtofile(self):
@@ -220,12 +229,17 @@ class Client(object):
         client = Client(sock, fp, jsonrpc, method, params)
         return client
 
-    def __init__(self, sock, fp, jsonrpc, method, params):
+    def __init__(self, sock, fp, jsonrpc, method, params, customcallback=None):
+        """ Create a client object to throw a request to the server,
+        and receive a reply. If no callback is specified, a generic callback
+        that stores return values to a tmpfile is called when a reply is received. 
+        """
         self._code = None
         self._fp = fp
         self._jsonrpc = jsonrpc
         self._log = logging.getLogger(self.__class__.__name__)
         self._method = method
+        self._methodcallback = customcallback if customcallback else self.defaultcallback
         self._params = params
         self._sock = sock
 
@@ -248,16 +262,27 @@ class Client(object):
             self._shutdown()
 
     def _hellocallback(self, task):
+        """ default callback to handle reply to a 'hello' event """
+        callback = self._methodcallback
         self._log.debug('task=%r', task)
-        task1 = self._jsonrpc.request(self._method, self._params)
-        task1.stoppedevent.attach(self._methodcallback)
+        task1 = self._jsonrpc.request(self._method, self._params, self._methodcallback)
         task1.start()
 
-    def _methodcallback(self, task):
+    def defaultcallback(self, task):
         self._log.debug('task=%r', task)
+        pdb.set_trace()
         if conveyor.task.TaskState.STOPPED == task.state:
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                pass
+                if  task.result == None:
+                    self._log.error('task success, result: None')
+                else:
+                    pdb.set_trace()
+                    fh = tempfile.NamedTemporaryFile(suffix="result.txt",delete=False)
+                    fh.write(str(task.result))
+                    self._log.error('task success, results in: %s', str(fh.name))
+                    fh.close()
+                self._code = 0
+                self._shutdown()
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
                 self._log.error('task failed: %r', task.failure)
                 self._code = 1
@@ -271,8 +296,7 @@ class Client(object):
 
     def run(self):
         self._jsonrpc.addmethod('notify', self._notify)
-        task = self._jsonrpc.request("hello", [])
-        task.stoppedevent.attach(self._hellocallback)
+        task = self._jsonrpc.request("hello", [], self._hellocallback)
         task.start()
         self._jsonrpc.run()
         return self._code

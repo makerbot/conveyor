@@ -25,6 +25,7 @@ import logging
 import os
 import sys
 import threading
+import pdb
 
 try:
     import unittest2 as unittest
@@ -214,34 +215,32 @@ class _ClientThread(threading.Thread):
 
 #    @exportedFunction
     def _printer_scan(self,*args,**kwargs):
-		import pdb
-		pdb.set_trace()
+        result = None
 		self._log.debug("doing a printer scan via conveyor service")
-		task = conveyor.task.Task()
-		def scan_callback(task):
-			pdb.set_trace()
-			self._log.debug("doing a scan to task")	
-			vid = None
-			pid = None
-			if 'vid' in kwargs:
-				vid = int(kwargs['vid'],16)
-			if 'pid' in kwargs:
-				pid = int(kwargs['pid'],16)
-			try:
-                import serial.tools.list_ports as lp
-				ports = lp.list_ports_by_vid_pid(vid,pid)
-                #for port in ports:	
-                  #self._log.error("port= %r", port)
-            except Exception as e:
-                #self._log.exception('unhandled exception')
-                task.fail(e)
+        vid, pid = None, None
+        pdb.set_trace()
+        #annoying case handling
+        if 'vid' in kwargs:
+            if kwargs['vid'] == None:           pass
+            elif isinstance(kwargs['vid'],int): vid = kwargs['vid']
+            else:                               vid = int(kwargs['vid'],16)
+        if 'pid' in kwargs:
+            if kwargs['pid'] == None:           pass
+            elif isinstance(kwargs['pid'],int): pid = kwargs['pid']
+            else:                               pid = int(kwargs['pid'],16)
+        try:
+            import serial.tools.list_ports as lp
+            ports = lp.list_ports_by_vid_pid(vid,pid)
+            result = list(ports)
+            if result == None:
+              self._log.error("port= None")
             else:
-			    task.end(None)
-		task.runningevent.attach(scan_callback)
-		task.stoppedevent.attach(self._stoppedcallback)
-		self._server.appendtask(task)
-		return None
-
+              for port in result:	
+                self._log.error("port= %r", port)
+        except Exception as e:
+            self._log.exception('unhandled exception')
+            result = None
+        return result
    
 #    @exportedFunction
 	def _dir(self, *args, **kwards):
