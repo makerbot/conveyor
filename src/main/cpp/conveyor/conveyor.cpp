@@ -276,6 +276,13 @@ namespace conveyor
         qDebug() << "2. jobstatus" << this->currentJob()->jobStatus();
 
     }
+    void Printer::cancelCurrentJob()
+    {
+        this->m_private->m_jobs.first()->m_private->m_Status = CANCELLED;
+
+
+
+    }
 
     FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
         {
@@ -368,6 +375,12 @@ namespace conveyor
         connect(&m_JobTimer, SIGNAL(timeout()), job, SLOT(incrementProgress()));
         return job;
     }
+    void FakePrinter::cancelCurrentJob()
+    {
+        stopCurrentJob();
+        Printer::cancelCurrentJob();
+    }
+
     Address WindowsDefaultAddress;
     Address UNIXDefaultAddress;
 

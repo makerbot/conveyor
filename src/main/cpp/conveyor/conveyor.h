@@ -151,6 +151,7 @@ namespace conveyor
         void currentJobChanged(Job *);
     public slots:
          virtual void togglePaused();
+        virtual void cancelCurrentJob();
 
     private:
         PrinterPrivate * const m_private;
@@ -173,6 +174,8 @@ namespace conveyor
        void emitRandomConnectionStatus();
     public slots:
         virtual void togglePaused();
+       virtual void cancelCurrentJob();
+
     private:
         QTimer m_JobTimer;
         QTimer m_ConnectionTimer;
