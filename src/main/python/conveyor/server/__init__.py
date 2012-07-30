@@ -154,9 +154,18 @@ class _ClientThread(threading.Thread):
             raise ValueError(task.conclusion)
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
+    
+#    def _print_smart(self, *args,**kwargs):
+#        if(len(args) == 3):
+#            return self._print(args[0],args[1],args[2]) #fallback
+#        elif 'thing' in kwargs.keys() and 'pre_processor' in kwargs.keys() and
+#            'skip_start_end' in kwargs.keys()
+#            self._print(kwargs['thing'], kwargs['pre_processor'], kwargs['skip_start_end')
 
-    def _print(self, thing, preprocessor, skip_start_end):
+
+    def _print(self, thing, preprocessor, skip_start_end,endpoint=None):
         self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
+        pdb.set_trace()
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
@@ -164,7 +173,7 @@ class _ClientThread(threading.Thread):
             self._log.info('%r', task.progress)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
         recipe = recipemanager.getrecipe(thing, preprocessor)
-        task = recipe.print(skip_start_end)
+        task = recipe.print(skip_start_end,endpoint)
         task.runningevent.attach(runningcallback)
         task.heartbeatevent.attach(heartbeatcallback)
         task.stoppedevent.attach(self._stoppedcallback)
@@ -252,7 +261,8 @@ class _ClientThread(threading.Thread):
     def run(self):
 		# add our available functions to the json methods list
         self._jsonrpc.addmethod('hello', self._hello, "'hello': takes no params")
-        self._jsonrpc.addmethod('print', self._print, "'print': takes a single filename"  )
+        self._jsonrpc.addmethod('print', self._print, 
+            "'print': takes (thing-filename,preprocessor,skip_start_end_bool,[endpoint])"  )
         self._jsonrpc.addmethod('printtofile', self._printtofile,
             "'printtofile': take an (input,output) file pair")
         self._jsonrpc.addmethod('slice', self._slice,

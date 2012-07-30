@@ -29,9 +29,14 @@ import conveyor.event
 import conveyor.task
 
 class S3gPrinter(object):
-    def __init__(self, profile, device, baudrate):
+    def __init__(self, profile, serial_device, baudrate):
+        """ 
+        @param profile: s3g data profile
+        @param serial_device: os-specific serial endpoint ('/tty/X' or 'COMX') to open
+        @param baudrate: speed of specified serial endpoint 
+        """
         self._baudrate = baudrate
-        self._device = device
+        self._device = serial_device
         self._log = logging.getLogger(self.__class__.__name__)
         self._pollinterval = 5.0
         self._profile = profile

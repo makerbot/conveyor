@@ -65,7 +65,6 @@ class ClientMain(conveyor.main.AbstractMain):
 		parser = subparsers.add_parser('scan',help='ping a service or tool')
 		parser.set_defaults(func=self._run_scan)
 		self._initparser_common(parser)
-        pdb.set_trace()
         parser.add_argument('--vid', action='store', 
                             type=int, default = 0x23C1,
                             help='Limit printer scan by USB VendorId')
@@ -87,7 +86,7 @@ class ClientMain(conveyor.main.AbstractMain):
             action='store_true',
             default=False,
             help='print in JSON format')
-
+        
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print an object')
         parser.set_defaults(func=self._run_print)
@@ -98,7 +97,12 @@ class ClientMain(conveyor.main.AbstractMain):
             '--skip-start-end', action='store_true', default=False,
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
-            default=False, help='preprocessor to run on the gcode file')
+            default=True, help='run preprocessor to handle old gcode formats conversion')
+        parser.add_argument(
+            '--port',dest='endpoint',
+            default=None,
+            help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
+
 
     def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
@@ -112,7 +116,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '--skip-start-end', action='store_true', default=False,
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
-            default=False, help='preprocessor to run on the gcode file')
+            default=True, help='run preprocessor to handle old gcode formats conversion')
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser('slice', help='slice an object into .gcode')
@@ -126,8 +130,8 @@ class ClientMain(conveyor.main.AbstractMain):
             '--with-start-end', action='store_true', default=False,
             help='append start and end gcode to .gcode file')
         parser.add_argument(
-            '--preprocessor', dest='preprocessor', default=False,
-            help='preprocessor to run on the gcode file')
+            '--preprocessor', dest='preprocessor',
+            default=True, help='run preprocessor to handle old gcode formats conversion')
 
     def _run(self):
         self._initeventqueue()
@@ -149,7 +153,8 @@ class ClientMain(conveyor.main.AbstractMain):
         params = [
             os.path.abspath(self._parsedargs.thing),
             self._parsedargs.preprocessor,
-            self._parsedargs.skip_start_end]
+            self._parsedargs.skip_start_end,
+            self._parsedargs.endpoint]
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
         return code
