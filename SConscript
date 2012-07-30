@@ -19,7 +19,7 @@
 import os.path
 import sys
 
-env = Environment(ENV=os.environ)
+env = Environment(ENV=os.environ, tools=['default','qt4'])
 
 if 'win32' == sys.platform:
     env.Tool('mingw')
@@ -30,7 +30,6 @@ if 'QTDIR' not in env:
     if moc:
         env['QTDIR'] = os.path.dirname(os.path.dirname(moc))
 
-env.Tool('qt4', toolpath=[Dir('#/src/main/scons/')])
 env.EnableQt4Modules(['QtCore', 'QtTest'])
 env.Append(CCFLAGS='-g')
 env.Append(CCFLAGS='-pedantic')
@@ -41,8 +40,9 @@ env.Append(CCFLAGS='-Wno-long-long')
 env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
-cppenv.Append(CPPPATH=Dir('#/src/main/cpp/conveyor'))
-libconveyor = cppenv.Library('conveyor', Glob('#/src/main/cpp/conveyor/*.cpp'))
+cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor'))
+libconveyor = cppenv.Library('conveyor', Glob('src/main/cpp/conveyor/*.cpp'))
+cppenv.Install(dir = '/usr/lib',libconveyor)
 
 '''
 testenv = cppenv.Clone()
