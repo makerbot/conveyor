@@ -41,8 +41,9 @@ env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor'))
+cppenv.Append(CPPPATH=Dir('include'))
 libconveyor = cppenv.Library('conveyor', Glob('src/main/cpp/conveyor/*.cpp'))
-cppenv.Install(dir = '/usr/lib',libconveyor)
+cppenv.Install(dir = '/usr/lib',source = libconveyor)
 
 '''
 testenv = cppenv.Clone()
