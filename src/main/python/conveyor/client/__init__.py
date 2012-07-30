@@ -155,7 +155,7 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_ping(self):
-		params = ['fail','sauce']
+		params = ['no','params',] 
         code = self._run_client('ping',params) #from server/__init__.py
 		return code	
   
@@ -166,7 +166,7 @@ class ClientMain(conveyor.main.AbstractMain):
 		return code 
   
     def _run_dir(self):
-		params = ['fail','sauce']
+		params = []
         code = self._run_client('dir',params) #from server/__init__.py
 		return code
   
@@ -200,7 +200,9 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_client(self, method, params):
-        client = conveyor.client.Client.create(self._socket, method, params)
+        """ Creates a client object to run a single command to the server, 
+            then waits for a reply and return the success code."""
+        client = conveyor.client.Client.clientFactory(self._socket, method, params)
         code = client.run()
         return code
 
@@ -222,8 +224,14 @@ class _ClientMainTestCase(unittest.TestCase):
     pass
 
 class Client(object):
+    """ Client object represents one complete task transaction to the server,
+        including verification 'hello', waiting for task completin for syncronous
+        tasks, and returning an error code. """
+
+
     @classmethod
-    def create(cls, sock, method, params):
+    def clientFactory(cls, sock, method, params):
+        """ factory method to create a Client object."""
         fp = conveyor.jsonrpc.socketadapter(sock)
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
         client = Client(sock, fp, jsonrpc, method, params)
@@ -265,6 +273,7 @@ class Client(object):
         """ default callback to handle reply to a 'hello' event """
         callback = self._methodcallback
         self._log.debug('task=%r', task)
+        #hello was a success. Do core method call and response now.
         task1 = self._jsonrpc.request(self._method, self._params, self._methodcallback)
         task1.start()
 

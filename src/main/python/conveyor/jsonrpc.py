@@ -201,6 +201,7 @@ class JsonRpc(object):
         self._jsonreader.event.attach(self._jsonreadercallback)
         self._log = logging.getLogger(self.__class__.__name__)
         self._methods = {}
+        self._methodsinfo = {}
         self._outfp = outfp # contract: .write(str), .flush()
         self._outfplock = threading.Lock()
         self._tasks = {}
@@ -421,9 +422,24 @@ class JsonRpc(object):
         self._log.debug('response=%r', response)
         return response
 
-    def addmethod(self, method, func):
+    def addmethod(self, method, func, info=None):
+        """ add a RPC callback method to a RPC client or server. If no
+        usage info is defined, a generic message is added."""
         self._log.debug('method=%r, func=%r', method, func)
         self._methods[method] = func
+        self._methodsinfo[func] = info if info else "no param info '" + str(method) + "' Guess?!"
+
+
+    def dict_all_methods(self):
+        """@returns a dict of all RPC method names:info pairs"""
+        result = {}
+        if self._methods:
+            for key in self._methods:
+                if self._methods[key] in self._methodsinfo:
+                    result[key] = self._methodsinfo[self._methods[key]] #
+                else:
+                    results[key] = repr(self._methods[key])
+        return result
 
 class _SocketadapterStubFile(object):
     def __init__(self):

@@ -202,23 +202,15 @@ class _ClientThread(threading.Thread):
 
 #    @exportedFunction
     def _ping(self, *args, **kwargs):
-		import pdb
-		pdb.set_trace()
 		self._log.debug("doing a ping to conveyor service")
-		def ping_callback(task):
-			self._log.debug("doing a ping to task")	
-		task = conveyor.task.Task()
-		task.runningevent.attach(ping_callback)
-		task.stoppedevent.attach(self._stoppedcallback)
-		self._server.appendtask(task)
-		return None	
+        result = 'pong'
+		return result
 
 #    @exportedFunction
     def _printer_scan(self,*args,**kwargs):
         result = None
 		self._log.debug("doing a printer scan via conveyor service")
         vid, pid = None, None
-        pdb.set_trace()
         #annoying case handling
         if 'vid' in kwargs:
             if kwargs['vid'] == None:           pass
@@ -244,24 +236,31 @@ class _ClientThread(threading.Thread):
    
 #    @exportedFunction
 	def _dir(self, *args, **kwards):
-		self._log.debug("doing a services dir conveyor service")
+        result = {}
+        import pdb
+        pdb.set_trace()
+        self._log.debug("doing a services dir conveyor service")
 		def dir_callback(task):
 			self._log.debug("doing a dir to task")	
-		task = conveyor.task.Task()
-		task.runningevent.attach(dir_callback)
-		task.stoppedevent.attach(self._stoppedcallback)
-		return None
+		if(self._jsonrpc):
+            result = self._jsonrpc.dict_all_methods()
+        import conveyor
+        result['__version__'] = conveyor.__version__
+        return result
 
 
     def run(self):
 		# add our available functions to the json methods list
-        self._jsonrpc.addmethod('hello', self._hello)
-        self._jsonrpc.addmethod('print', self._print)
-        self._jsonrpc.addmethod('printtofile', self._printtofile)
-        self._jsonrpc.addmethod('slice', self._slice)
+        self._jsonrpc.addmethod('hello', self._hello, "'hello': takes no params")
+        self._jsonrpc.addmethod('print', self._print, "'print': takes a single filename"  )
+        self._jsonrpc.addmethod('printtofile', self._printtofile,
+            "'printtofile': take an (input,output) file pair")
+        self._jsonrpc.addmethod('slice', self._slice,
+            "'slice': take an (input,output) file pair")
 		self._jsonrpc.addmethod('ping', self._ping)
-		self._jsonrpc.addmethod('printer_scan', self._printer_scan)
-		self._jsonrpc.addmethod('dir', self._dir)
+		self._jsonrpc.addmethod('printer_scan', self._printer_scan,
+                "'printer_scan':takes optional dict of {'vid':val,'pid':val} USB targets")
+		self._jsonrpc.addmethod('dir', self._dir,"'dir': ignores all params")
 
         self._server.appendclientthread(self)
         try:
