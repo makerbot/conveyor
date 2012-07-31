@@ -165,7 +165,6 @@ class _ClientThread(threading.Thread):
 
     def _print(self, thing, preprocessor, skip_start_end,endpoint=None):
         self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
-        pdb.set_trace()
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
@@ -246,8 +245,6 @@ class _ClientThread(threading.Thread):
 #    @exportedFunction
 	def _dir(self, *args, **kwards):
         result = {}
-        import pdb
-        pdb.set_trace()
         self._log.debug("doing a services dir conveyor service")
 		def dir_callback(task):
 			self._log.debug("doing a dir to task")	

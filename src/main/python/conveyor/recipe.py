@@ -111,8 +111,6 @@ class RecipeManager(object):
 class Recipe(object):
     def __init__(self, config, preprocessor):
         self._config = config
-#        import pdb
-#        pdb.set_trace()
         self.preprocessor = preprocessor
 
     def _createtoolpath(self):
@@ -138,9 +136,6 @@ class Recipe(object):
         serialport = ep_name if ep_name else self._config['common']['serialport']
         profilename = self._config['common']['profile']
         profiledir = self._config['common']['profiledir']
-        import pdb
-        pdb.set_trace()
-#        profile = s3g.Profile(profilename, profiledir)
         profile = s3g.Profile(profilename)
         baudrate = profile.values['baudrate']
         printer = conveyor.printer.s3g.S3gPrinter(
@@ -357,13 +352,9 @@ class _SingleThingRecipe(_ThingRecipe):
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
-#            import pdb
-#            pdb.set_trace()
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
-#        import pdb
-#        pdb.set_trace()
         tasks.append(printer.printtofile(processed_gcodepath, s3gpath, skip_start_end))
         def endcallback(task):
             os.unlink(gcodepath)

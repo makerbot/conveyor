@@ -24,7 +24,6 @@ import logging
 import os.path
 import socket
 import threading
-import pdb
 import tempfile
 try:
     import unittest2 as unittest
@@ -165,7 +164,6 @@ class ClientMain(conveyor.main.AbstractMain):
 		return code	
   
     def _run_scan(self):
-        pdb.set_trace()
 		params = {"vid":self._parsedargs.vid, "pid":self._parsedargs.pid}
         code = self._run_client('printer_scan',params) #from server/__init__.py
 		return code 
@@ -284,13 +282,11 @@ class Client(object):
 
     def defaultcallback(self, task):
         self._log.debug('task=%r', task)
-        pdb.set_trace()
         if conveyor.task.TaskState.STOPPED == task.state:
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
                 if  task.result == None:
                     self._log.error('task success, result: None')
                 else:
-                    pdb.set_trace()
                     fh = tempfile.NamedTemporaryFile(suffix="result.txt",delete=False)
                     fh.write(str(task.result))
                     self._log.error('task success, results in: %s', str(fh.name))
