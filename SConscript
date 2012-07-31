@@ -43,7 +43,13 @@ cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor'))
 cppenv.Append(CPPPATH=Dir('include'))
 libconveyor = cppenv.Library('conveyor', Glob('src/main/cpp/conveyor/*.cpp'))
-cppenv.Install(dir = '/usr/lib',source = libconveyor)
+
+inst = []
+inst.append(cppenv.InstallAs( 'etc/conveyor.conf','conveyor-debian.conf'))
+inst.append(cppenv.Install('usr/lib',libconveyor))
+inst.append(cppenv.Install('usr/share/conveyor','virtualenv'))
+inst.append(cppenv.Install('usr/include','include/conveyor.h'))
+env.Alias('install',inst)
 
 '''
 testenv = cppenv.Clone()
