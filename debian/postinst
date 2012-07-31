@@ -1,0 +1,30 @@
+#! /bin/sh
+# postinst for conveyor
+
+# Conveyor runs as a daemon as its own system user. This script sets up that user
+# and creates and sets permissions for the lock file directory.
+
+# This script cribbed heavily from the postinst script used in
+# the "whoopsie" package, which I'm sure has it's own hoary
+# history.
+
+set -e
+
+if [ "$1" = configure ]; then
+		if ! getent passwd conveyor >/dev/null; then
+			adduser --disabled-password --quiet --system \
+				--home /nonexistent --no-create-home --group conveyor \
+				--shell /bin/false
+		fi
+		# Create and set permissions for /var/run/conveyor
+		mkdir -p -m 3777 /var/run/conveyor
+		chmod g+s /var/run/conveyor
+		chgrp conveyor /var/run/conveyor
+		# Set proper permissions for any existing lock files
+		chgrp conveyor /var/run/conveyor/* >/dev/null 2>&1 || true
+		chmod 0640 /var/run/conveyor/* >/dev/null 2>&1 || true
+fi
+
+#DEBHELPER#
+
+exit 0

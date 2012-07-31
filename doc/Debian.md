@@ -1,5 +1,13 @@
+Debian/Ubuntu packaging notes
+======================
+
+Users and permissions
+---------------------
+
+We are creating a "conveyor" user to run the conveyor script as.
+
 Debian/Ubuntu installation paths
-================================
+--------------------------------
 
 We're playing a little fast and loose with the Linux filesystem hierarchy, but to be blunt it's not terribly well-defined anyway.
 
@@ -48,7 +56,14 @@ The binary wrapper, conveyor, is installed in /usr/bin.
 ## Init.d files
 
 //TODO//
+This file begins like as debian/conveyor.init
+* /etc/init.d/conveyor
+This file is installed by dh_installinit.
 
 ## Lock files
 
-//TODO//
+Lock files are created in the /var/run/conveyor directory by conveyor itself. This directory is owned by the conveyor user.
+* /var/run/conveyor
+** Created by postinst
+
+
