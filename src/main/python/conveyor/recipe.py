@@ -100,9 +100,9 @@ class RecipeManager(object):
             else:
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
-                if 1 == len(manifest.instances):
+                if 1 == len(manifest.material_types()):
                     recipe = _SingleThingRecipe(self._config, manifest, preprocessor)
-                elif 2 == len(manifest.instances):
+                elif 2 == len(manifest.material_types()):
                     recipe = _DualThingRecipe(self._config, manifest, preprocessor)
                 else:
                     raise Exception
@@ -111,6 +111,8 @@ class RecipeManager(object):
 class Recipe(object):
     def __init__(self, config, preprocessor):
         self._config = config
+        import pdb
+        pdb.set_trace()
         self.preprocessor = preprocessor
 
     def _createtoolpath(self):
@@ -352,9 +354,13 @@ class _SingleThingRecipe(_ThingRecipe):
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as processed_gcodefp:
                 pass
+            import pdb
+            pdb.set_trace()
             processed_gcodepath = processed_gcodefp.name
             os.unlink(processed_gcodepath)
             tasks.append(self.preprocessor.process_file(gcodepath, processed_gcodepath))
+        import pdb
+        pdb.set_trace()
         tasks.append(printer.printtofile(processed_gcodepath, s3gpath, skip_start_end))
         def endcallback(task):
             os.unlink(gcodepath)
