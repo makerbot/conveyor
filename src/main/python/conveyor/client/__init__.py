@@ -97,7 +97,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '--skip-start-end', action='store_true', default=False,
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
-            default=True, help='run preprocessor to handle old gcode formats conversion')
+            default=None, help='run preprocessor to handle old gcode formats conversion')
         parser.add_argument(
             '--port',dest='endpoint',
             default=None,
@@ -116,7 +116,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '--skip-start-end', action='store_true', default=False,
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
-            default=True, help='run preprocessor to handle old gcode formats conversion')
+            default=None, help='run preprocessor to handle old gcode formats conversion')
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser('slice', help='slice an object into .gcode')
@@ -131,7 +131,7 @@ class ClientMain(conveyor.main.AbstractMain):
             help='append start and end gcode to .gcode file')
         parser.add_argument(
             '--preprocessor', dest='preprocessor',
-            default=True, help='run preprocessor to handle old gcode formats conversion')
+            default=None, help='run preprocessor to handle old gcode formats conversion')
 
     def _run(self):
         self._initeventqueue()
