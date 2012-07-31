@@ -18,6 +18,7 @@
 
 import os.path
 import sys
+import fnmatch
 
 env = Environment(ENV=os.environ, tools=['default','qt4'])
 
@@ -47,8 +48,17 @@ libconveyor = cppenv.Library('conveyor', Glob('src/main/cpp/conveyor/*.cpp'))
 inst = []
 inst.append(cppenv.InstallAs( 'etc/conveyor.conf','conveyor-debian.conf'))
 inst.append(cppenv.Install('usr/lib',libconveyor))
-inst.append(cppenv.Install('usr/share/conveyor','virtualenv'))
 inst.append(cppenv.Install('usr/include','include/conveyor.h'))
+
+pysrc_root = str(Dir('#/src/main/python'))
+for root,dirnames,filenames in os.walk(pysrc_root):
+    for filename in fnmatch.filter(filenames,'*.py'):
+    	rpath = os.path.relpath(root,pysrc_root)
+    	outdir = os.path.join('module',rpath)
+    	insrc = os.path.join(root,filename)
+    	inst.append(cppenv.Install(outdir,insrc))
+    	print outdir,insrc
+
 env.Alias('install',inst)
 
 '''
