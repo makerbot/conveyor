@@ -4,7 +4,14 @@ Debian/Ubuntu packaging notes
 Users and permissions
 ---------------------
 
-We are creating a "conveyor" user to run the conveyor script as.
+We are creating a "conveyor" user to run the conveyor script as. This is set up and handled by the postinst script. The postrm script removes this user.
+
+Any directories that conveyor needs access to are set to it group and user.
+
+Wrapper script
+--------------
+
+The conveyor server is called by the /usr/bin/conveyord script. This is a wrapper that runs the virtualenv and then the server.
 
 Debian/Ubuntu installation paths
 --------------------------------
@@ -36,6 +43,10 @@ The Conveyor python module is stored in /usr/share/conveyor/lib.
 ** Copied by scons, installed by conveyor.install
 
 An argument could be made that this belongs in /usr/lib/conveyor; this was avoided to ensure that we didn't touch too many bits of the filesystem.
+
+## Conveyor virtualenv script
+
+Conveyor does not install its own version of the virtualenv script; instead a depenedency is created on the repository version. This version is run instead.
 
 ## Conveyor virtualenv
 
