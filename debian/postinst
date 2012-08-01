@@ -23,6 +23,28 @@ if [ "$1" = configure ]; then
 		# Set proper permissions for any existing lock files
 		chgrp conveyor /var/run/conveyor/* >/dev/null 2>&1 || true
 		chmod 0640 /var/run/conveyor/* >/dev/null 2>&1 || true
+
+		# Create and set permissions for /var/log/conveyor
+		mkdir -p -m 3777 /var/log/conveyor
+		chmod g+s /var/log/conveyor
+		chgrp conveyor /var/log/conveyor
+		# Set proper permissions for any existing log files
+		chgrp conveyor /var/log/conveyor/* >/dev/null 2>&1 || true
+		chmod 0640 /var/log/conveyor/* >/dev/null 2>&1 || true
+
+		# Here's the part where actual, experienced package maintainers will squirm
+		# and call me names. We're putting all our python in a virtualenv.
+		# Squirming experienced package maintainers: I would love to hear your insight.
+		# Drop us a line.
+
+		# Build virtualenv
+		virtualenv /usr/share/conveyor/virtualenv
+		(
+			. /usr/share/conveyor/virtualenv
+			pip install --use-mirrors argparse coverage doxypy lockfile pyserial python-daemon unittest-xml-reporting
+		)
+		chgrp -R conveyor /usr/share/conveyor/virtualenv
+
 fi
 
 #DEBHELPER#

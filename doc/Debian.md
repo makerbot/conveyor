@@ -62,7 +62,9 @@ The binary wrapper, conveyor, is installed in /usr/bin.
 
 ## Log files
 
-//TODO//
+Log files are kept in /usr/log/conveyor, a directory owned by the conveyor user.
+* /var/log/conveyor
+** Created and chowned by postinst script, cleaned up by postrm script
 
 ## Init.d files
 
