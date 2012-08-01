@@ -97,7 +97,10 @@ class RecipeManager(object):
             else:
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
-                if 1 == len(manifest.instances):
+                if None is not manifest.unified_mesh_hack:
+                    stlpath = os.path.join(manifest.base, manifest.unified_mesh_hack)
+                    recipe = _StlRecipe(self._config, stlpath, preprocessor)
+                elif 1 == len(manifest.instances):
                     recipe = _SingleThingRecipe(self._config, manifest, preprocessor)
                 elif 2 == len(manifest.instances):
                     recipe = _DualThingRecipe(self._config, manifest, preprocessor)
