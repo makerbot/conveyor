@@ -1,6 +1,5 @@
 obj/include/conveyor.h			usr/include
 obj/libconveyor.a				usr/lib
 obj/etc/conveyor.conf			etc
-obj/shared						usr/shared/conveyor
-obj/module						usr/shared/conveyor/lib
+obj/module						usr/share/conveyor/lib
 data/conveyor.conf				etc/init
