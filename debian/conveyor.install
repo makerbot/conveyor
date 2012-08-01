@@ -3,3 +3,5 @@ obj/libconveyor.a				usr/lib
 obj/etc/conveyor.conf			etc
 obj/module						usr/share/conveyor/lib
 data/conveyor.conf				etc/init
+wrapper/conveyord				usr/bin
+wrapper/conveyor_service.py		usr/share/conveyor
