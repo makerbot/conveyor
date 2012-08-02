@@ -15,6 +15,8 @@ if [ "$1" = configure ]; then
 			adduser --disabled-password --quiet --system \
 				--home /nonexistent --no-create-home --group conveyor \
 				--shell /bin/false
+			adduser conveyor plugdev
+			adduser conveyor dialout
 		fi
 		# Create and set permissions for /var/run/conveyor
 		mkdir -p -m 3777 /var/run/conveyor
