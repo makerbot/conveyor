@@ -5,5 +5,5 @@
 . /usr/share/conveyor/virtualenv/bin/activate
 export PYTHONPATH=/usr/share/conveyor/lib/module:$PYTHONPATH
 
-python /usr/share/conveyor/conveyor_service.py -l DEBUG -c conveyor.conf "${@}"
+python /usr/share/conveyor/conveyor_service.py -l DEBUG -c /etc/conveyor.conf "${@}"
 

@@ -38,7 +38,7 @@ if [ "$1" = configure ]; then
 		# Drop us a line.
 
 		# Build virtualenv
-		virtualenv /usr/share/conveyor/virtualenv
+		virtualenv /usr/share/conveyor/virtualenv --system-site-packages
 		(
 			. /usr/share/conveyor/virtualenv
 			pip install --use-mirrors argparse coverage doxypy lockfile pyserial python-daemon unittest-xml-reporting
