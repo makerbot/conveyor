@@ -44,9 +44,9 @@ class RecipeManager(object):
 
     def getrecipe(self, path, preprocessor):
         root, ext = os.path.splitext(path)
-        if '.gcode' == ext:
+        if '.gcode' == ext.lower():
             recipe = self._getrecipe_gcode(path, preprocessor)
-        elif '.stl' == ext:
+        elif '.stl' == ext.lower():
             recipe = self._getrecipe_stl(path, preprocessor)
         else:
             recipe = self._getrecipe_thing(path, preprocessor)
