@@ -2,6 +2,7 @@
 
 # set -x
 
+#shutdown processes
 if [ -f conveyord.pid ]
 then
 	kill $(cat conveyord.pid)
@@ -16,3 +17,10 @@ then
 else
 	echo no such file or directory: conveyord.pid
 fi
+
+#deactivate our virtualenv
+if [ ! -z $VIRTUAL_ENV ] ; then
+	echo "Deactivating Virtual at $VIRTUAL_ENV"
+	deactivate
+fi
+
