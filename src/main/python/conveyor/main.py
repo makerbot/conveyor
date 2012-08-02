@@ -27,10 +27,6 @@ import os
 import sys
 import threading
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import conveyor.debug
 import conveyor.ipc
@@ -425,5 +421,3 @@ class AbstractMain(object):
         conveyor.debug.logthreads(logging.DEBUG)
         return code
 
-class _AbstractMainTestCase(unittest.TestCase):
-    pass

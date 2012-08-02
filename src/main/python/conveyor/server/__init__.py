@@ -27,10 +27,6 @@ import sys
 import threading
 import pdb
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import conveyor.jsonrpc
 import conveyor.main
@@ -119,9 +115,6 @@ class ServerMain(conveyor.main.AbstractMain):
             return None
         lock_filename = self._config['common']['daemon_lockfile']
         return open(lock_filename, 'w+')
-
-class ServerMainTestCase(unittest.TestCase):
-    pass
 
 
 class _ClientThread(threading.Thread):

@@ -25,10 +25,6 @@ import os.path
 import socket
 import threading
 import tempfile
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import conveyor.jsonrpc
 import conveyor.main
@@ -222,9 +218,6 @@ class ClientMain(conveyor.main.AbstractMain):
         except KeyError as e:
             self._log.critical("no config['common'][daemon_lockfile'] found")
         return os.path.isfile(lock_filename)
-
-class _ClientMainTestCase(unittest.TestCase):
-    pass
 
 class Client(object):
     """ Client object represents one complete task transaction to the server,

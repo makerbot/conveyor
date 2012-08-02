@@ -21,10 +21,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import conveyor.event
 import conveyor.task
@@ -32,8 +28,8 @@ import conveyor.visitor
 
 def tasksequence(tasklist):
     term = reduce(
-        _TermSequence, (_TermYield(_TermTask(t)) for t in tasklist))
-    machine = _Machine.create(term)
+        TermSequence, (TermYield(TermTask(t)) for t in tasklist))
+    machine = Machine.create(term)
     task = conveyor.task.Task()
     processhandler = _ProcessHandler(machine, task)
     return task
@@ -102,7 +98,7 @@ class _TermAbort(_Term):
     def __init__(self, term):
         self.term = term
 
-class _TermTask(_Term):
+class TermTask(_Term):
     '''\
     The task term is a literal that evaluates to an Task value.
     '''
@@ -113,7 +109,7 @@ class _TermTask(_Term):
     def __init__(self, task):
         self.task = task
 
-class _TermSequence(_Term):
+class TermSequence(_Term):
     '''\
     The sequence term evaluates the first term, discards its value, and then
     evaluates the second term. The value of the entire term is the value of the
@@ -127,7 +123,7 @@ class _TermSequence(_Term):
         self.term1 = term1
         self.term2 = term2
 
-class _TermYield(_Term):
+class TermYield(_Term):
     '''\
     The yield term evaluates its inner term and then suspends the machine.
     '''
@@ -188,7 +184,7 @@ class _PhaseAbort(_Phase):
         self.value = value
         self.state = state
 
-class _PhaseRefocus(_Phase, conveyor.visitor.Visitor):
+class PhaseRefocus(_Phase, conveyor.visitor.Visitor):
     '''\
     This is the refocusing machine phase. It represents the 'eval' transition.
     '''
@@ -210,44 +206,44 @@ class _PhaseRefocus(_Phase, conveyor.visitor.Visitor):
             phase = self.visit(self.term)
             return phase
         except conveyor.visitor.NoAcceptorException:
-            raise _UnknownTermException(self.term)
+            raise UnknownTermException(self.term)
 
     def accept__TermAbort(self, term):
         new_term = self.term.term
         new_environment = self.environment
         new_context = _ContextAbort()
         new_state = self.state
-        phase = _PhaseRefocus(new_term, new_environment, new_context,
+        phase = PhaseRefocus(new_term, new_environment, new_context,
             new_state)
         return phase
 
-    def accept__TermTask(self, term):
+    def accept_TermTask(self, term):
         new_context = self.context
         new_value = self.term.task
         new_state = self.state
-        phase = _PhaseRefocusAux(new_context, new_value, new_state)
+        phase = PhaseRefocusAux(new_context, new_value, new_state)
         return phase
 
-    def accept__TermSequence(self, term):
+    def accept_TermSequence(self, term):
         new_term = self.term.term1
         new_environment = self.environment
         new_context = _ContextSequence(self.context, self.term,
             self.environment)
         new_state = self.state
-        phase = _PhaseRefocus(new_term, new_environment, new_context,
+        phase = PhaseRefocus(new_term, new_environment, new_context,
             new_state)
         return phase
 
-    def accept__TermYield(self, term):
+    def accept_TermYield(self, term):
         new_term = self.term.term
         new_environment = self.environment
         new_context = _ContextYield(self.context)
         new_state = self.state
-        phase = _PhaseRefocus(new_term, new_environment, new_context,
+        phase = PhaseRefocus(new_term, new_environment, new_context,
             new_state)
         return phase
 
-class _PhaseRefocusAux(_Phase, conveyor.visitor.Visitor):
+class PhaseRefocusAux(_Phase, conveyor.visitor.Visitor):
     '''\
     This is the auxillary refocusing machine phase. It represents the 'apply'
     transition.
@@ -268,7 +264,7 @@ class _PhaseRefocusAux(_Phase, conveyor.visitor.Visitor):
             phase = self.visit(self.context)
             return phase
         except conveyor.visitor.NoAcceptorException:
-            raise _UnknownContextException(self.context)
+            raise UnknownContextException(self.context)
 
     def accept__ContextAbort(self, context):
         phase = _PhaseAbort(self.value, self.state)
@@ -279,7 +275,7 @@ class _PhaseRefocusAux(_Phase, conveyor.visitor.Visitor):
         new_environment = self.context.environment
         new_context = self.context.context
         new_state = self.state
-        phase = _PhaseRefocus(new_term, new_environment, new_context,
+        phase = PhaseRefocus(new_term, new_environment, new_context,
             new_state)
         return phase
 
@@ -298,7 +294,7 @@ class _PhaseYield(_Phase):
         self.state = state
 
     def send(self, value):
-        phase = _PhaseRefocusAux(self.context, value, self.state)
+        phase = PhaseRefocusAux(self.context, value, self.state)
         return phase
 
 class _InternalException(Exception):
@@ -308,7 +304,7 @@ class _InternalException(Exception):
     '''
     pass
 
-class _UnknownTermException(_InternalException):
+class UnknownTermException(_InternalException):
     '''\
     The evaluator throws this exception when it encounters an unknown term. It
     indicates an internal implementation error.
@@ -318,7 +314,7 @@ class _UnknownTermException(_InternalException):
         _InternalException.__init__(self, unknown_term)
         self.unknown_term = unknown_term
 
-class _UnknownContextException(_InternalException):
+class UnknownContextException(_InternalException):
     '''\
     The evaluator throws this exception when it encounters an unknown context.
     It indicates an internal implementation error.
@@ -328,7 +324,7 @@ class _UnknownContextException(_InternalException):
         _InternalException.__init__(self, unknown_context)
         self.unknown_context = unknown_context
 
-class _UnknownPhaseException(_InternalException):
+class UnknownPhaseException(_InternalException):
     '''\
     The evaluator throws this exception when it encounters an unknown phase. It
     indicates an internal implementation error.
@@ -338,30 +334,30 @@ class _UnknownPhaseException(_InternalException):
         _InternalException.__init__(self, unknown_phase)
         self.unknown_phase = unknown_phase
 
-class _NotAbortedException(_InternalException):
+class NotAbortedException(_InternalException):
     '''\
-    The evaluator throws this exception when '_Machine.get_abort_value' is
+    The evaluator throws this exception when 'Machine.get_abort_value' is
     called and the current phase is not a '_PhaseAbort'. It indicates an
     internal implementation error.
     '''
 
-class _NotYieldedException(_InternalException):
+class NotYieldedException(_InternalException):
     '''\
-    The evaluator throws this exception when '_Machine.get_yield_value' is
+    The evaluator throws this exception when 'Machine.get_yield_value' is
     called and the current phase is not a '_PhaseYield'. It indicates an
     internal implementation error.
     '''
 
-class _Machine(object):
+class Machine(object):
     @classmethod
     def create(cls, term):
         initial_term = _TermAbort(term)
         initial_environment = None
         initial_context = None
         initial_state = None
-        phase = _PhaseRefocus(initial_term, initial_environment,
+        phase = PhaseRefocus(initial_term, initial_environment,
             initial_context, initial_state)
-        machine = _Machine(phase)
+        machine = Machine(phase)
         return machine
 
     def __init__(self, phase):
@@ -373,7 +369,7 @@ class _Machine(object):
 
     def get_abort_value(self):
         if not self.is_aborted():
-            raise _NotAbortedException
+            raise NotAbortedException
         else:
             value = self._phase.value
             return value
@@ -384,7 +380,7 @@ class _Machine(object):
 
     def get_yield_value(self):
         if not self.is_yielded():
-            raise _NotYieldedException
+            raise NotYieldedException
         else:
             value = self._phase.value
             return value
@@ -394,7 +390,7 @@ class _Machine(object):
 
     def send(self, value=None):
         if not isinstance(self._phase, _PhaseYield):
-            raise _NotYieldedException
+            raise NotYieldedException
         else:
             self._phase = self._phase.send(value)
             self._trampoline()
@@ -403,265 +399,11 @@ class _Machine(object):
         while True:
             if isinstance(self._phase, (_PhaseAbort, _PhaseYield)):
                 break
-            elif isinstance(self._phase, _PhaseRefocus):
+            elif isinstance(self._phase, PhaseRefocus):
                 self._phase = self._phase.refocus()
-            elif isinstance(self._phase, _PhaseRefocusAux):
+            elif isinstance(self._phase, PhaseRefocusAux):
                 self._phase = self._phase.refocus_aux()
             else:
-                raise _UnknownPhaseException(self._phase)
+                raise UnknownPhaseException(self._phase)
 
-class _ProcessTaskTestCase(unittest.TestCase):
-    def _runeventqueue(self, eventqueue):
-        while eventqueue.runiteration(False):
-            pass
 
-    def test_single(self):
-        '''Test a process with a single task.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-        callback = conveyor.event.Callback()
-        self.assertFalse(callback.delivered)
-        def func(task):
-            callback()
-            task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(func)
-        process = tasksequence([task])
-        process.start()
-        self._runeventqueue(eventqueue)
-        self.assertTrue(callback.delivered)
-
-    def test_multiple(self):
-        '''Test a process with multiple tasks.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-        callback1 = conveyor.event.Callback()
-        callback2 = conveyor.event.Callback()
-        self.assertFalse(callback1.delivered)
-        self.assertFalse(callback2.delivered)
-        def func1(task):
-            self.assertFalse(callback1.delivered)
-            self.assertFalse(callback2.delivered)
-            callback1()
-            task.end(None)
-        def func2(task):
-            self.assertTrue(callback1.delivered)
-            self.assertFalse(callback2.delivered)
-            callback2()
-            task.end(None)
-        task1 = conveyor.task.Task()
-        task1.runningevent.attach(func1)
-        task2 = conveyor.task.Task()
-        task2.runningevent.attach(func2)
-        process = tasksequence([task1, task2])
-        process.start()
-        self._runeventqueue(eventqueue)
-        self.assertTrue(callback1.delivered)
-        self.assertTrue(callback2.delivered)
-
-    def test_heartbeat(self):
-        '''Test process heartbeat events.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-        def func(task):
-            self.assertFalse(callback.delivered)
-            task.heartbeat(None)
-            task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(func)
-        process = tasksequence([task])
-        callback = conveyor.event.Callback()
-        process.heartbeatevent.attach(callback)
-        self.assertFalse(callback.delivered)
-        process.start()
-        self._runeventqueue(eventqueue)
-        self.assertTrue(callback.delivered)
-
-    def test_error(self):
-        '''Test process error events.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-        callback1 = conveyor.event.Callback()
-        callback2 = conveyor.event.Callback()
-        self.assertFalse(callback1.delivered)
-        self.assertFalse(callback2.delivered)
-        def func1(task):
-            self.assertFalse(callback1.delivered)
-            self.assertFalse(callback2.delivered)
-            callback1()
-            task.fail(None)
-        task1 = conveyor.task.Task()
-        task1.runningevent.attach(func1)
-        task2 = conveyor.task.Task()
-        process = tasksequence([task1, task2])
-        process.start()
-        self._runeventqueue(eventqueue)
-        self.assertTrue(callback1.delivered)
-        self.assertFalse(callback2.delivered)
-
-    def test_cancel_task(self):
-        '''Test cancellation of a task.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-        callback1 = conveyor.event.Callback()
-        callback2 = conveyor.event.Callback()
-        self.assertFalse(callback1.delivered)
-        self.assertFalse(callback2.delivered)
-        def func1(task):
-            self.assertFalse(callback1.delivered)
-            self.assertFalse(callback2.delivered)
-            callback1()
-            task.cancel()
-        task1 = conveyor.task.Task()
-        task1.runningevent.attach(func1)
-        task2 = conveyor.task.Task()
-        process = tasksequence([task1, task2])
-        process.start()
-        self._runeventqueue(eventqueue)
-        self.assertTrue(callback1.delivered)
-        self.assertFalse(callback2.delivered)
-
-    def test_cancel_process(self):
-        '''Test cancellation of an entire process.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-        callback = conveyor.event.Callback()
-        self.assertFalse(callback.delivered)
-        task = conveyor.task.Task()
-        process = tasksequence([task])
-        process.start()
-        process.cancel()
-        self._runeventqueue(eventqueue)
-        self.assertEqual(conveyor.task.TaskState.STOPPED, process.state)
-        self.assertEqual(
-            conveyor.task.TaskConclusion.CANCELED, process.conclusion)
-        self.assertFalse(callback.delivered)
-
-class _MachineTestCase(unittest.TestCase):
-    def test_abort(self):
-        '''Test the abort term.'''
-
-        term = _TermTask(1)
-        machine = _Machine.create(term)
-        machine.evaluate()
-        self.assertTrue(machine.is_aborted())
-        self.assertFalse(machine.is_yielded())
-        self.assertEqual(1, machine.get_abort_value())
-
-    def test_sequence(self):
-        '''Test the sequence term.'''
-
-        term = _TermSequence(_TermTask(1), _TermTask(2))
-        machine = _Machine.create(term)
-        machine.evaluate()
-        self.assertTrue(machine.is_aborted())
-        self.assertFalse(machine.is_yielded())
-        self.assertEqual(2, machine.get_abort_value())
-
-    def test_yield(self):
-        '''Test the yield term.'''
-
-        term = _TermYield(_TermTask(1))
-        machine = _Machine.create(term)
-        machine.evaluate()
-        self.assertFalse(machine.is_aborted())
-        self.assertTrue(machine.is_yielded())
-        self.assertEqual(1, machine.get_yield_value())
-        machine.send(2)
-        self.assertTrue(machine.is_aborted())
-        self.assertFalse(machine.is_yielded())
-        self.assertEqual(2, machine.get_abort_value())
-
-    def test_sequence_yield(self):
-        '''Test a sequence of yield terms.'''
-
-        term = _TermSequence(
-            _TermYield(
-                _TermTask(1)),
-            _TermYield(
-                _TermTask(2)))
-        machine = _Machine.create(term)
-        machine.evaluate()
-        self.assertFalse(machine.is_aborted())
-        self.assertTrue(machine.is_yielded())
-        self.assertEqual(1, machine.get_yield_value())
-        machine.send('xyzzy')
-        self.assertFalse(machine.is_aborted())
-        self.assertTrue(machine.is_yielded())
-        self.assertEqual(2, machine.get_yield_value())
-        machine.send(3)
-        self.assertTrue(machine.is_aborted())
-        self.assertFalse(machine.is_yielded())
-        self.assertEqual(3, machine.get_abort_value())
-
-    def test__UnknownTermException(self):
-        '''Test that the machine throws an _UnknownTermException when it gets
-        an unknown term.
-
-        '''
-
-        term = 1
-        phase = _PhaseRefocus(term, None, None, None)
-        with self.assertRaises(_UnknownTermException):
-            phase.refocus()
-
-    def test__UnknownContextException(self):
-        '''Test that the machine throws an _UnknownContextException when it
-        gets an unknown context.
-
-        '''
-
-        context = 1
-        phase = _PhaseRefocusAux(context, None, None)
-        with self.assertRaises(_UnknownContextException):
-            phase.refocus_aux()
-
-    def test__UnknownPhaseException(self):
-        '''Test that the machine throws an _UnknownPhaseException when it gets
-        an unknown phase.
-
-        '''
-
-        phase = 1
-        machine = _Machine(phase)
-        with self.assertRaises(_UnknownPhaseException):
-            machine.evaluate()
-
-    def test__NotAbortedException(self):
-        '''Test that the machine throws an _NotAbortedException when
-        get_abort_value() is called and the machine has not aborted.
-
-        '''
-
-        term = _TermYield(_TermTask(1))
-        machine = _Machine.create(term)
-        machine.evaluate()
-        self.assertFalse(machine.is_aborted())
-        with self.assertRaises(_NotAbortedException):
-            machine.get_abort_value()
-
-    def test__NotYieldedException_get_yield_value(self):
-        '''Test that the machine throws a _NotYieldException when
-        get_yield_value() is called and the machine is not yielded.
-
-        '''
-
-        term = _TermTask(1)
-        machine = _Machine.create(term)
-        machine.evaluate()
-        self.assertFalse(machine.is_yielded())
-        with self.assertRaises(_NotYieldedException):
-            machine.get_yield_value()
-
-    def test__NotYieldedException_send(self):
-        '''Test that the machine throws a _NotYieldedException when send() is
-        called and the machine is not yielded.
-
-        '''
-
-        term = _TermTask(1)
-        machine = _Machine.create(term)
-        machine.evaluate()
-        self.assertFalse(machine.is_yielded())
-        with self.assertRaises(_NotYieldedException):
-            machine.send()

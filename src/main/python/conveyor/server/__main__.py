@@ -22,11 +22,6 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import os
 import sys
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 import conveyor.log
 import conveyor.main
 import conveyor.server.ServerMain as ServerMain

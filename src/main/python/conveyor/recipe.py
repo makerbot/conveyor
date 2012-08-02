@@ -24,10 +24,6 @@ import os.path
 import tempfile
 import zipfile
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import conveyor.enum
 import conveyor.process

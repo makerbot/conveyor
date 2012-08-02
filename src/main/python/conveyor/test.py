@@ -22,12 +22,10 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import logging
 import logging.config
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 class ListHandler(logging.Handler):
+    """Logging handler container class. 
+    Merely contains a list of logging handlers
+    """
     list = []
 
     def emit(self, record):
@@ -37,12 +35,9 @@ def listlogging(level):
     dct = {
         'version': 1,
         'formatters' : {
-            'formatter': {
-                'format': '%(message)s'
-            }
+            'formatter': { 'format': '%(message)s' }
         },
-        'filters': {
-        },
+        'filters': { },
         'handlers': {
             'list': {
                 'class': 'conveyor.test.ListHandler',
@@ -51,8 +46,7 @@ def listlogging(level):
                 'filters': []
             }
         },
-        'loggers': {
-        },
+        'loggers': { },
         'root': {
             'level': level,
             'propagate': True,
@@ -63,16 +57,3 @@ def listlogging(level):
         'disable_existing_loggers': False
     }
     logging.config.dictConfig(dct)
-
-class _ListHandlerTestCase(unittest.TestCase):
-    def setUp(self):
-        listlogging('INFO')
-
-    def test_emit(self):
-        '''Test that the ListHandler collects log messages into its list.'''
-
-        ListHandler.list = []
-        log = logging.getLogger('ListHandlerTestCase')
-        log.info('info')
-        self.assertEqual(1, len(ListHandler.list))
-        self.assertEqual('info', ListHandler.list[0].msg)

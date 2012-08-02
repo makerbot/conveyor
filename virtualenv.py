@@ -559,7 +559,11 @@ def _install_req(py_executable, unzip=False, distribute=False,
             # tarball to a temp dir
             target = os.path.join(cwd, os.path.split(source)[-1])
             shutil.copy(source, target)
+    else:
+	cwd = os.getcwd()
     try:
+	import pdb
+	pdb.set_trace()
         call_subprocess(cmd, show_stdout=False,
                         filter_stdout=_filter_ez_setup,
                         extra_env=env,
@@ -933,6 +937,10 @@ def call_subprocess(cmd, show_stdout=True,
                     filter_stdout=None, cwd=None,
                     raise_on_returncode=True, extra_env=None,
                     remove_from_env=None):
+    if(cwd == None):
+	import pdb
+	cwd = os.getcwd()
+	pdb.set_trace()
     cmd_parts = []
     for part in cmd:
         if len(part) > 45:
@@ -961,6 +969,8 @@ def call_subprocess(cmd, show_stdout=True,
     else:
         env = None
     try:
+	import pdb
+	#pdb.set_trace()
         proc = subprocess.Popen(
             cmd, stderr=subprocess.STDOUT, stdin=None, stdout=stdout,
             cwd=cwd, env=env)
