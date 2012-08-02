@@ -28,8 +28,10 @@ import threading
 
 try:
     import unittest2 as unittest
+	g_unittest2 = True
 except ImportError:
     import unittest
+	g_unittest2 = False	
 
 def getaddress(value):
     split = value.split(':', 1)
@@ -313,8 +315,12 @@ class _AbstractAddressTestCase(unittest.TestCase):
     def _getclientvalue(self, servervalue, serversock):
         raise NotImplementedError
 
-    @unittest.skip("-----This test is broken on mac------")
+	#no unittest2 in 2.6 on mac, manually skip. When we abandon py2.6, reinstate skips
+    #@unittest.skip("-----This test is broken on mac------") 
     def _test(self, servervalue):
+		from sys import platform as _platform
+		if _platform == "darwin":
+			return 
         server = getaddress(servervalue)
         serversock = server.listen()
         try:
