@@ -21,7 +21,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import logging
 import os.path
-import s3g
+import makerbot_driver
 import serial
 import time
 
@@ -60,10 +60,10 @@ class S3gPrinter(object):
         return (lines, bytes)
 
     def _genericprint(self, task, writer, polltemperature, gcodepath, skip_start_end):
-        parser = s3g.Gcode.GcodeParser()
+        parser = makerbot_driver.Gcode.GcodeParser()
         parser.state.profile = self._profile
         parser.state.set_build_name(str('xyzzy'))
-        parser.s3g = s3g.s3g()
+        parser.s3g= makerbot_driver.s3g()
         parser.s3g.writer = writer
         now = time.time()
         polltime = now + self._pollinterval
@@ -120,7 +120,7 @@ class S3gPrinter(object):
         def runningcallback(task):
             try:
                 with self._openserial() as serialfp:
-                    writer = s3g.Writer.StreamWriter(serialfp)
+                    writer = makerbot_driver.Writer.StreamWriter(serialfp)
                     self._genericprint(task, writer, True, gcodepath, skip_start_end)
             except Exception as e:
                 self._log.exception('unhandled exception')
@@ -136,7 +136,7 @@ class S3gPrinter(object):
         def runningcallback(task):
             try:
                 with open(s3gpath, 'w') as s3gfp:
-                    writer = s3g.Writer.FileWriter(s3gfp)
+                    writer = makerbot_driver.Writer.FileWriter(s3gfp)
                     self._genericprint(task, writer, False, gcodepath, skip_start_end)
             except Exception as e:
                 self._log.exception('unhandled exception')

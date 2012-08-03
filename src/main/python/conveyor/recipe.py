@@ -36,7 +36,7 @@ import conveyor.thing
 import conveyor.printer.s3g
 import conveyor.toolpath.miraclegrue
 import conveyor.toolpath.skeinforge
-import s3g
+import makerbot_driver
 
 class RecipeManager(object):
     def __init__(self, config):
