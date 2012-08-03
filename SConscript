@@ -1,7 +1,7 @@
 # vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:syntax=python:ts=4:
 # conveyor/SConscript
 #
-# Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
+# Copyright ï¿½ 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License as published by the Free
@@ -42,7 +42,6 @@ env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor'))
-<<<<<<< HEAD
 cppenv.Append(CPPPATH=Dir('include'))
 libconveyor = cppenv.StaticLibrary('conveyor', Glob('src/main/cpp/conveyor/*.cpp'))
 
