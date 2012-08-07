@@ -1,0 +1,23 @@
+#! /bin/sh
+# postrm for conveyor
+
+# Conveyor runs as a daemon as its own system user. This script deletes that
+# user and turns over the lock directory to root.
+
+# This script cribbed heavily from the postrm script used in
+# the "whoopsie" package, which I'm sure has it's own hoary
+# history.
+
+set -e
+
+#DEBHELPER#
+
+if [ "$1" = "purge" ]; then
+	deluser --quiet --system conveyor > /dev/null || true
+	chmod g-s /var/run/conveyor >/dev/null 2>&1 || true
+	chgrp root /var/run/conveyor >/dev/null 2>&1 || true
+	chmod g-s /var/log/conveyor >/dev/null 2>&1 || true
+	chgrp root /var/log/conveyor >/dev/null 2>&1 || true
+fi
+
+exit 0

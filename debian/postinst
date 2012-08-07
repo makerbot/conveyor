@@ -1,0 +1,55 @@
+#! /bin/sh
+# postinst for conveyor
+
+# Conveyor runs as a daemon as its own system user. This script sets up that user
+# and creates and sets permissions for the lock file directory.
+
+# This script cribbed heavily from the postinst script used in
+# the "whoopsie" package, which I'm sure has it's own hoary
+# history.
+
+set -e
+
+if [ "$1" = configure ]; then
+		if ! getent passwd conveyor >/dev/null; then
+			adduser --disabled-password --quiet --system \
+				--home /nonexistent --no-create-home --group conveyor \
+				--shell /bin/false
+			adduser conveyor plugdev
+			adduser conveyor dialout
+		fi
+		# Create and set permissions for /var/run/conveyor
+		mkdir -p -m 3777 /var/run/conveyor
+		chmod g+s /var/run/conveyor
+		chgrp conveyor /var/run/conveyor
+		# Set proper permissions for any existing lock files
+		chgrp conveyor /var/run/conveyor/* >/dev/null 2>&1 || true
+		chmod 0640 /var/run/conveyor/* >/dev/null 2>&1 || true
+
+		# Create and set permissions for /var/log/conveyor
+		mkdir -p -m 3777 /var/log/conveyor
+		chmod g+s /var/log/conveyor
+		chgrp conveyor /var/log/conveyor
+		# Set proper permissions for any existing log files
+		chgrp conveyor /var/log/conveyor/* >/dev/null 2>&1 || true
+		chmod 0640 /var/log/conveyor/* >/dev/null 2>&1 || true
+
+		# Here's the part where actual, experienced package maintainers will squirm
+		# and call me names. We're putting all our python in a virtualenv.
+		# Squirming experienced package maintainers: I would love to hear your insight.
+		# Drop us a line.
+
+		# Build virtualenv
+		virtualenv /usr/share/conveyor/virtualenv --system-site-packages
+		(
+			. /usr/share/conveyor/virtualenv/bin/activate
+			pip install --use-mirrors argparse coverage doxypy lockfile python-daemon unittest-xml-reporting
+			easy_install /usr/share/conveyor/pyserial-2.7_mb-py2.7.egg
+		)
+		chgrp -R conveyor /usr/share/conveyor/virtualenv
+
+fi
+
+#DEBHELPER#
+
+exit 0

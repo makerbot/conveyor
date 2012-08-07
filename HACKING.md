@@ -27,14 +27,14 @@ TRICKY: we use a custom pyserial module that may not be good for general install
 be installed in our own virtualenv space. 
 
 On Ubuntu/Mac use `setup.sh` to download pip packages, and create and configure the virtualenv:
-        $ ./setup.sh
-To activate the virtualenv:
-        $ . virtualenv/bin/activate
+        $ source ./setup.sh
+To activate the virtualenv, and set env. variables, use setup as well:
+        $ source ./setup.sh
 
 On Windows use `setup.bat` to download pip packages, and create and configure the virtualenv:
         C:\> setup.bat
-To activate the virtualenv:
-		C:\> virtualenv/scripts/activate
+To activate the virtualenv, and setup environemnt varibles, use setup as well:
+        C:\> setup.bat
 	
 
 Unit Tests
@@ -69,6 +69,7 @@ You can prevent that by running it with the `--nofork` option:
 The daemon also accepts a command-line option to specify the log level:
         $ ./conveyord -c conveyor.conf -l DEBUG
 
+
 What Threads Are Running in conveyord?
 --------------------------------------
 
@@ -77,6 +78,9 @@ Linux/Mac:
 platforms that have `SIGUSR1`):
 
         $ kill -USR1 `cat conveyord.pid`
+
+'conveyord' will also create a lock file at a location sepecified in the configuration file's 'common' section, under the key 'daemon_lock'. If that lock file exists, 
+it indicates that conveyord is running, and may accept jobs
 
 
 To stop conveyord running (kill it!) 

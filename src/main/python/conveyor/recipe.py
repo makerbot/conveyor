@@ -36,7 +36,7 @@ import conveyor.thing
 import conveyor.printer.s3g
 import conveyor.toolpath.miraclegrue
 import conveyor.toolpath.skeinforge
-import s3g
+import makerbot_driver
 
 class RecipeManager(object):
     def __init__(self, config):
@@ -44,9 +44,9 @@ class RecipeManager(object):
 
     def getrecipe(self, path, preprocessor):
         root, ext = os.path.splitext(path)
-        if '.gcode' == ext:
+        if '.gcode' == ext.lower():
             recipe = self._getrecipe_gcode(path, preprocessor)
-        elif '.stl' == ext:
+        elif '.stl' == ext.lower():
             recipe = self._getrecipe_stl(path, preprocessor)
         else:
             recipe = self._getrecipe_thing(path, preprocessor)
@@ -97,7 +97,10 @@ class RecipeManager(object):
             else:
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
-                if 1 == len(manifest.instances):
+                if None is not manifest.unified_mesh_hack:
+                    stlpath = os.path.join(manifest.base, manifest.unified_mesh_hack)
+                    recipe = _StlRecipe(self._config, stlpath, preprocessor)
+                elif 1 == len(manifest.instances):
                     recipe = _SingleThingRecipe(self._config, manifest, preprocessor)
                 elif 2 == len(manifest.instances):
                     recipe = _DualThingRecipe(self._config, manifest, preprocessor)

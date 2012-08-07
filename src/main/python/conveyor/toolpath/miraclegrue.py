@@ -26,7 +26,6 @@ import os
 import subprocess
 import sys
 import threading
-import s3g
 import tempfile
 import traceback
 

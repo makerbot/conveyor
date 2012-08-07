@@ -1,7 +1,7 @@
 # vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:syntax=python:ts=4:
 # conveyor/SConstruct
 #
-# Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
+# Copyright Â© 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License as published by the Free
@@ -20,6 +20,7 @@ import sys, os
 AddOption('--test', action='store_true', dest='test')
 run_test = GetOption('test')
 
+
 env = Environment(ENV=os.environ)
 
 if 'win32' == sys.platform:
@@ -28,7 +29,10 @@ else:
 	env.Command('virtualenv', 'setup.sh', './setup.sh')
 
 if run_test:
-    env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
+    if 'win32' == sys.platform:
+        env.Command('test', 'test.bat', 'test.bat')
+    else: 
+        env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
 
 ## For building C++/Qt creation
 SConscript('SConscript', variant_dir='obj', duplicate=1)
