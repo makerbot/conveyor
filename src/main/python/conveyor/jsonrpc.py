@@ -324,18 +324,17 @@ class JsonRpc(object):
 
     def _handleresponse(self, response, id):
         self._log.debug('response=%r, id=%r', response, id)
-        task = self._tasks.get(id)
+        task = self._tasks.pop(id, None)
         if None is task:
             self._log.debug('ignoring response for unknown id: %r', id)
+        elif self._iserrorresponse(response):
+            error = response['error']
+            task.fail(error)
+        elif self._issuccessresponse(response):
+            result = response['result']
+            task.end(result)
         else:
-            if self._issuccessresponse(response):
-                result = response['result']
-                task.end(result)
-            elif self._iserrorresponse(response):
-                error = response['error']
-                task.fail(error)
-            else:
-                raise ValueError(response)
+            raise ValueError(response)
 
     def notify(self, method, params):
         self._log.debug('method=%r, params=%r', method, params)
@@ -402,9 +401,7 @@ class JsonRpc(object):
             self._log.exception('uncaught exception')
             if None is not id:
                 e = sys.exc_info()[1]
-                data = {
-                    'name': e.__class__.__name__, 'args': e.args,
-                    'message': e.message}
+                data = {'name': e.__class__.__name__, 'args': e.args}
                 response = self._errorresponse(
                     id, -32000, 'uncaught exception', data)
         else:
@@ -761,7 +758,7 @@ class _JsonRpcTest(unittest.TestCase):
         response = self._test_jsonresponse(data, True)
         self._asserterror(
             -32000, 'uncaught exception', '1', response,
-            {'name': 'Exception', 'args': ['message'], 'message': 'message'})
+            {'name': 'Exception', 'args': ['message']})
 
     def test_Exception_notification(self):
         '''Test a notification that throws an unexpected exception.'''
@@ -978,7 +975,6 @@ class _JsonRpcTest(unittest.TestCase):
             'message': 'uncaught exception',
             'code': -32000,
             'data': {
-                'message': 'failure',
                 'args': ['failure'],
                 'name': 'Exception'
             }
