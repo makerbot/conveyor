@@ -26,10 +26,18 @@ if 'win32' == sys.platform:
     env.Tool('mingw')
     env.Replace(CCFLAGS=[])
 
+#NOTE: If you put '~'s in your bash profile, youre gonna have
+#a bad time.  Scons cant expand them correctly, so it won't be 
+#able to find your moc.  In your path, put the entire path (from '/')
+#PS: Make sure you have QT's pkg_config path defined as an environemnt
+#variable as $PKG_CONFIG_PATH
 if 'QTDIR' not in env:
     moc = env.WhereIs('moc-qt4') or env.WhereIs('moc4') or env.WhereIs('moc')
     if moc:
         env['QTDIR'] = os.path.dirname(os.path.dirname(moc))
+    elif 'darwin' == sys.platform:
+        env['QTDIR'] = os.path.expanduser('~/QtSDK/Desktop/Qt/4.8.1/gcc/')
+      
 
 env.EnableQt4Modules(['QtCore', 'QtTest'])
 env.Append(CCFLAGS='-g')
