@@ -324,7 +324,7 @@ class JsonRpc(object):
 
     def _handleresponse(self, response, id):
         self._log.debug('response=%r, id=%r', response, id)
-        task = self._tasks.get(id)
+        task = self._tasks.pop(id, None)
         if None is task:
             self._log.debug('ignoring response for unknown id: %r', id)
         else:
