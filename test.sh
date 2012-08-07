@@ -15,6 +15,7 @@ _modules='
 	conveyor.process
 	conveyor.recipe
 	conveyor.server
+	conveyor.stoppable
 	conveyor.task
 	conveyor.test
 	conveyor.thing
