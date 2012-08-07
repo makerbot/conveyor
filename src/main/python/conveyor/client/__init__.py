@@ -52,6 +52,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_printtofile,
             self._initsubparser_slice,
             self._initsubparser_scan,
+			self._initsubparser_dir,
             ):
                 method(subparsers)
 
@@ -143,6 +144,12 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.add_argument('--pid', action='store', 
              type=int, default = None,
              help='Limit printer scan by USB ProductId')
+
+    def _initsubparser_dir(self,subparsers):
+        parser = subparsers.add_parser('dir',help='ping a service or tool')
+        parser.set_defaults(func=self._run_dir)
+        self._initparser_common(parser)
+
     
 
     def _run(self):
@@ -189,6 +196,20 @@ class ClientMain(conveyor.main.AbstractMain):
                 'endpoint':self._parsedargs.endpoint } 
         code = self._run_client('printer_scan',params, self._show_list_printers_result) #from server/__init__.py
         return code 
+
+    def _run_dir(self):
+        params = []
+        code = self._run_client('dir',params,self._show_results_to_user ) #from server/__init__.py
+        return code
+
+    def _show_results_to_user(self,task):
+        """ prints servers response to the end user that called
+        the task. """
+        import json
+        import sys
+        x = json.dumps(task.result, sys.stderr, indent = 2)
+        print(x)
+
 
     def _show_list_printers_result(self, task):
         """ custom callback to display results to the user.  Must match 
