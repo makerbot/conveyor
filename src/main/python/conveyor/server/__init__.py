@@ -32,6 +32,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor
 import conveyor.jsonrpc
 import conveyor.main
 import conveyor.recipe
@@ -209,6 +210,20 @@ class _ClientThread(threading.Thread):
             self._log.exception('unhandled exception')
             result = None
         return result
+   
+
+    #@exportedFunction('dir')
+    def _dir(self, *args, **kwards):
+        result = {}
+        self._log.debug("doing a services dir conveyor service")
+        def dir_callback(task):
+            self._log.debug("doing a dir to task")  
+        if(self._jsonrpc):
+            result = self._jsonrpc.dict_all_methods()
+        result['__version__'] = conveyor.__version__
+        return result
+
+
 
     #@exportedFunction('print')
     def _print(self, thing, preprocessor, skip_start_end, endpoint=None):
@@ -268,7 +283,7 @@ class _ClientThread(threading.Thread):
 			": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
         self._jsonrpc.addmethod('printer_query',self._printer_query,
 			": takes {'port':string(port) } printer to query for data.")
- 
+		self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
     def run(self):
         # add our available functions to the json methods list
         self._load_services()
