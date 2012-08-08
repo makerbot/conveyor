@@ -401,9 +401,7 @@ class JsonRpc(object):
             self._log.exception('uncaught exception')
             if None is not id:
                 e = sys.exc_info()[1]
-                data = {
-                    'name': e.__class__.__name__, 'args': e.args,
-                    'message': e.message}
+                data = {'name': e.__class__.__name__, 'args': e.args}
                 response = self._errorresponse(
                     id, -32000, 'uncaught exception', data)
         else:
@@ -760,7 +758,7 @@ class _JsonRpcTest(unittest.TestCase):
         response = self._test_jsonresponse(data, True)
         self._asserterror(
             -32000, 'uncaught exception', '1', response,
-            {'name': 'Exception', 'args': ['message'], 'message': 'message'})
+            {'name': 'Exception', 'args': ['message']})
 
     def test_Exception_notification(self):
         '''Test a notification that throws an unexpected exception.'''
@@ -977,7 +975,6 @@ class _JsonRpcTest(unittest.TestCase):
             'message': 'uncaught exception',
             'code': -32000,
             'data': {
-                'message': 'failure',
                 'args': ['failure'],
                 'name': 'Exception'
             }
