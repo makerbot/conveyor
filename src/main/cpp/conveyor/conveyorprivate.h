@@ -1,3 +1,5 @@
+// vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
+
 #ifndef CONVEYORPRIVATE_H
 #define CONVEYORPRIVATE_H
 
