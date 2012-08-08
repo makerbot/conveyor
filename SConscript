@@ -1,7 +1,7 @@
 # vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:syntax=python:ts=4:
 # conveyor/SConscript
 #
-# Copyright � 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
+# Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License as published by the Free
@@ -37,7 +37,6 @@ if 'QTDIR' not in env:
         env['QTDIR'] = os.path.dirname(os.path.dirname(moc))
     elif 'darwin' == sys.platform:
         env['QTDIR'] = os.path.expanduser('~/QtSDK/Desktop/Qt/4.8.1/gcc/')
-      
 
 env.EnableQt4Modules(['QtCore', 'QtTest'])
 env.Append(CCFLAGS='-g')
@@ -61,11 +60,11 @@ inst.append(cppenv.Install('usr/include','include/conveyor.h'))
 pysrc_root = str(Dir('#/src/main/python'))
 for root,dirnames,filenames in os.walk(pysrc_root):
     for filename in fnmatch.filter(filenames,'*.py'):
-    	rpath = os.path.relpath(root,pysrc_root)
-    	outdir = os.path.join('module',rpath)
-    	insrc = os.path.join(root,filename)
-    	inst.append(cppenv.Install(outdir,insrc))
-    	print outdir,insrc
+        rpath = os.path.relpath(root,pysrc_root)
+        outdir = os.path.join('module',rpath)
+        insrc = os.path.join(root,filename)
+        inst.append(cppenv.Install(outdir,insrc))
+        print outdir,insrc
 
 env.Alias('install',inst)
 
