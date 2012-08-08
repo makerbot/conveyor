@@ -27,6 +27,7 @@ import sys
 import threading
 import sets
 
+import makerbot_driver
 try:
     import unittest2 as unittest
 except ImportError:
@@ -226,8 +227,22 @@ class _ClientThread(threading.Thread):
 
 
     #@exportedFunction('print')
-    def _print(self, thing, preprocessor, skip_start_end, endpoint=None):
-        self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
+    def _print(self, *args, **kwargs):
+		thing = preprocessor= skip_start_end = endpoint = None
+		if len(args) >=3:
+			thing, preprocessor, skip_start_end = args[0],args[1],args[2]
+			if len(args) >= 4:
+				endpoint = None
+		else: #assume we have kwargs
+			thing = kwargs['src']
+			preprocess = kwargs['preprocess']
+			skip_start_end = kwargs['skip_start_end']
+			if 'endpoint' in kwargs:
+				endpoint = kwargs['endpoint']
+
+        self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', 
+			thing, preprocessor, skip_start_end)
+        self._log.debug('endpoint=%r', endpoint)
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)

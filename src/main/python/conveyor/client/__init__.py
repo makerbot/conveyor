@@ -56,6 +56,7 @@ class ClientMain(conveyor.main.AbstractMain):
             ):
                 method(subparsers)
 
+
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser('printers', help='list connected printers')
         parser.set_defaults(func=self._list_printers)
@@ -65,6 +66,7 @@ class ClientMain(conveyor.main.AbstractMain):
             action='store_true',
             default=False,
             help='print in JSON format')
+
 
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print an object')
@@ -77,6 +79,9 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
             default=False, help='preprocessor to run on the gcode file')
+        parser.add_argument('--port', dest='endpoint',
+            default='first_bot', help='specify a port (z.b COM3 or /dev/ttyX a bot is connected to')
+
 
     def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
@@ -169,11 +174,11 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_print(self):
-        params = [
-            os.path.abspath(self._parsedargs.thing),
-            self._parsedargs.preprocessor,
-            self._parsedargs.skip_start_end, 
-            self._parsedargs.endpoint]
+        params = {
+            'src' :os.path.abspath(self._parsedargs.thing),
+            'preprocess':self._parsedargs.preprocessor,
+            'skip_start_end':self._parsedargs.skip_start_end, 
+            'endpoint':self._parsedargs.endpoint }
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
         return code

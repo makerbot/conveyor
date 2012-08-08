@@ -139,8 +139,10 @@ class Recipe(object):
         serialport = ep_name if ep_name else self._config['common']['serialport']
         profilename = self._config['common']['profile']
         profiledir = self._config['common']['profiledir']
-        profile = s3g.Profile(profilename, profiledir)
+        profile = makerbot_driver.Profile(profilename, profiledir)
         baudrate = profile.values['baudrate']
+        import pdb
+        pdb.set_trace()
         printer = conveyor.printer.s3g.S3gPrinter(
             profile, serialport, baudrate)
         return printer
@@ -189,6 +191,8 @@ class _StlRecipe(Recipe):
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
+		import pdb
+		pdb.set_trace()
         printer = self._createprinter(endpoint)
         tasks.append(toolpath.generate(self._path, gcodepath, False, printer))
         if not self.preprocessor:
