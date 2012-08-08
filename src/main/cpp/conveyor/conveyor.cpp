@@ -3,49 +3,22 @@
 #include "conveyor.h"
 
 #include <QUuid>
-#include <QTime>
+#include <QDebug>
+
+#include "conveyorprivate.h"
+
 namespace conveyor
 {
-    struct ConveyorPrivate
-    {
-    };
-
-    struct JobPrivate
-    {
-
-        QString m_displayName;
-        QString m_uniqueName;
-        int m_Progress;
-        JobStatus m_Status;
-    };
-
-    struct PrinterPrivate
-    {
-        QString m_displayName;
-        QString m_uniqueName;
-        QString m_printerType;
-        QList<Job *> m_jobs;
-        bool m_canPrint;
-        bool m_canPrintToFile;
-        bool m_hasPlatform;
-        Conveyor * m_Conveyor;
-        int m_numberOfToolheads;
-
-        ConnectionStatus m_connectionStatus;
-    };
 
     Conveyor::Conveyor (Address const & address __attribute__ ((unused)))
         : m_private (0)
     {
-        qsrand(QTime::currentTime().msec());
-
     }
 
-    QList<Job *>
+    QList<Job *> const &
     Conveyor::jobs ()
     {
-        QList<Job *> list;
-        return list;
+        return m_private->m_jobs;
     }
 
     QList<Printer *>
@@ -59,37 +32,43 @@ namespace conveyor
         ( Printer * printer __attribute__ ((unused))
         , QString const & id
         )
-        :m_private(new JobPrivate())
+        : m_private(new JobPrivate())
     {
-        m_private->m_Progress = 0;
+        m_private->m_progress = 0;
         m_private->m_uniqueName = id;
         m_private->m_Status = PRINTING;
     }
     Job::Job
-    (Printer * printer __attribute__ ((unused)),
-	 QString const &name,
-     int const &progress):m_private(new JobPrivate())
+		( Printer * printer __attribute__ ((unused))
+		, QString const &name
+		, int const &progress
+		)
+		: m_private(new JobPrivate())
     {
         m_private->m_displayName = name;
-        m_private->m_Progress = progress;
+        m_private->m_progress = progress;
         m_private->m_uniqueName = QUuid::createUuid().toString();
         m_private->m_Status = PRINTING;
     }
-    int Job::progress()
+	
+    int
+	Job::progress()
     {
-        return m_private->m_Progress;
+        return m_private->m_progress;
     }
-    void Job::incrementProgress()
+	/*
+    void
+	Job::incrementProgress()
     {
-        m_private->m_Progress++;
-        emit JobPercentageChanged(m_private->m_Progress);
+        m_private->m_progress++;
+        emit JobPercentageChanged(m_private->m_progress);
     }
-
-    JobStatus Job::jobStatus() const
+	*/
+    JobStatus 
+	Job::jobStatus() const
     {
         return m_private->m_Status;
     }
-
 
     Printer::Printer
         ( Conveyor  * conveyor __attribute__ ((unused))
@@ -108,8 +87,9 @@ namespace conveyor
         m_private->m_jobs = conveyor->jobs();
         m_private->m_Conveyor = conveyor;
     }
+	
     Printer::Printer
-		(Conveyor *convey
+		( Conveyor *convey
 		, const QString &name
 		, const bool &canPrint
 		, const bool &canPrintToFile
@@ -131,8 +111,6 @@ namespace conveyor
 
         m_private->m_jobs = convey->jobs();
         m_private->m_Conveyor = convey;
-
-
     }
 
     Printer::~Printer ()
@@ -140,10 +118,10 @@ namespace conveyor
         delete m_private;
     }
 
-    QList<Job *>
-    * Printer::jobs ()
+    QList<Job *> const & 
+	Printer::jobs ()
     {
-       return &m_private->m_jobs;
+       return m_private->m_jobs;
     }
 
     Job *
@@ -218,7 +196,9 @@ namespace conveyor
 
         return status;
     }
-    Conveyor * Printer::conveyor()
+	
+    Conveyor * 
+	Printer::conveyor()
     {
         return m_private->m_Conveyor;
     }
@@ -271,6 +251,7 @@ namespace conveyor
         qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
         //Jogz
     }
+	
     void Printer::togglePaused()
     {
         qDebug() << "1. jobstatus" << this->currentJob()->jobStatus();
@@ -285,109 +266,11 @@ namespace conveyor
         qDebug() << "2. jobstatus" << this->currentJob()->jobStatus();
 
     }
+	
     void Printer::cancelCurrentJob()
     {
         this->m_private->m_jobs.first()->m_private->m_Status = CANCELLED;
         emit m_private->m_Conveyor->jobRemoved();
-
-
-    }
-
-    FakePrinter::FakePrinter (Conveyor * convey, QString const & name) :Printer(convey, name)
-        {
-            //qDebug() << "y me no work :(";
-            connect(&m_ConnectionTimer, SIGNAL(timeout()), this, SLOT(emitRandomConnectionStatus()));
-        }
-    FakePrinter::FakePrinter (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
-             const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform)
-    :Printer(convey, name , canPrint, canPrintToFile, cs, printerType, numberOfExtruders, hasHeatedPlatform)
-    {
-        qDebug() << m_private->m_displayName;
-        connect(&m_ConnectionTimer, SIGNAL(timeout()), this, SLOT(emitRandomConnectionStatus()));
-
-    }
-    void FakePrinter::startRandomConnectionStatus()
-    {
-        m_ConnectionTimer.start(1000);
-
-    }
-    void FakePrinter::stopRandomConnectionStatus()
-    {
-        m_ConnectionTimer.stop();
-    }
-    void FakePrinter::emitRandomConnectionStatus()
-    {
-        //qDebug() << "1. connection status: " << m_private->m_connectionStatus;
-        int rnd = qrand();
-        if(rnd % 4 == 0) //one fourth of the time actually swap stuff
-        {
-           m_private->m_connectionStatus = m_private->m_connectionStatus == CONNECTED ? NOT_CONNECTED : CONNECTED;
-           qDebug() << "emitting change! for printer:" << m_private->m_displayName;
-           emit connectionStatusChanged(m_private->m_connectionStatus);
-        }
-        //qDebug() << "2. connection status: " << m_private->m_connectionStatus;
-
-    }
-
-    void FakePrinter::startCurrentJob()
-    {
-        m_JobTimer.start(1000);
-    }
-    void FakePrinter::stopCurrentJob()
-    {
-        m_JobTimer.stop();
-    }
-    void FakePrinter::togglePaused()
-    {
-
-        Printer::togglePaused();
-        qDebug() << "3. jobstatus" << this->currentJob()->jobStatus();
-
-        if(this->currentJob()->jobStatus() == PAUSED)
-        {
-            stopCurrentJob();
-        }
-        else if(this->currentJob()->jobStatus() == PRINTING)
-        {
-            startCurrentJob();
-        }
-    }
-    Job *
-    FakePrinter::print
-        ( QString const & inputFile
-        )
-    {
-        Job * job = Printer::print(inputFile);
-        connect(&m_JobTimer, SIGNAL(timeout()), job, SLOT(incrementProgress()));
-        return job;
-    }
-
-    Job *
-    FakePrinter::printToFile
-        ( QString const & inputFile
-        , QString const & outputFile
-        )
-    {
-
-        Job * job = Printer::printToFile(inputFile,outputFile);
-        connect(&m_JobTimer, SIGNAL(timeout()), job, SLOT(incrementProgress()));
-        return job;
-    }
-
-    Job *
-    FakePrinter::slice
-        ( QString const & inputFile
-        , QString const & outputFile
-        )
-    {
-        Job * job = Printer::slice(inputFile,outputFile);
-        connect(&m_JobTimer, SIGNAL(timeout()), job, SLOT(incrementProgress()));
-        return job;
-    }
-    void FakePrinter::cancelCurrentJob()
-    {
-        stopCurrentJob();
-        Printer::cancelCurrentJob();
     }
 
     Address WindowsDefaultAddress;
