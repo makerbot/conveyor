@@ -126,6 +126,16 @@ class Manifest(object):
             else:
                 manifest_instance.validate()
 
+
+    def material_types(self):
+        """ returns a set of all material types found in this manifest, as a list """
+        l = [] 
+        for k in self.instances.keys():
+                l.append(self.instances[k].construction_key)
+        setMaterials = set(l)
+        return list(setMaterials)
+ 	
+
 class ManifestItem(object):
     def __init__(self, manifest, name):
         self.manifest = manifest

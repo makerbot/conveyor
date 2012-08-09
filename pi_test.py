@@ -33,7 +33,7 @@ def _main(argv):
         code = 0
     
     try:
-        import s3g
+        import makerbot_driver 
     except ImportError as e:
 		print(e)
 	    code +=1
