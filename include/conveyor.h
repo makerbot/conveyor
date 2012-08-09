@@ -3,6 +3,7 @@
 #ifndef CONVEYOR_H
 #define CONVEYOR_H (1)
 
+#include <jsonrpc.h>
 #include <QList>
 #include <QObject>
 
@@ -13,9 +14,9 @@ namespace conveyor
     class Job;
     class Printer;
 
-    struct ConveyorPrivate;
-    struct JobPrivate;
-    struct PrinterPrivate;
+    class ConveyorPrivate;
+    class JobPrivate;
+    class PrinterPrivate;
 
     enum ConnectionStatus
     {
@@ -34,17 +35,12 @@ namespace conveyor
         PAUSED
     };
 
-    class Address : public QObject
-    {
-        Q_OBJECT
-    };
-
     class Conveyor : public QObject
     {
         Q_OBJECT
 
     public:
-        explicit Conveyor (Address const & address);
+        explicit Conveyor (JsonRpc & jsonRpc);
 
         QList<Job *> const & jobs (void);
         QList<Printer *> printers (void);
@@ -59,7 +55,10 @@ namespace conveyor
         void jobRemoved ();
 
     private:
-        ConveyorPrivate const * m_private;
+        ConveyorPrivate * const m_private;
+
+        friend class PrinterPrivate;
+        friend class JobPrivate;
     };
 
     class Job : public QObject
@@ -76,13 +75,13 @@ namespace conveyor
 
         friend class Conveyor;
         friend class Printer;
-		
+
     signals:
         void JobPercentageChanged(int percent);
 
         /** Emitted when the jobStatus changes */
         void jobStatusChanged(JobStatus);
-		
+
     private:
         JobPrivate * const m_private;
     };
@@ -112,8 +111,8 @@ namespace conveyor
         /** Can this printer print to a file? */
         bool canPrintToFile () const;
 
-        Conveyor* conveyor();
-		
+        Conveyor * conveyor ();
+
         /** Details about our connection to the printer */
         ConnectionStatus connectionStatus () const;
         /** A human readable version of the connection status, possibly with
@@ -135,43 +134,40 @@ namespace conveyor
 
         friend class Conveyor;
         friend class Job;
-		
-		friend class FakePrinter;
+        friend class FakePrinter;
 
     signals:
         /** Emitted when the connectionStatus changes. 
-			Holds the new status */
+            Holds the new status */
         void connectionStatusChanged(ConnectionStatus);
 
         /** Emitted when the printer switches jobs. 
-			Holds the new Job */
+            Holds the new Job */
         void currentJobChanged(Job const *);
-		
+
     public slots:
-		/**  */
+        /**  */
         virtual void togglePaused();
-		/**  */
+        /**  */
         virtual void cancelCurrentJob();
 
-	protected:
+    protected:
+        Printer (Conveyor * conveyor, QString const & name);
         Printer
-			( Conveyor * convey
-			, QString const & name);
-			
-        Printer 
-			( Conveyor * convey
-			, QString const & name
-			, bool const & canPrint
-			, bool const & canPrintToFile
-			, ConnectionStatus const & cs
-			, QString const & printerType
-			, int const & numberOfExtruders
-			, bool const & hasHeatedPlatform);
-			
+            ( Conveyor * conveyor
+            , QString const & name
+            , bool canPrint
+            , bool canPrintToFile
+            , ConnectionStatus connectionStatus
+            , QString const & printerType
+            , int numberOfExtruders
+            , bool hasHeatedPlatform
+            );
+
     private:
         PrinterPrivate * const m_private;
     };
-	
+
     Address& defaultAddress();
 }
 

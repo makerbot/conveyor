@@ -48,9 +48,11 @@ env.Append(CCFLAGS='-Wno-long-long')
 env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
-cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor'))
-cppenv.Append(CPPPATH=Dir('include'))
-libconveyor = cppenv.StaticLibrary('conveyor', Glob('src/main/cpp/conveyor/*.cpp'))
+cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor/'))
+cppenv.Append(CPPPATH=Dir('include/'))
+cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
+cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
+libconveyor = cppenv.StaticLibrary('conveyor', Glob('src/main/cpp/*.cpp'))
 
 inst = []
 inst.append(cppenv.InstallAs( 'etc/conveyor.conf','conveyor-debian.conf'))
