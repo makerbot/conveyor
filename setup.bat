@@ -2,7 +2,7 @@
 IF NOT EXIST virtualenv GOTO DIRNOTEXISTS
 
 :DIREXISTS
-call virtualenv\scripts\activate
+CALL virtualenv\scripts\activate
 
 SET PYTHONPATH=%CD%\submodule\s3g;%CD%\src\main\python;%PYTHONPATH%
 

@@ -49,7 +49,7 @@ class Manifest(object):
         manifest = cls(base)
         for func in (Manifest._read_namespace, Manifest._read_constructions,
             Manifest._read_objects, Manifest._read_instances,
-            Manifest._read_attribution):
+            Manifest._read_attribution, Manifest._read_unified_mesh_hack):
                 func(data, manifest)
         return manifest
 
@@ -96,12 +96,18 @@ class Manifest(object):
         if 'attribution' in data:
             manifest.attribution = data['attribution']
 
+    @staticmethod
+    def _read_unified_mesh_hack(data, manifest):
+        if 'UNIFIED_MESH_HACK' in data:
+            manifest.unified_mesh_hack = data['UNIFIED_MESH_HACK']
+
     def __init__(self, base=None):
         self.objects = {}
         self.constructions = {}
         self.instances = {}
         self.attribution = None
         self.base = base
+        self.unified_mesh_hack = None
 
     def validate(self):
         for name, manifest_object in self.objects.iteritems():
@@ -119,6 +125,16 @@ class Manifest(object):
                 raise Exception
             else:
                 manifest_instance.validate()
+
+
+    def material_types(self):
+        """ returns a set of all material types found in this manifest, as a list """
+        l = [] 
+        for k in self.instances.keys():
+                l.append(self.instances[k].construction_key)
+        setMaterials = set(l)
+        return list(setMaterials)
+ 	
 
 class ManifestItem(object):
     def __init__(self, manifest, name):

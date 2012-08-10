@@ -3,46 +3,22 @@
 #include "conveyor.h"
 
 #include <QUuid>
+#include <QDebug>
+
+#include "conveyorprivate.h"
 
 namespace conveyor
 {
-    struct ConveyorPrivate
-    {
-    };
-
-    struct JobPrivate
-    {
-
-        QString m_displayName;
-        QString m_uniqueName;
-        int m_Progress;
-    };
-
-    struct PrinterPrivate
-    {
-        QString m_displayName;
-        QString m_uniqueName;
-        QString m_printerType;
-        QList<Job *> m_jobs;
-        bool m_canPrint;
-        bool m_canPrintToFile;
-        bool m_hasPlatform;
-
-        int m_numberOfToolheads;
-
-        ConnectionStatus m_connectionStatus;
-    };
 
     Conveyor::Conveyor (Address const & address __attribute__ ((unused)))
         : m_private (0)
     {
     }
 
-    QList<Job *>
+    QList<Job *> const &
     Conveyor::jobs ()
     {
-        QList<Job *> list;
-        return list;
+        return m_private->m_jobs;
     }
 
     QList<Printer *>
@@ -54,25 +30,45 @@ namespace conveyor
 
     Job::Job
         ( Printer * printer __attribute__ ((unused))
-        , QString const & id __attribute__ ((unused))
+        , QString const & id
         )
-        : m_private (0)
+        : m_private(new JobPrivate())
     {
+        m_private->m_progress = 0;
+        m_private->m_uniqueName = id;
+        m_private->m_Status = PRINTING;
     }
     Job::Job
-    (Printer * printer __attribute__ ((unused)),
-	 QString const &name,
-     int const &progress):m_private(new JobPrivate())
+		( Printer * printer __attribute__ ((unused))
+		, QString const &name
+		, int const &progress
+		)
+		: m_private(new JobPrivate())
     {
         m_private->m_displayName = name;
-        m_private->m_Progress = progress;
+        m_private->m_progress = progress;
         m_private->m_uniqueName = QUuid::createUuid().toString();
+        m_private->m_Status = PRINTING;
     }
-    int Job::progress()
+	
+    int
+	Job::progress()
     {
-        return m_private->m_Progress;
+        return m_private->m_progress;
     }
-
+	/*
+    void
+	Job::incrementProgress()
+    {
+        m_private->m_progress++;
+        emit JobPercentageChanged(m_private->m_progress);
+    }
+	*/
+    JobStatus 
+	Job::jobStatus() const
+    {
+        return m_private->m_Status;
+    }
 
     Printer::Printer
         ( Conveyor  * conveyor __attribute__ ((unused))
@@ -89,14 +85,16 @@ namespace conveyor
         m_private->m_numberOfToolheads = 2;
         m_private->m_hasPlatform = true;
         m_private->m_jobs = conveyor->jobs();
+        m_private->m_Conveyor = conveyor;
     }
+	
     Printer::Printer
-		(Conveyor *convey
+		( Conveyor *convey
 		, const QString &name
 		, const bool &canPrint
 		, const bool &canPrintToFile
 		, const ConnectionStatus &cs
-		, const QString &printerType
+        , const QString &printerType
 		, const int &numberOfExtruders
 		, const bool &hasHeatedPlatform
 		)
@@ -110,7 +108,9 @@ namespace conveyor
         m_private->m_uniqueName = QUuid::createUuid().toString();
         m_private->m_numberOfToolheads = numberOfExtruders;
         m_private->m_hasPlatform = hasHeatedPlatform;
+
         m_private->m_jobs = convey->jobs();
+        m_private->m_Conveyor = convey;
     }
 
     Printer::~Printer ()
@@ -118,10 +118,10 @@ namespace conveyor
         delete m_private;
     }
 
-    QList<Job *>
-    * Printer::jobs ()
+    QList<Job *> const & 
+	Printer::jobs ()
     {
-       return &m_private->m_jobs;
+       return m_private->m_jobs;
     }
 
     Job *
@@ -196,6 +196,12 @@ namespace conveyor
 
         return status;
     }
+	
+    Conveyor * 
+	Printer::conveyor()
+    {
+        return m_private->m_Conveyor;
+    }
 
     Job *
     Printer::print
@@ -204,6 +210,7 @@ namespace conveyor
     {
         QString jobID("fakePrintID:" + QUuid::createUuid().toString());
         Job * job = new Job(this, jobID);
+        m_private->m_jobs.append(job);
         return job;
     }
 
@@ -215,6 +222,7 @@ namespace conveyor
     {
         QString jobID("fakePrintToFileID:" + QUuid::createUuid().toString());
         Job * job = new Job(this, jobID);
+        m_private->m_jobs.append(job);
         return job;
     }
 
@@ -226,6 +234,7 @@ namespace conveyor
     {
         QString jobID("fakeSliceID:" + QUuid::createUuid().toString());
         Job * job = new Job(this, jobID);
+        m_private->m_jobs.append(job);
         return job;
     }
 
@@ -235,14 +244,34 @@ namespace conveyor
 		, float y
 		, float z
 		, float a
-		, float b
+        , float b
 		, float f
 		)
     {
         qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
         //Jogz
     }
+	
+    void Printer::togglePaused()
+    {
+        qDebug() << "1. jobstatus" << this->currentJob()->jobStatus();
+        if(this->currentJob()->jobStatus() == PRINTING)
+        {
+            this->currentJob()->m_private->m_Status = PAUSED;
+        }
+        else if(this->currentJob()->jobStatus() == PAUSED)
+        {
+            this->currentJob()->m_private->m_Status = PRINTING;
+        }
+        qDebug() << "2. jobstatus" << this->currentJob()->jobStatus();
 
+    }
+	
+    void Printer::cancelCurrentJob()
+    {
+        this->m_private->m_jobs.first()->m_private->m_Status = CANCELLED;
+        emit m_private->m_Conveyor->jobRemoved();
+    }
 
     Address WindowsDefaultAddress;
     Address UNIXDefaultAddress;

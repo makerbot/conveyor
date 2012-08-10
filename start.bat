@@ -1,8 +1,7 @@
-HO OFF
+@ECHO OFF
 
-CALL setup.bat
+CALL start.bat
 
 ECHO Starting conveyor backend from start.bat
 python conveyor_service.py -c conveyor-win32.conf
-
 

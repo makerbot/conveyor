@@ -3,7 +3,6 @@ SETLOCAL EnableDelayedExpansion
 SET _MODULES=
 SET _MODULES=!_MODULES! conveyor
 SET _MODULES=!_MODULES! conveyor.client
-SET _MODULES=!_MODULES! conveyor.client.__main__
 SET _MODULES=!_MODULES! conveyor.debug
 SET _MODULES=!_MODULES! conveyor.enum
 SET _MODULES=!_MODULES! conveyor.event
@@ -14,7 +13,6 @@ SET _MODULES=!_MODULES! conveyor.main
 SET _MODULES=!_MODULES! conveyor.process
 SET _MODULES=!_MODULES! conveyor.recipe
 SET _MODULES=!_MODULES! conveyor.server
-SET _MODULES=!_MODULES! conveyor.server.__main__
 SET _MODULES=!_MODULES! conveyor.task
 SET _MODULES=!_MODULES! conveyor.test
 SET _MODULES=!_MODULES! conveyor.thing
@@ -34,7 +32,5 @@ coverage annotate -d obj\ --include 'src\main\python\*'
 coverage html -d obj\ --include 'src\main\python\*'
 coverage xml -o obj\coverage.xml --include 'src\main\python\*'
 coverage report --include 'src\main\python\*'
-
-CALL stop.bat
 
 ENDLOCAL EnableDelayedExpansion

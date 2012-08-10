@@ -27,14 +27,14 @@ TRICKY: we use a custom pyserial module that may not be good for general install
 be installed in our own virtualenv space. 
 
 On Ubuntu/Mac use `setup.sh` to download pip packages, and create and configure the virtualenv:
-        $ ./setup.sh
-To activate the virtualenv:
-        $ . virtualenv/bin/activate
+        $ source ./setup.sh
+To activate the virtualenv, and set env. variables, use setup as well:
+        $ source ./setup.sh
 
 On Windows use `setup.bat` to download pip packages, and create and configure the virtualenv:
         C:\> setup.bat
-To activate the virtualenv:
-		C:\> virtualenv/scripts/activate
+To activate the virtualenv, and setup environemnt varibles, use setup as well:
+        C:\> setup.bat
 	
 
 Unit Tests

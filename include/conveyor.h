@@ -5,8 +5,6 @@
 
 #include <QList>
 #include <QObject>
-#include <QSharedPointer>
-#include <QDebug>
 
 namespace conveyor
 {
@@ -48,7 +46,7 @@ namespace conveyor
     public:
         explicit Conveyor (Address const & address);
 
-        QList<Job *>     jobs     (void);
+        QList<Job *> const & jobs (void);
         QList<Printer *> printers (void);
 
         friend class Job;
@@ -78,12 +76,13 @@ namespace conveyor
 
         friend class Conveyor;
         friend class Printer;
+		
     signals:
         void JobPercentageChanged(int percent);
 
         /** Emitted when the jobStatus changes */
         void jobStatusChanged(JobStatus);
-
+		
     private:
         JobPrivate * const m_private;
     };
@@ -93,13 +92,10 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        Printer (Conveyor * convey, QString const & name);
-        Printer (Conveyor *convey, const QString &name, const bool &canPrint, const bool &canPrintToFile, const ConnectionStatus &cs,
-                 const QString &printerType, const int &numberOfExtruders, const bool &hasHeatedPlatform);
         ~Printer ();
 
         /** A list of all the jobs the printer has queued */
-        QList<Job *> * jobs ();
+        QList<Job *> const & jobs ();
 
         /** A Pointer to the current job */
         Job * currentJob();
@@ -116,6 +112,8 @@ namespace conveyor
         /** Can this printer print to a file? */
         bool canPrintToFile () const;
 
+        Conveyor* conveyor();
+		
         /** Details about our connection to the printer */
         ConnectionStatus connectionStatus () const;
         /** A human readable version of the connection status, possibly with
@@ -131,26 +129,50 @@ namespace conveyor
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);
 
-        Job * print       (QString const & inputFile);
-        Job * printToFile (QString const & inputFile, QString const & outputFile);
-        Job * slice       (QString const & inputFile, QString const & outputFile);
+        virtual Job * print       (QString const & inputFile);
+        virtual Job * printToFile (QString const & inputFile, QString const & outputFile);
+        virtual Job * slice       (QString const & inputFile, QString const & outputFile);
 
         friend class Conveyor;
         friend class Job;
+		
+		friend class FakePrinter;
 
     signals:
-
-        /** Emitted when the connectionStatus changes. */
+        /** Emitted when the connectionStatus changes. 
+			Holds the new status */
         void connectionStatusChanged(ConnectionStatus);
 
-        /** Emitted when the printer switches jobs */
-        void currentJobChanged(Job *);
+        /** Emitted when the printer switches jobs. 
+			Holds the new Job */
+        void currentJobChanged(Job const *);
+		
+    public slots:
+		/**  */
+        virtual void togglePaused();
+		/**  */
+        virtual void cancelCurrentJob();
 
+	protected:
+        Printer
+			( Conveyor * convey
+			, QString const & name);
+			
+        Printer 
+			( Conveyor * convey
+			, QString const & name
+			, bool const & canPrint
+			, bool const & canPrintToFile
+			, ConnectionStatus const & cs
+			, QString const & printerType
+			, int const & numberOfExtruders
+			, bool const & hasHeatedPlatform);
+			
     private:
         PrinterPrivate * const m_private;
     };
-
+	
     Address& defaultAddress();
 }
 
-#endif
+#endif // CONVEYOR_H

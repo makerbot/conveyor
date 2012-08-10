@@ -25,19 +25,18 @@ import logging
 import os
 import sys
 import threading
-
+import sets
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
+import conveyor
 import conveyor.jsonrpc
 import conveyor.main
 import conveyor.recipe
 import conveyor.main
-
-from lockfile import ( NotLocked, UnlockError)
 
 class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
@@ -53,64 +52,65 @@ class ServerMain(conveyor.main.AbstractMain):
         return None
 
     def _run(self):
-		has_daemon = False
-		code = -17 #failed to run err
-		try:
-			import daemon
-			import daemon.pidfile
-			has_daemon = True
-		except ImportError:
-			self._log.debug('handled exception', exc_info=True)
-
-		if self._parsedargs.nofork or (not has_daemon):
-			code = self._run_server()
-		else:
-			files_preserve = list(conveyor.log.getfiles())
-			pidfile = self._config['server']['pidfile']
-			dct = {
-				'files_preserve': files_preserve,
-				'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
-			}
-			if not self._config['server']['chdir']:
-				dct['working_directory'] = os.getcwd()
-			context = daemon.DaemonContext(**dct)
-			def terminate(signal_number, stack_frame):
-				# The daemon module's implementation of terminate()
-				# raises a SystemExit with a string message instead of
-				# an exit code. This monkey patch fixes it.
-				sys.exit(0)
-			context.terminate = terminate # monkey patch!
-			try:		
-				with context:
-					code = self._run_server()
-			except NotLocked as e:
-				self._log.critical('deamon file is not locked: %r',e);
-				code = 0 #assume we closed the thread ...
-		return code
+        has_daemon = False
+        code = -17 #failed to run err
+        try:
+            import daemon
+            import daemon.pidfile
+            import lockfile
+            has_daemon = True
+        except ImportError:
+            self._log.debug('handled exception', exc_info=True)
+        if self._parsedargs.nofork or (not has_daemon):
+            code = self._run_server()
+        else:
+            files_preserve = list(conveyor.log.getfiles())
+            pidfile = self._config['server']['pidfile']
+            dct = {
+                'files_preserve': files_preserve,
+                'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
+            }
+            if not self._config['server']['chdir']:
+                dct['working_directory'] = os.getcwd()
+            context = daemon.DaemonContext(**dct)
+            def terminate(signal_number, stack_frame):
+                # The daemon module's implementation of terminate()
+                # raises a SystemExit with a string message instead of
+                # an exit code. This monkey patch fixes it.
+                sys.exit(0)
+            context.terminate = terminate # monkey patch!
+            try:
+                with context:
+                    code = self._run_server()
+            except lockfile.NotLocked as e:
+                self._log.critical('deamon file is not locked: %r',e);
+                code = 0 #assume we closed the thread ...
+        return code
 
     def _run_server(self):
-		self._initeventqueue()
-		with self._address:
-			self._socket = self._address.listen()
-			with self._advertise_deamon() as lockfile:
-				try:
-					server = conveyor.server.Server(self._config, self._socket)
-					code = server.run()
-					return code
-				finally:
-					os.unlink(lockfile.name) 
-		return 0	
-	def _advertise_deamon(self):
-		"""
-		Advertise that the deamon is available
-		by writing a conveyord.lock file to advertise that conveyord is available
-		Existance of that file indicates that the conveyor service is up and running
-		@return a file object pointing to the lockfile
-		"""
-		if not self._config['common']['daemon_lockfile']:
-			return None
-		lock_filename = self._config['common']['daemon_lockfile']
-		return open(lock_filename, 'w+')
+        self._initeventqueue()
+        with self._address:
+            self._socket = self._address.listen()
+            with self._advertise_deamon() as lockfile:
+                try:
+                    server = conveyor.server.Server(self._config, self._socket)
+                    code = server.run()
+                    return code
+                finally:
+                    os.unlink(lockfile.name) 
+        return 0
+
+    def _advertise_deamon(self):
+        """
+        Advertise that the deamon is available
+        by writing a conveyord.lock file to advertise that conveyord is available
+        Existance of that file indicates that the conveyor service is up and running
+        @return a file object pointing to the lockfile
+        """
+        if not self._config['common']['daemon_lockfile']:
+            return None
+        lock_filename = self._config['common']['daemon_lockfile']
+        return open(lock_filename, 'w+')
 
 class ServerMainTestCase(unittest.TestCase):
     pass
@@ -123,6 +123,7 @@ class _ClientThread(threading.Thread):
         clientthread = _ClientThread(config, server, jsonrpc, id)
         return clientthread
 
+
     def __init__(self, config, server, jsonrpc, id):
         threading.Thread.__init__(self)
         self._config = config
@@ -130,10 +131,16 @@ class _ClientThread(threading.Thread):
         self._server = server
         self._id = id
         self._jsonrpc = jsonrpc
+        self._printers_seen = [] 
+        self._printers_queried = [] 
+        self._printers_open = []
 
+
+    #@exportdFuction('hello')
     def _hello(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
-        return None
+        return 'world'
+ 
 
     def _stoppedcallback(self, task):
         if conveyor.task.TaskConclusion.ENDED == task.conclusion:
@@ -147,7 +154,79 @@ class _ClientThread(threading.Thread):
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
 
-    def _print(self, thing, preprocessor, skip_start_end):
+    
+    #@exportedFunction('printer_query')
+    def _printer_query(self,*args,**kwargs):
+        """ Queries a printer for it's name, extruder count, uuid, and other EEPROM info."""
+        if  'port' in kwargs:
+            s3gBot = makerbot_driver.s3g.from_filename(kwargs['port'])
+            if s3gBot :
+                version = s3gBot.get_version()
+                if(version >= 506):   #newer that 5.6 has 'advanced' version
+                    version = s3gBot.get_advanced_version()
+                name, uuid = s3gBot.get_advanced_name()
+                toolheads = s3gBot.get_toolhead_count()
+                verified = s3gBot.get_verified_status() 
+                s3gBot.close()
+                info = { 'port':'port', 'class':ptr['class'],
+                    'version':version, 'uuid':uuid,
+                    'extruders':toolheads, 'displayname':name,
+                    'verified':verified 
+                } 
+                return info
+            else:
+               self._log.error("no bot at port %s", port)
+        return None      
+
+    #@exportedFunction('printer_scan')
+    def _printer_scan(self,*args,**kwargs):
+        """ uses pyserial-mb to scan for ports, and return a list of ports
+        that have a machine matching the specifed VID/PID pair
+        """
+        result = None
+        self._log.debug("doing a printer scan via conveyor service")
+        vid, pid = None, None
+        #annoying case handling
+        if 'vid' in kwargs:
+            if kwargs['vid'] == None:           pass
+            elif isinstance(kwargs['vid'],int): vid = kwargs['vid']
+            else:                               vid = int(kwargs['vid'],16)
+        if 'pid' in kwargs:
+            if kwargs['pid'] == None:           pass
+            elif isinstance(kwargs['pid'],int): pid = kwargs['pid']
+            else:                               pid = int(kwargs['pid'],16)
+        try:
+            import serial.tools.list_ports as lp
+            ports = lp.list_ports_by_vid_pid(vid,pid)
+            result = list(ports)
+            for r in result:
+                self._printers_seen.append(r)
+            if result == None:
+              self._log.error("port= None")
+            else:
+              for port in result:
+                self._log.error("port= %r", port)
+        except Exception as e:
+            self._log.exception('unhandled exception')
+            result = None
+        return result
+   
+
+    #@exportedFunction('dir')
+    def _dir(self, *args, **kwards):
+        result = {}
+        self._log.debug("doing a services dir conveyor service")
+        def dir_callback(task):
+            self._log.debug("doing a dir to task")  
+        if(self._jsonrpc):
+            result = self._jsonrpc.dict_all_methods()
+        result['__version__'] = conveyor.__version__
+        return result
+
+
+
+    #@exportedFunction('print')
+    def _print(self, thing, preprocessor, skip_start_end, endpoint=None):
         self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
         def runningcallback(task):
             self._log.info(
@@ -156,7 +235,7 @@ class _ClientThread(threading.Thread):
             self._log.info('%r', task.progress)
         recipemanager = conveyor.recipe.RecipeManager(self._config)
         recipe = recipemanager.getrecipe(thing, preprocessor)
-        task = recipe.print(skip_start_end)
+        task = recipe.print(skip_start_end,endpoint)
         task.runningevent.attach(runningcallback)
         task.heartbeatevent.attach(heartbeatcallback)
         task.stoppedevent.attach(self._stoppedcallback)
@@ -192,11 +271,22 @@ class _ClientThread(threading.Thread):
         self._server.appendtask(task)
         return None
 
+    def _load_services(self):
+        self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
+        self._jsonrpc.addmethod('print', self._print, 
+			": takes (thing-filename, preprocessor, skip_start_end_bool, [endpoint)" )
+        self._jsonrpc.addmethod('printtofile', self._printtofile,
+			": takes (inputfile, outputfile) pair" )
+        self._jsonrpc.addmethod('slice', self._slice,
+			": takes (inputfile, outputfile) pair" )
+        self._jsonrpc.addmethod('printer_scan',self._printer_scan,
+			": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
+        self._jsonrpc.addmethod('printer_query',self._printer_query,
+			": takes {'port':string(port) } printer to query for data.")
+		self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
     def run(self):
-        self._jsonrpc.addmethod('hello', self._hello)
-        self._jsonrpc.addmethod('print', self._print)
-        self._jsonrpc.addmethod('printtofile', self._printtofile)
-        self._jsonrpc.addmethod('slice', self._slice)
+        # add our available functions to the json methods list
+        self._load_services()
         self._server.appendclientthread(self)
         try:
             self._jsonrpc.run()

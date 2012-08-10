@@ -1,0 +1,8 @@
+obj/include/conveyor.h			usr/include
+obj/libconveyor.a				usr/lib
+obj/etc/conveyor.conf			etc
+obj/module						usr/share/conveyor/lib
+submodule/conveyor_bins/pyserial-2.7_mb-py2.7.egg usr/share/conveyor
+data/conveyor.conf				etc/init
+wrapper/conveyord				usr/bin
+wrapper/conveyor_service.py		usr/share/conveyor

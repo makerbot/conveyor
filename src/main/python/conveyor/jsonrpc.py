@@ -201,6 +201,7 @@ class JsonRpc(object):
         self._jsonreader.event.attach(self._jsonreadercallback)
         self._log = logging.getLogger(self.__class__.__name__)
         self._methods = {}
+        self._methodsinfo={}
         self._outfp = outfp # contract: .write(str), .flush()
         self._outfplock = threading.Lock()
         self._tasks = {}
@@ -324,18 +325,17 @@ class JsonRpc(object):
 
     def _handleresponse(self, response, id):
         self._log.debug('response=%r, id=%r', response, id)
-        task = self._tasks.get(id)
+        task = self._tasks.pop(id, None)
         if None is task:
             self._log.debug('ignoring response for unknown id: %r', id)
+        elif self._iserrorresponse(response):
+            error = response['error']
+            task.fail(error)
+        elif self._issuccessresponse(response):
+            result = response['result']
+            task.end(result)
         else:
-            if self._issuccessresponse(response):
-                result = response['result']
-                task.end(result)
-            elif self._iserrorresponse(response):
-                error = response['error']
-                task.fail(error)
-            else:
-                raise ValueError(response)
+            raise ValueError(response)
 
     def notify(self, method, params):
         self._log.debug('method=%r, params=%r', method, params)
@@ -343,7 +343,13 @@ class JsonRpc(object):
         data = json.dumps(request)
         self._send(data)
 
-    def request(self, method, params):
+    def request(self, method, params,methodcallback):
+        """ Builds a jsonrpc request task.
+        @param method: json rpc method to run as a task
+        @param params: params for method
+        @param methodcallback: callback to run when rpc reply is received
+        @return a Task object with methods setup properly
+        """
         with self._idcounterlock:
             id = self._idcounter
             self._idcounter += 1
@@ -359,6 +365,8 @@ class JsonRpc(object):
         task = conveyor.task.Task()
         task.runningevent.attach(runningevent)
         task.stoppedevent.attach(stoppedevent)
+        if methodcallback != None :
+                task.stoppedevent.attach(methodcallback) 
         return task
 
     #
@@ -402,9 +410,7 @@ class JsonRpc(object):
             self._log.exception('uncaught exception')
             if None is not id:
                 e = sys.exc_info()[1]
-                data = {
-                    'name': e.__class__.__name__, 'args': e.args,
-                    'message': e.message}
+                data = {'name': e.__class__.__name__, 'args': e.args}
                 response = self._errorresponse(
                     id, -32000, 'uncaught exception', data)
         else:
@@ -413,9 +419,25 @@ class JsonRpc(object):
         self._log.debug('response=%r', response)
         return response
 
-    def addmethod(self, method, func):
+    def addmethod(self, method, func, info=None):
+        """ add a RPC callback method to a RPC client or server. If no
+         usage info is defined, a generic message is added.
+        """
         self._log.debug('method=%r, func=%r', method, func)
         self._methods[method] = func
+        self._methodsinfo[func] = info if info else "no param info '" + str(method) + "' Guess?!"
+
+    def dict_all_methods(self):
+        """ @returns a dict of all RPC method names:info pairs """
+        result = {}
+        if self._methods:
+            for key in self._methods:
+                if self._methods[key] in self._methodsinfo:
+                     result[key] = self._methodsinfo[self._methods[key]] #
+                else:
+                     results[key] = repr(self._methods[key])
+        return result
+
 
 class _SocketadapterStubFile(object):
     def __init__(self):
@@ -761,7 +783,7 @@ class _JsonRpcTest(unittest.TestCase):
         response = self._test_jsonresponse(data, True)
         self._asserterror(
             -32000, 'uncaught exception', '1', response,
-            {'name': 'Exception', 'args': ['message'], 'message': 'message'})
+            {'name': 'Exception', 'args': ['message']})
 
     def test_Exception_notification(self):
         '''Test a notification that throws an unexpected exception.'''
@@ -978,7 +1000,6 @@ class _JsonRpcTest(unittest.TestCase):
             'message': 'uncaught exception',
             'code': -32000,
             'data': {
-                'message': 'failure',
                 'args': ['failure'],
                 'name': 'Exception'
             }
