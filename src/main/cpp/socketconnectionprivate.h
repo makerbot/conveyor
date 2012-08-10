@@ -23,7 +23,7 @@ namespace conveyor
     private:
         int m_fd;
         bool m_eof;
-        bool m_cancel;
+        bool volatile m_cancel;
     };
 }
 

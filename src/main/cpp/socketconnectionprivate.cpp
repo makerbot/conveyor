@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <exception>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "connectionprivate.h"
@@ -30,19 +32,45 @@ namespace conveyor
     ssize_t
     SocketConnectionPrivate::read (char * const buffer, std::size_t const length)
     {
-        ssize_t const result (::read (this->m_fd, buffer, length));
-        if (static_cast <ssize_t> (-1) == result)
+        fd_set readfds;
+        FD_ZERO (& readfds);
+        FD_SET (this->m_fd, & readfds);
+
+        struct timeval timeval;
+        timeval.tv_sec = 1u;
+        timeval.tv_usec = 0u;
+
+        for (;;)
         {
-            throw std::exception ();
+            int const nfds (select (this->m_fd + 1, & readfds, 0, 0, & timeval));
+            if (this->m_cancel or 0 != nfds)
+            {
+                break;
+            }
+        }
+
+        ssize_t result;
+        if (this->m_cancel)
+        {
+            result = static_cast <ssize_t> (0);
         }
         else
         {
-            if (static_cast <ssize_t> (0) == result)
+            result = ::read (this->m_fd, buffer, length);
+            if (static_cast <ssize_t> (-1) == result)
             {
-                this->m_eof = true;
+                throw std::exception ();
             }
-            return result;
+            else
+            {
+                if (static_cast <ssize_t> (0) == result)
+                {
+                    this->m_eof = true;
+                }
+            }
         }
+
+        return result;
     }
 
     void

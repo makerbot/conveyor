@@ -14,9 +14,22 @@
 
 namespace conveyor
 {
-    Conveyor::Conveyor (JsonRpc & jsonRpc)
-        : m_private (new ConveyorPrivate (jsonRpc))
+    Conveyor *
+    Conveyor::connect (Address const & address)
     {
+        ConveyorPrivate * const private_ (ConveyorPrivate::connect (address));
+        Conveyor * const conveyor (new Conveyor (private_));
+        return conveyor;
+    }
+
+    Conveyor::Conveyor (ConveyorPrivate * const private_)
+        : m_private (private_)
+    {
+    }
+
+    Conveyor::~Conveyor (void)
+    {
+        delete this->m_private;
     }
 
     QList<Job *> const &
@@ -35,7 +48,7 @@ namespace conveyor
     // TODO: move the address stuff.
 
     TcpAddress WindowsDefaultAddress ("localhost", 9999);
-    UnixAddress UNIXDefaultAddress ("/var/run/conveyor/conveyord.socket");
+    UnixAddress UNIXDefaultAddress ("conveyord.socket");
 
     Address&
     defaultAddress()

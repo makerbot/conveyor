@@ -40,7 +40,9 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        explicit Conveyor (JsonRpc & jsonRpc);
+        static Conveyor * connect (Address const & address);
+
+        ~Conveyor (void);
 
         QList<Job *> const & jobs (void);
         QList<Printer *> printers (void);
@@ -55,6 +57,8 @@ namespace conveyor
         void jobRemoved ();
 
     private:
+        Conveyor (ConveyorPrivate * private_);
+
         ConveyorPrivate * const m_private;
 
         friend class PrinterPrivate;

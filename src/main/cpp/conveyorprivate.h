@@ -8,7 +8,11 @@
 
 #include <jsonrpc.h>
 #include <conveyor.h>
+#include <conveyor/address.h>
+#include <conveyor/connection.h>
 
+#include "connectionstream.h"
+#include "connectionthread.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -16,7 +20,16 @@ namespace conveyor
     class ConveyorPrivate
     {
     public:
-        explicit ConveyorPrivate (JsonRpc & jsonRpc);
+        static ConveyorPrivate * connect (Address const & address);
+
+        ConveyorPrivate
+            ( Connection * connection
+            , ConnectionStream * connectionStream
+            , JsonRpc * jsonRpc
+            , ConnectionThread * connectionThread
+            );
+
+        ~ConveyorPrivate (void);
 
         Job * print
             ( Printer * printer
@@ -33,7 +46,10 @@ namespace conveyor
             , QString const & outputFile
             );
 
-        JsonRpc & m_jsonRpc;
+        Connection * const m_connection;
+        ConnectionStream * const m_connectionStream;
+        JsonRpc * const m_jsonRpc;
+        ConnectionThread * const m_connectionThread;
         QList<Job *> m_jobs;
     };
 }
