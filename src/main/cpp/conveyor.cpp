@@ -3,8 +3,8 @@
 #include <QUuid>
 #include <QDebug>
 
-#include <conveyor.h>
 #include <conveyor/address.h>
+#include <conveyor/conveyor.h>
 #include <conveyor/tcpaddress.h>
 #include <conveyor/unixaddress.h>
 
@@ -15,7 +15,7 @@
 namespace conveyor
 {
     Conveyor *
-    Conveyor::connect (Address const & address)
+    Conveyor::connect (Address const * const address)
     {
         ConveyorPrivate * const private_ (ConveyorPrivate::connect (address));
         Conveyor * const conveyor (new Conveyor (private_));
@@ -33,36 +33,15 @@ namespace conveyor
     }
 
     QList<Job *> const &
-    Conveyor::jobs ()
+    Conveyor::jobs (void)
     {
         return m_private->m_jobs;
     }
 
-    QList<Printer *>
-    Conveyor::printers ()
+    QList<Printer *> const &
+    Conveyor::printers (void)
     {
-        QList<Printer *> list;
+        static QList<Printer *> list;
         return list;
-    }
-
-    // TODO: move the address stuff.
-
-    TcpAddress WindowsDefaultAddress ("localhost", 9999);
-    UnixAddress UNIXDefaultAddress ("conveyord.socket");
-
-    Address&
-    defaultAddress()
-    {
-        #if defined(CONVEYOR_ADDRESS)
-            return CONVEYOR_ADDRESS;
-        #elif defined(Q_OS_WIN32)
-            return WindowsDefaultAddress;
-        #elif defined(Q_OS_MAC)
-            return UNIXDefaultAddress;
-        #elif defined(Q_OS_LINUX)
-            return UNIXDefaultAddress;
-        #else
-            #error No CONVEYOR_ADDRESS defined and no default location known for this platform
-        #endif
     }
 }

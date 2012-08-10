@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <conveyor/address.h>
+#include <conveyor/connection.h>
 #include <conveyor/tcpaddress.h>
 
 #include "socketconnectionprivate.h"

@@ -27,8 +27,8 @@ namespace conveyor
 
     Job::Job
         ( Printer * printer __attribute__ ((unused))
-        , QString const &name
-        , int const &progress
+        , QString const & name
+        , int progress
         )
         : m_private(new JobPrivate())
     {

@@ -4,8 +4,9 @@
 #define CONVEYOR_CONNECTION_H (1)
 
 #include <cstddef>
-#include <string>
 #include <unistd.h>
+
+#include <conveyor/fwd.h>
 
 namespace conveyor
 {
