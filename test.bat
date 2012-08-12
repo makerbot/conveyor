@@ -27,6 +27,8 @@ IF NOT EXIST obj MD obj
 
 CALL setup.bat
 
+CALL start.bat
+
 coverage run --branch test.py -- -v %_MODULES%
 coverage annotate -d obj\ --include 'src\main\python\*'
 coverage html -d obj\ --include 'src\main\python\*'
@@ -34,3 +36,5 @@ coverage xml -o obj\coverage.xml --include 'src\main\python\*'
 coverage report --include 'src\main\python\*'
 
 ENDLOCAL EnableDelayedExpansion
+
+CALL stop.bat 
