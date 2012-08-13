@@ -25,6 +25,9 @@ SET PYTHONPATH=src\main\python\..\..\..\submodule\s3g\
 
 IF NOT EXIST obj MD obj
 
+ECHO "exiting without testing for server-build reasons"
+EXIT \B 0
+
 CALL setup.bat
 
 CALL start.bat
