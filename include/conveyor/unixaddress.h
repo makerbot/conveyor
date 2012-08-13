@@ -5,8 +5,8 @@
 
 #include <string>
 
+#include <conveyor/fwd.h>
 #include <conveyor/address.h>
-#include <conveyor/connection.h>
 
 namespace conveyor
 {

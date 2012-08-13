@@ -1,7 +1,5 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include <stdio.h>
-
 #include <cstring>
 #include <exception>
 #include <string>
@@ -10,6 +8,7 @@
 #include <sys/un.h>
 
 #include <conveyor/address.h>
+#include <conveyor/connection.h>
 #include <conveyor/unixaddress.h>
 
 #include "socketconnectionprivate.h"
@@ -47,7 +46,6 @@ namespace conveyor
                 , sizeof (struct sockaddr_un)
                 ))
             {
-                perror ("connect failed");
                 throw std::exception ();
             }
             else

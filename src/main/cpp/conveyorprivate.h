@@ -20,7 +20,7 @@ namespace conveyor
     class ConveyorPrivate
     {
     public:
-        static ConveyorPrivate * connect (Address const & address);
+        static ConveyorPrivate * connect (Address const * address);
 
         ConveyorPrivate
             ( Connection * connection

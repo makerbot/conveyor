@@ -20,7 +20,7 @@ import os.path
 import sys
 import fnmatch
 
-env = Environment(ENV=os.environ, tools=['default','qt4'])
+env = Environment(ENV=os.environ)
 
 if 'win32' == sys.platform:
     env.Tool('mingw')
@@ -38,6 +38,7 @@ if 'QTDIR' not in env:
     elif 'darwin' == sys.platform:
         env['QTDIR'] = os.path.expanduser('~/QtSDK/Desktop/Qt/4.8.1/gcc/')
 
+env.Tool('qt4', toolpath=[Dir('src/main/scons/')])
 env.EnableQt4Modules(['QtCore', 'QtTest'])
 env.Append(CCFLAGS='-g')
 env.Append(CCFLAGS='-pedantic')
@@ -48,11 +49,16 @@ env.Append(CCFLAGS='-Wno-long-long')
 env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
-cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor/'))
 cppenv.Append(CPPPATH=Dir('include/'))
 cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
 cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
-libconveyor = cppenv.StaticLibrary('conveyor', Glob('src/main/cpp/*.cpp'))
+libconveyor = cppenv.StaticLibrary(
+    'conveyor', [
+        Glob('src/main/cpp/*.cpp'),
+        cppenv.Moc4('include/conveyor/conveyor.h'),
+        cppenv.Moc4('include/conveyor/job.h'),
+        cppenv.Moc4('include/conveyor/printer.h')
+    ])
 
 inst = []
 inst.append(cppenv.InstallAs( 'etc/conveyor.conf','conveyor-debian.conf'))
@@ -66,7 +72,7 @@ for root,dirnames,filenames in os.walk(pysrc_root):
         outdir = os.path.join('module',rpath)
         insrc = os.path.join(root,filename)
         inst.append(cppenv.Install(outdir,insrc))
-        print outdir,insrc
+        # print outdir,insrc
 
 env.Alias('install',inst)
 

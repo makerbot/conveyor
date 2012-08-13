@@ -102,9 +102,9 @@ namespace
 namespace conveyor
 {
     ConveyorPrivate *
-    ConveyorPrivate::connect (Address const & address)
+    ConveyorPrivate::connect (Address const * const address)
     {
-        Connection * const connection (address.createConnection ());
+        Connection * const connection (address->createConnection ());
         ConnectionStream * const connectionStream
             ( new ConnectionStream (connection)
             );
