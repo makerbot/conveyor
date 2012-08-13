@@ -26,18 +26,16 @@ SET PYTHONPATH=src\main\python\..\..\..\submodule\s3g\
 IF NOT EXIST obj MD obj
 
 ECHO "exiting without testing for server-build reasons"
-EXIT \B 0
+REM CALL setup.bat
 
-CALL setup.bat
+REM CALL start.bat
 
-CALL start.bat
-
-coverage run --branch test.py -- -v %_MODULES%
-coverage annotate -d obj\ --include 'src\main\python\*'
-coverage html -d obj\ --include 'src\main\python\*'
-coverage xml -o obj\coverage.xml --include 'src\main\python\*'
-coverage report --include 'src\main\python\*'
-
+REM coverage run --branch test.py -- -v %_MODULES%
+REM coverage annotate -d obj\ --include 'src\main\python\*'
+REM coverage html -d obj\ --include 'src\main\python\*'
+REM coverage xml -o obj\coverage.xml --include 'src\main\python\*'
+REM coverage report --include 'src\main\python\*'
+SET errorlevel=0
 ENDLOCAL EnableDelayedExpansion
 
-CALL stop.bat 
+REM CALL stop.bat 
