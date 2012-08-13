@@ -4,6 +4,9 @@
 #define SOCKETCONNECTIONPRIVATE_H (1)
 
 #include <cstddef>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "connectionprivate.h"
 
@@ -12,7 +15,13 @@ namespace conveyor
     class SocketConnectionPrivate : public ConnectionPrivate
     {
     public:
-        SocketConnectionPrivate (int fd);
+		#ifdef _WIN32
+		typedef SOCKET socket_t;
+		#else
+		typedef int socket_t;
+		#endif
+	
+        SocketConnectionPrivate (socket_t fd);
         ~SocketConnectionPrivate (void);
 
         bool eof (void);
@@ -21,10 +30,13 @@ namespace conveyor
         void cancel (void);
 
     private:
-        int m_fd;
+        socket_t  m_fd;
         bool m_eof;
         bool volatile m_cancel;
     };
+	
+	// Abstraction for checking validity of a socket file descriptor on windows/*nix
+	bool invalidSocket (SocketConnectionPrivate::socket_t const fd);
 }
 
 #endif

@@ -23,8 +23,8 @@ namespace conveyor
     Connection *
     UnixAddress::createConnection (void) const
     {
-        int const fd (socket (PF_UNIX, SOCK_STREAM, 0));
-        if (fd < 0)
+        SocketConnectionPrivate::socket_t const fd (socket (PF_UNIX, SOCK_STREAM, 0));
+        if (invalidSocket(fd))
         {
             throw std::exception ();
         }

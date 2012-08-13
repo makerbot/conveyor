@@ -31,8 +31,8 @@ namespace conveyor
     Connection *
     TcpAddress::createConnection (void) const
     {
-        int const fd (socket (PF_INET, SOCK_STREAM, IPPROTO_TCP));
-        if (fd < 0)
+        SocketConnectionPrivate::socket_t const fd (socket (PF_INET, SOCK_STREAM, IPPROTO_TCP));
+        if (invalidSocket(fd))
         {
             throw std::exception ();
         }

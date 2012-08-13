@@ -17,7 +17,7 @@
 
 namespace conveyor
 {
-    SocketConnectionPrivate::SocketConnectionPrivate (int const fd)
+    SocketConnectionPrivate::SocketConnectionPrivate (socket_t const fd)
         : m_fd (fd)
         , m_eof (false)
         , m_cancel (false)
@@ -105,4 +105,16 @@ namespace conveyor
     {
         this->m_cancel = true;
     }
+	
+	bool
+	invalidSocket
+		( SocketConnectionPrivate::socket_t const fd
+		)
+	{
+		#ifdef _WIN32
+		return (fd == INVALID_SOCKET);
+		#else
+		return (fd < 0);
+		#endif
+	}
 }
