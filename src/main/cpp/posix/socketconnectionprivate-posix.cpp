@@ -16,7 +16,7 @@ namespace conveyor
         ( SocketConnectionPrivate::socket_t fd
         )
     {
-        return fd < static_cast <SocketConnectionPrivate::socket_t> (0)
+        return fd < static_cast <SocketConnectionPrivate::socket_t> (0);
     }
 
     SocketConnectionPrivate * 
@@ -34,10 +34,10 @@ namespace conveyor
             struct sockaddr_un address;
             memset (& address, 0, sizeof (struct sockaddr_un));
             address.sun_family = AF_UNIX;
-            char const * const path (this->m_path.c_str ());
+            char const * const c_path (path.c_str ());
             std::strncpy
                 ( address.sun_path
-                , path
+                , c_path
                 , sizeof (address.sun_path) - 1u
                 );
 
