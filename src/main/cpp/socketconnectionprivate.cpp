@@ -2,9 +2,15 @@
 
 #include <cstddef>
 #include <exception>
-#include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
+
+#ifdef _WIN32
+# include <winsock2.h>
+# include <ws2tcpip.h>
+#else
+# include <sys/select.h>
+#endif
 
 #include "connectionprivate.h"
 #include "socketconnectionprivate.h"

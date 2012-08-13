@@ -7,7 +7,7 @@
 # the terms of the GNU Affero General Public License as published by the Free
 # Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
-#
+
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
@@ -52,9 +52,24 @@ cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('include/'))
 cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
 cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
+libconveyor_cpp = [
+    File('src/main/cpp/address.cpp'),
+    File('src/main/cpp/connection.cpp'),
+    File('src/main/cpp/connectionprivate.cpp'),
+    File('src/main/cpp/connectionstream.cpp'),
+    File('src/main/cpp/connectionthread.cpp'),
+    File('src/main/cpp/conveyor.cpp'),
+    File('src/main/cpp/conveyorprivate.cpp'),
+    File('src/main/cpp/job.cpp'),
+    File('src/main/cpp/printer.cpp'),
+    File('src/main/cpp/printerprivate.cpp'),
+    File('src/main/cpp/socketconnectionprivate.cpp'),
+    File('src/main/cpp/tcpaddress.cpp')]
+if 'win32' != sys.platform:
+    libconveyor_cpp.append(File('src/main/cpp/unixaddress.cpp'))
 libconveyor = cppenv.StaticLibrary(
     'conveyor', [
-        Glob('src/main/cpp/*.cpp'),
+        libconveyor_cpp,
         cppenv.Moc4('include/conveyor/conveyor.h'),
         cppenv.Moc4('include/conveyor/job.h'),
         cppenv.Moc4('include/conveyor/printer.h')
