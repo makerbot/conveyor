@@ -52,6 +52,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_printtofile,
             self._initsubparser_slice,
             self._initsubparser_scan,
+            self._initsubparser_verify_usb_detect,
 			self._initsubparser_dir,
             ):
                 method(subparsers)
@@ -150,6 +151,11 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.set_defaults(func=self._run_dir)
         self._initparser_common(parser)
 
+    def _initsubparser_verify_usb_detect(self,subparsers):
+        """ setup parser options for 'verify USB' option """
+        parser = subparsers.add_parser('verify_usb_detect', help='functional test, does usb work?')
+        parser.set_defaults(func=self._verify_usb_detect)
+        self._initparser_common(parser)
     
 
     def _run(self):
@@ -229,6 +235,33 @@ class ClientMain(conveyor.main.AbstractMain):
         x = json.dumps(task.result, sys.stderr)
         print(x)
 
+    def _verify_usb_detect(self):
+        """ interactive test to verify that bot printers are listed correctly """
+
+        endpoint = raw_input("Verify a printer is plugged in and type the port here: ")
+
+        # Params for the fuction to send to the server
+        params = {'pid':None, 'vid':None, 'endpoint':endpoint }
+        # Run the standard list printers' function, using the 'show the list to a user' callback
+        # TODO: Un-comment when master is merged into release branch
+        # code = self._run_client('printer_scan', params, self._show_list_printers_result) 
+        code = 0
+        if code != 0: return code
+
+        # Ask for confirmation the tech read the list
+        answer = raw_input("Did you see a printer listed above (y/N)?:")
+        if answer.lower() == 'n': return -40
+
+        raw_input("Please unplug printer and hit <enter> to continue")
+
+        # TODO: Un-comment when master is merged into release branch
+        # code = self._run_client('printer_scan',params, self._show_list_printers_result)
+        if code != 0: return code
+
+        answer = raw_input("Did you see no printers listed above (y/N)?:")
+        if answer.lower() == 'n': return -60
+
+        return 0
 
     def _show_query_printer_result(self, task):
         """ custom callback to display results to the user.  Must match 
