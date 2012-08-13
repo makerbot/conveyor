@@ -6,13 +6,14 @@
 #include <QtGlobal>
 
 #include <conveyor/address.h>
+#include <conveyor/pipeaddress.h>
 #include <conveyor/tcpaddress.h>
-#include <conveyor/unixaddress.h>
 
 namespace
 {
     conveyor::TcpAddress DefaultTcpAddress ("localhost", 9999);
-    conveyor::UnixAddress DefaultUnixAddress
+
+    conveyor::PipeAddress DefaultPipeAddress
         ( "/var/run/conveyord/conveyord.socket"
         );
 
@@ -47,9 +48,9 @@ namespace
 
     static
     conveyor::Address *
-    parseUnixAddress (std::string const & path)
+    parsePipeAddress (std::string const & path)
     {
-        conveyor::Address * const address (new conveyor::UnixAddress (path));
+        conveyor::Address * const address (new conveyor::PipeAddress (path));
         return address;
     }
 }
@@ -62,7 +63,7 @@ namespace conveyor
 #if defined (CONVEYOR_ADDRESS)
         return CONVEYOR_ADDRESS;
 #elif defined (Q_OS_LINUX) || defined (Q_OS_MAC)
-        return & DefaultUnixAddress;
+        return & DefaultPipeAddress;
 #elif defined (Q_OS_WIN32)
         return & DefaultTcpAddress;
 #else
@@ -76,14 +77,15 @@ namespace conveyor
         try
         {
             Address * address;
-            if (str.substr (0, 4) == "tcp:")
+            if ("tcp:" == str.substr (0, 4))
             {
                 address = parseTcpAddress (str.substr (4));
             }
             else
-            if (str.substr (0, 5) == "unix:")
+            if (("pipe:" == str.substr (0, 5))
+                or ("unix:" == str.substr (0, 5)))
             {
-                address = parseUnixAddress (str.substr (5));
+                address = parsePipeAddress (str.substr (5));
             }
             else
             {

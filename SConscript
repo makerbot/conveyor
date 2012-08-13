@@ -52,21 +52,11 @@ cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('include/'))
 cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
 cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
-libconveyor_cpp = [
-    File('src/main/cpp/address.cpp'),
-    File('src/main/cpp/connection.cpp'),
-    File('src/main/cpp/connectionprivate.cpp'),
-    File('src/main/cpp/connectionstream.cpp'),
-    File('src/main/cpp/connectionthread.cpp'),
-    File('src/main/cpp/conveyor.cpp'),
-    File('src/main/cpp/conveyorprivate.cpp'),
-    File('src/main/cpp/job.cpp'),
-    File('src/main/cpp/printer.cpp'),
-    File('src/main/cpp/printerprivate.cpp'),
-    File('src/main/cpp/socketconnectionprivate.cpp'),
-    File('src/main/cpp/tcpaddress.cpp')]
+libconveyor_cpp = [Glob('src/main/cpp/*.cpp')]
 if 'win32' != sys.platform:
-    libconveyor_cpp.append(File('src/main/cpp/unixaddress.cpp'))
+    libconveyor_cpp.append(Glob('src/main/cpp/posix/*.cpp'))
+else:
+    libconveyor_cpp.append(Glob('src/main/cpp/win32/*.cpp'))
 libconveyor = cppenv.StaticLibrary(
     'conveyor', [
         libconveyor_cpp,

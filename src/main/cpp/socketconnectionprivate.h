@@ -4,8 +4,10 @@
 #define SOCKETCONNECTIONPRIVATE_H (1)
 
 #include <cstddef>
+#include <string>
+
 #ifdef _WIN32
-#include <windows.h>
+# include <windows.h>
 #endif
 
 #include "connectionprivate.h"
@@ -15,12 +17,25 @@ namespace conveyor
     class SocketConnectionPrivate : public ConnectionPrivate
     {
     public:
-		#ifdef _WIN32
-		typedef SOCKET socket_t;
-		#else
-		typedef int socket_t;
-		#endif
-	
+#ifdef _WIN32
+        typedef SOCKET socket_t;
+#else
+        typedef int socket_t;
+#endif
+
+        static bool invalidSocket (socket_t fd);
+
+        static SocketConnectionPrivate * connectTcp
+            ( std::string const & host
+            , int port
+            );
+
+#ifndef _WIN32
+        static SocketConnectionPrivate * connectUnix
+            ( std::string const & path
+            );
+#endif
+
         SocketConnectionPrivate (socket_t fd);
         ~SocketConnectionPrivate (void);
 
@@ -34,9 +49,6 @@ namespace conveyor
         bool m_eof;
         bool volatile m_cancel;
     };
-	
-	// Abstraction for checking validity of a socket file descriptor on windows/*nix
-	bool invalidSocket (SocketConnectionPrivate::socket_t const fd);
 }
 
 #endif

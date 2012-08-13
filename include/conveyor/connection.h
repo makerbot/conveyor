@@ -15,6 +15,7 @@ namespace conveyor
     class Connection
     {
     public:
+        Connection (ConnectionPrivate * private_);
         ~Connection (void);
 
         bool eof (void);
@@ -23,12 +24,7 @@ namespace conveyor
         void cancel (void);
 
     private:
-        Connection (ConnectionPrivate * private_);
-
         ConnectionPrivate * const m_private;
-
-        friend class TcpAddress;
-        friend class UnixAddress;
     };
 }
 

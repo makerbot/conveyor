@@ -10,8 +10,8 @@
 #include <conveyor/conveyor.h>
 #include <conveyor/job.h>
 #include <conveyor/jobstatus.h>
+#include <conveyor/pipeaddress.h>
 #include <conveyor/printer.h>
 #include <conveyor/tcpaddress.h>
-#include <conveyor/unixaddress.h>
 
 #endif

@@ -7,24 +7,25 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <conveyor/address.h>
-#include <conveyor/connection.h>
-#include <conveyor/unixaddress.h>
-
-#include "socketconnectionprivate.h"
+#include "../socketconnectionprivate.h"
 
 namespace conveyor
 {
-    UnixAddress::UnixAddress (std::string const & path)
-        : m_path (path)
+    bool
+    SocketConnectionPrivate::invalidSocket
+        ( SocketConnectionPrivate::socket_t fd
+        )
     {
+        return fd < static_cast <SocketConnectionPrivate::socket_t> (0)
     }
 
-    Connection *
-    UnixAddress::createConnection (void) const
+    SocketConnectionPrivate * 
+    SocketConnectionPrivate::connectUnix (std::string const & path)
     {
-        SocketConnectionPrivate::socket_t const fd (socket (PF_UNIX, SOCK_STREAM, 0));
-        if (invalidSocket(fd))
+        SocketConnectionPrivate::socket_t const fd
+            ( socket (PF_UNIX, SOCK_STREAM, 0)
+            );
+        if (invalidSocket (fd))
         {
             throw std::exception ();
         }
@@ -50,18 +51,11 @@ namespace conveyor
             }
             else
             {
-                ConnectionPrivate * const private_
+                SocketConnectionPrivate * const private_
                     ( new SocketConnectionPrivate (fd)
                     );
-                Connection * const connection (new Connection (private_));
-                return connection;
+                return private_;
             }
         }
-    }
-
-    std::string const &
-    UnixAddress::path (void) const
-    {
-        return this->m_path;
     }
 }

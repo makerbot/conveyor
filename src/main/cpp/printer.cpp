@@ -4,9 +4,6 @@
 #include <QDebug>
 
 #include <conveyor.h>
-#include <conveyor/address.h>
-#include <conveyor/tcpaddress.h>
-#include <conveyor/unixaddress.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"

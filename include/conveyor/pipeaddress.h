@@ -1,7 +1,7 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#ifndef CONVEYOR_UNIXADDRESS_H
-#define CONVEYOR_UNIXADDRESS_H (1)
+#ifndef CONVEYOR_PIPEADDRESS_H
+#define CONVEYOR_PIPEADDRESS_H (1)
 
 #include <string>
 
@@ -10,10 +10,10 @@
 
 namespace conveyor
 {
-    class UnixAddress : public Address
+    class PipeAddress : public Address
     {
     public:
-        UnixAddress (std::string const & path);
+        PipeAddress (std::string const & path);
 
         Connection * createConnection (void) const;
         std::string const & path (void) const;

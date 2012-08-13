@@ -5,8 +5,6 @@
 
 #include <conveyor/address.h>
 #include <conveyor/conveyor.h>
-#include <conveyor/tcpaddress.h>
-#include <conveyor/unixaddress.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"

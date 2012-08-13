@@ -11,10 +11,10 @@ namespace conveyor
     class ConveyorPrivate;
     class Job;
     class JobPrivate;
+    class PipeAddress;
     class Printer;
     class PrinterPrivate;
     class TcpAddress;
-    class UnixAddress;
 }
 
 #endif
