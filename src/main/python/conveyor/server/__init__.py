@@ -25,7 +25,6 @@ import logging
 import os
 import sys
 import threading
-import sets
 
 try:
     import unittest2 as unittest

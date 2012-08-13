@@ -7,7 +7,7 @@
 # the terms of the GNU Affero General Public License as published by the Free
 # Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
-#
+
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
@@ -20,7 +20,7 @@ import os.path
 import sys
 import fnmatch
 
-env = Environment(ENV=os.environ, tools=['default','qt4'])
+env = Environment(ENV=os.environ)
 
 if 'win32' == sys.platform:
     env.Tool('mingw')
@@ -38,6 +38,7 @@ if 'QTDIR' not in env:
     elif 'darwin' == sys.platform:
         env['QTDIR'] = os.path.expanduser('~/QtSDK/Desktop/Qt/4.8.1/gcc/')
 
+env.Tool('qt4', toolpath=[Dir('src/main/scons/')])
 env.EnableQt4Modules(['QtCore', 'QtTest'])
 env.Append(CCFLAGS='-g')
 env.Append(CCFLAGS='-pedantic')
@@ -48,9 +49,31 @@ env.Append(CCFLAGS='-Wno-long-long')
 env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
-cppenv.Append(CPPPATH=Dir('src/main/cpp/conveyor'))
-cppenv.Append(CPPPATH=Dir('include'))
-libconveyor = cppenv.StaticLibrary('conveyor', Glob('src/main/cpp/conveyor/*.cpp'))
+cppenv.Append(CPPPATH=Dir('include/'))
+cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
+cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
+libconveyor_cpp = [
+    File('src/main/cpp/address.cpp'),
+    File('src/main/cpp/connection.cpp'),
+    File('src/main/cpp/connectionprivate.cpp'),
+    File('src/main/cpp/connectionstream.cpp'),
+    File('src/main/cpp/connectionthread.cpp'),
+    File('src/main/cpp/conveyor.cpp'),
+    File('src/main/cpp/conveyorprivate.cpp'),
+    File('src/main/cpp/job.cpp'),
+    File('src/main/cpp/printer.cpp'),
+    File('src/main/cpp/printerprivate.cpp'),
+    File('src/main/cpp/socketconnectionprivate.cpp'),
+    File('src/main/cpp/tcpaddress.cpp')]
+if 'win32' != sys.platform:
+    libconveyor_cpp.append(File('src/main/cpp/unixaddress.cpp'))
+libconveyor = cppenv.StaticLibrary(
+    'conveyor', [
+        libconveyor_cpp,
+        cppenv.Moc4('include/conveyor/conveyor.h'),
+        cppenv.Moc4('include/conveyor/job.h'),
+        cppenv.Moc4('include/conveyor/printer.h')
+    ])
 
 inst = []
 inst.append(cppenv.InstallAs( 'etc/conveyor.conf','conveyor-debian.conf'))
@@ -64,7 +87,7 @@ for root,dirnames,filenames in os.walk(pysrc_root):
         outdir = os.path.join('module',rpath)
         insrc = os.path.join(root,filename)
         inst.append(cppenv.Install(outdir,insrc))
-        print outdir,insrc
+        # print outdir,insrc
 
 env.Alias('install',inst)
 
