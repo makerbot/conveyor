@@ -31,6 +31,15 @@ namespace conveyor
 
         ~ConveyorPrivate (void);
 
+        struct PrinterScanResult {
+            int pid;
+            int vid;
+            QString iSerial;
+            QString port;
+        };
+
+        QList<PrinterScanResult> printerScan();
+
         Job * print
             ( Printer * printer
             , QString const & inputFile

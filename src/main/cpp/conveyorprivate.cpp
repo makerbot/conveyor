@@ -166,6 +166,33 @@ namespace conveyor
         delete this->m_connection;
     }
 
+    QList<ConveyorPrivate::PrinterScanResult>
+    ConveyorPrivate::printerScan()
+    {
+        Json::Value params (Json::arrayValue);
+        const Json::Value results(invoke_sync(this->m_jsonRpc, "printer_scan", params));
+
+        QList<PrinterScanResult> list;
+
+        for (unsigned i = 0; i < results.size(); i++) {
+            const Json::Value &r(results[i]);
+
+            // XXX: not sure what key indicates a valid entry, so
+            // using "iSerial" for now
+            if (r["iSerial"] != Json::nullValue) {
+                const PrinterScanResult li = {
+                    r["pid"].asInt(),
+                    r["vid"].asInt(),
+                    QString(r["iSerial"].asCString()),
+                    QString(r["port"].asCString())
+                };
+                list.push_back(li);
+            }
+        }
+
+        return list;
+    }
+
     Job *
     ConveyorPrivate::print
         ( Printer * const printer
