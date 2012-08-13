@@ -15,14 +15,16 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        static Conveyor * connect (Address const * address);
-
+		static Conveyor * connectToDaemon (Address const * address);
         ~Conveyor (void);
 
         QList<Job *> const & jobs (void);
         QList<Printer *> const & printers (void);
 
     signals:
+		void printerAdded (Printer *);
+        void printerRemoved (Printer *);
+
         /** Signals that a new job has been created */
         void jobAdded (Job *);
 
@@ -38,6 +40,11 @@ namespace conveyor
         friend class JobPrivate;
         friend class Printer;
         friend class PrinterPrivate;
+
+		QList<Printer *> m_printers;
+
+	private slots:
+        void poll();
     };
 }
 
