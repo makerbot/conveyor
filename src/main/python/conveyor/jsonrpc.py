@@ -361,7 +361,11 @@ class JsonRpc(object):
             self._send(data)
             self._tasks[id] = task
         def stoppedevent(task):
-            del self._tasks[id]
+            if id in self._tasks.keys():
+                del self._tasks[id]
+            else : 
+                self._log.debug('stoppeevent fail for id=%r', id)
+
         task = conveyor.task.Task()
         task.runningevent.attach(runningevent)
         task.stoppedevent.attach(stoppedevent)
