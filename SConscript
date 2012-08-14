@@ -19,8 +19,12 @@
 import os.path
 import sys
 import fnmatch
+import re
+import glob
 
 env = Environment(ENV=os.environ)
+
+Import('build_unit_tests', 'run_unit_tests')
 
 if 'win32' == sys.platform:
     env.Tool('mingw')
@@ -81,13 +85,30 @@ for root,dirnames,filenames in os.walk(pysrc_root):
 
 env.Alias('install',inst)
 
-'''
+
+tests = {}
 testenv = cppenv.Clone()
-testenv.AlwaysBuild('check')
-testenv.Append(LIBS=libjsonrpc)
-for node in Glob('#/obj/src/test/cpp/test-*.cpp'):
-    root, ext = os.path.splitext(os.path.basename(node.abspath))
-    test = testenv.Program(root, [node])
-    alias = testenv.Alias('check', [test], test[0].abspath)
-    testenv.AlwaysBuild(alias)
-'''
+
+if build_unit_tests:
+    testenv.Append(LIBS='cppunit')
+
+    test_common = ['src/test/cpp/UnitTestMain.cpp', libconveyor]
+
+    testre = re.compile('(([^/]+)TestCase\.cpp)$')
+    for testsrc in Glob('src/test/cpp/*'):
+        match = testre.search(str(testsrc))
+
+        if match is not None:
+            testfile = match.group(1)
+            testname = match.group(2)
+
+            test = testenv.Program('bin/unit_tests/{}UnitTest'.format(testname),
+                                   [testsrc] + test_common)
+
+            tests[testname] = test
+
+if run_unit_tests:
+    for (name, test) in tests.items():
+        testenv.Command('runtest_test_'+name, test, test)
+
+
