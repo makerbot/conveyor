@@ -19,17 +19,14 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import json
 import sys
-
 
 import conveyor.client
 import conveyor.log
-import conveyor.main.ClientMain as ClientMain
 
 def _main(argv): # pragma: no cover
     conveyor.log.earlylogging('conveyor')
-    main = ClientMain()
+    main = conveyor.client.ClientMain()
     code = main.main(argv)
     return code
 
