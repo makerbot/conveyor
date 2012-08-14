@@ -19,8 +19,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import threading
-
 try:
     import unittest2 as unittest
 except ImportError:

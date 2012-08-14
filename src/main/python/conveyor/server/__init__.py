@@ -31,11 +31,11 @@ try:
 except ImportError:
     import unittest
 
-import conveyor
 import conveyor.jsonrpc
 import conveyor.main
-import conveyor.recipe
 import conveyor.main
+import conveyor.recipe
+import conveyor.stoppable
 
 class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
@@ -114,33 +114,30 @@ class ServerMain(conveyor.main.AbstractMain):
 class ServerMainTestCase(unittest.TestCase):
     pass
 
-
-class _ClientThread(threading.Thread):
+class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
     @classmethod
     def create(cls, config, server, fp, id):
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
         clientthread = _ClientThread(config, server, jsonrpc, id)
         return clientthread
 
-
     def __init__(self, config, server, jsonrpc, id):
         threading.Thread.__init__(self)
+        conveyor.stoppable.Stoppable.__init__(self)
         self._config = config
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
         self._id = id
         self._jsonrpc = jsonrpc
-        self._printers_seen = [] 
-        self._printers_queried = [] 
+        self._printers_seen = []
+        self._printers_queried = []
         self._printers_open = []
-
 
     #@exportdFuction('hello')
     def _hello(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         return 'world'
  
-
     def _stoppedcallback(self, task):
         if conveyor.task.TaskConclusion.ENDED == task.conclusion:
             self._log.info('job %d ended', self._id)
@@ -153,7 +150,6 @@ class _ClientThread(threading.Thread):
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
 
-    
     #@exportedFunction('printer_query')
     def _printer_query(self,*args,**kwargs):
         """ Queries a printer for it's name, extruder count, uuid, and other EEPROM info."""
@@ -165,7 +161,7 @@ class _ClientThread(threading.Thread):
                     version = s3gBot.get_advanced_version()
                 name, uuid = s3gBot.get_advanced_name()
                 toolheads = s3gBot.get_toolhead_count()
-                verified = s3gBot.get_verified_status() 
+                verified = s3gBot.get_verified_status()
                 s3gBot.close()
                 info = { 'port':'port', 'class':ptr['class'],
                     'version':version, 'uuid':uuid,
@@ -175,7 +171,7 @@ class _ClientThread(threading.Thread):
                 return info
             else:
                self._log.error("no bot at port %s", port)
-        return None      
+        return None
 
     #@exportedFunction('printer_scan')
     def _printer_scan(self,*args,**kwargs):
@@ -209,7 +205,6 @@ class _ClientThread(threading.Thread):
             self._log.exception('unhandled exception')
             result = None
         return result
-   
 
     #@exportedFunction('dir')
     def _dir(self, *args, **kwards):
@@ -221,8 +216,6 @@ class _ClientThread(threading.Thread):
             result = self._jsonrpc.dict_all_methods()
         result['__version__'] = conveyor.__version__
         return result
-
-
 
     #@exportedFunction('print')
     def _print(self, thing, preprocessor, skip_start_end, endpoint=None):
@@ -273,16 +266,17 @@ class _ClientThread(threading.Thread):
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
-			": takes (thing-filename, preprocessor, skip_start_end_bool, [endpoint)" )
+            ": takes (thing-filename, preprocessor, skip_start_end_bool, [endpoint)" )
         self._jsonrpc.addmethod('printtofile', self._printtofile,
-			": takes (inputfile, outputfile) pair" )
+            ": takes (inputfile, outputfile) pair" )
         self._jsonrpc.addmethod('slice', self._slice,
-			": takes (inputfile, outputfile) pair" )
+            ": takes (inputfile, outputfile) pair" )
         self._jsonrpc.addmethod('printer_scan',self._printer_scan,
-			": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
+            ": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
         self._jsonrpc.addmethod('printer_query',self._printer_query,
-			": takes {'port':string(port) } printer to query for data.")
-		self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
+            ": takes {'port':string(port) } printer to query for data.")
+        self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
+
     def run(self):
         # add our available functions to the json methods list
         self._load_services()
@@ -292,13 +286,16 @@ class _ClientThread(threading.Thread):
         finally:
             self._server.removeclientthread(self)
 
+    def stop(self):
+        self._jsonrpc.stop()
+
 class Queue(object):
     def __init__(self):
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = collections.deque()
-        self._quit = False
+        self._stop = False
 
     def _runiteration(self):
         with self._condition:
@@ -328,15 +325,24 @@ class Queue(object):
 
     def run(self):
         self._log.debug('starting')
-        self._quit = False
-        while not self._quit:
+        self._stop = False
+        while not self._stop:
             self._runiteration()
         self._log.debug('ending')
 
-    def quit(self):
+    def stop(self):
         with self._condition:
-            self._quit = True
+            self._stop = True
             self._condition.notify_all()
+
+class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
+    def __init__(self, queue):
+        threading.Thread.__init__(self, target=queue.run, name='taskqueue')
+        conveyor.stoppable.Stoppable.__init__(self)
+        self._queue = queue
+
+    def stop(self):
+        self._queue.stop()
 
 class Server(object):
     def __init__(self, config, sock):
@@ -359,7 +365,7 @@ class Server(object):
         self._queue.appendtask(task)
 
     def run(self):
-        taskqueuethread = threading.Thread(target=self._queue.run, name='taskqueue')
+        taskqueuethread = _TaskQueueThread(self._queue)
         taskqueuethread.start()
         try:
             while True:
@@ -377,6 +383,6 @@ class Server(object):
                     clientthread = _ClientThread.create(self._config, self, fp, id)
                     clientthread.start()
         finally:
-            self._queue.quit()
+            self._queue.stop()
             taskqueuethread.join(5)
         return 0
