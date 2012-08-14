@@ -17,9 +17,23 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import sys, os
-AddOption('--test', action='store_true', dest='test')
-run_test = GetOption('test')
 
+
+AddOption('--unit_tests', default=None, dest='unit_test')
+build_unit_tests = False
+run_unit_tests = False
+testmode = GetOption('unit_test')
+
+AddOption('--test', action='store_true', dest='test')
+if GetOption('test'):
+    testmode = 'run'
+
+if testmode is not None:
+    if testmode == 'run':
+        build_unit_tests = True
+        run_unit_tests = True
+    elif testmode == 'build':
+        build_unit_tests = True
 
 env = Environment(ENV=os.environ)
 
@@ -28,11 +42,15 @@ if 'win32' == sys.platform:
 else:
 	env.Command('virtualenv', 'setup.sh', './setup.sh')
 
-if run_test:
+if run_unit_tests:
     if 'win32' == sys.platform:
         env.Command('test', 'test.bat', 'test.bat')
     else: 
         env.Command('test', 'test.sh', '. virtualenv/bin/activate; ./test.sh')
 
+Export('build_unit_tests', 'run_unit_tests')
+
+print "build_unit_tests " + str(build_unit_tests)
+
 ## For building C++/Qt creation
-SConscript('SConscript', variant_dir='obj', duplicate=1)
+SConscript('SConscript', variant_dir='obj', duplicate=1, export='build_unit_tests')

@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstring>
-#include <exception>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -19,6 +18,7 @@
 
 #include "connectionprivate.h"
 #include "socketconnectionprivate.h"
+#include <conveyor/exceptions.h>
 
 namespace conveyor
 {
@@ -33,7 +33,7 @@ namespace conveyor
             );
         if (SocketConnectionPrivate::invalidSocket (fd))
         {
-            throw std::exception ();
+            throw SocketCreateError();
         }
         else
         {
@@ -45,7 +45,7 @@ namespace conveyor
             hostent = gethostbyname (host.c_str ());
             if (0 == hostent)
             {
-                throw std::exception ();
+                throw HostLookupError(host);
             }
             else
             {
@@ -60,7 +60,7 @@ namespace conveyor
                     , sizeof (struct sockaddr_in)
                     ))
                 {
-                    throw std::exception ();
+                    throw SocketConnectError(host, port);
                 }
                 else
                 {
@@ -126,7 +126,7 @@ namespace conveyor
             result = ::read (this->m_fd, buffer, length);
             if (static_cast <ssize_t> (-1) == result)
             {
-                throw std::exception ();
+                throw SocketReadError(length);
             }
             else
             {
@@ -151,7 +151,7 @@ namespace conveyor
             ssize_t const result (::write (this->m_fd, buffer, length));
             if (static_cast <ssize_t> (-1) == result)
             {
-                throw std::exception ();
+                throw SocketWriteError(length);
             }
             else
             {
