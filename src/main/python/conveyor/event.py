@@ -29,6 +29,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.stoppable
 import conveyor.test
 
 _eventqueue = None
@@ -39,19 +40,28 @@ def geteventqueue():
         _eventqueue = EventQueue()
     return _eventqueue
 
+class EventQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
+    def __init__(self, eventqueue, name):
+        threading.Thread.__init__(self, target=eventqueue.run, name=name)
+        conveyor.stoppable.Stoppable.__init__(self)
+        self._eventqueue = eventqueue
+
+    def stop(self):
+        self._eventqueue.stop()
+
 class EventQueue(object):
     def __init__(self):
         self._lock = threading.Lock()
         self._log = logging.getLogger(self.__class__.__name__)
         self._condition = threading.Condition(self._lock)
         self._queue = collections.deque()
-        self._quit = False
+        self._stop = False
 
     def runiteration(self, block):
         self._log.debug('block=%r', block)
         with self._condition:
             if block:
-                while 0 == len(self._queue) and not self._quit:
+                while 0 == len(self._queue) and not self._stop:
                     self._log.debug('waiting')
                     self._condition.wait()
                     self._log.debug('resumed')
@@ -68,15 +78,17 @@ class EventQueue(object):
 
     def run(self):
         self._log.debug('starting')
-        self._quit = False
-        while not self._quit:
+        self._stop = False
+        while not self._stop:
             self.runiteration(True)
         self._log.debug('ending')
 
-    def quit(self):
+    def stop(self):
         event = Event('EventQueue.quit', self)
         def func():
-            self._quit = True
+            with self._condition:
+                self._stop = True
+                self._condition.notify_all()
         event.attach(func)
         event()
 
@@ -158,7 +170,7 @@ class EventQueueTestCase(unittest.TestCase):
         callback2 = Callback()
         handle1 = event.attach(callback1)
         handle2 = event.attach(callback2)
-        event.attach(eventqueue.quit)
+        event.attach(eventqueue.stop)
 
         self.assertFalse(callback1.delivered)
         self.assertFalse(callback2.delivered)
@@ -204,7 +216,7 @@ class EventQueueTestCase(unittest.TestCase):
         event = Event('event')
         callback = Callback()
         event.attach(callback)
-        event.attach(eventqueue.quit)
+        event.attach(eventqueue.stop)
         def target():
             time.sleep(0.1)
             event()
@@ -213,8 +225,8 @@ class EventQueueTestCase(unittest.TestCase):
         eventqueue.run()
         self.assertTrue(callback.delivered)
 
-    def test_quit(self):
-        '''Test the quit method.'''
+    def test_stop(self):
+        '''Test the stop method.'''
 
         eventqueue = geteventqueue()
         eventqueue._queue.clear()
@@ -226,7 +238,7 @@ class EventQueueTestCase(unittest.TestCase):
         callback2 = Callback()
         event2.attach(callback2)
         event1()
-        eventqueue.quit()
+        eventqueue.stop()
         event2()
         eventqueue.run()
         self.assertTrue(callback1.delivered)

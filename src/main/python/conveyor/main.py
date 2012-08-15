@@ -387,17 +387,9 @@ class AbstractMain(object):
             eventqueue = conveyor.event.geteventqueue()
             for i in range(count):
                 name = 'eventqueue-%d' % (i,)
-                thread = threading.Thread(target=eventqueue.run, name=name)
+                thread = conveyor.event.EventQueueThread(eventqueue, name)
                 thread.start()
                 self._eventthreads.append(thread)
-
-    def _stopeventqueue(self):
-        eventqueue = conveyor.event.geteventqueue()
-        eventqueue.quit()
-        for thread in self._eventthreads:
-            thread.join(1)
-            if thread.is_alive():
-                self._log.debug('thread not terminated: %r', thread)
 
     def main(self, argv):
         self._unparsedargs = argv
@@ -406,7 +398,11 @@ class AbstractMain(object):
             try:
                 code = self._sequence(*self._getstages())
             finally:
-                self._stopeventqueue()
+                conveyor.stoppable.StoppableManager.stopall()
+                for thread in self._eventthreads:
+                    thread.join(1)
+                    if thread.is_alive():
+                        self._log.debug('thread not terminated: %r', thread)
         except KeyboardInterrupt:
             code = 0
             self._log.warning('interrupted', exc_info=True)

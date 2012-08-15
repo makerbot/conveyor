@@ -23,7 +23,6 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import logging
 import os.path
 import socket
-import threading
 import tempfile
 try:
     import unittest2 as unittest
@@ -350,8 +349,8 @@ class Client(object):
         self._methodcallback = self.defaultcallback
         self._displaycallback = displaycallback
 
-    def _shutdown(self):
-        self._fp.shutdown()
+    def _stop(self):
+        self._fp.stop()
 
     def _notify(self, job, state, conclusion):
         self._log.debug('job=%r, state=%r, conclusion=%r', job, state, conclusion)
@@ -366,7 +365,7 @@ class Client(object):
                 self._code = 1
             else:
                 raise ValueError(task.conclusion)
-            self._shutdown()
+            self._stop()
 
     def _hellocallback(self, task):
         """ default callback to handle reply to a 'hello' event """
@@ -398,15 +397,15 @@ class Client(object):
                      if self._displaycallback :
                            self._displaycallback(task)
                  self._code = 0
-                 self._shutdown()
+                 self._stop()
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
                 self._log.error('task failed: %r', task.failure)
                 self._code = 1
-                self._shutdown()
+                self._stop()
             elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
                 self._log.warning('task canceled')
                 self._code = 1
-                self._shutdown()
+                self._stop()
             else:
                 raise ValueError(task.conclusion)
 
