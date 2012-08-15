@@ -231,11 +231,11 @@ class ClientMain(conveyor.main.AbstractMain):
     def _list_printers(self):
 		import pdb
 		pdb.set_trace()
-        params = {'pid':self._parsedargs.pid,
+		params = {'pid':self._parsedargs.pid,
                 'vid':self._parsedargs.vid,
                 'endpoint':self._parsedargs.endpoint } 
-        code = self._run_client('printer_scan',params, self._show_list_printers_result) #from server/__init__.py
-        return code 
+		code = self._run_client('printer_scan',params, self._show_list_printers_result) #from server/__init__.py
+		return code 
 
     def _run_dir(self):
         params = []
