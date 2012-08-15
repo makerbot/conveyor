@@ -33,7 +33,7 @@ except ImportError:
 
 import conveyor.jsonrpc
 import conveyor.main
-import conveyor.main
+import conveyor.printer.s3g
 import conveyor.recipe
 import conveyor.stoppable
 
@@ -110,9 +110,6 @@ class ServerMain(conveyor.main.AbstractMain):
             return None
         lock_filename = self._config['common']['daemon_lockfile']
         return open(lock_filename, 'w+')
-
-class ServerMainTestCase(unittest.TestCase):
-    pass
 
 class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
     @classmethod
@@ -350,6 +347,7 @@ class Server(object):
         self._config = config
         self._idcounter = 0
         self._lock = threading.Lock()
+        self._log = logging.getLogger(self.__class__.__name__)
         self._queue = Queue()
         self._sock = sock
 
@@ -364,7 +362,15 @@ class Server(object):
     def appendtask(self, task):
         self._queue.appendtask(task)
 
+    def appendprinter(self, printer):
+        self._log.info('printer connected: %s', printer)
+
+    def removeprinter(self, printer):
+        self._log.info('printer disconnected: %s', printer)
+
     def run(self):
+        detectorthread = conveyor.printer.s3g.S3gDetectorThread(self)
+        detectorthread.start()
         taskqueuethread = _TaskQueueThread(self._queue)
         taskqueuethread.start()
         try:
