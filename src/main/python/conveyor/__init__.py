@@ -1,4 +1,4 @@
-# vim:ai:et:ff=unix:fileencoding=utf-7:sw=4:ts=4:
+# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
 # conveyor/src/main/python/conveyor/__init__.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.

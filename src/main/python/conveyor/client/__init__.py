@@ -23,7 +23,6 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import logging
 import os.path
 import socket
-import threading
 import tempfile
 try:
     import unittest2 as unittest
@@ -54,8 +53,10 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_scan,
             self._initsubparser_verify_usb_detect,
 			self._initsubparser_dir,
-            ):
+			self._initsubparser_cancel
+        ):
                 method(subparsers)
+
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser('printers', help='list connected printers')
@@ -66,6 +67,15 @@ class ClientMain(conveyor.main.AbstractMain):
             action='store_true',
             default=False,
             help='print in JSON format')
+        parser.add_argument('--vid', action='store', 
+            type=int, default = 0x23C1, dest ='vid',
+            help='Limit printer scan by USB VendorId')
+        parser.add_argument('--pid', action='store', 
+             type=int, default = None, dest = 'pid',
+             help='Limit printer scan by USB ProductId')
+        parser.add_argument( '--port',dest='endpoint', default=None,
+             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
+ 
 
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print an object')
@@ -78,6 +88,9 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
             default=False, help='preprocessor to run on the gcode file')
+        parser.add_argument( '--port',dest='endpoint', default=None,
+             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
+
 
     def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
@@ -92,6 +105,7 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
             default=False, help='preprocessor to run on the gcode file')
+
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser('slice', help='slice an object into .gcode')
@@ -110,11 +124,23 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.add_argument( '--port',dest='endpoint', default=None,
              help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
 
-    def _initsubparser_query_printer(self, subparsers):
+
+	def _initsubparser_query_printer(self, subparsers):
+		""" setup parser options for query printers """
+		parser = subparsers.add_parser('query_printer',help='connect to printers for status/data query')
+		parser.set_defaults(func=self._query_printer)
+		self._initparser_common(parser)
+		parser.add_argument( '--port',dest='endpoint', default=None,
+			help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
+
+
+	def _initsubparser_cancel(self, subparsers):
         """ setup parser options for query printers """
-        parser = subparsers.add_parser('query_printer',help='connect to printers for status/data query')
-        parser.set_defaults(func=self._query_printer)
+        parser = subparsers.add_parser('cancel',help='connect to printers for status/data query')
+        parser.set_defaults(func=self._cancel_print)
         self._initparser_common(parser)
+        parser.add_argument( '--job',dest='job_id', default=None,
+             help="specify a job to print by id string.")
         parser.add_argument( '--port',dest='endpoint', default=None,
              help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
          
@@ -125,10 +151,10 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.set_defaults(func=self._list_printers)
         self._initparser_common(parser)
         parser.add_argument('--vid', action='store', 
-            type=int, default = 0x23C1,
+            type=int, default = 0x23C1, dest ='vid',
             help='Limit printer scan by USB VendorId')
         parser.add_argument('--pid', action='store', 
-             type=int, default = None,
+             type=int, default = None, dest = 'pid',
              help='Limit printer scan by USB ProductId')
         parser.add_argument( '--port',dest='endpoint', default=None,
              help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
@@ -146,10 +172,12 @@ class ClientMain(conveyor.main.AbstractMain):
              type=int, default = None,
              help='Limit printer scan by USB ProductId')
 
+
     def _initsubparser_dir(self,subparsers):
         parser = subparsers.add_parser('dir',help='ping a service or tool')
         parser.set_defaults(func=self._run_dir)
         self._initparser_common(parser)
+
 
     def _initsubparser_verify_usb_detect(self,subparsers):
         """ setup parser options for 'verify USB' option """
@@ -190,6 +218,10 @@ class ClientMain(conveyor.main.AbstractMain):
         code = self._run_client('printer_scan',params) #from server/__init__.py
         return code 
 
+	def _cancel_print(self):
+        params = { 'port':self._parsedargs.endpoint, 'job_id':self._parsedargs.job_id} 
+        code = self._run_client('cancel', params ) #from server/__init__.py
+		return code
 
     def _query_printer(self):
         params = { 'port':self._parsedargs.endpoint} 
@@ -197,11 +229,13 @@ class ClientMain(conveyor.main.AbstractMain):
         return code 
 
     def _list_printers(self):
-        params = {'pid':self._parsedargs.pid,
+		import pdb
+		pdb.set_trace()
+		params = {'pid':self._parsedargs.pid,
                 'vid':self._parsedargs.vid,
                 'endpoint':self._parsedargs.endpoint } 
-        code = self._run_client('printer_scan',params, self._show_list_printers_result) #from server/__init__.py
-        return code 
+		code = self._run_client('printer_scan',params, self._show_list_printers_result) #from server/__init__.py
+		return code 
 
     def _run_dir(self):
         params = []
@@ -350,8 +384,8 @@ class Client(object):
         self._methodcallback = self.defaultcallback
         self._displaycallback = displaycallback
 
-    def _shutdown(self):
-        self._fp.shutdown()
+    def _stop(self):
+        self._fp.stop()
 
     def _notify(self, job, state, conclusion):
         self._log.debug('job=%r, state=%r, conclusion=%r', job, state, conclusion)
@@ -366,7 +400,7 @@ class Client(object):
                 self._code = 1
             else:
                 raise ValueError(task.conclusion)
-            self._shutdown()
+            self._stop()
 
     def _hellocallback(self, task):
         """ default callback to handle reply to a 'hello' event """
@@ -392,21 +426,21 @@ class Client(object):
         if conveyor.task.TaskState.STOPPED == task.state:
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
                  if  task.result == None:
-                     self._log.error('task success, result: None')
+                    self._log.error('task success. Error: task result: None')
                  else:
                      self._write_result_to_tmpfile(task, suffix="result.txt")
                      if self._displaycallback :
                            self._displaycallback(task)
                  self._code = 0
-                 self._shutdown()
+                 self._stop()
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
                 self._log.error('task failed: %r', task.failure)
                 self._code = 1
-                self._shutdown()
+                self._stop()
             elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
                 self._log.warning('task canceled')
                 self._code = 1
-                self._shutdown()
+                self._stop()
             else:
                 raise ValueError(task.conclusion)
 

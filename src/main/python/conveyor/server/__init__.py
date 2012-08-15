@@ -25,18 +25,17 @@ import logging
 import os
 import sys
 import threading
-import sets
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-import conveyor
 import conveyor.jsonrpc
 import conveyor.main
+import conveyor.printer.s3g
 import conveyor.recipe
-import conveyor.main
+import conveyor.stoppable
 
 class ServerMain(conveyor.main.AbstractMain):
     def __init__(self):
@@ -112,36 +111,30 @@ class ServerMain(conveyor.main.AbstractMain):
         lock_filename = self._config['common']['daemon_lockfile']
         return open(lock_filename, 'w+')
 
-class ServerMainTestCase(unittest.TestCase):
-    pass
-
-
-class _ClientThread(threading.Thread):
+class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
     @classmethod
     def create(cls, config, server, fp, id):
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
         clientthread = _ClientThread(config, server, jsonrpc, id)
         return clientthread
 
-
     def __init__(self, config, server, jsonrpc, id):
         threading.Thread.__init__(self)
+        conveyor.stoppable.Stoppable.__init__(self)
         self._config = config
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
         self._id = id
         self._jsonrpc = jsonrpc
-        self._printers_seen = [] 
-        self._printers_queried = [] 
+        self._printers_seen = []
+        self._printers_queried = []
         self._printers_open = []
-
 
     #@exportdFuction('hello')
     def _hello(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         return 'world'
  
-
     def _stoppedcallback(self, task):
         if conveyor.task.TaskConclusion.ENDED == task.conclusion:
             self._log.info('job %d ended', self._id)
@@ -154,7 +147,6 @@ class _ClientThread(threading.Thread):
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
 
-    
     #@exportedFunction('printer_query')
     def _printer_query(self,*args,**kwargs):
         """ Queries a printer for it's name, extruder count, uuid, and other EEPROM info."""
@@ -166,7 +158,7 @@ class _ClientThread(threading.Thread):
                     version = s3gBot.get_advanced_version()
                 name, uuid = s3gBot.get_advanced_name()
                 toolheads = s3gBot.get_toolhead_count()
-                verified = s3gBot.get_verified_status() 
+                verified = s3gBot.get_verified_status()
                 s3gBot.close()
                 info = { 'port':'port', 'class':ptr['class'],
                     'version':version, 'uuid':uuid,
@@ -176,7 +168,7 @@ class _ClientThread(threading.Thread):
                 return info
             else:
                self._log.error("no bot at port %s", port)
-        return None      
+        return None
 
     #@exportedFunction('printer_scan')
     def _printer_scan(self,*args,**kwargs):
@@ -210,10 +202,9 @@ class _ClientThread(threading.Thread):
             self._log.exception('unhandled exception')
             result = None
         return result
-   
 
     #@exportedFunction('dir')
-    def _dir(self, *args, **kwards):
+    def _dir(self, *args, **kwargs):
         result = {}
         self._log.debug("doing a services dir conveyor service")
         def dir_callback(task):
@@ -223,11 +214,35 @@ class _ClientThread(threading.Thread):
         result['__version__'] = conveyor.__version__
         return result
 
-
-
     #@exportedFunction('print')
-    def _print(self, thing, preprocessor, skip_start_end, endpoint=None):
+    def _print(self, *args, **kwargs):
+        """ Generate a recepie and call a print. Takes a list with 
+         3,4 or 6 params or a dict with entries defined below
+         dict entries : {'thing':file_to_print, 
+                        'skip_start_end':true/false to set skip status'
+                        'endpoint' : optional port name, otherwise grabs first port found
+                        'archive_lvl': level of print details to archive 'all' or None 
+                        'archive_dir': absloute location of place to arcive intermediate files
+        """
+        #hash out params. Remove list arguments someday
+		thing = preprocessor = skip_start_end = endpoint = None
+        archive_lvl='all',
+        archive_dir=None
+		if len(args) >=3:
+            thing,preprocessor,skip_start_end = args[0],args[1],args[2]
+            if len(args) >= 4:
+                endpoint = args[3]
+            if len(args) >= 6:
+                archive_lvl, archive_dir = args[4],args[5]
+        if len(kwargs.keys()) >= 3:
+            thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
+            endpoint = kwargs.get('endpoint',None)
+            archive_lvl= kwargs.get('archive_lvl',None)
+            archive_dir = kwargs.get('archive_dir',None)
+        # debug check of param
         self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
+        self._log.debug('endpoint=%r, archive_lvl=%r, archive_dir=%r', endpoint, archive_lvl, archive_dir)
+        # setup our callbacks for the process
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
@@ -241,9 +256,25 @@ class _ClientThread(threading.Thread):
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
+    
 
-    def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
+    # 
+    #def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
+    def _printtofile(self, *args, **kwargs):
+		thing = preprocessor = skip_start_end = None
+        archive_lvl='all'
+        archive_dir=None
+		if len(args) >=3:
+            thing,preprocessor,skip_start_end = args[0],args[1],args[2]
+            if len(args) >= 5:
+                archive_lvl, archive_dir = args[3],args[4]
+        if len(kwargs.keys()) >= 3:
+            thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
+            archive_lvl= kwargs.get('archive_lvl',None)
+            archive_dir = kwargs.get('archive_dir',None)
+    
         self._log.debug('thing=%r, s3g=%r, preprocessor=%r, skip_start_end=%r', thing, s3g, preprocessor, skip_start_end)
+        self._log.debug(' archive_lvl=%r, archive_dir=%r', archive_lvl, archive_dir)
         def runningcallback(task):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
@@ -257,6 +288,12 @@ class _ClientThread(threading.Thread):
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
+
+    def _cancel(self,*args, **kwargs):
+        self._log.debug('ABORT ABORT ABORT! (conveyord print cancel)' )
+        self._log.error('server print cancel not yet implemented')
+        return None 
+         
 
     def _slice(self, thing, gcode, preprocessor, with_start_end):
         self._log.debug('thing=%r, gcode=%r', thing, gcode)
@@ -274,16 +311,21 @@ class _ClientThread(threading.Thread):
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
-			": takes (thing-filename, preprocessor, skip_start_end_bool, [endpoint)" )
+            ": takes (thing-filename, preprocessor, skip_start_end_bool, [endpoint)" )
         self._jsonrpc.addmethod('printtofile', self._printtofile,
-			": takes (inputfile, outputfile) pair" )
+            ": takes (inputfile, outputfile) pair" )
         self._jsonrpc.addmethod('slice', self._slice,
-			": takes (inputfile, outputfile) pair" )
+            ": takes (inputfile, outputfile) pair" )
         self._jsonrpc.addmethod('printer_scan',self._printer_scan,
-			": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
+            ": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
         self._jsonrpc.addmethod('printer_query',self._printer_query,
-			": takes {'port':string(port) } printer to query for data.")
-		self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
+            ": takes {'port':string(port) } printer to query for data.")
+        self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
+        self._jsonrpc.addmethod('cancel',self._cancel, 
+                "takes {'port':string(port) 'job_id':jobid}"
+                        "if Job is None, cancels by port. If port is None, cancels first bot") 
+    
+
     def run(self):
         # add our available functions to the json methods list
         self._load_services()
@@ -293,13 +335,16 @@ class _ClientThread(threading.Thread):
         finally:
             self._server.removeclientthread(self)
 
+    def stop(self):
+        self._jsonrpc.stop()
+
 class Queue(object):
     def __init__(self):
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = collections.deque()
-        self._quit = False
+        self._stop = False
 
     def _runiteration(self):
         with self._condition:
@@ -329,15 +374,24 @@ class Queue(object):
 
     def run(self):
         self._log.debug('starting')
-        self._quit = False
-        while not self._quit:
+        self._stop = False
+        while not self._stop:
             self._runiteration()
         self._log.debug('ending')
 
-    def quit(self):
+    def stop(self):
         with self._condition:
-            self._quit = True
+            self._stop = True
             self._condition.notify_all()
+
+class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
+    def __init__(self, queue):
+        threading.Thread.__init__(self, target=queue.run, name='taskqueue')
+        conveyor.stoppable.Stoppable.__init__(self)
+        self._queue = queue
+
+    def stop(self):
+        self._queue.stop()
 
 class Server(object):
     def __init__(self, config, sock):
@@ -345,6 +399,7 @@ class Server(object):
         self._config = config
         self._idcounter = 0
         self._lock = threading.Lock()
+        self._log = logging.getLogger(self.__class__.__name__)
         self._queue = Queue()
         self._sock = sock
 
@@ -359,8 +414,16 @@ class Server(object):
     def appendtask(self, task):
         self._queue.appendtask(task)
 
+    def appendprinter(self, printer):
+        self._log.info('printer connected: %s', printer)
+
+    def removeprinter(self, printer):
+        self._log.info('printer disconnected: %s', printer)
+
     def run(self):
-        taskqueuethread = threading.Thread(target=self._queue.run, name='taskqueue')
+        detectorthread = conveyor.printer.s3g.S3gDetectorThread(self)
+        detectorthread.start()
+        taskqueuethread = _TaskQueueThread(self._queue)
         taskqueuethread.start()
         try:
             while True:
@@ -378,6 +441,6 @@ class Server(object):
                     clientthread = _ClientThread.create(self._config, self, fp, id)
                     clientthread.start()
         finally:
-            self._queue.quit()
+            self._queue.stop()
             taskqueuethread.join(5)
         return 0

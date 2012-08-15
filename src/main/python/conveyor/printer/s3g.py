@@ -23,10 +23,47 @@ import logging
 import os.path
 import makerbot_driver
 import serial
+import threading
 import time
 
 import conveyor.event
 import conveyor.task
+
+class S3gDetectorThread(threading.Thread, conveyor.stoppable.Stoppable):
+    def __init__(self, server):
+        threading.Thread.__init__(self)
+        conveyor.stoppable.Stoppable.__init__(self)
+        self._available = {}
+        self._lock = threading.Lock()
+        self._condition = threading.Condition(self._lock)
+        self._detector = makerbot_driver.get_gMachineDetector()
+        self._log = logging.getLogger(self.__class__.__name__)
+        self._server = server
+        self._stop = False
+
+    def run(self):
+        while not self._stop:
+            available = self._detector.get_bots_available()
+            available = available.copy()
+            old_keys = set(self._available.keys())
+            new_keys = set(available.keys())
+            detached = old_keys - new_keys
+            attached = new_keys - old_keys
+            for port in detached:
+                self._server.removeprinter(port)
+            if len(attached) > 0:
+                factory = makerbot_driver.BotFactory()
+                for port in attached:
+                    self._server.appendprinter(port)
+            self._available = available
+            with self._condition:
+                self._condition.wait(10.0)
+        self._log.debug('stopping')
+
+    def stop(self):
+        with self._condition:
+            self._stop = True
+            self._condition.notify_all()
 
 class S3gPrinter(object):
     def __init__(self, profile, device, baudrate):
