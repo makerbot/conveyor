@@ -212,8 +212,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def _dir(self, *args, **kwargs):
         result = {}
         self._log.debug("doing a services dir conveyor service")
-        def dir_callback(task):
-            self._log.debug("doing a dir to task")  
         if(self._jsonrpc):
             result = self._jsonrpc.dict_all_methods()
         result['__version__'] = conveyor.__version__
