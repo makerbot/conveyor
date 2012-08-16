@@ -56,7 +56,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
             for portname in attached:
                 s3g, profile = factory.build_from_portname(portname, True)
                 fp = s3g.writer.file
-                printer = S3gPrinter(fp, profile)
+                printer = S3gPrinter(portname, fp, profile)
                 self._server.appendprinter(portname, printer)
         self._available = available
 
@@ -97,7 +97,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._condition.notify_all()
 
 class S3gPrinter(object):
-    def __init__(self, fp, profile):
+    def __init__(self, devicename, fp, profile):
+        self._devicename = devicename
         self._fp = fp
         self._log = logging.getLogger(self.__class__.__name__)
         self._pollinterval = 5.0
