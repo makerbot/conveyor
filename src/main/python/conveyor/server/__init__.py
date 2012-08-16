@@ -170,6 +170,21 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
                self._log.error("no bot at port %s", port)
         return None
 
+    #@exportedFunction('printers')
+    def _printers_stub(self,*args,**kwargs):
+        """Stub function to test against while real function is developed """
+		d = {'displayName':'Fake Bot',
+			'uniqueName':'6e70274b-7cc0-4d54-aac4-4904496ad5bf',
+			'printerType':'ReplicatorDual',
+			'canPrint':True,
+			'canPrintToFile':True,
+			'hasHeatedPlatform':True,
+			'numberOfToolheads':1}
+		import pdb
+		pdb.set_trace()
+		result = json.dumps(d)
+        return result
+
     #@exportedFunction('printer_scan')
     def _printer_scan(self,*args,**kwargs):
         """ uses pyserial-mb to scan for ports, and return a list of ports
@@ -219,22 +234,22 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         """ Generate a recepie and call a print. Takes a list with 
          3,4 or 6 params or a dict with entries defined below
          dict entries : {'thing':file_to_print, 
-                        'skip_start_end':true/false to set skip status'
-                        'endpoint' : optional port name, otherwise grabs first port found
-                        'archive_lvl': level of print details to archive 'all' or None 
-                        'archive_dir': absloute location of place to arcive intermediate files
+            'skip_start_end':true/false to set skip status'
+            'endpoint' : optional port name, otherwise grabs first port found
+            'archive_lvl': level of print details to archive 'all' or None 
+            'archive_dir': absloute location of place to arcive intermediate files
         """
         #hash out params. Remove list arguments someday
-		thing = preprocessor = skip_start_end = endpoint = None
+        thing = preprocessor = skip_start_end = endpoint = None
         archive_lvl='all',
         archive_dir=None
-		if len(args) >=3:
-            thing,preprocessor,skip_start_end = args[0],args[1],args[2]
+        if len(args) >= 3:
+            thing, preprocessor,skip_start_end = args[0],args[1],args[2]
             if len(args) >= 4:
                 endpoint = args[3]
             if len(args) >= 6:
                 archive_lvl, archive_dir = args[4],args[5]
-        if len(kwargs.keys()) >= 3:
+        elif len(kwargs.keys()) >= 3:
             thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
             endpoint = kwargs.get('endpoint',None)
             archive_lvl= kwargs.get('archive_lvl',None)
@@ -261,14 +276,14 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
     # 
     #def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
     def _printtofile(self, *args, **kwargs):
-		thing = preprocessor = skip_start_end = None
+        thing = preprocessor = skip_start_end = None
         archive_lvl='all'
         archive_dir=None
-		if len(args) >=3:
+        if len(args) >=3:
             thing,preprocessor,skip_start_end = args[0],args[1],args[2]
             if len(args) >= 5:
                 archive_lvl, archive_dir = args[3],args[4]
-        if len(kwargs.keys()) >= 3:
+        elif len(kwargs.keys()) >= 3:
             thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
             archive_lvl= kwargs.get('archive_lvl',None)
             archive_dir = kwargs.get('archive_dir',None)
@@ -319,7 +334,8 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         self._jsonrpc.addmethod('printer_scan',self._printer_scan,
             ": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
         self._jsonrpc.addmethod('printer_query',self._printer_query,
-            ": takes {'port':string(port) } printer to query for data.")
+            ": takes {'port':string(port) } printer to query for data from that bot")
+        self._jsonrpc.addmethod('printers',self._printers_stub, "STUB: returns values needed for json_rpc printer creation takes nothing") 
         self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
         self._jsonrpc.addmethod('cancel',self._cancel, 
                 "takes {'port':string(port) 'job_id':jobid}"

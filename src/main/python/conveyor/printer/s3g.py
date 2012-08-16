@@ -43,7 +43,7 @@ class S3gDetectorThread(threading.Thread, conveyor.stoppable.Stoppable):
 
     def run(self):
         while not self._stop:
-            available = self._detector.get_bots_available()
+            available = self._detector.get_available_machines()
             available = available.copy()
             old_keys = set(self._available.keys())
             new_keys = set(available.keys())
