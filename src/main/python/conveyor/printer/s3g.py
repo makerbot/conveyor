@@ -20,8 +20,8 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import logging
-import os.path
 import makerbot_driver
+import os.path
 import serial
 import threading
 import time
@@ -29,36 +29,68 @@ import time
 import conveyor.event
 import conveyor.task
 
-class S3gDetectorThread(threading.Thread, conveyor.stoppable.Stoppable):
-    def __init__(self, server):
-        threading.Thread.__init__(self)
-        conveyor.stoppable.Stoppable.__init__(self)
+class S3gDetectorThread(conveyor.stoppable.StoppableThread):
+    def __init__(self, config, server):
+        conveyor.stoppable.StoppableThread.__init__(self)
         self._available = {}
+        self._config = config
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
-        self._detector = makerbot_driver.get_gMachineDetector()
+        self._detector = makerbot_driver.MachineDetector()
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
         self._stop = False
 
+    def _runiteration(self):
+        available = self._detector.get_available_machines().copy()
+        self._log.debug('available = %r', available)
+        old_keys = set(self._available.keys())
+        new_keys = set(available.keys())
+        detached = old_keys - new_keys
+        attached = new_keys - old_keys
+        for port in detached:
+            self._server.removeprinter(port)
+        if len(attached) > 0:
+            profiledir = self._config['common']['profiledir']
+            for port in attached:
+                s3g = makerbot_driver.s3g.from_filename(port)
+                profile = makerbot_driver.Profile(
+                    'ReplicatorSingle', profiledir)
+                baudrate = profile.values['baudrate']
+                printer = S3gPrinter(profile, port, baudrate)
+                self._server.appendprinter(port, printer)
+        self._available = available
+
     def run(self):
         while not self._stop:
-            available = self._detector.get_bots_available()
-            available = available.copy()
-            old_keys = set(self._available.keys())
-            new_keys = set(available.keys())
-            detached = old_keys - new_keys
-            attached = new_keys - old_keys
-            for port in detached:
-                self._server.removeprinter(port)
-            if len(attached) > 0:
-                factory = makerbot_driver.BotFactory()
-                for port in attached:
-                    self._server.appendprinter(port)
-            self._available = available
-            with self._condition:
-                self._condition.wait(10.0)
-        self._log.debug('stopping')
+            try:
+                self._runiteration()
+            except:
+                self._log.error('unhandled exception', exc_info=True)
+            if not self._stop:
+                with self._condition:
+                    self._condition.wait(10.0)
+
+    def stop(self):
+        with self._condition:
+            self._stop = True
+            self._condition.notify_all()
+
+class S3gPrinterThread(conveyor.stoppable.StoppableThread):
+    def __init__(self, s3g, profile):
+        conveyor.stoppable.StoppableThread.__init__(self)
+        self._lock = threading.Lock()
+        self._condition = threading.Condition(self._lock)
+        self._profile = profile
+        self._s3g = s3g
+        self._stop = False
+
+    def run(self):
+        try:
+            while not self._stop:
+                pass
+        except:
+            pass
 
     def stop(self):
         with self._condition:

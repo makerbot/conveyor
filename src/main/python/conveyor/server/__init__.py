@@ -111,7 +111,7 @@ class ServerMain(conveyor.main.AbstractMain):
         lock_filename = self._config['common']['daemon_lockfile']
         return open(lock_filename, 'w+')
 
-class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
+class _ClientThread(conveyor.stoppable.StoppableThread):
     @classmethod
     def create(cls, config, server, fp, id):
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
@@ -119,8 +119,7 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         return clientthread
 
     def __init__(self, config, server, jsonrpc, id):
-        threading.Thread.__init__(self)
-        conveyor.stoppable.Stoppable.__init__(self)
+        conveyor.stoppable.StoppableThread.__init__(self)
         self._config = config
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
@@ -129,6 +128,14 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         self._printers_seen = []
         self._printers_queried = []
         self._printers_open = []
+
+    def printeradded(self, id, printer):
+        params = {'id': id}
+        self._jsonrpc.notify('printerAdded', params)
+
+    def printerremoved(self, id, printer):
+        params = {'id': id}
+        self._jsonrpc.notify('printerRemoved', params)
 
     #@exportdFuction('hello')
     def _hello(self, *args, **kwargs):
@@ -386,12 +393,22 @@ class Queue(object):
 
 class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
     def __init__(self, queue):
-        threading.Thread.__init__(self, target=queue.run, name='taskqueue')
+        threading.Thread.__init__(self, name='taskqueue')
         conveyor.stoppable.Stoppable.__init__(self)
+        self._log = logging.getLogger(self.__class__.__name__)
         self._queue = queue
+
+    def run(self):
+        try:
+            self._queue.run()
+        except:
+            self._log.error('internal error', exc_info=True)
 
     def stop(self):
         self._queue.stop()
+
+class _PrinterThread(threading.Thread, conveyor.stoppable.Stoppable):
+    pass
 
 class Server(object):
     def __init__(self, config, sock):
@@ -402,6 +419,7 @@ class Server(object):
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = Queue()
         self._sock = sock
+        self._printers = {}
 
     def appendclientthread(self, clientthread):
         with self._lock:
@@ -412,16 +430,29 @@ class Server(object):
             self._clientthreads.remove(clientthread)
 
     def appendtask(self, task):
-        self._queue.appendtask(task)
+        with self._lock:
+            self._queue.appendtask(task)
 
-    def appendprinter(self, printer):
-        self._log.info('printer connected: %s', printer)
+    def appendprinter(self, id, printer):
+        self._log.info('printer connected: %s', id)
+        with self._lock:
+            self._printers[id] = printer
+            clientthreads = self._clientthreads[:]
+        for clientthread in clientthreads:
+            clientthread.printeradded(id, printer)
 
-    def removeprinter(self, printer):
-        self._log.info('printer disconnected: %s', printer)
+    def removeprinter(self, id):
+        self._log.info('printer disconnected: %s', id)
+        with self._lock:
+            printer = self._printers.pop(id)
+            # TODO: printer.stop()
+            clientthreads = self._clientthreads[:]
+        for clientthread in clientthreads:
+            clientthread.printerremoved(id, printer)
 
     def run(self):
-        detectorthread = conveyor.printer.s3g.S3gDetectorThread(self)
+        detectorthread = conveyor.printer.s3g.S3gDetectorThread(
+            self._config, self)
         detectorthread.start()
         taskqueuethread = _TaskQueueThread(self._queue)
         taskqueuethread.start()
@@ -438,7 +469,8 @@ class Server(object):
                     fp = conveyor.jsonrpc.socketadapter(conn)
                     id = self._idcounter
                     self._idcounter += 1
-                    clientthread = _ClientThread.create(self._config, self, fp, id)
+                    clientthread = _ClientThread.create(
+                        self._config, self, fp, id)
                     clientthread.start()
         finally:
             self._queue.stop()

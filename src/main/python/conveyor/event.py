@@ -40,11 +40,17 @@ def geteventqueue():
         _eventqueue = EventQueue()
     return _eventqueue
 
-class EventQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
+class EventQueueThread(conveyor.stoppable.StoppableThread):
     def __init__(self, eventqueue, name):
-        threading.Thread.__init__(self, target=eventqueue.run, name=name)
-        conveyor.stoppable.Stoppable.__init__(self)
+        conveyor.stoppable.StoppableThread.__init__(self, name=name)
         self._eventqueue = eventqueue
+        self._log = logging.getLogger(self.__class__.__name__)
+
+    def run(self):
+        try:
+            self._eventqueue.run()
+        except:
+            self._log.error('internal error', exc_info=True)
 
     def stop(self):
         self._eventqueue.stop()
