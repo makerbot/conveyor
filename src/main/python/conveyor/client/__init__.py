@@ -53,7 +53,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_scan,
             self._initsubparser_verify_usb_detect,
             self._initsubparser_dir,
-            self._initsubparser_cancel
+            self._initsubparser_cancel,
             self._initsubparser_listen,
         ):
                 method(subparsers)
