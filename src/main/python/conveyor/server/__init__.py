@@ -204,7 +204,7 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         return result
 
     #@exportedFunction('dir')
-    def _dir(self, *args, **kwards):
+    def _dir(self, *args, **kwargs):
         result = {}
         self._log.debug("doing a services dir conveyor service")
         def dir_callback(task):
@@ -215,8 +215,34 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         return result
 
     #@exportedFunction('print')
-    def _print(self, thing, preprocessor, skip_start_end, endpoint=None):
+    def _print(self, *args, **kwargs):
+        """ Generate a recepie and call a print. Takes a list with 
+         3,4 or 6 params or a dict with entries defined below
+         dict entries : {'thing':file_to_print, 
+                        'skip_start_end':true/false to set skip status'
+                        'endpoint' : optional port name, otherwise grabs first port found
+                        'archive_lvl': level of print details to archive 'all' or None 
+                        'archive_dir': absloute location of place to arcive intermediate files
+        """
+        #hash out params. Remove list arguments someday
+		thing = preprocessor = skip_start_end = endpoint = None
+        archive_lvl='all',
+        archive_dir=None
+		if len(args) >=3:
+            thing,preprocessor,skip_start_end = args[0],args[1],args[2]
+            if len(args) >= 4:
+                endpoint = args[3]
+            if len(args) >= 6:
+                archive_lvl, archive_dir = args[4],args[5]
+        if len(kwargs.keys()) >= 3:
+            thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
+            endpoint = kwargs.get('endpoint',None)
+            archive_lvl= kwargs.get('archive_lvl',None)
+            archive_dir = kwargs.get('archive_dir',None)
+        # debug check of param
         self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
+        self._log.debug('endpoint=%r, archive_lvl=%r, archive_dir=%r', endpoint, archive_lvl, archive_dir)
+        # setup our callbacks for the process
         def runningcallback(task):
             self._log.info(
                 'printing: %s (job %d)', thing, self._id)
@@ -230,9 +256,25 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
+    
 
-    def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
+    # 
+    #def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
+    def _printtofile(self, *args, **kwargs):
+		thing = preprocessor = skip_start_end = None
+        archive_lvl='all'
+        archive_dir=None
+		if len(args) >=3:
+            thing,preprocessor,skip_start_end = args[0],args[1],args[2]
+            if len(args) >= 5:
+                archive_lvl, archive_dir = args[3],args[4]
+        if len(kwargs.keys()) >= 3:
+            thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
+            archive_lvl= kwargs.get('archive_lvl',None)
+            archive_dir = kwargs.get('archive_dir',None)
+    
         self._log.debug('thing=%r, s3g=%r, preprocessor=%r, skip_start_end=%r', thing, s3g, preprocessor, skip_start_end)
+        self._log.debug(' archive_lvl=%r, archive_dir=%r', archive_lvl, archive_dir)
         def runningcallback(task):
             self._log.info(
                 'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
@@ -246,6 +288,12 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
+
+    def _cancel(self,*args, **kwargs):
+        self._log.debug('ABORT ABORT ABORT! (conveyord print cancel)' )
+        self._log.error('server print cancel not yet implemented')
+        return None 
+         
 
     def _slice(self, thing, gcode, preprocessor, with_start_end):
         self._log.debug('thing=%r, gcode=%r', thing, gcode)
@@ -273,6 +321,10 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
         self._jsonrpc.addmethod('printer_query',self._printer_query,
             ": takes {'port':string(port) } printer to query for data.")
         self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
+        self._jsonrpc.addmethod('cancel',self._cancel, 
+                "takes {'port':string(port) 'job_id':jobid}"
+                        "if Job is None, cancels by port. If port is None, cancels first bot") 
+    
 
     def run(self):
         # add our available functions to the json methods list
