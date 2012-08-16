@@ -52,12 +52,10 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
             self._server.removeprinter(port)
         if len(attached) > 0:
             profiledir = self._config['common']['profiledir']
+            factory = makerbot_driver.BotFactory(profiledir)
             for port in attached:
-                s3g = makerbot_driver.s3g.from_filename(port)
-                profile = makerbot_driver.Profile(
-                    'ReplicatorSingle', profiledir)
-                baudrate = profile.values['baudrate']
-                printer = S3gPrinter(profile, port, baudrate)
+                s3g, profile = factory.build_from_port(port, True)
+                printer = S3gPrinter(s3g, profile)
                 self._server.appendprinter(port, printer)
         self._available = available
 
@@ -98,12 +96,11 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._condition.notify_all()
 
 class S3gPrinter(object):
-    def __init__(self, profile, device, baudrate):
-        self._baudrate = baudrate
-        self._device = device
+    def __init__(self, s3g, profile):
         self._log = logging.getLogger(self.__class__.__name__)
         self._pollinterval = 5.0
         self._profile = profile
+        self._s3g = s3g
 
     def _gcodelines(self, gcodepath, skip_start_end):
         if not skip_start_end:
@@ -132,7 +129,7 @@ class S3gPrinter(object):
         parser = makerbot_driver.Gcode.GcodeParser()
         parser.state.profile = self._profile
         parser.state.set_build_name(str('xyzzy'))
-        parser.s3g= makerbot_driver.s3g()
+        parser.s3g = self._s3g
         parser.s3g.writer = writer
         now = time.time()
         polltime = now + self._pollinterval
@@ -166,23 +163,6 @@ class S3gPrinter(object):
                     progress['platformtemperature'] = platformtemperature
                     progress['toolheadtemperature'] = toolheadtemperature
                 task.heartbeat(progress)
-
-    def _openserial(self):
-        serialfp = serial.Serial(self._device, self._baudrate, timeout=0.1)
-
-        # begin baud rate hack
-        #
-        # There is an interaction between the 8U2 firmware and
-        # PySerial where PySerial thinks the 8U2 is already running
-        # at the specified baud rate and it doesn't actually issue
-        # the ioctl calls to set the baud rate. We work around it
-        # by setting the baud rate twice, to two different values.
-        # This forces PySerial to issue the correct ioctl calls.
-        serialfp.baudrate = 9600
-        serialfp.baudrate = self._baudrate
-        # end baud rate hack
-
-        return serialfp
 
     def print(self, gcodepath, skip_start_end):
         self._log.debug('gcodepath=%r', gcodepath)

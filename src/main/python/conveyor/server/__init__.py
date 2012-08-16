@@ -22,6 +22,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import collections
 import errno
 import logging
+import makerbot_driver
 import os
 import sys
 import threading
@@ -223,14 +224,32 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         result['__version__'] = conveyor.__version__
         return result
 
+    def _findprinter(self, printername):
+        if None is not printername:
+            if printername not in self._server._printers:
+                raise Exception('unknown printer: %s' % (printername,))
+            else:
+                printer = self._server._printers[printername]
+        else:
+            keys = self._server._printers.keys()
+            if 0 == len(keys):
+                # TODO: this is awful
+                profile = makerbot_driver.Profile('ReplicatorSingle')
+                s3g = makerbot_driver.s3g()
+                printer = conveyor.printer.s3g.S3gPrinter(s3g, profile)
+            else:
+                printername = keys[0]
+                printer = self._server._printers[printername]
+        return printer
+
     @export('print')
     def _print(
-        self, printer, inputpath, preprocessor, skip_start_end, archive_lvl,
+        self, printername, inputpath, preprocessor, skip_start_end, archive_lvl,
         archive_dir):
             self._log.debug(
-                'printer=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r',
-                printer, inputpath, preprocessor, skip_start_end, archive_lvl,
-                archive_dir)
+                'printername=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r',
+                printername, inputpath, preprocessor, skip_start_end,
+                archive_lvl, archive_dir)
             def runningcallback(task):
                 self._log.info(
                     'printing: %s (job %d)', inputpath, self._id)
@@ -238,6 +257,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('%r', task.progress)
             recipemanager = conveyor.recipe.RecipeManager(self._config)
             recipe = recipemanager.getrecipe(inputpath, preprocessor)
+            printer = self._findprinter(printername)
+            if None is printer:
+                raise Exception('printer not connected') # TODO: this is also awful
             task = recipe.print(skip_start_end, printer)
             task.runningevent.attach(runningcallback)
             task.heartbeatevent.attach(heartbeatcallback)
@@ -247,12 +269,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('printtofile')
     def _printtofile(
-        self, printer, inputpath, outputpath, preprocessor, skip_start_end,
+        self, printername, inputpath, outputpath, preprocessor, skip_start_end,
         archive_lvl, archive_dir):
             self._log.debug(
-                'printer=%r, inputpath=%r, outputpath=%r, preprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r',
-                printer, inputpath, outputpath, preprocessor, skip_start_end,
-                archive_lvl, archive_dir)
+                'printername=%r, inputpath=%r, outputpath=%r, preprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r',
+                printername, inputpath, outputpath, preprocessor,
+                skip_start_end, archive_lvl, archive_dir)
             def runningcallback(task):
                 self._log.info(
                     'printing to file: %s -> %s (job %d)', inputpath,
@@ -261,7 +283,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('%r', task.progress)
             recipemanager = conveyor.recipe.RecipeManager(self._config)
             recipe = recipemanager.getrecipe(inputpath, preprocessor)
-            task = recipe.printtofile(outputpath, skip_start_end)
+            printer = self._findprinter(printername)
+            task = recipe.printtofile(outputpath, skip_start_end, printer)
             task.runningevent.attach(runningcallback)
             task.heartbeatevent.attach(heartbeatcallback)
             task.stoppedevent.attach(self._stoppedcallback)
@@ -270,7 +293,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('slice')
     def _slice(
-        self, inputpath, outputpath, preprocessor=None, with_start_end=False):
+        self, printername, inputpath, outputpath, preprocessor=None, with_start_end=False):
             self._log.debug(
                 'inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r',
                 inputpath, outputpath, preprocessor, with_start_end)
@@ -279,7 +302,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                     'slicing: %s -> %s (job %d)', thing, gcode, self._id)
             recipemanager = conveyor.recipe.RecipeManager(self._config)
             recipe = recipemanager.getrecipe(inputpath, preprocessor)
-            task = recipe.slice(outputpath, with_start_end)
+            printer = self._findprinter(printername)
+            task = recipe.slice(outputpath, with_start_end, printer)
             task.runningevent.attach(runningcallback)
             task.stoppedevent.attach(self._stoppedcallback)
             self._server.appendtask(task)

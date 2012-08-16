@@ -116,11 +116,11 @@ class SkeinforgeToolpath(object):
     def _postprocess(self, gcodepath, tmp_gcodepath, with_start_end, printer):
         with open(gcodepath, 'w') as fp:
             if with_start_end:
-                for line in printer._startlines(): # TODO: replace this hack
+                for line in printer._profile.values['print_start_sequence']:
                     print(line, file=fp)
             self._appendgcode(fp, tmp_gcodepath)
             if with_start_end:
-                for line in printer._endlines():
+                for line in printer._profile.values['print_end_sequence']:
                     print(line, file=fp)
 
     def _appendgcode(self, wfp, path):

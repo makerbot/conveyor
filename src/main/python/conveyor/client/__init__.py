@@ -198,7 +198,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_print(self):
         params = {
-            'printer': None,
+            'printername': None,
             'inputpath': os.path.abspath(self._parsedargs.thing),
             'preprocessor': self._parsedargs.preprocessor,
             'skip_start_end': self._parsedargs.skip_start_end,
@@ -211,7 +211,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_printtofile(self):
         params = {
-            'printer': None,
+            'printername': None,
             'inputpath': os.path.abspath(self._parsedargs.thing),
             'outputpath': os.path.abspath(self._parsedargs.s3g),
             'preprocessor': self._parsedargs.preprocessor,
@@ -227,6 +227,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_slice(self):
         params = {
+            'printername': None,
             'inputpath': os.path.abspath(self._parsedargs.thing),
             'outputpath': os.path.abspath(self._parsedargs.gcode),
             'preprocessor': self._parsedargs.preprocessor,
