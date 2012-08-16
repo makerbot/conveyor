@@ -111,6 +111,11 @@ class ServerMain(conveyor.main.AbstractMain):
         lock_filename = self._config['common']['daemon_lockfile']
         return open(lock_filename, 'w+')
 
+def export(name):
+    def decorator(func):
+        return func
+    return decorator
+
 class _ClientThread(conveyor.stoppable.StoppableThread):
     @classmethod
     def create(cls, config, server, fp, id):
@@ -135,7 +140,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         params = {'id': id}
         self._jsonrpc.notify('printerremoved', params)
 
-    #@exportdFuction('hello')
+    @export('hello')
     def _hello(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         return 'world'
@@ -152,7 +157,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
 
-    #@exportedFunction('printer_query')
+    @export('printer_query')
     def _printer_query(self,*args,**kwargs):
         """ Queries a printer for it's name, extruder count, uuid, and other EEPROM info."""
         if  'port' in kwargs:
@@ -175,7 +180,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                self._log.error("no bot at port %s", port)
         return None
 
-    #@exportedFunction('printer_scan')
+    @export('printer_scan')
     def _printer_scan(self,*args,**kwargs):
         """ uses pyserial-mb to scan for ports, and return a list of ports
         that have a machine matching the specifed VID/PID pair
@@ -208,7 +213,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             result = None
         return result
 
-    #@exportedFunction('dir')
+    @export('dir')
     def _dir(self, *args, **kwargs):
         result = {}
         self._log.debug("doing a services dir conveyor service")
@@ -217,7 +222,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         result['__version__'] = conveyor.__version__
         return result
 
-    #@exportedFunction('print')
+    @export('print')
     def _print(self, *args, **kwargs):
         """ Generate a recepie and call a print. Takes a list with 
          3,4 or 6 params or a dict with entries defined below
@@ -260,8 +265,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._server.appendtask(task)
         return None
 
-    # 
-    #def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
+    @export('printtofile')
     def _printtofile(self, *args, **kwargs):
         thing = preprocessor = skip_start_end = None
         archive_lvl='all'
@@ -291,11 +295,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._server.appendtask(task)
         return None
 
+    @export('cancel')
     def _cancel(self,*args, **kwargs):
         self._log.debug('ABORT ABORT ABORT! (conveyord print cancel)' )
         self._log.error('server print cancel not yet implemented')
         return None
 
+    @export('slice')
     def _slice(self, thing, gcode, preprocessor, with_start_end):
         self._log.debug('thing=%r, gcode=%r', thing, gcode)
         def runningcallback(task):
@@ -309,6 +315,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._server.appendtask(task)
         return None
 
+    @export('getprinters')
     def _getprinters(self):
         result = []
         for id, printer in self._server._printers.items():
