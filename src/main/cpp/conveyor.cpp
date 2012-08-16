@@ -16,18 +16,29 @@ namespace conveyor
     Conveyor *
     Conveyor::connectToDaemon (Address const * address)
     {
-        ConveyorPrivate * const private_ (ConveyorPrivate::connect (address));
-        Conveyor * const conveyor (new Conveyor (private_));
-        return conveyor;
+        return ConveyorPrivate::connect (address);
     }
 
-    Conveyor::Conveyor (ConveyorPrivate * const private_)
-        : m_private (private_)
+    Conveyor::Conveyor
+        ( Connection * const connection
+        , ConnectionStream * const connectionStream
+        , JsonRpc * const jsonRpc
+        , ConnectionThread * const connectionThread
+        )
+        : m_private
+            ( new ConveyorPrivate
+                ( this
+                , connection
+                , connectionStream
+                , jsonRpc
+                , connectionThread
+                )
+            )
     {
-        // Add poll for printer connect/disconnect
-        QTimer *timer = new QTimer(this);
-        connect(timer, SIGNAL(timeout()), this, SLOT(poll()));
-        timer->start(200);
+//        // Add poll for printer connect/disconnect
+//        QTimer *timer = new QTimer(this);
+//        connect(timer, SIGNAL(timeout()), this, SLOT(poll()));
+//        timer->start(200);
     }
 
     Conveyor::~Conveyor (void)
@@ -37,7 +48,7 @@ namespace conveyor
 
     const QList<Printer *>& Conveyor::printers()
     {
-        return m_printers;
+        return m_private->printers();
     }
 
     QList<Job *> const &
@@ -46,6 +57,7 @@ namespace conveyor
         return m_private->m_jobs;
     }
 
+    /* commented our rather than deleted in case we need to quickly fall back on polling
     void
     Conveyor::poll ()
     {
@@ -98,5 +110,5 @@ namespace conveyor
                 emit printerRemoved(*i);
             }
         }
-    }
+    } */
 }

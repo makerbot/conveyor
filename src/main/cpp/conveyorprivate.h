@@ -20,10 +20,11 @@ namespace conveyor
     class ConveyorPrivate
     {
     public:
-        static ConveyorPrivate * connect (Address const * address);
+        static Conveyor * connect (Address const * address);
 
         ConveyorPrivate
-            ( Connection * connection
+            ( Conveyor * conveyor
+            , Connection * connection
             , ConnectionStream * connectionStream
             , JsonRpc * jsonRpc
             , ConnectionThread * connectionThread
@@ -31,6 +32,7 @@ namespace conveyor
 
         ~ConveyorPrivate (void);
 
+        /*  Commented out rather than deleted in case we need to fall back on the polling method
         struct PrinterScanResult {
             int pid;
             int vid;
@@ -39,6 +41,9 @@ namespace conveyor
         };
 
         QList<PrinterScanResult> printerScan();
+        */
+
+        QList<Printer *> & printers();
 
         Job * print
             ( Printer * printer
@@ -55,11 +60,13 @@ namespace conveyor
             , QString const & outputFile
             );
 
+        Conveyor * const m_conveyor;
         Connection * const m_connection;
         ConnectionStream * const m_connectionStream;
         JsonRpc * const m_jsonRpc;
         ConnectionThread * const m_connectionThread;
         QList<Job *> m_jobs;
+        QList<Printer *> m_printers;
     };
 }
 

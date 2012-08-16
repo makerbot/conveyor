@@ -8,10 +8,13 @@
 #include <jsonrpc.h>
 #include <conveyor.h>
 #include <conveyor/connection.h>
+#include <conveyor/connectionstatus.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "conveyorprivate.h"
+
+#include <QDebug>
 
 namespace
 {
@@ -97,11 +100,21 @@ namespace
             return result;
         }
     }
+
+    static
+    conveyor::ConnectionStatus
+    connectionStatusFromString (QString const & string)
+    {
+        if("connected" == string)
+            return conveyor::CONNECTED;
+        else if("not connected == string")
+            return conveyor::NOT_CONNECTED;
+    }
 }
 
 namespace conveyor
 {
-    ConveyorPrivate *
+    Conveyor *
     ConveyorPrivate::connect (Address const * const address)
     {
         Connection * const connection (address->createConnection ());
@@ -118,15 +131,15 @@ namespace conveyor
             Json::Value const hello
                 ( invoke_sync (jsonRpc, "hello", Json::Value (Json::arrayValue))
                 );
-            ConveyorPrivate * const private_
-                ( new ConveyorPrivate
+            Conveyor * const conveyor
+                ( new Conveyor
                     ( connection
                     , connectionStream
                     , jsonRpc
                     , connectionThread
                     )
                 );
-            return private_;
+            return conveyor;
         }
         catch (...)
         {
@@ -143,12 +156,14 @@ namespace conveyor
     }
 
     ConveyorPrivate::ConveyorPrivate
-        ( Connection * const connection
+        ( Conveyor * const conveyor
+        , Connection * const connection
         , ConnectionStream * const connectionStream
         , JsonRpc * const jsonRpc
         , ConnectionThread * const connectionThread
         )
-        : m_connection (connection)
+        : m_conveyor (conveyor)
+        , m_connection (connection)
         , m_connectionStream (connectionStream)
         , m_jsonRpc (jsonRpc)
         , m_connectionThread (connectionThread)
@@ -166,6 +181,7 @@ namespace conveyor
         delete this->m_connection;
     }
 
+    /*  Commented out rather than deleted in case we need to fall back on the polling method
     QList<ConveyorPrivate::PrinterScanResult>
     ConveyorPrivate::printerScan()
     {
@@ -191,7 +207,38 @@ namespace conveyor
         }
 
         return list;
+    } */
+
+    QList<Printer *> &
+    ConveyorPrivate::printers()
+    {
+        Json::Value params (Json::arrayValue);
+        const Json::Value results(invoke_sync(this->m_jsonRpc, "printers", params));
+
+        m_printers.clear();
+
+        for (unsigned i = 0; i < results.size(); i++)
+        {
+            const Json::Value &r(results[i]);
+
+            Printer * p
+                ( new Printer
+                    ( this->m_conveyor
+                    , QString(r["uniqueName"].asCString())
+                    , r["canPrint"].asBool()
+                    , r["canPrintToFile"].asBool()
+                    , connectionStatusFromString(QString(r["connectionStatus"].asCString()))
+                    , QString(r["printerType"].asCString())
+                    , r["numberOfToolheads"].asInt()
+                    , r["hasHeatedPlatform"].asBool()
+                    )
+                );
+            m_printers.push_back(p);
+        }
+
+        return m_printers;
     }
+
 
     Job *
     ConveyorPrivate::print
