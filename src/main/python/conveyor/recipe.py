@@ -148,7 +148,6 @@ class _GcodeRecipe(Recipe):
 
     def print(self, skip_start_end, printer):
         tasks = []
-        printer = self._createprinter(endpoint)
         if not self.preprocessor: 
             processed_gcodepath = self._path
         else:
@@ -175,7 +174,6 @@ class _StlRecipe(Recipe):
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
-        printer = self._createprinter(endpoint)
         tasks.append(toolpath.generate(self._path, gcodepath, False, printer))
         if not self.preprocessor:
             processed_gcodepath = gcodepath
@@ -282,7 +280,6 @@ class _SingleThingRecipe(_ThingRecipe):
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
-        printer = self._createprinter(endpoint)
         tasks.append(toolpath.generate(objectpath, gcodepath, False, printer))
         if not self.preprocessor:
             processed_gcodepath = gcodepath
@@ -308,7 +305,6 @@ class _SingleThingRecipe(_ThingRecipe):
             pass
         gcodepath = gcodefp.name
         os.unlink(gcodepath)
-        printer = self._createprinter()
         tasks.append(toolpath.generate(objectpath, gcodepath, False, printer))
         if not self.preprocessor:
             processed_gcodepath = gcodepath
