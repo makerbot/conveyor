@@ -53,11 +53,9 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_scan,
             self._initsubparser_verify_usb_detect,
             self._initsubparser_dir,
-            self._initsubparser_cancel,
-            self._initsubparser_listen,
+            self._initsubparser_cancel
         ):
                 method(subparsers)
-
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser('printers', help='list connected printers')
@@ -77,7 +75,6 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.add_argument( '--port',dest='endpoint', default=None,
              help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
  
-
     def _initsubparser_print(self, subparsers):
         parser = subparsers.add_parser('print', help='print an object')
         parser.set_defaults(func=self._run_print)
@@ -92,7 +89,6 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.add_argument( '--port',dest='endpoint', default=None,
              help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
 
-
     def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
         parser.set_defaults(func=self._run_printtofile)
@@ -106,7 +102,6 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument('--preprocessor', dest='preprocessor',
             default=False, help='preprocessor to run on the gcode file')
-
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser('slice', help='slice an object into .gcode')
@@ -125,7 +120,6 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.add_argument( '--port',dest='endpoint', default=None,
              help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
 
-
     def _initsubparser_query_printer(self, subparsers):
         """ setup parser options for query printers """
         parser = subparsers.add_parser('query_printer',help='connect to printers for status/data query')
@@ -133,7 +127,6 @@ class ClientMain(conveyor.main.AbstractMain):
         self._initparser_common(parser)
         parser.add_argument( '--port',dest='endpoint', default=None,
             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
-
 
     def _initsubparser_cancel(self, subparsers):
         """ setup parser options for query printers """
@@ -171,7 +164,6 @@ class ClientMain(conveyor.main.AbstractMain):
              type=int, default = None,
              help='Limit printer scan by USB ProductId')
 
-
     def _initsubparser_dir(self,subparsers):
         parser = subparsers.add_parser('dir',help='ping a service or tool')
         parser.set_defaults(func=self._run_dir)
@@ -205,13 +197,45 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_print(self):
-        params = [
-            os.path.abspath(self._parsedargs.thing),
-            self._parsedargs.preprocessor,
-            self._parsedargs.skip_start_end,
-            self._parsedargs.endpoint]
+        params = {
+            'printer': None,
+            'inputpath': os.path.abspath(self._parsedargs.thing),
+            'preprocessor': self._parsedargs.preprocessor,
+            'skip_start_end': self._parsedargs.skip_start_end,
+            'archive_lvl': 'all',
+            'archive_dir': None
+        }
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
+        return code
+
+    def _run_printtofile(self):
+        params = {
+            'printer': None,
+            'inputpath': os.path.abspath(self._parsedargs.thing),
+            'outputpath': os.path.abspath(self._parsedargs.s3g),
+            'preprocessor': self._parsedargs.preprocessor,
+            'skip_start_end': self._parsedargs.skip_start_end,
+            'archive_lvl': 'all',
+            'archive_dir': None
+        }
+        self._log.info(
+            'printing to file: %s -> %s', self._parsedargs.thing,
+            self._parsedargs.s3g)
+        code = self._run_client('printtofile', params)
+        return code
+
+    def _run_slice(self):
+        params = {
+            'inputpath': os.path.abspath(self._parsedargs.thing),
+            'outputpath': os.path.abspath(self._parsedargs.gcode),
+            'preprocessor': self._parsedargs.preprocessor,
+            'with_start_end': self._parsedargs.with_start_end
+        }
+        self._log.info(
+            'slicing to file: %s -> %s', self._parsedargs.thing,
+            self._parsedargs.gcode)
+        code = self._run_client('slice', params)
         return code
 
     def _run_scan(self):
@@ -305,37 +329,6 @@ class ClientMain(conveyor.main.AbstractMain):
         import sys
         x = json.dumps(task.result, sys.stderr)
         print(x)
-
-    def _run_printtofile(self):
-        params = [
-            os.path.abspath(self._parsedargs.thing),
-            os.path.abspath(self._parsedargs.s3g),
-            self._parsedargs.preprocessor,
-            self._parsedargs.skip_start_end]
-        self._log.info(
-            'printing to file: %s -> %s', self._parsedargs.thing,
-            self._parsedargs.s3g)
-        code = self._run_client('printtofile', params)
-        return code
-
-    def _run_slice(self):
-        params = [
-            os.path.abspath(self._parsedargs.thing),
-            os.path.abspath(self._parsedargs.gcode),
-            self._parsedargs.preprocessor,
-            self._parsedargs.with_start_end]
-        self._log.info(
-            'slicing to file: %s -> %s', self._parsedargs.thing,
-            self._parsedargs.gcode)
-        code = self._run_client('slice', params)
-        return code
-
-    def _run_listen(self):
-        fp = conveyor.jsonrpc.socketadapter(self._socket)
-        jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
-        jsonrpc.run()
-        code = 0
-        return code
 
     def _run_client(self, method, params, displaycallback=None):
         """ Creates a client object to run a single command to the server, 

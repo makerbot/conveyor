@@ -157,6 +157,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
         self._jsonrpc.notify('notify', params)
 
+    # TODO: broken, attempts to open a port that is already open
     @export('printer_query')
     def _printer_query(self,*args,**kwargs):
         """ Queries a printer for it's name, extruder count, uuid, and other EEPROM info."""
@@ -223,96 +224,71 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         return result
 
     @export('print')
-    def _print(self, *args, **kwargs):
-        """ Generate a recepie and call a print. Takes a list with 
-         3,4 or 6 params or a dict with entries defined below
-         dict entries : {'thing':file_to_print, 
-                        'skip_start_end':true/false to set skip status'
-                        'endpoint' : optional port name, otherwise grabs first port found
-                        'archive_lvl': level of print details to archive 'all' or None 
-                        'archive_dir': absloute location of place to arcive intermediate files
-        """
-        #hash out params. Remove list arguments someday
-        thing = preprocessor = skip_start_end = endpoint = None
-        archive_lvl='all',
-        archive_dir=None
-        if len(args) >=3:
-            thing,preprocessor,skip_start_end = args[0],args[1],args[2]
-            if len(args) >= 4:
-                endpoint = args[3]
-            if len(args) >= 6:
-                archive_lvl, archive_dir = args[4],args[5]
-        if len(kwargs.keys()) >= 3:
-            thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
-            endpoint = kwargs.get('endpoint',None)
-            archive_lvl= kwargs.get('archive_lvl',None)
-            archive_dir = kwargs.get('archive_dir',None)
-        # debug check of param
-        self._log.debug('thing=%r, preprocessor=%r, skip_start_end=%r', thing, preprocessor, skip_start_end)
-        self._log.debug('endpoint=%r, archive_lvl=%r, archive_dir=%r', endpoint, archive_lvl, archive_dir)
-        # setup our callbacks for the process
-        def runningcallback(task):
-            self._log.info(
-                'printing: %s (job %d)', thing, self._id)
-        def heartbeatcallback(task):
-            self._log.info('%r', task.progress)
-        recipemanager = conveyor.recipe.RecipeManager(self._config)
-        recipe = recipemanager.getrecipe(thing, preprocessor)
-        task = recipe.print(skip_start_end,endpoint)
-        task.runningevent.attach(runningcallback)
-        task.heartbeatevent.attach(heartbeatcallback)
-        task.stoppedevent.attach(self._stoppedcallback)
-        self._server.appendtask(task)
-        return None
+    def _print(
+        self, printer, inputpath, preprocessor, skip_start_end, archive_lvl,
+        archive_dir):
+            self._log.debug(
+                'printer=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r',
+                printer, inputpath, preprocessor, skip_start_end, archive_lvl,
+                archive_dir)
+            def runningcallback(task):
+                self._log.info(
+                    'printing: %s (job %d)', inputpath, self._id)
+            def heartbeatcallback(task):
+                self._log.info('%r', task.progress)
+            recipemanager = conveyor.recipe.RecipeManager(self._config)
+            recipe = recipemanager.getrecipe(inputpath, preprocessor)
+            task = recipe.print(skip_start_end, printer)
+            task.runningevent.attach(runningcallback)
+            task.heartbeatevent.attach(heartbeatcallback)
+            task.stoppedevent.attach(self._stoppedcallback)
+            self._server.appendtask(task)
+            return None
 
     @export('printtofile')
-    def _printtofile(self, *args, **kwargs):
-        thing = preprocessor = skip_start_end = None
-        archive_lvl='all'
-        archive_dir=None
-        if len(args) >=3:
-            thing,preprocessor,skip_start_end = args[0],args[1],args[2]
-            if len(args) >= 5:
-                archive_lvl, archive_dir = args[3],args[4]
-        if len(kwargs.keys()) >= 3:
-            thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
-            archive_lvl= kwargs.get('archive_lvl',None)
-            archive_dir = kwargs.get('archive_dir',None)
+    def _printtofile(
+        self, printer, inputpath, outputpath, preprocessor, skip_start_end,
+        archive_lvl, archive_dir):
+            self._log.debug(
+                'printer=%r, inputpath=%r, outputpath=%r, preprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r',
+                printer, inputpath, outputpath, preprocessor, skip_start_end,
+                archive_lvl, archive_dir)
+            def runningcallback(task):
+                self._log.info(
+                    'printing to file: %s -> %s (job %d)', inputpath,
+                    outputpath, self._id)
+            def heartbeatcallback(task):
+                self._log.info('%r', task.progress)
+            recipemanager = conveyor.recipe.RecipeManager(self._config)
+            recipe = recipemanager.getrecipe(inputpath, preprocessor)
+            task = recipe.printtofile(outputpath, skip_start_end)
+            task.runningevent.attach(runningcallback)
+            task.heartbeatevent.attach(heartbeatcallback)
+            task.stoppedevent.attach(self._stoppedcallback)
+            self._server.appendtask(task)
+            return None
 
-        self._log.debug('thing=%r, s3g=%r, preprocessor=%r, skip_start_end=%r', thing, s3g, preprocessor, skip_start_end)
-        self._log.debug(' archive_lvl=%r, archive_dir=%r', archive_lvl, archive_dir)
-        def runningcallback(task):
-            self._log.info(
-                'printing to file: %s -> %s (job %d)', thing, s3g, self._id)
-        def heartbeatcallback(task):
-            self._log.info('%r', task.progress)
-        recipemanager = conveyor.recipe.RecipeManager(self._config)
-        recipe = recipemanager.getrecipe(thing, preprocessor)
-        task = recipe.printtofile(s3g, skip_start_end)
-        task.runningevent.attach(runningcallback)
-        task.heartbeatevent.attach(heartbeatcallback)
-        task.stoppedevent.attach(self._stoppedcallback)
-        self._server.appendtask(task)
-        return None
+    @export('slice')
+    def _slice(
+        self, inputpath, outputpath, preprocessor=None, with_start_end=False):
+            self._log.debug(
+                'inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r',
+                inputpath, outputpath, preprocessor, with_start_end)
+            def runningcallback(task):
+                self._log.info(
+                    'slicing: %s -> %s (job %d)', thing, gcode, self._id)
+            recipemanager = conveyor.recipe.RecipeManager(self._config)
+            recipe = recipemanager.getrecipe(inputpath, preprocessor)
+            task = recipe.slice(outputpath, with_start_end)
+            task.runningevent.attach(runningcallback)
+            task.stoppedevent.attach(self._stoppedcallback)
+            self._server.appendtask(task)
+            return None
 
     @export('cancel')
     def _cancel(self,*args, **kwargs):
         self._log.debug('ABORT ABORT ABORT! (conveyord print cancel)' )
         self._log.error('server print cancel not yet implemented')
-        return None
-
-    @export('slice')
-    def _slice(self, thing, gcode, preprocessor, with_start_end):
-        self._log.debug('thing=%r, gcode=%r', thing, gcode)
-        def runningcallback(task):
-            self._log.info(
-                'slicing: %s -> %s (job %d)', thing, gcode, self._id)
-        recipemanager = conveyor.recipe.RecipeManager(self._config)
-        recipe = recipemanager.getrecipe(thing, preprocessor)
-        task = recipe.slice(gcode, with_start_end)
-        task.runningevent.attach(runningcallback)
-        task.stoppedevent.attach(self._stoppedcallback)
-        self._server.appendtask(task)
         return None
 
     @export('getprinters')
