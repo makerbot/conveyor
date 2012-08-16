@@ -126,16 +126,14 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._id = id
         self._jsonrpc = jsonrpc
         self._printers_seen = []
-        self._printers_queried = []
-        self._printers_open = []
 
     def printeradded(self, id, printer):
         params = {'id': id}
-        self._jsonrpc.notify('printerAdded', params)
+        self._jsonrpc.notify('printeradded', params)
 
     def printerremoved(self, id, printer):
         params = {'id': id}
-        self._jsonrpc.notify('printerRemoved', params)
+        self._jsonrpc.notify('printerremoved', params)
 
     #@exportdFuction('hello')
     def _hello(self, *args, **kwargs):
@@ -232,10 +230,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                         'archive_dir': absloute location of place to arcive intermediate files
         """
         #hash out params. Remove list arguments someday
-		thing = preprocessor = skip_start_end = endpoint = None
+        thing = preprocessor = skip_start_end = endpoint = None
         archive_lvl='all',
         archive_dir=None
-		if len(args) >=3:
+        if len(args) >=3:
             thing,preprocessor,skip_start_end = args[0],args[1],args[2]
             if len(args) >= 4:
                 endpoint = args[3]
@@ -263,15 +261,14 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
-    
 
     # 
     #def _printtofile(self, thing, s3g, preprocessor, skip_start_end):
     def _printtofile(self, *args, **kwargs):
-		thing = preprocessor = skip_start_end = None
+        thing = preprocessor = skip_start_end = None
         archive_lvl='all'
         archive_dir=None
-		if len(args) >=3:
+        if len(args) >=3:
             thing,preprocessor,skip_start_end = args[0],args[1],args[2]
             if len(args) >= 5:
                 archive_lvl, archive_dir = args[3],args[4]
@@ -279,7 +276,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             thing,preprocessor,skip_start_end = kwargs['thing'],kwargs['preprocessor'], kwargs['skip_start_end']
             archive_lvl= kwargs.get('archive_lvl',None)
             archive_dir = kwargs.get('archive_dir',None)
-    
+
         self._log.debug('thing=%r, s3g=%r, preprocessor=%r, skip_start_end=%r', thing, s3g, preprocessor, skip_start_end)
         self._log.debug(' archive_lvl=%r, archive_dir=%r', archive_lvl, archive_dir)
         def runningcallback(task):
@@ -299,8 +296,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def _cancel(self,*args, **kwargs):
         self._log.debug('ABORT ABORT ABORT! (conveyord print cancel)' )
         self._log.error('server print cancel not yet implemented')
-        return None 
-         
+        return None
 
     def _slice(self, thing, gcode, preprocessor, with_start_end):
         self._log.debug('thing=%r, gcode=%r', thing, gcode)
@@ -314,6 +310,23 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         task.stoppedevent.attach(self._stoppedcallback)
         self._server.appendtask(task)
         return None
+
+    def _getprinters(self):
+        result = []
+        for id, printer in self._server._printers.items():
+            data = {
+                'displayName': printer._profile.values['type'],
+                'uniqueName': printer._device,
+                'printerType': printer._profile.values['type'],
+                'canPrint': True,
+                'canPrintToFile': True,
+                'hasHeatedPlatform': len(
+                    printer._profile.values['heated_platforms']) != 0,
+                'numberOfToolheads': len(printer._profile.values['tools']),
+                'connectionStatus': 'connected'
+            }
+            result.append(data)
+        return result
 
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
@@ -330,8 +343,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
         self._jsonrpc.addmethod('cancel',self._cancel, 
                 "takes {'port':string(port) 'job_id':jobid}"
-                        "if Job is None, cancels by port. If port is None, cancels first bot") 
-    
+                        "if Job is None, cancels by port. If port is None, cancels first bot")
+        self._jsonrpc.addmethod('getprinters', self._getprinters)
 
     def run(self):
         # add our available functions to the json methods list
