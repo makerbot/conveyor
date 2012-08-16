@@ -174,13 +174,13 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
     #@exportedFunction('printers')
     def _printers_stub(self,*args,**kwargs):
         """Stub function to test against while real function is developed """
-		d = {'displayName':'Fake Bot',
+		d = [{'displayName':'Fake Bot',
 			'uniqueName':'6e70274b-7cc0-4d54-aac4-4904496ad5bf',
 			'printerType':'ReplicatorDual',
 			'canPrint':True,
 			'canPrintToFile':True,
 			'hasHeatedPlatform':True,
-			'numberOfToolheads':1}
+			'numberOfToolheads':1},]
 		result = json.dumps(d)
         return result
 
