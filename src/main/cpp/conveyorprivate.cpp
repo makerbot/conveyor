@@ -248,10 +248,14 @@ namespace conveyor
         , QString const & inputFile
         )
     {
-        Json::Value params (Json::arrayValue);
-        params.append(Json::Value (inputFile.toStdString ()));
-        params.append(Json::Value ());
-        params.append(Json::Value (false));
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        params["printername"] = null;
+        params["inputpath"] = Json::Value (inputFile.toStdString ());
+        params["preprocessor"] = null;
+        params["skip_start_end"] = Json::Value (false);
+        params["archive_lvl"] = Json::Value ("all");
+        params["archive_dir"] = null;
         Json::Value const result
             ( invoke_sync (this->m_jsonRpc, "print", params)
             );
@@ -266,11 +270,15 @@ namespace conveyor
         , QString const & outputFile
         )
     {
-        Json::Value params (Json::arrayValue);
-        params.append(Json::Value (inputFile.toStdString ()));
-        params.append(Json::Value (outputFile.toStdString ()));
-        params.append(Json::Value ());
-        params.append(Json::Value (false));
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        params["printername"] = null;
+        params["inputpath"] = Json::Value (inputFile.toStdString ());
+        params["outputpath"] = Json::Value (outputFile.toStdString ());
+        params["preprocessor"] = null;
+        params["skip_start_end"] = Json::Value (false);
+        params["archive_lvl"] = Json::Value ("all");
+        params["archive_dir"] = null;
         Json::Value const result
             ( invoke_sync (this->m_jsonRpc, "printToFile", params)
             );
@@ -285,11 +293,13 @@ namespace conveyor
         , QString const & outputFile
         )
     {
-        Json::Value params (Json::arrayValue);
-        params.append(Json::Value (inputFile.toStdString ()));
-        params.append(Json::Value (outputFile.toStdString ()));
-        params.append(Json::Value ());
-        params.append(Json::Value (false));
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        params["printername"] = null;
+        params["inputpath"] = Json::Value (inputFile.toStdString ());
+        params["outputpath"] = Json::Value (outputFile.toStdString ());
+        params["preprocessor"] = null;
+        params["with_start_end"] = Json::Value (false);
         Json::Value const result
             ( invoke_sync (this->m_jsonRpc, "slice", params)
             );
