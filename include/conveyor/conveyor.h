@@ -8,6 +8,8 @@
 
 #include <conveyor/fwd.h>
 
+#include <jsonrpc.h>
+
 namespace conveyor
 {
     class Conveyor : public QObject
@@ -32,7 +34,12 @@ namespace conveyor
         void jobRemoved (void);
 
     private:
-        Conveyor (ConveyorPrivate * private_);
+        Conveyor
+            ( Connection * connection
+            , ConnectionStream * connectionStream
+            , JsonRpc * jsonRpc
+            , ConnectionThread * connectionThread
+            );
 
         ConveyorPrivate * const m_private;
 
@@ -40,11 +47,14 @@ namespace conveyor
         friend class JobPrivate;
         friend class Printer;
         friend class PrinterPrivate;
+        friend class ConveyorPrivate;
 
-		QList<Printer *> m_printers;
+/*  Commented out rather than deleted in case we need to fall back on the polling method
+        QList<Printer *> m_printers;
 
-	private slots:
+    private slots:
         void poll();
+*/
     };
 }
 

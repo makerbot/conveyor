@@ -80,11 +80,11 @@ namespace conveyor
         virtual void cancelCurrentJob();
 
     private:
-        Printer (Conveyor * conveyor, QString const & name);
+        Printer (Conveyor * conveyor, QString const & uniqueName);
 
         Printer
             ( Conveyor * conveyor
-            , QString const & name
+            , QString const & uniqueName
             , bool canPrint
             , bool canPrintToFile
             , ConnectionStatus connectionStatus

@@ -7,6 +7,8 @@ namespace conveyor
 {
     class Address;
     class Connection;
+    class ConnectionStream;
+    class ConnectionThread;
     class Conveyor;
     class ConveyorPrivate;
     class Job;
