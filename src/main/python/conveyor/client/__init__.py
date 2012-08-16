@@ -60,7 +60,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser('printers', help='list connected printers')
-        parser.set_defaults(func=self._list_printers)
+        parser.set_defaults(func=self._printers_stub)
         self._initparser_common(parser)
         parser.add_argument(
             '--json',
@@ -229,13 +229,18 @@ class ClientMain(conveyor.main.AbstractMain):
         return code 
 
     def _list_printers(self):
-		import pdb
-		pdb.set_trace()
 		params = {'pid':self._parsedargs.pid,
                 'vid':self._parsedargs.vid,
                 'endpoint':self._parsedargs.endpoint } 
 		code = self._run_client('printer_scan',params, self._show_list_printers_result) #from server/__init__.py
 		return code 
+
+
+    def _printers_stub(self):
+        params = ()
+		code = self._run_client('printers',params, self._show_results_to_user) #from server/__init__.py
+		return code 
+
 
     def _run_dir(self):
         params = []

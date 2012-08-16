@@ -25,6 +25,7 @@ import logging
 import os
 import sys
 import threading
+import json 
 
 try:
     import unittest2 as unittest
@@ -180,8 +181,6 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
 			'canPrintToFile':True,
 			'hasHeatedPlatform':True,
 			'numberOfToolheads':1}
-		import pdb
-		pdb.set_trace()
 		result = json.dumps(d)
         return result
 
