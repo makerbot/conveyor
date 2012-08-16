@@ -14,7 +14,7 @@ namespace
     conveyor::TcpAddress DefaultTcpAddress ("localhost", 9999);
 
     conveyor::PipeAddress DefaultPipeAddress
-        ( "/var/run/conveyord/conveyord.socket"
+        ( "/var/run/conveyor/conveyord.socket"
         );
 
     static
