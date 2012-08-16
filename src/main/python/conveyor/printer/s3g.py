@@ -54,7 +54,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
             profiledir = self._config['common']['profiledir']
             factory = makerbot_driver.BotFactory(profiledir)
             for portname in attached:
-                s3g, profile = factory.build_from_portname(portname, True)
+                s3g, profile = factory.build_from_port(portname, True)
                 fp = s3g.writer.file
                 printer = S3gPrinter(portname, fp, profile)
                 self._server.appendprinter(portname, printer)
