@@ -123,7 +123,7 @@ namespace conveyor
         }
         else
         {
-            result = ::read (this->m_fd, buffer, length);
+            result = recv (this->m_fd, buffer, length, 0);
             if (static_cast <ssize_t> (-1) == result)
             {
                 throw SocketReadError(length);
@@ -148,7 +148,7 @@ namespace conveyor
     {
         while (length > static_cast <std::size_t> (0u))
         {
-            ssize_t const result (::write (this->m_fd, buffer, length));
+            ssize_t const result (send (this->m_fd, buffer, length, 0));
             if (static_cast <ssize_t> (-1) == result)
             {
                 throw SocketWriteError(length);
