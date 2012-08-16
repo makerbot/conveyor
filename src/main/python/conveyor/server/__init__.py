@@ -178,11 +178,12 @@ class _ClientThread(threading.Thread, conveyor.stoppable.Stoppable):
 			'uniqueName':'6e70274b-7cc0-4d54-aac4-4904496ad5bf',
 			'printerType':'ReplicatorDual',
 			'canPrint':True,
+			'connectionStatus':'connected',
 			'canPrintToFile':True,
 			'hasHeatedPlatform':True,
 			'numberOfToolheads':1},]
-		result = json.dumps(d)
-        return result
+		#result = json.dumps(d)
+        return d
 
     #@exportedFunction('printer_scan')
     def _printer_scan(self,*args,**kwargs):
