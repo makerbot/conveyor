@@ -213,9 +213,11 @@ namespace conveyor
     ConveyorPrivate::printers()
     {
         Json::Value params (Json::arrayValue);
-        const Json::Value results(invoke_sync(this->m_jsonRpc, "printers", params));
+        const Json::Value results(invoke_sync(this->m_jsonRpc, "getprinters", params));
 
         m_printers.clear();
+
+        qDebug() << QString(results.toStyledString().c_str());
 
         for (unsigned i = 0; i < results.size(); i++)
         {

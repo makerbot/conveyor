@@ -8,6 +8,7 @@
 #include <sys/un.h>
 
 #include "../socketconnectionprivate.h"
+#include <conveyor/exceptions.h>
 
 namespace conveyor
 {
@@ -27,7 +28,7 @@ namespace conveyor
             );
         if (invalidSocket (fd))
         {
-            throw std::exception ();
+            throw SocketCreateError();
         }
         else
         {
@@ -47,7 +48,7 @@ namespace conveyor
                 , sizeof (struct sockaddr_un)
                 ))
             {
-                throw std::exception ();
+                throw SocketConnectError(path);
             }
             else
             {
