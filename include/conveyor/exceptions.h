@@ -6,7 +6,13 @@
 namespace conveyor {
 	class SocketError : public std::runtime_error {
 	public:
-		SocketError(const std::string &msg) : std::runtime_error(msg) {}
+		SocketError(const std::string &msg);
+		int getErrno() {
+			return m_errno;
+		}
+		
+	private:
+		int m_errno;
 	};
 
 	class SocketCreateError : public SocketError {
@@ -22,7 +28,7 @@ namespace conveyor {
 
 	class SocketConnectError : public SocketError {
 	public:
-		SocketConnectError(const std::string &host, const int)
+		SocketConnectError(const std::string &host, const int = -1)
 			: SocketError("Unable to connect to " + host) { };
 	};
 
@@ -41,6 +47,12 @@ namespace conveyor {
 	public: 
 		//TODO: smarter error
 		SocketReadError(int) : SocketIOError() { }
+	};
+
+	class InvalidAddressError : public std::runtime_error {
+	public:
+		InvalidAddressError(std::string address) :
+			std::runtime_error("Invalid address " + address) { }
 	};
 
 }

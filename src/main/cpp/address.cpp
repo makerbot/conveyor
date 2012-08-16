@@ -8,6 +8,7 @@
 #include <conveyor/address.h>
 #include <conveyor/pipeaddress.h>
 #include <conveyor/tcpaddress.h>
+#include <conveyor/exceptions.h>
 
 namespace
 {
@@ -34,7 +35,7 @@ namespace
             stream >> port;
             if (stream.bad () or stream.fail ())
             {
-                throw std::exception ();
+                throw std::runtime_error ("Error writing to string stream");
             }
             else
             {
@@ -89,7 +90,7 @@ namespace conveyor
             }
             else
             {
-                throw std::exception ();
+                throw InvalidAddressError(str);
             }
             return address;
         }
