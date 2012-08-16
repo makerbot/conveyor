@@ -29,6 +29,11 @@ namespace conveyor
             HighQuality
         };
 
+        enum Extruder {
+            Left,
+            Right
+        };
+
         // TODO:
         static SlicerConfiguration *miracleGrueDefaults(Quality quality);
         static SlicerConfiguration *skeinforgeGrueDefaults(Quality quality);
@@ -41,6 +46,9 @@ namespace conveyor
 
         Slicer slicer() const;
         QString slicerName() const;
+
+        Extruder extruder() const;
+        QString extruderName() const;
 
         bool raft() const;
         bool supports() const;
@@ -58,6 +66,7 @@ namespace conveyor
 
     public slots:
         void setSlicer(Slicer slicer);
+        void setExtruder(Extruder extruder);
 
         void setRaft(bool raft);
         void setSupports(bool supports);
@@ -75,6 +84,7 @@ namespace conveyor
 
     private:
         Slicer m_slicer;
+        Extruder m_extruder;
 
         bool m_raft;
         bool m_supports;

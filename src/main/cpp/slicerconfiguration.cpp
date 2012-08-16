@@ -4,6 +4,7 @@ using namespace conveyor;
 
 SlicerConfiguration::SlicerConfiguration(const QString &) :
     m_slicer(MiracleGrue),
+    m_extruder(Left),
     m_raft(true),
     m_supports(false),
     m_infill(90),
@@ -23,6 +24,7 @@ Json::Value SlicerConfiguration::toJSON() const
     Json::Value root;
 
     root["slicer"] = slicerName().toStdString();
+    root["extruder"] = extruderName().toStdString();
     root["raft"] = m_raft;
     root["supports"] = m_supports;
     root["infill"] = m_infill;
@@ -49,6 +51,23 @@ QString SlicerConfiguration::slicerName() const
         return "Skeinforge";
     case MiracleGrue:
         return "MiracleGrue";
+    default:
+        return QString();
+    }
+}
+
+SlicerConfiguration::Extruder SlicerConfiguration::extruder() const
+{
+    return m_extruder;
+}
+
+QString SlicerConfiguration::extruderName() const
+{
+    switch (m_extruder) {
+    case Left:
+        return "Left";
+    case Right:
+        return "Right";
     default:
         return QString();
     }
@@ -107,6 +126,11 @@ unsigned SlicerConfiguration::travelSpeed() const
 void SlicerConfiguration::setSlicer(Slicer slicer)
 {
     m_slicer = slicer;
+}
+
+void SlicerConfiguration::setExtruder(Extruder extruder)
+{
+    m_extruder = extruder;
 }
 
 void SlicerConfiguration::setRaft(bool raft)
