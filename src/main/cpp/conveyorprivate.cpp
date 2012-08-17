@@ -9,6 +9,7 @@
 #include <conveyor.h>
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
+#include <conveyor/exceptions.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -107,8 +108,10 @@ namespace
     {
         if("connected" == string)
             return conveyor::CONNECTED;
-        else if("not connected == string")
+        else if("not connected" == string)
             return conveyor::NOT_CONNECTED;
+        
+        throw std::invalid_argument (string.toStdString());
     }
 }
 
