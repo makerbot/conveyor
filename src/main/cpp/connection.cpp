@@ -11,7 +11,6 @@ namespace conveyor
 {
     Connection::~Connection (void)
     {
-        delete this->m_private;
     }
 
     bool

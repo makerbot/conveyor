@@ -2,6 +2,7 @@
 
 #include <QUuid>
 #include <QDebug>
+#include <QScopedPointer>
 
 #include <conveyor.h>
 
@@ -15,7 +16,7 @@ namespace conveyor
         ( Printer * printer __attribute__ ((unused))
         , QString const & id
         )
-        : m_private(new JobPrivate())
+        : m_private (new JobPrivate ())
     {
         m_private->m_progress = 0;
         m_private->m_uniqueName = id;
@@ -27,12 +28,16 @@ namespace conveyor
         , QString const & name
         , int progress
         )
-        : m_private(new JobPrivate())
+        : m_private (new JobPrivate ())
     {
         m_private->m_displayName = name;
         m_private->m_progress = progress;
         m_private->m_uniqueName = QUuid::createUuid().toString();
         m_private->m_Status = PRINTING;
+    }
+
+    Job::~Job (void)
+    {
     }
 
     int

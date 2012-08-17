@@ -47,7 +47,6 @@ namespace conveyor
 
     Printer::~Printer ()
     {
-        delete m_private;
     }
 
     QList<Job *> const & 
