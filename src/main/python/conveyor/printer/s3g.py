@@ -48,15 +48,16 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         new_keys = set(available.keys())
         detached = old_keys - new_keys
         attached = new_keys - old_keys
-        for port in detached:
-            self._server.removeprinter(port)
+        for portname in detached:
+            self._server.removeprinter(portname)
         if len(attached) > 0:
             profiledir = self._config['common']['profiledir']
             factory = makerbot_driver.BotFactory(profiledir)
-            for port in attached:
-                s3g, profile = factory.build_from_port(port, True)
-                printer = S3gPrinter(s3g, profile)
-                self._server.appendprinter(port, printer)
+            for portname in attached:
+                s3g, profile = factory.build_from_port(portname, True)
+                fp = s3g.writer.file
+                printer = S3gPrinter(portname, fp, profile)
+                self._server.appendprinter(portname, printer)
         self._available = available
 
     def run(self):
@@ -75,12 +76,12 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
             self._condition.notify_all()
 
 class S3gPrinterThread(conveyor.stoppable.StoppableThread):
-    def __init__(self, s3g, profile):
+    def __init__(self, fp, profile):
         conveyor.stoppable.StoppableThread.__init__(self)
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
+        self._fp = fp
         self._profile = profile
-        self._s3g = s3g
         self._stop = False
 
     def run(self):
@@ -96,11 +97,12 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._condition.notify_all()
 
 class S3gPrinter(object):
-    def __init__(self, s3g, profile):
+    def __init__(self, devicename, fp, profile):
+        self._devicename = devicename
+        self._fp = fp
         self._log = logging.getLogger(self.__class__.__name__)
         self._pollinterval = 5.0
         self._profile = profile
-        self._s3g = s3g
 
     def _gcodelines(self, gcodepath, skip_start_end):
         if not skip_start_end:
@@ -129,7 +131,7 @@ class S3gPrinter(object):
         parser = makerbot_driver.Gcode.GcodeParser()
         parser.state.profile = self._profile
         parser.state.set_build_name(str('xyzzy'))
-        parser.s3g = self._s3g
+        parser.s3g = makerbot_driver.s3g()
         parser.s3g.writer = writer
         now = time.time()
         polltime = now + self._pollinterval
@@ -168,9 +170,8 @@ class S3gPrinter(object):
         self._log.debug('gcodepath=%r', gcodepath)
         def runningcallback(task):
             try:
-                with self._openserial() as serialfp:
-                    writer = makerbot_driver.Writer.StreamWriter(serialfp)
-                    self._genericprint(task, writer, True, gcodepath, skip_start_end)
+                writer = makerbot_driver.Writer.StreamWriter(self._fp)
+                self._genericprint(task, writer, True, gcodepath, skip_start_end)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 task.fail(e)

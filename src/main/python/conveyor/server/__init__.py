@@ -235,8 +235,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             if 0 == len(keys):
                 # TODO: this is awful
                 profile = makerbot_driver.Profile('ReplicatorSingle')
-                s3g = makerbot_driver.s3g()
-                printer = conveyor.printer.s3g.S3gPrinter(s3g, profile)
+                printer = conveyor.printer.s3g.S3gPrinter(None, None, profile)
             else:
                 printername = keys[0]
                 printer = self._server._printers[printername]
@@ -321,7 +320,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         for id, printer in self._server._printers.items():
             data = {
                 'displayName': printer._profile.values['type'],
-                'uniqueName': printer._device,
+                'uniqueName': printer._devicename,
                 'printerType': printer._profile.values['type'],
                 'canPrint': True,
                 'canPrintToFile': True,
