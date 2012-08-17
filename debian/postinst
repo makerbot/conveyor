@@ -18,13 +18,9 @@ if [ "$1" = configure ]; then
 			adduser conveyor plugdev
 			adduser conveyor dialout
 		fi
-		# Create and set permissions for /var/run/conveyor
-		mkdir -p -m 3777 /var/run/conveyor
-		chmod g+s /var/run/conveyor
-		chgrp conveyor /var/run/conveyor
 		# Set proper permissions for any existing lock files
-		chgrp conveyor /var/run/conveyor/* >/dev/null 2>&1 || true
-		chmod 0640 /var/run/conveyor/* >/dev/null 2>&1 || true
+		chgrp conveyor /var/run/conveyor* >/dev/null 2>&1 || true
+		chmod 0640 /var/run/conveyor* >/dev/null 2>&1 || true
 
 		# Create and set permissions for /var/log/conveyor
 		mkdir -p -m 3777 /var/log/conveyor
