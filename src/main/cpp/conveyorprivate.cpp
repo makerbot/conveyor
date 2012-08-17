@@ -2,13 +2,13 @@
 
 #include <QDebug>
 #include <string>
+#include <stdexcept>
 
 #include <json/value.h>
 #include <jsonrpc.h>
 
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
-#include <conveyor/exceptions.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -25,7 +25,7 @@ namespace
             return conveyor::CONNECTED;
         else if("not connected" == string)
             return conveyor::NOT_CONNECTED;
-        
+
         throw std::invalid_argument (string.toStdString());
     }
 }
