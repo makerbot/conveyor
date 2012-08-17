@@ -13,6 +13,7 @@
 
 #include "connectionstream.h"
 #include "connectionthread.h"
+#include "printeraddedmethod.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -65,6 +66,9 @@ namespace conveyor
         ConnectionStream * const m_connectionStream;
         JsonRpc * const m_jsonRpc;
         ConnectionThread * const m_connectionThread;
+        
+        PrinterAddedMethod m_printerAddedMethod;
+        
         QList<Job *> m_jobs;
         QList<Printer *> m_printers;
     };
