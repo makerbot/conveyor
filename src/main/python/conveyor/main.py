@@ -153,7 +153,7 @@ class AbstractMain(object):
     def _setconfigdefaults_common(self):
         self._config.setdefault('common', {})
         self._config['common'].setdefault(
-            'socket', 'unix:/var/run/conveyord.socket')
+            'socket', 'unix:/var/run/conveyor/conveyord.socket')
         self._config['common'].setdefault('slicer', 'miraclegrue')
         self._config['common'].setdefault('serialport', '/dev/ttyACM0')
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
