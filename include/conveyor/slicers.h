@@ -57,8 +57,7 @@ namespace conveyor
         double layerHeight() const;
         unsigned shells() const;
 
-        unsigned leftExtruderTemperature() const;
-        unsigned rightExtruderTemperature() const;
+        unsigned extruderTemperature() const;
         unsigned platformTemperature() const;
 
         unsigned printSpeed() const;
@@ -75,8 +74,7 @@ namespace conveyor
         void setLayerHeight(double height);
         void setShells(unsigned shells);
 
-        void setLeftExtruderTemperature(unsigned temperature);
-        void setRightExtruderTemperature(unsigned temperature);
+        void setExtruderTemperature(unsigned temperature);
         void setPlatformTemperature(unsigned temperature);
 
         void setPrintSpeed(unsigned speed);
@@ -93,8 +91,7 @@ namespace conveyor
         double m_layerHeight;
         unsigned m_shells;
 
-        unsigned m_leftExtruderTemperature;
-        unsigned m_rightExtruderTemperature;
+        unsigned m_extruderTemperature;
         unsigned m_platformTemperature;
 
         unsigned m_printSpeed;

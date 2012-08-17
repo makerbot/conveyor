@@ -7,11 +7,10 @@ SlicerConfiguration::SlicerConfiguration(const QString &) :
     m_extruder(Left),
     m_raft(true),
     m_supports(false),
-    m_infill(90),
+    m_infill(0.90),
     m_layerHeight(0.2),
     m_shells(3),
-    m_leftExtruderTemperature(220),
-    m_rightExtruderTemperature(220),
+    m_extruderTemperature(220),
     m_platformTemperature(220),
     m_printSpeed(80),
     m_travelSpeed(150)
@@ -21,20 +20,66 @@ SlicerConfiguration::SlicerConfiguration(const QString &) :
 
 Json::Value SlicerConfiguration::toJSON() const
 {
+    const std::string slicer(slicerName().toStdString());
     Json::Value root;
 
-    root["slicer"] = slicerName().toStdString();
-    root["extruder"] = extruderName().toStdString();
-    root["raft"] = m_raft;
-    root["supports"] = m_supports;
-    root["infill"] = m_infill;
-    root["layerHeight"] = m_layerHeight;
-    root["shells"] = m_shells;
-    root["leftExtruderTemperature"] = m_leftExtruderTemperature;
-    root["rightExtruderTemperature"] = m_rightExtruderTemperature;
-    root["platformTemperature"] = m_platformTemperature;
-    root["printSpeed"] = m_printSpeed;
-    root["travelSpeed"] = m_travelSpeed;
+    // Slicer name and min/max versions
+    root["slicer"]["slicerName"] = slicer;
+    switch (m_slicer) {
+    case Skeinforge:
+        root["slicer"]["minVersion"] = "50.0.0.0";
+        root["slicer"]["maxVersion"] = "50.0.0.0";
+        break;
+
+    case MiracleGrue:
+        root["slicer"]["minVersion"] = "0.0.4.0";
+        root["slicer"]["maxVersion"] = "0.0.5.0";
+        break;
+    }
+
+    // The rest is formatted to match MiracleGrue's config
+
+    root[slicer]["doRaft"] = m_raft;
+    root[slicer]["doSupport"] = m_supports;
+
+    // "extruder" section
+    switch (m_extruder) {
+    case Left:
+        root[slicer]["extruder"]["defaultExtruder"] = 0;
+        break;
+
+    case Right:
+        root[slicer]["extruder"]["defaultExtruder"] = 1;
+        break;
+    }
+
+    root[slicer]["infillDensity"] = m_infill;
+    root[slicer]["layerHeight"] = m_layerHeight;
+    root[slicer]["numberOfShells"] = m_shells;
+    root[slicer]["rapidMoveFeedRateXY"] = m_travelSpeed;
+
+    const char *profiles[] = {"insets",
+                              "infill",
+                              "firstlayer",
+                              "outlines"};
+
+    for (int i = 0; i < 4; ++i) {
+        root[slicer]["extrusionProfiles"][profiles[i]]["temperature"] =
+            m_extruderTemperature;
+        root[slicer]["extrusionProfiles"][profiles[i]]["feedrate"] =
+            m_printSpeed;
+    }
+
+    // Nothing variable here, not sure if needed?
+    for (int i = 0; i < 2; ++i) {
+        root["extruderProfiles"][i]["firstLayerExtrusionProfile"] = "firstlayer";
+        root["extruderProfiles"][i]["insetsExtrusionProfile"] = "insets";
+        root["extruderProfiles"][i]["infillsExtrusionProfile"] = "infill";
+        root["extruderProfiles"][i]["outlinesExtrusionProfile"] = "outlines";
+    }
+
+    // TODO: not in miracle.conf?
+    root[slicer]["platformTemperature"] = m_platformTemperature;
 
     return root;
 }
@@ -98,14 +143,9 @@ unsigned SlicerConfiguration::shells() const
     return m_shells;
 }
 
-unsigned SlicerConfiguration::leftExtruderTemperature() const
+unsigned SlicerConfiguration::extruderTemperature() const
 {
-    return m_leftExtruderTemperature;
-}
-
-unsigned SlicerConfiguration::rightExtruderTemperature() const
-{
-    return m_rightExtruderTemperature;
+    return m_extruderTemperature;
 }
 
 unsigned SlicerConfiguration::platformTemperature() const
@@ -158,14 +198,9 @@ void SlicerConfiguration::setShells(unsigned shells)
     m_shells = shells;
 }
 
-void SlicerConfiguration::setLeftExtruderTemperature(unsigned temperature)
+void SlicerConfiguration::setExtruderTemperature(unsigned temperature)
 {
-    m_leftExtruderTemperature = temperature;
-}
-
-void SlicerConfiguration::setRightExtruderTemperature(unsigned temperature)
-{
-    m_rightExtruderTemperature = temperature;
+    m_extruderTemperature = temperature;
 }
 
 void SlicerConfiguration::setPlatformTemperature(unsigned temperature)
