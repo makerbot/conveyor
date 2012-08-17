@@ -153,6 +153,7 @@ class UnixAddress(Address):
     def listen(self):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.bind(self._path)
+        os.chmod(self._path, 0666)
         s.listen(socket.SOMAXCONN)
         return s
 
