@@ -4,6 +4,7 @@
 #define CONVEYOR_CONNECTION_H (1)
 
 #include <cstddef>
+#include <QScopedPointer>
 #include <unistd.h>
 
 #include <conveyor/fwd.h>
@@ -24,7 +25,7 @@ namespace conveyor
         void cancel (void);
 
     private:
-        ConnectionPrivate * const m_private;
+        QScopedPointer <ConnectionPrivate> m_private;
     };
 }
 

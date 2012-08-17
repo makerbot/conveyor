@@ -93,7 +93,7 @@ namespace conveyor
             , bool hasHeatedPlatform
             );
 
-        PrinterPrivate * const m_private;
+        QScopedPointer <PrinterPrivate> m_private;
 
         friend class Conveyor;
         friend class ConveyorPrivate;

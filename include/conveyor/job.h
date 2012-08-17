@@ -5,6 +5,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QScopedPointer>
 #include <QString>
 
 #include <conveyor/fwd.h>
@@ -20,8 +21,9 @@ namespace conveyor
         Job (Printer * printer, QString const & id);
         Job (Printer * printer, QString const & name, int progress);
 
-        int progress (void);
+        ~Job (void);
 
+        int progress (void);
         JobStatus jobStatus (void) const;
 
     signals:
@@ -31,10 +33,11 @@ namespace conveyor
         void jobStatusChanged (JobStatus);
 
     private:
-        JobPrivate * const m_private;
+        QScopedPointer <JobPrivate> m_private;
 
         friend class Conveyor;
         friend class ConveyorPrivate;
+        friend class JobPrivate;
         friend class Printer;
         friend class PrinterPrivate;
     };

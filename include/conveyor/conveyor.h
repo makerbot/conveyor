@@ -5,6 +5,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QScopedPointer>
 
 #include <conveyor/fwd.h>
 
@@ -17,14 +18,15 @@ namespace conveyor
         Q_OBJECT
 
     public:
-		static Conveyor * connectToDaemon (Address const * address);
+        static Conveyor * connectToDaemon (Address const * address);
+
         ~Conveyor (void);
 
         QList<Job *> const & jobs (void);
         QList<Printer *> const & printers (void);
 
     signals:
-		void printerAdded (Printer *);
+        void printerAdded (Printer *);
         void printerRemoved (Printer *);
 
         /** Signals that a new job has been created */
@@ -41,7 +43,7 @@ namespace conveyor
             , ConnectionThread * connectionThread
             );
 
-        ConveyorPrivate * const m_private;
+        QScopedPointer <ConveyorPrivate> m_private;
 
         friend class Job;
         friend class JobPrivate;
