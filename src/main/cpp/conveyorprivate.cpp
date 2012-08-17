@@ -1,106 +1,21 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include <QMutex>
-#include <QMutexLocker>
-#include <QWaitCondition>
+#include <QDebug>
+#include <string>
 
 #include <json/value.h>
 #include <jsonrpc.h>
-#include <conveyor.h>
+
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "conveyorprivate.h"
-
-#include <QDebug>
+#include "synchronouscallback.h"
 
 namespace
 {
-    class SynchronousCallback : public JsonRpcCallback
-    {
-    public:
-        void response (Json::Value const & response);
-        Json::Value wait (void);
-
-    private:
-        QMutex m_mutex;
-        QWaitCondition m_condition;
-        Json::Value m_value;
-    };
-
-    void
-    SynchronousCallback::response (Json::Value const & response)
-    {
-        QMutexLocker locker (& this->m_mutex);
-        this->m_value = response;
-        this->m_condition.wakeAll ();
-    }
-
-    Json::Value
-    SynchronousCallback::wait (void)
-    {
-        QMutexLocker locker (& this->m_mutex);
-        this->m_condition.wait (& this->m_mutex);
-        return this->m_value;
-    }
-
-    static
-    bool
-    isErrorResponse (Json::Value const & response)
-    {
-        bool const result
-            ( Json::Value ("2.0") == response["jsonrpc"]
-              and response["error"].isObject ()
-              and response["error"]["code"].isNumeric ()
-              and response["error"]["message"].isString ()
-            );
-        return result;
-    }
-
-    static
-    bool
-    isSuccessResponse (Json::Value const & response)
-    {
-        bool const result
-            ( Json::Value ("2.0") == response["jsonrpc"]
-              and response.isMember ("result")
-            );
-        return result;
-    }
-
-    static
-    Json::Value
-    invoke_sync
-        ( JsonRpc * jsonRpc
-        , std::string const & methodName
-        , Json::Value const & params
-        )
-    {
-        SynchronousCallback callback;
-        jsonRpc->invoke (methodName, params, & callback);
-        Json::Value const response (callback.wait ());
-        if (isErrorResponse (response))
-        {
-            Json::Value const error (response["error"]);
-            int const code (error["code"].asInt ());
-            std::string const message (error["code"].asString ());
-            Json::Value const data (error["data"]);
-            throw JsonRpcException (code, message, data);
-        }
-        else
-        if (not isSuccessResponse (response))
-        {
-            throw std::exception ();
-        }
-        else
-        {
-            Json::Value const result (response["result"]);
-            return result;
-        }
-    }
-
     static
     conveyor::ConnectionStatus
     connectionStatusFromString (QString const & string)
@@ -129,7 +44,11 @@ namespace conveyor
         try
         {
             Json::Value const hello
-                ( invoke_sync (jsonRpc, "hello", Json::Value (Json::arrayValue))
+                ( SynchronousCallback::invoke
+                    ( jsonRpc
+                    , "hello"
+                    , Json::Value (Json::arrayValue)
+                    )
                 );
             Conveyor * const conveyor
                 ( new Conveyor
@@ -213,7 +132,13 @@ namespace conveyor
     ConveyorPrivate::printers()
     {
         Json::Value params (Json::arrayValue);
-        const Json::Value results(invoke_sync(this->m_jsonRpc, "getprinters", params));
+        Json::Value const results
+            ( SynchronousCallback::invoke
+                ( this->m_jsonRpc
+                , "getprinters"
+                , params
+                )
+            );
 
         m_printers.clear();
 
@@ -241,7 +166,6 @@ namespace conveyor
         return m_printers;
     }
 
-
     Job *
     ConveyorPrivate::print
         ( Printer * const printer
@@ -257,7 +181,7 @@ namespace conveyor
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         Json::Value const result
-            ( invoke_sync (this->m_jsonRpc, "print", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
             );
         Job * const job (new Job (printer, "0")); // TODO: fetch id from result
         return job;
@@ -280,7 +204,7 @@ namespace conveyor
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         Json::Value const result
-            ( invoke_sync (this->m_jsonRpc, "printToFile", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "printToFile", params)
             );
         Job * const job (new Job (printer, "0")); // TODO: fetch id from result
         return job;
@@ -301,7 +225,7 @@ namespace conveyor
         params["preprocessor"] = null;
         params["with_start_end"] = Json::Value (false);
         Json::Value const result
-            ( invoke_sync (this->m_jsonRpc, "slice", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
         Job * const job (new Job (printer, "0")); // TODO: fetch id from result
         return job;
