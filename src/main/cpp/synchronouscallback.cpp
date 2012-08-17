@@ -70,7 +70,7 @@ namespace conveyor
         {
             Json::Value const error (response["error"]);
             int const code (error["code"].asInt ());
-            std::string const message (error["code"].asString ());
+            std::string const message (error["message"].asString ());
             Json::Value const data (error["data"]);
             throw JsonRpcException (code, message, data);
         }
