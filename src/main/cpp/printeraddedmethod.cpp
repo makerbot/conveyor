@@ -1,8 +1,10 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
 #include "printeraddedmethod.h"
+#include "conveyorprivate.h"
 
-#include <QDebug>
+#include <QString>
+#include <QMetaObject>
 
 namespace conveyor
 {
@@ -17,7 +19,11 @@ namespace conveyor
     
     Json::Value PrinterAddedMethod::invoke (Json::Value const & params)
     {
-        qDebug() << QString(params.toStyledString().c_str());
+        QString botId(params["id"].asString().c_str());
+
+        Printer * printer(m_conveyorPrivate->printerByUniqueName(botId));
+
+        m_conveyorPrivate->emitPrinterAdded(printer);
         
         return Json::Value(Json::nullValue);
     }
