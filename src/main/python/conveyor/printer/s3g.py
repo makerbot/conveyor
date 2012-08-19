@@ -47,8 +47,10 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         for portname, unlisttime in self._blacklist.items():
             if unlisttime >= now:
                 del self._blacklist[portname]
+                self._log.debug('removing port from blacklist: %r', portname)
         available = self._detector.get_available_machines().copy()
         self._log.debug('available = %r', available)
+        self._log.debug('blacklist = %r', self._blacklist)
         old_keys = set(self._available.keys())
         new_keys = set(available.keys()) - set(self._blacklist.keys())
         detached = old_keys - new_keys
