@@ -193,6 +193,7 @@ class AbstractMain(object):
             'pidfile', '/var/run/conveyor/conveyord.pid')
         self._config['server'].setdefault('chdir', True)
         self._config['server'].setdefault('eventthreads', 2)
+        self._config['server'].setdefault('blacklisttime', 10.0)
         self._config['server'].setdefault('logging', None)
         return None
 
@@ -278,6 +279,7 @@ class AbstractMain(object):
         code = self._sequence(
             self._checkconfig_server_pidfile,
             self._checkconfig_server_chdir,
+            self._checkconfig_server_blacklisttime,
             self._checkconfig_server_eventthreads)
         return code
 
@@ -291,6 +293,10 @@ class AbstractMain(object):
 
     def _checkconfig_server_eventthreads(self):
         code = self._require_number('server', 'eventthreads')
+        return code
+
+    def _checkconfig_server_blacklisttime(self):
+        code = self._require_number('server', 'blacklisttime')
         return code
 
     def _checkconfig_client(self):
