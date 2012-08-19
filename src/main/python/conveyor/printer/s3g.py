@@ -33,6 +33,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
     def __init__(self, config, server):
         conveyor.stoppable.StoppableThread.__init__(self)
         self._available = {}
+        self._blacklist = {}
         self._config = config
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
@@ -45,7 +46,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         available = self._detector.get_available_machines().copy()
         self._log.debug('available = %r', available)
         old_keys = set(self._available.keys())
-        new_keys = set(available.keys())
+        new_keys = set(available.keys()) - set(self._blacklist.keys())
         detached = old_keys - new_keys
         attached = new_keys - old_keys
         for portname in detached:
@@ -59,6 +60,15 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
                 printer = S3gPrinter(portname, fp, profile)
                 self._server.appendprinter(portname, printer)
         self._available = available
+        now = time.time()
+        for portname, unlisttime in self._blacklist.items():
+            if unlisttime >= now:
+                del self._blacklist[portname]
+
+    def blacklist(self, portname):
+        now = time.time()
+        unlisttime = now + 10.0 # TODO: self._config[something]
+        self._blacklist[portname] = unlisttime
 
     def run(self):
         while not self._stop:
@@ -97,12 +107,13 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._condition.notify_all()
 
 class S3gPrinter(object):
-    def __init__(self, devicename, fp, profile):
+    def __init__(self, server, devicename, fp, profile):
         self._devicename = devicename
         self._fp = fp
         self._log = logging.getLogger(self.__class__.__name__)
         self._pollinterval = 5.0
         self._profile = profile
+        self._server = server
 
     def _gcodelines(self, gcodepath, skip_start_end):
         if not skip_start_end:
@@ -173,6 +184,7 @@ class S3gPrinter(object):
                 writer = makerbot_driver.Writer.StreamWriter(self._fp)
                 self._genericprint(task, writer, True, gcodepath, skip_start_end)
             except Exception as e:
+                self._server.evictprinter(self._devicename, self._fp)
                 self._log.exception('unhandled exception')
                 task.fail(e)
             else:
