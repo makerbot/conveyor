@@ -36,7 +36,7 @@ namespace conveyor
         QList<Job *> m_jobs;
         bool m_canPrint;
         bool m_canPrintToFile;
-        bool m_hasPlatform;
+        bool m_hasHeatedPlatform;
         Conveyor * m_Conveyor;
         int m_numberOfToolheads;
         ConnectionStatus m_connectionStatus;

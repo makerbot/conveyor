@@ -21,7 +21,7 @@ namespace conveyor
         this->m_displayName = "Dummy Printer";
         this->m_printerType = "Replicator";
         this->m_numberOfToolheads = 2;
-        this->m_hasPlatform = true;
+        this->m_hasHeatedPlatform = true;
         this->m_jobs = conveyor->jobs();
     }
 
