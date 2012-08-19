@@ -43,6 +43,10 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._stop = False
 
     def _runiteration(self):
+        now = time.time()
+        for portname, unlisttime in self._blacklist.items():
+            if unlisttime >= now:
+                del self._blacklist[portname]
         available = self._detector.get_available_machines().copy()
         self._log.debug('available = %r', available)
         old_keys = set(self._available.keys())
@@ -60,10 +64,6 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
                 printer = S3gPrinter(portname, fp, profile)
                 self._server.appendprinter(portname, printer)
         self._available = available
-        now = time.time()
-        for portname, unlisttime in self._blacklist.items():
-            if unlisttime >= now:
-                del self._blacklist[portname]
 
     def blacklist(self, portname):
         now = time.time()
