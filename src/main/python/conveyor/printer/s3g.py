@@ -126,6 +126,7 @@ class S3gPrinter(object):
         self._pollinterval = 5.0
         self._profile = profile
         self._server = server
+        self._variables = {}
 
     def get_extruder_temp(self):
         parser = makerbot_driver.Gcode.GcodeParser()
@@ -135,9 +136,15 @@ class S3gPrinter(object):
         parser.s3g.writer = writer
         platformtemperature = parser.s3g.get_platform_temperature(0)
 
+    def _get_start_end_variables(self):
+        assembler = makerbot_driver.GcodeAssembler(self._profile)
+        start_recipe, end_recipe, variables = assembler.assemble_recipes()
+        return start_recipe, end_recipe, variables
+
     def _gcodelines(self, gcodepath, skip_start_end):
+        startgcode, endgcode, variables = self._get_start_end_variables()
+        self._variables.update(variables)
         if not skip_start_end:
-            startgcode = self._profile.values['print_start_sequence']
             if None is not startgcode:
                 for data in startgcode:
                     yield data
@@ -145,7 +152,6 @@ class S3gPrinter(object):
             for data in gcodefp:
                 yield data
         if not skip_start_end:
-            endgcode = self._profile.values['print_end_sequence']
             if None is not endgcode:
                 for data in endgcode:
                     yield data
@@ -160,6 +166,7 @@ class S3gPrinter(object):
 
     def _genericprint(self, task, writer, polltemperature, gcodepath, skip_start_end):
         parser = makerbot_driver.Gcode.GcodeParser()
+        parser.environment.update(self._variables)
         parser.state.profile = self._profile
         parser.state.set_build_name(str('xyzzy'))
         parser.s3g = makerbot_driver.s3g()
