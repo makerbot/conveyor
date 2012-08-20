@@ -89,8 +89,10 @@ namespace conveyor
         , m_jsonRpc (jsonRpc)
         , m_connectionThread (connectionThread)
         , m_printerAddedMethod(this)
+        , m_printerRemovedMethod(this)
     {
         this->m_jsonRpc->addMethod("printeradded", & m_printerAddedMethod);
+        this->m_jsonRpc->addMethod("printerremoved", & m_printerRemovedMethod);
     }
 
     ConveyorPrivate::~ConveyorPrivate (void)

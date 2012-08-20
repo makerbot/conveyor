@@ -15,6 +15,7 @@
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "printeraddedmethod.h"
+#include "printerremovedmethod.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -33,17 +34,6 @@ namespace conveyor
             );
 
         ~ConveyorPrivate (void);
-
-        /*  Commented out rather than deleted in case we need to fall back on the polling method
-        struct PrinterScanResult {
-            int pid;
-            int vid;
-            QString iSerial;
-            QString port;
-        };
-
-        QList<PrinterScanResult> printerScan();
-        */
 
         QList<Printer *> printers();
 
@@ -69,8 +59,9 @@ namespace conveyor
         ConnectionStream * const m_connectionStream;
         JsonRpc * const m_jsonRpc;
         ConnectionThread * const m_connectionThread;
-        
+
         PrinterAddedMethod m_printerAddedMethod;
+        PrinterRemovedMethod m_printerRemovedMethod;
         
         QList<Job *> m_jobs;
         QHash<QString, Printer *> m_printers;
