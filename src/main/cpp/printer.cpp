@@ -21,30 +21,6 @@ namespace conveyor
     {
     }
 
-    Printer::Printer
-        ( Conveyor * const conveyor
-        , QString const & uniqueName
-        , bool const canPrint
-        , bool const canPrintToFile
-        , ConnectionStatus const connectionStatus
-        , QString const & printerType
-        , int const numberOfExtruders
-        , bool const hasHeatedPlatform
-        )
-        : m_private
-            ( new PrinterPrivate (conveyor, this, uniqueName)
-            )
-    {
-        m_private->m_canPrint = canPrint;
-        m_private->m_canPrintToFile = canPrintToFile;
-        m_private->m_connectionStatus = connectionStatus;
-        m_private->m_displayName = uniqueName;
-        m_private->m_printerType = printerType;
-        m_private->m_numberOfToolheads = numberOfExtruders;
-        m_private->m_hasHeatedPlatform = hasHeatedPlatform;
-        m_private->m_jobs = conveyor->jobs();
-    }
-
     Printer::~Printer ()
     {
     }
@@ -131,7 +107,7 @@ namespace conveyor
     Conveyor * 
     Printer::conveyor()
     {
-        return m_private->m_Conveyor;
+        return m_private->m_conveyor;
     }
 
     Job *
@@ -193,6 +169,6 @@ namespace conveyor
     void Printer::cancelCurrentJob()
     {
         this->m_private->m_jobs.first()->m_private->m_Status = CANCELLED;
-        emit m_private->m_Conveyor->jobRemoved();
+//        emit m_private->m_conveyor->jobRemoved();
     }
 }
