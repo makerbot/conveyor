@@ -33,6 +33,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
     def __init__(self, config, server):
         conveyor.stoppable.StoppableThread.__init__(self)
         self._available = {}
+        self._blacklist = {}
         self._config = config
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
@@ -42,23 +43,43 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._stop = False
 
     def _runiteration(self):
+        #check if already attached printers are responding
+        profiledir = self._config['common']['profiledir']
+        factory = makerbot_driver.BotFactory(profiledir)
+        current_ports = self._available.keys()
+
+        #TODO: This should evict idle bots that aren't responding
+        #but on windows it seems to evict every bot.  Re-enable when I figure
+        #out why the temp check always throws an exception
+        # for portname in current_ports:
+        #     if not self._server.checkprinter(portname):
+        #         del self._available[portname]
+
+        now = time.time()
+        for portname, unlisttime in self._blacklist.items():
+            if unlisttime >= now:
+                del self._blacklist[portname]
+                self._log.debug('removing port from blacklist: %r', portname)
         available = self._detector.get_available_machines().copy()
         self._log.debug('available = %r', available)
+        self._log.debug('blacklist = %r', self._blacklist)
         old_keys = set(self._available.keys())
-        new_keys = set(available.keys())
+        new_keys = set(available.keys()) - set(self._blacklist.keys())
         detached = old_keys - new_keys
         attached = new_keys - old_keys
         for portname in detached:
             self._server.removeprinter(portname)
         if len(attached) > 0:
-            profiledir = self._config['common']['profiledir']
-            factory = makerbot_driver.BotFactory(profiledir)
             for portname in attached:
                 s3g, profile = factory.build_from_port(portname, True)
-                fp = s3g.writer.file
-                printer = S3gPrinter(portname, fp, profile)
+                printer = S3gPrinter(self._server, portname, s3g.writer, profile)
                 self._server.appendprinter(portname, printer)
         self._available = available
+
+    def blacklist(self, portname):
+        now = time.time()
+        unlisttime = now + self._config['server']['blacklisttime']
+        self._blacklist[portname] = unlisttime
 
     def run(self):
         while not self._stop:
@@ -97,12 +118,22 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._condition.notify_all()
 
 class S3gPrinter(object):
-    def __init__(self, devicename, fp, profile):
+    def __init__(self, server, devicename, writer, profile):
         self._devicename = devicename
-        self._fp = fp
+        self._writer = writer
+        self._fp = writer.file
         self._log = logging.getLogger(self.__class__.__name__)
         self._pollinterval = 5.0
         self._profile = profile
+        self._server = server
+
+    def get_extruder_temp(self):
+        parser = makerbot_driver.Gcode.GcodeParser()
+        parser.state.profile = self._profile
+        parser.state.set_build_name(str('xyzzy'))
+        parser.s3g = makerbot_driver.s3g()
+        parser.s3g.writer = writer
+        platformtemperature = parser.s3g.get_platform_temperature(0)
 
     def _gcodelines(self, gcodepath, skip_start_end):
         if not skip_start_end:
@@ -173,6 +204,7 @@ class S3gPrinter(object):
                 writer = makerbot_driver.Writer.StreamWriter(self._fp)
                 self._genericprint(task, writer, True, gcodepath, skip_start_end)
             except Exception as e:
+                self._server.evictprinter(self._devicename, self._fp)
                 self._log.exception('unhandled exception')
                 task.fail(e)
             else:

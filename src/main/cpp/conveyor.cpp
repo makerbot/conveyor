@@ -1,7 +1,6 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
 #include <QUuid>
-#include <QDebug>
 #include <QScopedPointer>
 #include <QTimer>
 
@@ -42,7 +41,8 @@ namespace conveyor
     {
     }
 
-    const QList<Printer *>& Conveyor::printers()
+    QList<Printer *>
+    Conveyor::printers (void)
     {
         return m_private->printers();
     }
@@ -51,5 +51,17 @@ namespace conveyor
     Conveyor::jobs (void)
     {
         return m_private->m_jobs;
+    }
+
+    void
+    Conveyor::emitPrinterAdded (Printer * const p)
+    {
+        emit printerAdded(p);
+    }
+
+    void
+    Conveyor::emitPrinterRemoved (Printer * const p)
+    {
+        emit printerRemoved(p);
     }
 }

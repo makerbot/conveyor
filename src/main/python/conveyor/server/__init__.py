@@ -235,7 +235,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             if 0 == len(keys):
                 # TODO: this is awful
                 profile = makerbot_driver.Profile('ReplicatorSingle')
-                printer = conveyor.printer.s3g.S3gPrinter(None, None, profile)
+                printer = conveyor.printer.s3g.S3gPrinter(self._server, None, None, profile)
             else:
                 printername = keys[0]
                 printer = self._server._printers[printername]
@@ -431,6 +431,7 @@ class Server(object):
     def __init__(self, config, sock):
         self._clientthreads = []
         self._config = config
+        self._detectorthread = None
         self._idcounter = 0
         self._lock = threading.Lock()
         self._log = logging.getLogger(self.__class__.__name__)
@@ -458,6 +459,12 @@ class Server(object):
         for clientthread in clientthreads:
             clientthread.printeradded(id, printer)
 
+    def evictprinter(self, id, fp):
+        self._log.info('printer evicted due to error: %s', id)
+        self._printers[id]._fp.close()
+        self._detectorthread.blacklist(id)
+        self.removeprinter(id)
+
     def removeprinter(self, id):
         self._log.info('printer disconnected: %s', id)
         with self._lock:
@@ -467,10 +474,22 @@ class Server(object):
         for clientthread in clientthreads:
             clientthread.printerremoved(id, printer)
 
+    def checkprinter(self, id):
+        printer = self._printers[id]
+        alive = True
+        try:
+            printer.get_extruder_temp()
+        except Exception as e:
+            self._log.info('Evicting printer due to error: ', e)
+            self.evictprinter(id, printer._fp)
+            alive = False
+        
+        return alive
+
     def run(self):
-        detectorthread = conveyor.printer.s3g.S3gDetectorThread(
+        self._detectorthread = conveyor.printer.s3g.S3gDetectorThread(
             self._config, self)
-        detectorthread.start()
+        self._detectorthread.start()
         taskqueuethread = _TaskQueueThread(self._queue)
         taskqueuethread.start()
         try:

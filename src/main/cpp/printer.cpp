@@ -41,7 +41,7 @@ namespace conveyor
         m_private->m_displayName = uniqueName;
         m_private->m_printerType = printerType;
         m_private->m_numberOfToolheads = numberOfExtruders;
-        m_private->m_hasPlatform = hasHeatedPlatform;
+        m_private->m_hasHeatedPlatform = hasHeatedPlatform;
         m_private->m_jobs = conveyor->jobs();
     }
 
@@ -90,7 +90,7 @@ namespace conveyor
 
     bool Printer::hasHeatedPlatform() const
     {
-        return m_private->m_hasPlatform;
+        return m_private->m_hasHeatedPlatform;
     }
 
     bool

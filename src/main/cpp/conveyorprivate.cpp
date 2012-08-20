@@ -1,6 +1,5 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include <QDebug>
 #include <string>
 #include <stdexcept>
 
@@ -105,35 +104,7 @@ namespace conveyor
         delete this->m_connection;
     }
 
-    /*  Commented out rather than deleted in case we need to fall back on the polling method
-    QList<ConveyorPrivate::PrinterScanResult>
-    ConveyorPrivate::printerScan()
-    {
-        Json::Value params (Json::arrayValue);
-        const Json::Value results(invoke_sync(this->m_jsonRpc, "printer_scan", params));
-
-        QList<PrinterScanResult> list;
-
-        for (unsigned i = 0; i < results.size(); i++) {
-            const Json::Value &r(results[i]);
-
-            // XXX: not sure what key indicates a valid entry, so
-            // using "iSerial" for now
-            if (r["iSerial"] != Json::nullValue) {
-                const PrinterScanResult li = {
-                    r["pid"].asInt(),
-                    r["vid"].asInt(),
-                    QString(r["iSerial"].asCString()),
-                    QString(r["port"].asCString())
-                };
-                list.push_back(li);
-            }
-        }
-
-        return list;
-    } */
-
-    QList<Printer *> &
+    QList<Printer *>
     ConveyorPrivate::printers()
     {
         Json::Value params (Json::arrayValue);
@@ -145,30 +116,46 @@ namespace conveyor
                 )
             );
 
-        m_printers.clear();
-
-        qDebug() << QString(results.toStyledString().c_str());
-
         for (unsigned i = 0; i < results.size(); i++)
         {
             const Json::Value &r(results[i]);
 
-            Printer * p
-                ( new Printer
-                    ( this->m_conveyor
-                    , QString(r["uniqueName"].asCString())
-                    , r["canPrint"].asBool()
-                    , r["canPrintToFile"].asBool()
-                    , connectionStatusFromString(QString(r["connectionStatus"].asCString()))
-                    , QString(r["printerType"].asCString())
-                    , r["numberOfToolheads"].asInt()
-                    , r["hasHeatedPlatform"].asBool()
-                    )
-                );
-            m_printers.push_back(p);
+            QString const uniqueName(r["uniqueName"].asCString());
+            bool const canPrint(r["canPrint"].asBool());
+            bool const canPrintToFile(r["canPrintToFile"].asBool());
+            ConnectionStatus const connectionStatus
+                ( connectionStatusFromString
+                    ( QString(r["connectionStatus"].asCString())));
+            QString const printerType(QString(r["printerType"].asCString()));
+            int const numberOfToolheads(r["numberOfToolheads"].asInt());
+            bool const hasHeatedPlatform(r["hasHeatedPlatform"].asBool());
+
+            Printer * const printer(printerByUniqueName(uniqueName));
+
+            printer->m_private->m_uniqueName = uniqueName;
+            printer->m_private->m_canPrint = canPrint;
+            printer->m_private->m_canPrintToFile = canPrintToFile;
+            printer->m_private->m_connectionStatus = connectionStatus;
+            printer->m_private->m_printerType = printerType;
+            printer->m_private->m_numberOfToolheads = numberOfToolheads;
+            printer->m_private->m_hasHeatedPlatform = hasHeatedPlatform;
+
         }
 
-        return m_printers;
+        return m_printers.values();
+    }
+
+    Printer *
+    ConveyorPrivate::printerByUniqueName(QString uniqueName)
+    {
+        Printer * p = m_printers.value(uniqueName);
+
+        if(p == 0) {
+            p = new Printer(this->m_conveyor, uniqueName);
+            m_printers.insert(uniqueName, p);
+        }
+
+        return p;
     }
 
     Job *
@@ -234,5 +221,17 @@ namespace conveyor
             );
         Job * const job (new Job (printer, "0")); // TODO: fetch id from result
         return job;
+    }
+
+    void
+    ConveyorPrivate::emitPrinterAdded (Printer * const p)
+    {
+        m_conveyor->emitPrinterAdded(p);
+    }
+
+    void
+    ConveyorPrivate::emitPrinterRemoved (Printer * const p)
+    {
+        m_conveyor->emitPrinterRemoved(p);
     }
 }

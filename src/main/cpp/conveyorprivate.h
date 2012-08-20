@@ -3,6 +3,7 @@
 #ifndef CONVEYORPRIVATE_H
 #define CONVEYORPRIVATE_H
 
+#include <QHash>
 #include <QList>
 #include <QString>
 
@@ -44,7 +45,9 @@ namespace conveyor
         QList<PrinterScanResult> printerScan();
         */
 
-        QList<Printer *> & printers();
+        QList<Printer *> printers();
+
+        Printer * printerByUniqueName(QString uniqueName);
 
         Job * print
             ( Printer * printer
@@ -70,7 +73,10 @@ namespace conveyor
         PrinterAddedMethod m_printerAddedMethod;
         
         QList<Job *> m_jobs;
-        QList<Printer *> m_printers;
+        QHash<QString, Printer *> m_printers;
+
+        void emitPrinterAdded(Printer *);
+        void emitPrinterRemoved(Printer *);
     };
 }
 

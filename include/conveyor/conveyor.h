@@ -23,7 +23,7 @@ namespace conveyor
         ~Conveyor (void);
 
         QList<Job *> const & jobs (void);
-        QList<Printer *> const & printers (void);
+        QList<Printer *> printers (void);
 
     signals:
         void printerAdded (Printer *);
@@ -51,12 +51,8 @@ namespace conveyor
         friend class PrinterPrivate;
         friend class ConveyorPrivate;
 
-/*  Commented out rather than deleted in case we need to fall back on the polling method
-        QList<Printer *> m_printers;
-
-    private slots:
-        void poll();
-*/
+        void emitPrinterAdded(Printer *);
+        void emitPrinterRemoved(Printer *);
     };
 }
 
