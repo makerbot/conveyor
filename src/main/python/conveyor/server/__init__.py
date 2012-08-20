@@ -461,9 +461,9 @@ class Server(object):
 
     def evictprinter(self, id, fp):
         self._log.info('printer evicted due to error: %s', id)
+        self._printers[id]._fp.close()
         self._detectorthread.blacklist(id)
-        self._removeprinter(id)
-        self._fp.close()
+        self.removeprinter(id)
 
     def removeprinter(self, id):
         self._log.info('printer disconnected: %s', id)
@@ -473,6 +473,18 @@ class Server(object):
             clientthreads = self._clientthreads[:]
         for clientthread in clientthreads:
             clientthread.printerremoved(id, printer)
+
+    def checkprinter(self, id):
+        printer = self._printers[id]
+        alive = True
+        try:
+            printer.get_extruder_temp()
+        except Exception as e:
+            self._log.info('Evicting printer due to error: ', e)
+            self.evictprinter(id, printer._fp)
+            alive = False
+        
+        return alive
 
     def run(self):
         self._detectorthread = conveyor.printer.s3g.S3gDetectorThread(

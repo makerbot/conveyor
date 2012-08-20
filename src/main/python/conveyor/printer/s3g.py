@@ -43,6 +43,18 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._stop = False
 
     def _runiteration(self):
+        #check if already attached printers are responding
+        profiledir = self._config['common']['profiledir']
+        factory = makerbot_driver.BotFactory(profiledir)
+        current_ports = self._available.keys()
+
+        #TODO: This should evict idle bots that aren't responding
+        #but on windows it seems to evict every bot.  Re-enable when I figure
+        #out why the temp check always throws an exception
+        # for portname in current_ports:
+        #     if not self._server.checkprinter(portname):
+        #         del self._available[portname]
+
         now = time.time()
         for portname, unlisttime in self._blacklist.items():
             if unlisttime >= now:
@@ -58,12 +70,9 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         for portname in detached:
             self._server.removeprinter(portname)
         if len(attached) > 0:
-            profiledir = self._config['common']['profiledir']
-            factory = makerbot_driver.BotFactory(profiledir)
             for portname in attached:
                 s3g, profile = factory.build_from_port(portname, True)
-                fp = s3g.writer.file
-                printer = S3gPrinter(portname, fp, profile)
+                printer = S3gPrinter(self._server, portname, s3g.writer, profile)
                 self._server.appendprinter(portname, printer)
         self._available = available
 
@@ -109,13 +118,22 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._condition.notify_all()
 
 class S3gPrinter(object):
-    def __init__(self, server, devicename, fp, profile):
+    def __init__(self, server, devicename, writer, profile):
         self._devicename = devicename
-        self._fp = fp
+        self._writer = writer
+        self._fp = writer.file
         self._log = logging.getLogger(self.__class__.__name__)
         self._pollinterval = 5.0
         self._profile = profile
         self._server = server
+
+    def get_extruder_temp(self):
+        parser = makerbot_driver.Gcode.GcodeParser()
+        parser.state.profile = self._profile
+        parser.state.set_build_name(str('xyzzy'))
+        parser.s3g = makerbot_driver.s3g()
+        parser.s3g.writer = writer
+        platformtemperature = parser.s3g.get_platform_temperature(0)
 
     def _gcodelines(self, gcodepath, skip_start_end):
         if not skip_start_end:
