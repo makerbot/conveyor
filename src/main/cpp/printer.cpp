@@ -111,9 +111,11 @@ namespace conveyor
     }
 
     Job *
-    Printer::print (QString const & inputFile)
+    Printer::print (QString const & inputFile
+                    , const SlicerConfiguration & slicer_conf)
     {
-        Job * const result (this->m_private->print (inputFile));
+        Job * const result (this->m_private->print (inputFile,
+                                                    slicer_conf));
         return result;
     }
 
@@ -121,9 +123,12 @@ namespace conveyor
     Printer::printToFile
         ( QString const & inputFile
         , QString const & outputFile
+        , const SlicerConfiguration & slicer_conf
         )
     {
-        Job * const result (this->m_private->printToFile (inputFile, outputFile));
+        Job * const result (this->m_private->printToFile (inputFile,
+                                                          outputFile,
+                                                          slicer_conf));
         return result;
     }
 
@@ -131,9 +136,12 @@ namespace conveyor
     Printer::slice
         ( QString const & inputFile
         , QString const & outputFile
+        , const SlicerConfiguration & slicer_conf
         )
     {
-        Job * const result (this->m_private->slice (inputFile, outputFile));
+        Job * const result (this->m_private->slice (inputFile,
+                                                    outputFile,
+                                                    slicer_conf));
         return result;
     }
 

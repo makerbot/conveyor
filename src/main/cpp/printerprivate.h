@@ -9,6 +9,8 @@
 
 namespace conveyor
 {
+    class SlicerConfiguration;
+
     class PrinterPrivate
     {
     public:
@@ -18,14 +20,17 @@ namespace conveyor
             , QString const & uniqueName
             );
 
-        Job * print (QString const & inputFile);
+        Job * print (QString const & inputFile
+                     , const SlicerConfiguration & slicer_conf);
         Job * printToFile
             ( QString const & inputFile
             , QString const & outputFile
+            , const SlicerConfiguration & slicer_conf
             );
         Job * slice
             ( QString const & inputFile
             , QString const & outputFile
+            , const SlicerConfiguration & slicer_conf
             );
 
         void updateFromJson (Json::Value const &);

@@ -42,16 +42,19 @@ namespace conveyor
         Job * print
             ( Printer * printer
             , QString const & inputFile
+            , const SlicerConfiguration & slicer_conf
             );
         Job * printToFile
             ( Printer * printer
             , QString const & inputFile
             , QString const & outputFile
+            , const SlicerConfiguration & slicer_conf
             );
         Job * slice
             ( Printer * printer
             , QString const & inputFile
             , QString const & outputFile
+            , const SlicerConfiguration & slicer_conf
             );
 
         Conveyor * const m_conveyor;

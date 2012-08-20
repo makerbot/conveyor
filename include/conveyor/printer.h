@@ -12,6 +12,8 @@
 
 namespace conveyor
 {
+    class SlicerConfiguration;
+
     class Printer : public QObject
     {
         Q_OBJECT
@@ -59,11 +61,14 @@ namespace conveyor
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);
 
-        virtual Job * print (QString const & inputFile);
+        virtual Job * print (QString const & inputFile,
+                             const SlicerConfiguration & slicer_conf);
 
-        virtual Job * printToFile (QString const & inputFile, QString const & outputFile);
+        virtual Job * printToFile (QString const & inputFile, QString const & outputFile,
+                                   const SlicerConfiguration & slicer_conf);
 
-        virtual Job * slice (QString const & inputFile, QString const & outputFile);
+        virtual Job * slice (QString const & inputFile, QString const & outputFile,
+                             const SlicerConfiguration & slicer_conf);
 
     signals:
         /** Emitted when the connectionStatus changes. 
