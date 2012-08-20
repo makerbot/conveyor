@@ -197,7 +197,7 @@ Server
 
             params
 
-                { "printername":     (string)
+                { "profilename":     (profile-name)
                 , "inputpath":       (absolute-file-path)
                 , "outputpath":      (absolute-file-path)
                 , "preprocessor":    (string)
@@ -219,7 +219,7 @@ Server
 
             params
 
-                { "printername":     (printer-name)
+                { "profilename":     (profile-name)
                 , "inputpath":       (absolute-file-path)
                 , "outputpath":      (absolute-file-path)
                 , "preprocessor":    (string)
@@ -271,7 +271,9 @@ Server
 
             result
 
-                [(printer), ...]
+                [ (printer)
+                , ...
+                ]
 
         getjob
 
@@ -297,7 +299,9 @@ Server
 
             result
 
-                [(job), ...]
+                [ (job)
+                , ...
+                ]
 
         dir
 
