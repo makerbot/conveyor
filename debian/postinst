@@ -44,7 +44,7 @@ if [ "$1" = configure ]; then
 		(
 			. /usr/share/conveyor/virtualenv/bin/activate
 			pip install --use-mirrors argparse coverage doxypy lockfile python-daemon unittest-xml-reporting
-			easy_install /usr/share/conveyor/pyserial-2.7_mb-py2.7.egg
+			easy_install /usr/share/conveyor/pyserial-2.7_mb2.1-py2.7.egg
 		)
 		chgrp -R conveyor /usr/share/conveyor/virtualenv
 
