@@ -155,7 +155,7 @@ class AbstractMain(object):
     # Ideally conveyord should create this directory itself on OS X. However
     # we're going to leave that aside for now and get it done.
     def _setconfigdefaults_common(self):
-        if os.platform == 'darwin':
+        if sys.platform == 'darwin':
             defsock = 'unix:/var/run/conveyord.socket'
         else:
             defsock = 'unix:/var/run/conveyor/conveyord.socket'
@@ -197,7 +197,7 @@ class AbstractMain(object):
 
     # See above comments for why we do an explicit check for Mac OS X.
     def _setconfigdefaults_server(self):
-        if os.platform == 'darwin':
+        if sys.platform == 'darwin':
             defpid = '/var/run/conveyord.pid'
         else:
             defpid = '/var/run/conveyor/conveyord.pid'
