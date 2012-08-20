@@ -78,6 +78,10 @@ Common Types
 
             A job identifier.
 
+        material-name :: (string)
+
+            A material name.
+
         preprocessor-name :: (string)
 
             A preprocessor name.
@@ -85,6 +89,7 @@ Common Types
         printer
 
             { "printername":       (printer-name)
+            , "profilename":       (profile-name)
             , "displayName":       (string)
             , "uniqueName":        (string)
             , "printerType":       (string)
@@ -183,6 +188,7 @@ Server
                 , "archive_lvl":     (archive-level)
                 , "archive_dir:"     (absolute-directory-path)
                 , "slicer_settings": (slicer-settings)
+                , "material":        (material-name)
                 }
 
             result
@@ -205,6 +211,7 @@ Server
                 , "archive_lvl":     (archive-level)
                 , "archive_dir:"     (absolute-directory-path)
                 , "slicer_settings": (slicer-settings)
+                , "material":        (material-name)
                 }
 
             result
@@ -227,6 +234,7 @@ Server
                 , "archive_lvl":     (archive-level)
                 , "archive_dir:"     (absolute-directory-path)
                 , "slicer_settings": (slicer-settings)
+                , "material":        (material-name)
                 }
 
             result
