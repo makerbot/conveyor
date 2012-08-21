@@ -33,7 +33,7 @@ except ImportError:
 
 if not hasattr(logging.config, 'dictConfig'):
     import conveyor.dictconfig
-    logging.config.dictConfig = dictconfig.dictConfig
+    logging.config.dictConfig = conveyor.dictconfig.dictConfig
 
 import conveyor.event
 
