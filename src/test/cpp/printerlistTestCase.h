@@ -3,14 +3,13 @@
 
 #include <cppunit/extensions/HelperMacros.h>
 
-#include <conveyor/conveyor.h>
+#include <conveyor.h>
 
 class PrinterListTestCase : public CPPUNIT_NS::TestFixture
 {
     CPPUNIT_TEST_SUITE(PrinterListTestCase);
 	
-	CPPUNIT_TEST(sampleTest);
-	CPPUNIT_TEST(otherTest);
+	CPPUNIT_TEST(printersConnectedTest);
 
 	CPPUNIT_TEST_SUITE_END();
 
