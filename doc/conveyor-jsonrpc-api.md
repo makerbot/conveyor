@@ -72,11 +72,18 @@ Common Types
         job
 
             { "id": (job-id)
+            , "currenttask": (task)
             }
 
         job-id :: (number)
 
             A job identifier.
+            
+        currenttask
+        
+            { "name": (string)
+            , "progress": (int)
+            }
 
         material-name :: (string)
 

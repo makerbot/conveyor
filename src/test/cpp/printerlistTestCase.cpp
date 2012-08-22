@@ -8,7 +8,7 @@ void
 PrinterListTestCase::setUp()
 {
     // this never gets deleted.
-    m_conveyor = conveyor::Conevyor::connectToDaemon(
+    m_conveyor = conveyor::Conveyor::connectToDaemon(
                 conveyor::Address::defaultAddress());
 }
 
@@ -18,7 +18,7 @@ PrinterListTestCase::printersConnectedTest()
     std::cout << "Testing that a printers request does not throw an exception:";
     try
     {
-        m_conveyor.printers();
+        m_conveyor->printers();
     }
     catch(...)
     {
