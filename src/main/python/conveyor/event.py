@@ -138,7 +138,7 @@ class Event(object):
             try:
                 func(*args, **kwargs)
             except:
-                self._log.error('internal error', exc_info=True)
+                self._log.exception('internal error')
 
     def __repr__(self):
         result = '%s(name=%r, eventqueue=%r)' % (

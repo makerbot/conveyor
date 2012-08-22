@@ -188,7 +188,7 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         Json::Value null;
-        params["printername"] = null;
+        params["profilename"] = null;
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["preprocessor"] = null;
@@ -211,7 +211,7 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         Json::Value null;
-        params["printername"] = null;
+        params["profilename"] = null;
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["preprocessor"] = null;

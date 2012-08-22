@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import collections
 import logging
 import makerbot_driver
 import os.path
@@ -43,18 +44,8 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._stop = False
 
     def _runiteration(self):
-        #check if already attached printers are responding
         profiledir = self._config['common']['profiledir']
         factory = makerbot_driver.BotFactory(profiledir)
-        current_ports = self._available.keys()
-
-        #TODO: This should evict idle bots that aren't responding
-        #but on windows it seems to evict every bot.  Re-enable when I figure
-        #out why the temp check always throws an exception
-        # for portname in current_ports:
-        #     if not self._server.checkprinter(portname):
-        #         del self._available[portname]
-
         now = time.time()
         for portname, unlisttime in self._blacklist.items():
             if unlisttime >= now:
@@ -72,8 +63,13 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         if len(attached) > 0:
             for portname in attached:
                 s3g, profile = factory.build_from_port(portname, True)
-                printer = S3gPrinter(self._server, portname, s3g.writer, profile)
-                self._server.appendprinter(portname, printer)
+                printerid = available[portname]['iSerial']
+                fp = s3g.writer.file
+                s3gprinterthread = S3gPrinterThread(
+                    self._server, self._config, portname, printerid, profile,
+                    fp)
+                s3gprinterthread.start()
+                self._server.appendprinter(printerid, s3gprinterthread)
         self._available = available
 
     def blacklist(self, portname):
@@ -82,149 +78,212 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._blacklist[portname] = unlisttime
 
     def run(self):
-        while not self._stop:
-            try:
+        try:
+            while not self._stop:
                 self._runiteration()
-            except:
-                self._log.error('unhandled exception', exc_info=True)
-            if not self._stop:
-                with self._condition:
-                    self._condition.wait(10.0)
+                if not self._stop:
+                    with self._condition:
+                        self._condition.wait(10.0)
+        except:
+            self._log.error('unhandled exception', exc_info=True)
 
     def stop(self):
         with self._condition:
             self._stop = True
             self._condition.notify_all()
 
+def _gettemperature(profile, s3g):
+    tools = {}
+    for key in profile.values['tools'].keys():
+        tool = int(key)
+        tools[key] = s3g.get_toolhead_temperature(tool)
+    heated_platforms = {}
+    for key in profile.values['heated_platforms'].keys():
+        heated_platform = int(key)
+        heated_platforms[key] = s3g.get_platform_temperature(heated_platform)
+    temperature = {
+        'tools': tools,
+        'heated_platforms': heated_platforms
+    }
+    return temperature
+
 class S3gPrinterThread(conveyor.stoppable.StoppableThread):
-    def __init__(self, fp, profile):
+    def __init__(self, server, config, portname, printerid, profile, fp):
         conveyor.stoppable.StoppableThread.__init__(self)
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
+        self._config = config
+        self._currenttask = None
         self._fp = fp
+        self._log = logging.getLogger(self.__class__.__name__)
+        self._portname = portname
+        self._printerid = printerid
         self._profile = profile
+        self._queue = collections.deque()
+        self._server = server
         self._stop = False
+
+    def getportname(self):
+        return self._portname
+
+    def getprofile(self):
+        return self._profile
+
+    def print(self, job, buildname, gcodepath, skip_start_end, task):
+        self._log.debug(
+            'job=%r, buildname=%r, gcodepath=%r, skip_start_end=%r, task=%r',
+            job, buildname, gcodepath, skip_start_end, task)
+        with self._condition:
+            tuple_ = job, buildname, gcodepath, skip_start_end, task
+            self._queue.appendleft(tuple_)
+            self._condition.notify_all()
 
     def run(self):
         try:
+            s3g = makerbot_driver.s3g()
+            s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp)
+            now = time.time()
+            polltime = now + 5.0
             while not self._stop:
-                pass
+                with self._condition:
+                    if 0 == len(self._queue):
+                        tuple_ = None
+                    else:
+                        tuple_ = self._queue.pop()
+                if None is tuple_:
+                    now = time.time()
+                    if polltime <= now:
+                        polltime = now + 5.0
+                        temperature = _gettemperature(self._profile, s3g)
+                        self._server.updateprinter(
+                            self._printerid, temperature)
+                    with self._condition:
+                        self._log.debug('waiting')
+                        self._condition.wait(1.0)
+                        self._log.debug('resumed')
+                else:
+                    job, buildname, gcodepath, skip_start_end, task = tuple_
+                    with self._condition:
+                        self._currenttask = task
+                    def stoppedcallback(task):
+                        with self._condition:
+                            self._currenttask = None
+                    task.stoppedevent.attach(stoppedcallback)
+                    driver = S3gDriver()
+                    driver.print(
+                        self._fp, self._profile, buildname, True, 5.0,
+                        gcodepath, skip_start_end, task)
         except:
-            pass
+            self._log.exception('unhandled exception')
+            self._server.evictprinter(self._devicename, self._fp)
+        finally:
+            self._fp.close()
 
     def stop(self):
         with self._condition:
             self._stop = True
+            if None is not self._currenttask:
+                self._currenttask.cancel(None)
             self._condition.notify_all()
 
-class S3gPrinter(object):
-    def __init__(self, server, devicename, writer, profile):
-        self._devicename = devicename
-        self._writer = writer
-        self._fp = writer.file
+class S3gDriver(object):
+    '''Stateless S3G printer driver.
+
+    All of the state related to a print job is passed on the call stack.
+    Instances of this class can safely be used by multiple threads.
+    '''
+
+    def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
-        self._pollinterval = 5.0
-        self._profile = profile
-        self._server = server
 
-    def get_extruder_temp(self):
-        parser = makerbot_driver.Gcode.GcodeParser()
-        parser.state.profile = self._profile
-        parser.state.set_build_name(str('xyzzy'))
-        parser.s3g = makerbot_driver.s3g()
-        parser.s3g.writer = writer
-        platformtemperature = parser.s3g.get_platform_temperature(0)
-
-    def _gcodelines(self, gcodepath, skip_start_end):
-        if not skip_start_end:
-            startgcode = self._profile.values['print_start_sequence']
-            if None is not startgcode:
-                for data in startgcode:
+    def _gcodelines(self, profile, gcodepath, skip_start_end):
+        def generator():
+            if not skip_start_end:
+                startgcode = profile.values['print_start_sequence']
+                if None is not startgcode:
+                    for data in startgcode:
+                        yield data
+            with open(gcodepath, 'r') as fp:
+                for data in fp:
                     yield data
-        with open(gcodepath, 'r') as gcodefp:
-            for data in gcodefp:
-                yield data
-        if not skip_start_end:
-            endgcode = self._profile.values['print_end_sequence']
-            if None is not endgcode:
-                for data in endgcode:
-                    yield data
+            if not skip_start_end:
+                endgcode = profile.values['print_end_sequence']
+                if None is not endgcode:
+                    for data in endgcode:
+                        yield data
+        gcodelines = list(generator())
+        return gcodelines
 
-    def _countgcodelines(self, gcodepath, skip_start_end=False):
+    def _countgcodelines(self, gcodelines):
         lines = 0
         bytes = 0
-        for data in enumerate(self._gcodelines(gcodepath, skip_start_end)):
+        for data in enumerate(gcodelines):
             lines += 1
             bytes += len(data)
         return (lines, bytes)
 
-    def _genericprint(self, task, writer, polltemperature, gcodepath, skip_start_end):
-        parser = makerbot_driver.Gcode.GcodeParser()
-        parser.state.profile = self._profile
-        parser.state.set_build_name(str('xyzzy'))
-        parser.s3g = makerbot_driver.s3g()
-        parser.s3g.writer = writer
-        now = time.time()
-        polltime = now + self._pollinterval
-        if polltemperature:
-            platformtemperature = parser.s3g.get_platform_temperature(0)
-            toolheadtemperature = parser.s3g.get_toolhead_temperature(0)
-        totallines, totalbytes = self._countgcodelines(gcodepath, skip_start_end)
-        currentbyte = 0
-        for currentline, data in enumerate(self._gcodelines(gcodepath, skip_start_end)):
-            currentbyte += len(data)
+    def _genericprint(
+        self, profile, buildname, writer, polltemperature, pollinterval,
+        gcodepath, skip_start_end, task):
+            def stoppedcallback(task):
+                writer.set_external_stop()
+            task.stoppedevent.attach(stoppedcallback)
+            parser = makerbot_driver.Gcode.GcodeParser()
+            parser.state.profile = profile
+            parser.state.set_build_name(str(buildname))
+            parser.s3g = makerbot_driver.s3g()
+            parser.s3g.writer = writer
             now = time.time()
+            polltime = now + pollinterval
             if polltemperature:
-                if polltime <= now:
-                    platformtemperature = parser.s3g.get_platform_temperature(0)
-                    toolheadtemperature = parser.s3g.get_toolhead_temperature(0)
-                    self._log.info('platform temperature: %r', platformtemperature)
-                    self._log.info('toolhead temperature: %r', toolheadtemperature)
-            data = data.strip()
-            self._log.info('gcode: %r', data)
-            data = str(data)
-            parser.execute_line(data)
-            progress = {
-                'currentline': currentline,
-                'totallines': totallines,
-                'currentbyte': currentbyte,
-                'totalbytes': totalbytes,
-            }
-            if polltime <= now:
-                polltime = now + self._pollinterval
-                if polltemperature:
-                    progress['platformtemperature'] = platformtemperature
-                    progress['toolheadtemperature'] = toolheadtemperature
-                task.heartbeat(progress)
-
-    def print(self, gcodepath, skip_start_end):
-        self._log.debug('gcodepath=%r', gcodepath)
-        def runningcallback(task):
-            try:
-                writer = makerbot_driver.Writer.StreamWriter(self._fp)
-                self._genericprint(task, writer, True, gcodepath, skip_start_end)
-            except Exception as e:
-                self._server.evictprinter(self._devicename, self._fp)
-                self._log.exception('unhandled exception')
-                task.fail(e)
-            else:
+                temperature = _gettemperature(profile, parser.s3g)
+            gcodelines = self._gcodelines(profile, gcodepath, skip_start_end)
+            totallines, totalbytes = self._countgcodelines(gcodelines)
+            currentbyte = 0
+            for currentline, data in enumerate(gcodelines):
+                if conveyor.task.TaskState.RUNNING != task.state:
+                    break
+                else:
+                    # Increment currentbyte *before* stripping whitespace
+                    # out of data or the currentbyte will not match the
+                    # actual file position.
+                    currentbyte += len(data)
+                    data = data.strip()
+                    now = time.time()
+                    if polltemperature and polltime <= now:
+                        polltime = now + 5.0
+                        temperature = _gettemperature(profile, parser.s3g)
+                    self._log.debug('gcode: %r', data)
+                    # The s3g module cannot handle unicode strings.
+                    data = str(data)
+                    parser.execute_line(data)
+                    progress = {
+                        'currentline': currentline,
+                        'totallines': totallines,
+                        'currentbyte': currentbyte,
+                        'totalbytes': totalbytes,
+                    }
+                    if polltime <= now:
+                        polltime = now + pollinterval
+                        if polltemperature:
+                            progress['temperature'] = temperature
+                        task.heartbeat(progress)
+            if conveyor.task.TaskState.STOPPED != task.state:
                 task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(runningcallback)
-        return task
 
-    def printtofile(self, gcodepath, s3gpath, skip_start_end):
-        self._log.debug('gcodepath=%r', gcodepath)
-        def runningcallback(task):
-            try:
-                with open(s3gpath, 'w') as s3gfp:
-                    writer = makerbot_driver.Writer.FileWriter(s3gfp)
-                    self._genericprint(task, writer, False, gcodepath, skip_start_end)
-            except Exception as e:
-                self._log.exception('unhandled exception')
-                task.fail(e)
-            else:
-                task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(runningcallback)
-        return task
+    def print(
+        self, fp, profile, buildname, polltemperature,
+        pollinterval, gcodepath, skip_start_end, task):
+            writer = makerbot_driver.Writer.StreamWriter(fp)
+            self._genericprint(
+                profile, buildname, writer, polltemperature, pollinterval,
+                gcodepath, skip_start_end, task)
+
+    def printtofile(
+        self, outputpath, profile, buildname, gcodepath, skip_start_end,
+        task):
+            with open(outputpath, 'wb') as fp:
+                writer = makerbot_driver.Writer.FileWriter(fp)
+                self._genericprint(
+                    profile, buildname, writer, False, 5.0,
+                    gcodepath, skip_start_end, task)
