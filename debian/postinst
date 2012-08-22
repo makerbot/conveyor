@@ -18,9 +18,13 @@ if [ "$1" = configure ]; then
 			adduser conveyor plugdev
 			adduser conveyor dialout
 		fi
+		# Create and set permissions for /var/run/conveyor
+		mkdir -p -m 3777 /var/run/conveyor
+		chmod g+s /var/run/conveyor
+		chgrp conveyor /var/run/conveyor
 		# Set proper permissions for any existing lock files
-		chgrp conveyor /var/run/conveyor* >/dev/null 2>&1 || true
-		chmod 0640 /var/run/conveyor* >/dev/null 2>&1 || true
+		chgrp conveyor /var/run/conveyor/* >/dev/null 2>&1 || true
+		chmod 0640 /var/run/conveyor/* >/dev/null 2>&1 || true
 
 		# Create and set permissions for /var/log/conveyor
 		mkdir -p -m 3777 /var/log/conveyor
@@ -40,7 +44,7 @@ if [ "$1" = configure ]; then
 		(
 			. /usr/share/conveyor/virtualenv/bin/activate
 			pip install --use-mirrors argparse coverage doxypy lockfile python-daemon unittest-xml-reporting
-			easy_install /usr/share/conveyor/pyserial-2.7_mb-py2.7.egg
+			easy_install /usr/share/conveyor/pyserial-2.7_mb2.1-py2.7.egg
 		)
 		chgrp -R conveyor /usr/share/conveyor/virtualenv
 

@@ -1,7 +1,6 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
 #include <string>
-#include <stdexcept>
 
 #include <json/value.h>
 #include <jsonrpc.h>
@@ -13,21 +12,6 @@
 #include "connectionthread.h"
 #include "conveyorprivate.h"
 #include "synchronouscallback.h"
-
-namespace
-{
-    static
-    conveyor::ConnectionStatus
-    connectionStatusFromString (QString const & string)
-    {
-        if("connected" == string)
-            return conveyor::CONNECTED;
-        else if("not connected" == string)
-            return conveyor::NOT_CONNECTED;
-
-        throw std::invalid_argument (string.toStdString());
-    }
-}
 
 namespace conveyor
 {
@@ -89,8 +73,10 @@ namespace conveyor
         , m_jsonRpc (jsonRpc)
         , m_connectionThread (connectionThread)
         , m_printerAddedMethod(this)
+        , m_printerRemovedMethod(this)
     {
         this->m_jsonRpc->addMethod("printeradded", & m_printerAddedMethod);
+        this->m_jsonRpc->addMethod("printerremoved", & m_printerRemovedMethod);
     }
 
     ConveyorPrivate::~ConveyorPrivate (void)
@@ -120,26 +106,11 @@ namespace conveyor
         {
             const Json::Value &r(results[i]);
 
-            QString const uniqueName(r["uniqueName"].asCString());
-            bool const canPrint(r["canPrint"].asBool());
-            bool const canPrintToFile(r["canPrintToFile"].asBool());
-            ConnectionStatus const connectionStatus
-                ( connectionStatusFromString
-                    ( QString(r["connectionStatus"].asCString())));
-            QString const printerType(QString(r["printerType"].asCString()));
-            int const numberOfToolheads(r["numberOfToolheads"].asInt());
-            bool const hasHeatedPlatform(r["hasHeatedPlatform"].asBool());
+            Printer * const printer
+                ( printerByUniqueName
+                    ( QString(r["uniqueName"].asCString())));
 
-            Printer * const printer(printerByUniqueName(uniqueName));
-
-            printer->m_private->m_uniqueName = uniqueName;
-            printer->m_private->m_canPrint = canPrint;
-            printer->m_private->m_canPrintToFile = canPrintToFile;
-            printer->m_private->m_connectionStatus = connectionStatus;
-            printer->m_private->m_printerType = printerType;
-            printer->m_private->m_numberOfToolheads = numberOfToolheads;
-            printer->m_private->m_hasHeatedPlatform = hasHeatedPlatform;
-
+            printer->m_private->updateFromJson(r);
         }
 
         return m_printers.values();

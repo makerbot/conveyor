@@ -150,10 +150,18 @@ class AbstractMain(object):
             os.path.abspath(os.path.dirname(__file__)), '../../../../')
         return conveyordir
 
+    # Mac OS X treats /var/run differently than other unices and
+    # launchd has no reliable way to create a /var/run/conveyor on launch.
+    # Ideally conveyord should create this directory itself on OS X. However
+    # we're going to leave that aside for now and get it done.
     def _setconfigdefaults_common(self):
+        if sys.platform == 'darwin':
+            defsock = 'unix:/var/run/conveyord.socket'
+        else:
+            defsock = 'unix:/var/run/conveyor/conveyord.socket'
         self._config.setdefault('common', {})
         self._config['common'].setdefault(
-            'socket', 'unix:/var/run/conveyord.socket')
+            'socket', defsock)
         self._config['common'].setdefault('slicer', 'miraclegrue')
         self._config['common'].setdefault('serialport', '/dev/ttyACM0')
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
@@ -187,10 +195,15 @@ class AbstractMain(object):
                 'src/main/skeinforge/Replicator slicing defaults'))
         self._config['skeinforge'].setdefault('profile', profile)
 
+    # See above comments for why we do an explicit check for Mac OS X.
     def _setconfigdefaults_server(self):
+        if sys.platform == 'darwin':
+            defpid = '/var/run/conveyord.pid'
+        else:
+            defpid = '/var/run/conveyor/conveyord.pid'
         self._config.setdefault('server', {})
         self._config['server'].setdefault(
-            'pidfile', '/var/run/conveyor/conveyord.pid')
+            'pidfile', defpid)
         self._config['server'].setdefault('chdir', True)
         self._config['server'].setdefault('eventthreads', 2)
         self._config['server'].setdefault('blacklisttime', 10.0)

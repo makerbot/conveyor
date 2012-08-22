@@ -45,7 +45,7 @@ Common Types
             There are two connection statuses defined:
 
                 "connected"
-                "disconnected"
+                "notConnected"
 
         extruder-profile
 
@@ -88,10 +88,9 @@ Common Types
 
         printer
 
-            { "printername":       (printer-name)
-            , "profilename":       (profile-name)
+            { "profilename":       (profile-name)
             , "displayName":       (string)
-            , "uniqueName":        (string)
+            , "uniqueName":        (unique-name)
             , "printerType":       (string)
             , "canPrint":          (bool)
             , "canPrintToFile":    (bool)
@@ -100,9 +99,9 @@ Common Types
             , "connectionStatus":  (connection-status)
             }
 
-        printer-name :: (string)
+        unique-name :: (string)
 
-            A printer name.
+            A unique name to identify a unique printer.
 
         profile-name :: (string)
 
@@ -181,7 +180,7 @@ Server
 
             params
 
-                { "printername":     (printer-name)
+                { "uniquename":      (unique-name)
                 , "inputpath":       (absolute-file-path)
                 , "preprocessor":    (preprocessor-name)
                 , "skip_start_end":  (bool)
@@ -222,8 +221,6 @@ Server
 
             This method creates and starts a slice job.
 
-            The "printername" field name and type should be changed to "profilename" and (profile-name).
-
             params
 
                 { "profilename":     (profile-name)
@@ -261,7 +258,7 @@ Server
 
             params
 
-                { "printername": (printer-name)
+                { "uniquename": (unique-name)
                 }
 
             result
@@ -339,8 +336,7 @@ Client
 
             params
 
-                { "printername": (printer-name)
-                }
+                (printer)
 
         printerchanged
 

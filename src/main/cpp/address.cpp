@@ -15,7 +15,17 @@ namespace
     conveyor::TcpAddress DefaultTcpAddress ("localhost", 9999);
 
     conveyor::PipeAddress DefaultPipeAddress
-        ( "/var/run/conveyord.socket"
+        ( 
+            #ifdef __APPLE__
+            /** Mac OS X treats /var/run differently than other unices and
+            launchd has no reliable way to create a /var/run/conveyor on launch.
+            Ideally conveyord should create this directory itself on OS X. However
+            we're going to leave that aside for now and get it done.
+            */
+            "/var/run/conveyord.socket"
+            #else
+            "/var/run/conveyor/conveyord.socket"
+            #endif
         );
 
     static

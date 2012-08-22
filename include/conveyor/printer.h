@@ -82,17 +82,6 @@ namespace conveyor
     private:
         Printer (Conveyor * conveyor, QString const & uniqueName);
 
-        Printer
-            ( Conveyor * conveyor
-            , QString const & uniqueName
-            , bool canPrint
-            , bool canPrintToFile
-            , ConnectionStatus connectionStatus
-            , QString const & printerType
-            , int numberOfExtruders
-            , bool hasHeatedPlatform
-            );
-
         QScopedPointer <PrinterPrivate> m_private;
 
         friend class Conveyor;

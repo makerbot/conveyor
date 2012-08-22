@@ -28,6 +28,8 @@ namespace conveyor
             , QString const & outputFile
             );
 
+        void updateFromJson (Json::Value const &);
+
         Conveyor * const m_conveyor;
         Printer * const m_printer;
         QString m_displayName;
@@ -37,7 +39,6 @@ namespace conveyor
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasHeatedPlatform;
-        Conveyor * m_Conveyor;
         int m_numberOfToolheads;
         ConnectionStatus m_connectionStatus;
     };
