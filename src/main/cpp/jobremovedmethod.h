@@ -1,7 +1,7 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#ifndef PRINTERADDEDMETHOD_H
-#define PRINTERADDEDMETHOD_H (1)
+#ifndef JOBREMOVEDMETHOD_H
+#define JOBREMOVEDMETHOD_H (1)
 
 #include <jsonrpc.h>
 
@@ -9,11 +9,11 @@
 
 namespace conveyor
 {
-    class PrinterAddedMethod : public JsonRpcMethod
+    class JobRemovedMethod : public JsonRpcMethod
     {
     public:
-        PrinterAddedMethod (ConveyorPrivate * conveyorPrivate);
-        ~PrinterAddedMethod (void);
+        JobRemovedMethod (ConveyorPrivate * conveyorPrivate);
+        ~JobRemovedMethod (void);
         
         Json::Value invoke (Json::Value const & params);
         
@@ -22,4 +22,4 @@ namespace conveyor
     };
 }
 
-#endif // PRINTERADDEDMETHOD_H
+#endif // JOBREMOVEDMETHOD_H
