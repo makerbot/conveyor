@@ -31,6 +31,10 @@ try:
 except ImportError:
     import unittest
 
+if not hasattr(logging.config, 'dictConfig'):
+    import conveyor.dictconfig
+    logging.config.dictConfig = conveyor.dictconfig.dictConfig
+
 import conveyor.event
 
 def earlylogging(program): # pragma: no cover
