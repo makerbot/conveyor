@@ -102,11 +102,14 @@ namespace conveyor
         FD_SET (this->m_fd, & readfds);
 
         struct timeval timeval;
-        timeval.tv_sec = 1u;
-        timeval.tv_usec = 0u;
 
         for (;;)
         {
+            /* Linux select() modifies timeval to contain the time
+               remaining until timeout. It must be reset on subsequent
+               calls. */
+            timeval.tv_sec = 1u;
+            timeval.tv_usec = 0u;
             int const nfds
                 ( select (this->m_fd + 1, & readfds, 0, 0, & timeval)
                 );
