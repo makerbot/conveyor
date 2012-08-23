@@ -363,7 +363,8 @@ class AbstractMain(object):
                 code = None
                 if self._parsedargs.level:
                     root = logging.getLogger()
-                    root.setLevel(self._parsedargs.level)
+                    root.setLevel(
+                        conveyor.log.checklevel(self._parsedargs.level))
         return code
 
     def _parseaddress(self):

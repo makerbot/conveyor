@@ -31,11 +31,20 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.event
+
 if not hasattr(logging.config, 'dictConfig'):
     import conveyor.dictconfig
     logging.config.dictConfig = conveyor.dictconfig.dictConfig
 
-import conveyor.event
+if hasattr(logging, '_checkLevel'):
+    _checkLevel = logging._checkLevel
+else:
+    import conveyor.dictconfig
+    _checkLevel = conveyor.dictconfig._checkLevel
+
+def checklevel(level):
+    return _checkLevel(level)
 
 def earlylogging(program): # pragma: no cover
     '''Initialize console logging for the early part of a conveyor process.'''
@@ -93,8 +102,9 @@ def getfiles():
 
     logging._acquireLock()
     try:
-        for ref in logging._handlerList:
-            handler = ref()
+        for handler in logging._handlerList:
+            if callable(handler):
+                handler = handler() # The handler is a weakref.ref as of Python 2.7
             if isinstance(handler, logging.StreamHandler):
                 yield handler.stream
     finally:
@@ -112,7 +122,7 @@ class ConsoleFormatter(logging.Formatter):
             s = logging.Formatter.format(self, record)
         else:
             record.message = record.getMessage()
-            if self.usesTime():
+            if '%(asctime)' in self._fmt:
                 record.asctime = self.formatTime(record, self.datefmt)
             s = self._fmt % record.__dict__
         return s
