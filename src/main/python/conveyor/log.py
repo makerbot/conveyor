@@ -102,8 +102,9 @@ def getfiles():
 
     logging._acquireLock()
     try:
-        for ref in logging._handlerList:
-            handler = ref()
+        for handler in logging._handlerList:
+            if callable(handler):
+                handler = handler() # The handler is a weakref.ref as of Python 2.7
             if isinstance(handler, logging.StreamHandler):
                 yield handler.stream
     finally:
