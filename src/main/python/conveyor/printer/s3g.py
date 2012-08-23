@@ -187,7 +187,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         with self._condition:
             self._stop = True
             if None is not self._currenttask:
-                self._currenttask.cancel(None)
+                self._currenttask.cancel()
             self._condition.notify_all()
 
 class S3gDriver(object):
