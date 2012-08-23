@@ -139,7 +139,9 @@ class S3gPrinter(object):
     def _get_start_end_variables(self):
         assembler = makerbot_driver.GcodeAssembler(self._profile)
         start_recipe, end_recipe, variables = assembler.assemble_recipes()
-        return start_recipe, end_recipe, variables
+        start_gcode = assembler.assemble_start_sequence(start_recipe)
+        end_gcode = assembler.assemble_end_sequence(end_recipe)
+        return start_gcode, end_gcode, variables
 
     def _gcodelines(self, gcodepath, skip_start_end):
         startgcode, endgcode, variables = self._get_start_end_variables()
