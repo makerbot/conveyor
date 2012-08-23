@@ -279,23 +279,20 @@ class DictConfigurator(BaseConfigurator):
         try:
             if incremental:
                 handlers = config.get('handlers', EMPTY_DICT)
-                # incremental handler config only if handler name
-                # ties in to logging._handlers (Python 2.7)
-                if sys.version_info[:2] == (2, 7):
-                    for name in handlers:
-                        if name not in logging._handlers:
-                            raise ValueError('No handler found with '
-                                             'name %r'  % name)
-                        else:
-                            try:
-                                handler = logging._handlers[name]
-                                handler_config = handlers[name]
-                                level = handler_config.get('level', None)
-                                if level:
-                                    handler.setLevel(_checkLevel(level))
-                            except StandardError, e:
-                                raise ValueError('Unable to configure handler '
-                                                 '%r: %s' % (name, e))
+                for name in handlers:
+                    if name not in logging._handlers:
+                        raise ValueError('No handler found with '
+                                         'name %r'  % name)
+                    else:
+                        try:
+                            handler = logging._handlers[name]
+                            handler_config = handlers[name]
+                            level = handler_config.get('level', None)
+                            if level:
+                                handler.setLevel(_checkLevel(level))
+                        except StandardError, e:
+                            raise ValueError('Unable to configure handler '
+                                             '%r: %s' % (name, e))
                 loggers = config.get('loggers', EMPTY_DICT)
                 for name in loggers:
                     try:
