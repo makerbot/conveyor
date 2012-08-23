@@ -15,7 +15,7 @@ UNAME=`uname`
 MAC_DISTUTILS=/System/Library/Frameworks/Python.framework/Versions/$PYVERSION/lib/python$PYVERSION/distutils/__init__.py
 if [ "$UNAME" == "Darwin" ]
 then
-    MACVER=`system_profiler SPSoftwareDataType |grep '^ *System Version:' |sed 's/.*Mac OS X //' | sed 's/\.[^.]*$//'`
+    MACVER=`system_profiler SPSoftwareDataType |grep '^ *System Version:' |sed 's/.*OS X //' | sed 's/\.[^.]*$//'`
 
     export PATH=$PATH:$BASEDIR/submodule/conveyor_bins/mac/$MACVER
 
