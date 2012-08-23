@@ -112,7 +112,7 @@ class ConsoleFormatter(logging.Formatter):
             s = logging.Formatter.format(self, record)
         else:
             record.message = record.getMessage()
-            if self.usesTime():
+            if '%(asctime)' in self._fmt:
                 record.asctime = self.formatTime(record, self.datefmt)
             s = self._fmt % record.__dict__
         return s
