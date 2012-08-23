@@ -208,8 +208,8 @@ class S3gDriver(object):
         return start_gcode, end_gcode, variables
 
     def _gcodelines(self, profile, gcodepath, skip_start_end):
+        startgcode, endgcode, variables = self._get_start_end_variables(profile)
         def generator():
-            startgcode, endgcode, variables = self._get_start_end_variables(profile)
             if not skip_start_end:
                 if None is not startgcode:
                     for data in startgcode:
@@ -222,7 +222,7 @@ class S3gDriver(object):
                     for data in endgcode:
                         yield data
         gcodelines = list(generator())
-        return gcodelines
+        return gcodelines, variables
 
     def _countgcodelines(self, gcodelines):
         lines = 0
@@ -247,7 +247,8 @@ class S3gDriver(object):
             polltime = now + pollinterval
             if polltemperature:
                 temperature = _gettemperature(profile, parser.s3g)
-            gcodelines = self._gcodelines(profile, gcodepath, skip_start_end)
+            gcodelines, variables = self._gcodelines(profile, gcodepath, skip_start_end)
+            parser.environment.update(variables)
             totallines, totalbytes = self._countgcodelines(gcodelines)
             currentbyte = 0
             for currentline, data in enumerate(gcodelines):
