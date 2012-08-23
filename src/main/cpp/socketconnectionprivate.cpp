@@ -98,8 +98,6 @@ namespace conveyor
         )
     {
         fd_set readfds;
-        FD_ZERO (& readfds);
-        FD_SET (this->m_fd, & readfds);
 
         struct timeval timeval;
 
@@ -110,6 +108,9 @@ namespace conveyor
                calls. */
             timeval.tv_sec = 1u;
             timeval.tv_usec = 0u;
+            /* select() may also invalidate the file descriptor set. */
+            FD_ZERO (& readfds);
+            FD_SET (this->m_fd, & readfds);
             int const nfds
                 ( select (this->m_fd + 1, & readfds, 0, 0, & timeval)
                 );

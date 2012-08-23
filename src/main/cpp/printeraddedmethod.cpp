@@ -8,7 +8,9 @@
 
 namespace conveyor
 {
-    PrinterAddedMethod::PrinterAddedMethod (ConveyorPrivate * const conveyorPrivate)
+    PrinterAddedMethod::PrinterAddedMethod
+        ( ConveyorPrivate * const conveyorPrivate
+        )
         : m_conveyorPrivate(conveyorPrivate)
     { 
     }
