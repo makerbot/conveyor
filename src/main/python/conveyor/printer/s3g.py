@@ -201,7 +201,7 @@ class S3gDriver(object):
         self._log = logging.getLogger(self.__class__.__name__)
 
     def _get_start_end_variables(self, profile):
-        ga = makerbot_driver.GcodeAssembler(profile)
+        ga = makerbot_driver.GcodeAssembler(profile, profile.path)
         start_template, end_template, variables = ga.assemble_recipe()
         start_gcode = ga.assemble_start_sequence(start_template)
         end_gcode = ga.assemble_end_sequence(end_template)
