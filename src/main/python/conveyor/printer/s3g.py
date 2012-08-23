@@ -196,10 +196,17 @@ class S3gDriver(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
+    def _get_start_end_variables(self, profile):
+        ga = makerbot_driver.GcodeAssembler(profile)
+        start_template, end_template, variables = ga.assemble_recipe()
+        start_gcode = ga.assemble_start_sequence(start_template)
+        end_gcode = ga.assemble_end_sequence(end_template)
+        return start_gcode, end_gcode, variables
+
     def _gcodelines(self, profile, gcodepath, skip_start_end):
         def generator():
+            startgcode, endgcode, variables = self._get_start_end_variables(profile)
             if not skip_start_end:
-                startgcode = profile.values['print_start_sequence']
                 if None is not startgcode:
                     for data in startgcode:
                         yield data
@@ -207,7 +214,6 @@ class S3gDriver(object):
                 for data in fp:
                     yield data
             if not skip_start_end:
-                endgcode = profile.values['print_end_sequence']
                 if None is not endgcode:
                     for data in endgcode:
                         yield data
