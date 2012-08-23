@@ -46,6 +46,25 @@ Common Types
 
                 "connected"
                 "notConnected"
+                
+        job-state :: (string)
+        
+            A job's state.
+            There are three states defined:
+            
+                "pending"
+                "running"
+                "stopped"
+                
+        job-conclusion :: (string)
+        
+            How did the job conclude?
+            four conclusions are defined, null implies not-finished:
+            
+                "ended"
+                "failed"
+                "cancelled"
+                null
 
         extruder-profile
 
@@ -72,14 +91,16 @@ Common Types
         job
 
             { "id": (job-id)
-            , "currenttask": (task)
+            , "state": (job-state)
+            , "conclusion": (job-conclusion)
+            , "currentstep": (job-step)
             }
 
         job-id :: (number)
 
             A job identifier.
             
-        currenttask
+        job-step
         
             { "name": (string)
             , "progress": (int)
@@ -369,4 +390,12 @@ Client
 
                 (job)
 
+        jobremoved
+
+            The server invokes this method after a job finishes.
+
+            params
+
+                (job)
+                
 <!-- vim:set ai et fenc=utf-8 ff=unix sw=4 syntax=markdown ts=4: -->
