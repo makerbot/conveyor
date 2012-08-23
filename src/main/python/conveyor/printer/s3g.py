@@ -62,14 +62,18 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
             self._server.removeprinter(portname)
         if len(attached) > 0:
             for portname in attached:
-                s3g, profile = factory.build_from_port(portname, True)
-                printerid = available[portname]['iSerial']
-                fp = s3g.writer.file
-                s3gprinterthread = S3gPrinterThread(
-                    self._server, self._config, portname, printerid, profile,
-                    fp)
-                s3gprinterthread.start()
-                self._server.appendprinter(printerid, s3gprinterthread)
+                try:
+                    s3g, profile = factory.build_from_port(portname, True)
+                    printerid = available[portname]['iSerial']
+                    fp = s3g.writer.file
+                    s3gprinterthread = S3gPrinterThread(
+                        self._server, self._config, portname, printerid, profile,
+                        fp)
+                    s3gprinterthread.start()
+                    self._server.appendprinter(printerid, s3gprinterthread)
+                except:
+                    self._log.exception('unhandled exception')
+                    self.blacklist(portname)
         self._available = available
 
     def blacklist(self, portname):
