@@ -196,10 +196,17 @@ class S3gDriver(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
+    def _get_start_end_variables(self, profile):
+        ga = makerbot_driver.GcodeAssembler(profile)
+        start_template, end_template, variables = ga.assemble_recipe()
+        start_gcode = ga.assemble_start_sequence(start_template)
+        end_gcode = ga.assemble_end_sequence(end_template)
+        return start_gcode, end_gcode, variables
+
     def _gcodelines(self, profile, gcodepath, skip_start_end):
+        startgcode, endgcode, variables = self._get_start_end_variables(profile)
         def generator():
             if not skip_start_end:
-                startgcode = profile.values['print_start_sequence']
                 if None is not startgcode:
                     for data in startgcode:
                         yield data
@@ -207,12 +214,11 @@ class S3gDriver(object):
                 for data in fp:
                     yield data
             if not skip_start_end:
-                endgcode = profile.values['print_end_sequence']
                 if None is not endgcode:
                     for data in endgcode:
                         yield data
         gcodelines = list(generator())
-        return gcodelines
+        return gcodelines, variables
 
     def _countgcodelines(self, gcodelines):
         lines = 0
@@ -237,7 +243,8 @@ class S3gDriver(object):
             polltime = now + pollinterval
             if polltemperature:
                 temperature = _gettemperature(profile, parser.s3g)
-            gcodelines = self._gcodelines(profile, gcodepath, skip_start_end)
+            gcodelines, variables = self._gcodelines(profile, gcodepath, skip_start_end)
+            parser.environment.update(variables)
             totallines, totalbytes = self._countgcodelines(gcodelines)
             currentbyte = 0
             for currentline, data in enumerate(gcodelines):
