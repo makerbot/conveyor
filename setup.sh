@@ -15,7 +15,7 @@ UNAME=`uname`
 MAC_DISTUTILS=/System/Library/Frameworks/Python.framework/Versions/$PYVERSION/lib/python$PYVERSION/distutils/__init__.py
 if [ "$UNAME" == "Darwin" ]
 then
-    MACVER=`system_profiler SPSoftwareDataType |grep '^ *System Version:' |sed 's/.*OS X //' | sed 's/\.[^.]*$//'`
+    MACVER=`system_profiler SPSoftwareDataType |grep '^ *System Version:' |sed 's/.*OS X //' | sed 's/\(10\.[0-9]\)*.*$/\1/'`
 
     export PATH=$PATH:$BASEDIR/submodule/conveyor_bins/mac/$MACVER
 
@@ -25,15 +25,6 @@ then
     fi
 fi
 
-PYVERSION=$1
-
-if [ -z $PYVERSION ]
-then
-    SERIALVERSION=`python --version 2>&1 | sed s/'Python '//|sed s/\.[0-9]*$//`
-else
-    SERIALVERSION=$PYVERSION
-fi
- 
 if [ ! -d virtualenv/ ]
 then
 	python$PYBINVERSION virtualenv.py virtualenv
