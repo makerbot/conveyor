@@ -59,12 +59,12 @@ Common Types
         job-conclusion :: (string)
         
             How did the job conclude?
-            four conclusions are defined, null implies not-finished:
+            four conclusions are defined:
             
+                "notconcluded"
                 "ended"
                 "failed"
                 "cancelled"
-                null
 
         extruder-profile
 
@@ -91,6 +91,7 @@ Common Types
         job
 
             { "id": (job-id)
+            , "name": (job-name)
             , "state": (job-state)
             , "conclusion": (job-conclusion)
             , "currentstep": (job-step)
@@ -100,11 +101,19 @@ Common Types
 
             A job identifier.
             
+        job-name :: (string)
+        
+            A job name, human-readable.
+            
         job-step
         
-            { "name": (string)
-            , "progress": (int)
+            { "name": (job-step-name)
+            , "progress": (number)
             }
+            
+        job-step-name :: (string)
+        
+            The name of a job step, e.g "slicing", "printing".
 
         material-name :: (string)
 
