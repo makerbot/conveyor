@@ -31,11 +31,20 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.event
+
 if not hasattr(logging.config, 'dictConfig'):
     import conveyor.dictconfig
     logging.config.dictConfig = conveyor.dictconfig.dictConfig
 
-import conveyor.event
+if hasattr(logging, '_checkLevel'):
+    _checkLevel = logging._checkLevel
+else:
+    import conveyor.dictconfig
+    _checkLevel = conveyor.dictconfig._checkLevel
+
+def checklevel(level):
+    return _checkLevel(level)
 
 def earlylogging(program): # pragma: no cover
     '''Initialize console logging for the early part of a conveyor process.'''
