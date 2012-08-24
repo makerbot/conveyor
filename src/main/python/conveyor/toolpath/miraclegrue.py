@@ -19,8 +19,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-from decimal import *
-
 import logging
 import os
 import subprocess
@@ -30,7 +28,6 @@ import tempfile
 import traceback
 
 import conveyor.event
-import conveyor.task
 
 class MiracleGrueConfiguration(object):
     def __init__(self):
@@ -42,98 +39,62 @@ class MiracleGrueToolpath(object):
         self._configuration = configuration
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def generate(self, stlpath, gcodepath, with_start_end, printer):
-        def runningcallback(task):
-            self._log.info('slicing with Miracle Grue')
-            try:
-                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
-                    if with_start_end:
-                        for line in printer._profile.values['print_start_sequence']:
-                            print(line, file=startfp)
-                startpath = startfp.name
-                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
-                    if with_start_end:
-                        for line in printer._profile.values['print_end_sequence']:
-                            print(line, file=endfp)
-                endpath = endfp.name
-                arguments = list(
-                    self._getarguments(stlpath, gcodepath, startpath, endpath))
-                self._log.debug('arguments=%r', arguments)
-                popen = subprocess.Popen(arguments, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                code = popen.wait()
-                self._log.debug(
-                    'Miracle Grue terminated with status code %d', code)
-                if 0 == code:
-                    os.unlink(startpath)
-                    os.unlink(endpath)
-                else:
-                    while True:
-                        line = popen.stdout.readline()
-                        if '' == line:
-                            break
-                        else:
-                            self._log.debug('miracle-grue: %s', line)
-                    raise Exception(code)
-            except Exception as e:
-                self._log.exception('unhandled exception')
-                task.fail(e)
-                raise
+    def slice(self, profile, inputpath, outputpath, with_start_end, task):
+        self._log.info('slicing with Miracle Grue')
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
+                if with_start_end:
+                    for line in profile.values['print_start_sequence']:
+                        print(line, file=startfp)
+            startpath = startfp.name
+            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
+                if with_start_end:
+                    for line in profile.values['print_end_sequence']:
+                        print(line, file=endfp)
+            endpath = endfp.name
+            arguments = list(
+                self._getarguments(
+                    inputpath, outputpath, startpath, endpath))
+            self._log.debug('arguments=%r', arguments)
+            popen = subprocess.Popen(
+                arguments, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            code = popen.wait()
+            self._log.debug(
+                'Miracle Grue terminated with status code %d', code)
+            if 0 == code:
+                os.unlink(startpath)
+                os.unlink(endpath)
             else:
-                task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(runningcallback)
-        return task
+                while True:
+                    line = popen.stdout.readline()
+                    if '' == line:
+                        break
+                    else:
+                        self._log.debug('miracle-grue: %s', line)
+                raise Exception(code)
+        except Exception as e:
+            self._log.exception('unhandled exception')
+            task.fail(e)
+            raise
+        else:
+            task.end(None)
 
-    def _getarguments(self, stlpath, gcodepath, startpath, endpath):
+    def _getarguments(self, inputpath, outputpath, startpath, endpath):
         for method in (
             self._getarguments_executable,
             self._getarguments_miraclegrue,
             ):
-                for iterable in method(stlpath, gcodepath, startpath, endpath):
+                for iterable in method(inputpath, outputpath, startpath, endpath):
                     for value in iterable:
                         yield value
 
-    def _getarguments_executable(self, stlpath, gcodepath, startpath, endpath):
+    def _getarguments_executable(self, inputpath, outputpath, startpath, endpath):
         yield (self._configuration.miraclegruepath,)
 
-    def _getarguments_miraclegrue(self, stlpath, gcodepath, startpath, endpath):
+    def _getarguments_miraclegrue(self, inputpath, outputpath, startpath, endpath):
         yield ('-c', self._configuration.miracleconfigpath,)
-        yield ('-o', gcodepath,)
+        yield ('-o', outputpath,)
         yield ('-s', startpath,)
         yield('-e', endpath,)
-        yield (stlpath,)
-
-def _main(argv):
-    if 3 != len(argv):
-        print('usage: %s STL GCODE' % (argv[0],), file=sys.stderr)
-        code = 1
-    else:
-        logging.basicConfig()
-        eventqueue = conveyor.event.geteventqueue()
-        thread = threading.Thread(target=eventqueue.run)
-        thread.start()
-        try:
-            condition = threading.Condition()
-            def stoppedcallback(task):
-                with condition:
-                    condition.notify_all()
-            generator = MiracleGrueToolpath()
-            task = generator.generate(argv[1], argv[2])
-            task.stoppedevent.attach(stoppedcallback)
-            task.start()
-            with condition:
-                condition.wait()
-            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                code = 0
-            else:
-                code = 1
-        finally:
-            eventqueue.quit()
-            thread.join(1)
-    return code
-
-if '__main__' == __name__:
-    code = _main(sys.argv)
-    if None is code:
-        code = 0
-    sys.exit(code)
+        yield (inputpath,)

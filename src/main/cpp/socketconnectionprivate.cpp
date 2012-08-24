@@ -98,15 +98,19 @@ namespace conveyor
         )
     {
         fd_set readfds;
-        FD_ZERO (& readfds);
-        FD_SET (this->m_fd, & readfds);
 
         struct timeval timeval;
-        timeval.tv_sec = 1u;
-        timeval.tv_usec = 0u;
 
         for (;;)
         {
+            /* Linux select() modifies timeval to contain the time
+               remaining until timeout. It must be reset on subsequent
+               calls. */
+            timeval.tv_sec = 1u;
+            timeval.tv_usec = 0u;
+            /* select() may also invalidate the file descriptor set. */
+            FD_ZERO (& readfds);
+            FD_SET (this->m_fd, & readfds);
             int const nfds
                 ( select (this->m_fd + 1, & readfds, 0, 0, & timeval)
                 );
@@ -123,7 +127,7 @@ namespace conveyor
         }
         else
         {
-            result = ::read (this->m_fd, buffer, length);
+            result = recv (this->m_fd, buffer, length, 0);
             if (static_cast <ssize_t> (-1) == result)
             {
                 throw SocketReadError(length);
@@ -148,7 +152,7 @@ namespace conveyor
     {
         while (length > static_cast <std::size_t> (0u))
         {
-            ssize_t const result (::write (this->m_fd, buffer, length));
+            ssize_t const result (send (this->m_fd, buffer, length, 0));
             if (static_cast <ssize_t> (-1) == result)
             {
                 throw SocketWriteError(length);

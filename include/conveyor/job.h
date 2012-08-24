@@ -5,6 +5,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QScopedPointer>
 #include <QString>
 
 #include <conveyor/fwd.h>
@@ -17,24 +18,29 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        Job (Printer * printer, QString const & id);
-        Job (Printer * printer, QString const & name, int progress);
+        ~Job (void);
 
-        int progress (void);
+        int id (void) const;
+        QString name (void) const;
+        JobState jobState (void) const;
+        JobConclusion jobConclusion (void) const;
 
-        JobStatus jobStatus (void) const;
+        int currentStepProgress (void) const;
+        QString currentStepName (void) const;
 
     signals:
-        void JobPercentageChanged (int percent); // TODO: rename to progressChanged
-
-        /** Emitted when the jobStatus changes */
-        void jobStatusChanged (JobStatus);
+        void changed (void);
 
     private:
-        JobPrivate * const m_private;
+        Job (Conveyor * conveyor, Printer * printer, int const & id);
+
+        QScopedPointer <JobPrivate> m_private;
+
+        void emitChanged (void);
 
         friend class Conveyor;
         friend class ConveyorPrivate;
+        friend class JobPrivate;
         friend class Printer;
         friend class PrinterPrivate;
     };

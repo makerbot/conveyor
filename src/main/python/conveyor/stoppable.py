@@ -20,6 +20,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import gc
+import threading
 import weakref
 
 try:
@@ -36,6 +37,11 @@ class Stoppable(object):
 
     def stop(self):
         raise NotImplementedError
+
+class StoppableThread(threading.Thread, Stoppable):
+    def __init__(self, *args, **kwargs):
+        threading.Thread.__init__(self, *args, **kwargs)
+        Stoppable.__init__(self)
 
 class StoppableManager(object):
     _instance = None

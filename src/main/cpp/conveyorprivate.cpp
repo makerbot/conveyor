@@ -1,107 +1,21 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include <QMutex>
-#include <QMutexLocker>
-#include <QWaitCondition>
+#include <string>
 
 #include <json/value.h>
 #include <jsonrpc.h>
-#include <conveyor.h>
+
 #include <conveyor/connection.h>
+#include <conveyor/connectionstatus.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "conveyorprivate.h"
-
-namespace
-{
-    class SynchronousCallback : public JsonRpcCallback
-    {
-    public:
-        void response (Json::Value const & response);
-        Json::Value wait (void);
-
-    private:
-        QMutex m_mutex;
-        QWaitCondition m_condition;
-        Json::Value m_value;
-    };
-
-    void
-    SynchronousCallback::response (Json::Value const & response)
-    {
-        QMutexLocker locker (& this->m_mutex);
-        this->m_value = response;
-        this->m_condition.wakeAll ();
-    }
-
-    Json::Value
-    SynchronousCallback::wait (void)
-    {
-        QMutexLocker locker (& this->m_mutex);
-        this->m_condition.wait (& this->m_mutex);
-        return this->m_value;
-    }
-
-    static
-    bool
-    isErrorResponse (Json::Value const & response)
-    {
-        bool const result
-            ( Json::Value ("2.0") == response["jsonrpc"]
-              and response["error"].isObject ()
-              and response["error"]["code"].isNumeric ()
-              and response["error"]["message"].isString ()
-            );
-        return result;
-    }
-
-    static
-    bool
-    isSuccessResponse (Json::Value const & response)
-    {
-        bool const result
-            ( Json::Value ("2.0") == response["jsonrpc"]
-              and response.isMember ("result")
-            );
-        return result;
-    }
-
-    static
-    Json::Value
-    invoke_sync
-        ( JsonRpc * jsonRpc
-        , std::string const & methodName
-        , Json::Value const & params
-        )
-    {
-        SynchronousCallback callback;
-        jsonRpc->invoke (methodName, params, & callback);
-        Json::Value const response (callback.wait ());
-        if (isErrorResponse (response))
-        {
-            Json::Value const error (response["error"]);
-            int const code (error["code"].asInt ());
-            std::string const message (error["code"].asString ());
-            Json::Value const data (error["data"]);
-            throw JsonRpcException (code, message, data);
-        }
-        else
-        if (not isSuccessResponse (response))
-        {
-            throw std::exception ();
-        }
-        else
-        {
-            Json::Value const result (response["result"]);
-            return result;
-        }
-    }
-}
+#include "synchronouscallback.h"
 
 namespace conveyor
 {
-    ConveyorPrivate *
+    Conveyor *
     ConveyorPrivate::connect (Address const * const address)
     {
         Connection * const connection (address->createConnection ());
@@ -116,17 +30,21 @@ namespace conveyor
         try
         {
             Json::Value const hello
-                ( invoke_sync (jsonRpc, "hello", Json::Value (Json::arrayValue))
+                ( SynchronousCallback::invoke
+                    ( jsonRpc
+                    , "hello"
+                    , Json::Value (Json::arrayValue)
+                    )
                 );
-            ConveyorPrivate * const private_
-                ( new ConveyorPrivate
+            Conveyor * const conveyor
+                ( new Conveyor
                     ( connection
                     , connectionStream
                     , jsonRpc
                     , connectionThread
                     )
                 );
-            return private_;
+            return conveyor;
         }
         catch (...)
         {
@@ -143,16 +61,30 @@ namespace conveyor
     }
 
     ConveyorPrivate::ConveyorPrivate
-        ( Connection * const connection
+        ( Conveyor * const conveyor
+        , Connection * const connection
         , ConnectionStream * const connectionStream
         , JsonRpc * const jsonRpc
         , ConnectionThread * const connectionThread
         )
-        : m_connection (connection)
+        : m_conveyor (conveyor)
+        , m_connection (connection)
         , m_connectionStream (connectionStream)
         , m_jsonRpc (jsonRpc)
         , m_connectionThread (connectionThread)
+        , m_printerAddedMethod(this)
+        , m_printerChangedMethod(this)
+        , m_printerRemovedMethod(this)
+        , m_jobAddedMethod(this)
+        , m_jobChangedMethod(this)
+        , m_jobRemovedMethod(this)
     {
+        this->m_jsonRpc->addMethod("printeradded", & m_printerAddedMethod);
+        this->m_jsonRpc->addMethod("printerchanged", & m_printerChangedMethod);
+        this->m_jsonRpc->addMethod("printerremoved", & m_printerRemovedMethod);
+        this->m_jsonRpc->addMethod("jobadded", & m_jobAddedMethod);
+        this->m_jsonRpc->addMethod("jobchanged", & m_jobChangedMethod);
+        this->m_jsonRpc->addMethod("jobremoved", & m_jobRemovedMethod);
     }
 
     ConveyorPrivate::~ConveyorPrivate (void)
@@ -166,31 +98,56 @@ namespace conveyor
         delete this->m_connection;
     }
 
-    QList<ConveyorPrivate::PrinterScanResult>
-    ConveyorPrivate::printerScan()
+    QList<Printer *>
+    ConveyorPrivate::printers()
     {
         Json::Value params (Json::arrayValue);
-        const Json::Value results(invoke_sync(this->m_jsonRpc, "printer_scan", params));
+        Json::Value const results
+            ( SynchronousCallback::invoke
+                ( this->m_jsonRpc
+                , "getprinters"
+                , params
+                )
+            );
 
-        QList<PrinterScanResult> list;
-
-        for (unsigned i = 0; i < results.size(); i++) {
+        for (unsigned i = 0; i < results.size(); i++)
+        {
             const Json::Value &r(results[i]);
 
-            // XXX: not sure what key indicates a valid entry, so
-            // using "iSerial" for now
-            if (r["iSerial"] != Json::nullValue) {
-                const PrinterScanResult li = {
-                    r["pid"].asInt(),
-                    r["vid"].asInt(),
-                    QString(r["iSerial"].asCString()),
-                    QString(r["port"].asCString())
-                };
-                list.push_back(li);
-            }
+            Printer * const printer
+                ( printerByUniqueName
+                    ( QString(r["uniqueName"].asCString())));
+
+            printer->m_private->updateFromJson(r);
         }
 
-        return list;
+        return m_printers.values();
+    }
+
+    Printer *
+    ConveyorPrivate::printerByUniqueName(QString uniqueName)
+    {
+        Printer * p = m_printers.value(uniqueName);
+
+        if(p == 0) {
+            p = new Printer(this->m_conveyor, uniqueName);
+            m_printers.insert(uniqueName, p);
+        }
+
+        return p;
+    }
+
+    QList<Job *>
+    ConveyorPrivate::jobs()
+    {
+        //TODO: Should this look more like printers()?
+        return m_jobs.values();
+    }
+
+    Job *
+    ConveyorPrivate::jobById(int id)
+    {
+        return m_jobs.value(id);
     }
 
     Job *
@@ -199,14 +156,30 @@ namespace conveyor
         , QString const & inputFile
         )
     {
-        Json::Value params (Json::arrayValue);
-        params.append(Json::Value (inputFile.toStdString ()));
-        params.append(Json::Value ());
-        params.append(Json::Value (false));
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        params["printername"] = null;
+        params["inputpath"] = Json::Value (inputFile.toStdString ());
+        params["preprocessor"] = null;
+        params["skip_start_end"] = Json::Value (false);
+        params["archive_lvl"] = Json::Value ("all");
+        params["archive_dir"] = null;
+        params["slicer_settings"] = null;
+        params["material"] = null;
         Json::Value const result
-            ( invoke_sync (this->m_jsonRpc, "print", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
             );
-        Job * const job (new Job (printer, "0")); // TODO: fetch id from result
+
+        int const jobId(result["id"].asInt());
+
+        Job * const job
+            ( new Job
+                ( m_conveyor
+                , printer
+                , jobId));
+
+        m_jobs.insert(jobId, job);
+
         return job;
     }
 
@@ -217,15 +190,29 @@ namespace conveyor
         , QString const & outputFile
         )
     {
-        Json::Value params (Json::arrayValue);
-        params.append(Json::Value (inputFile.toStdString ()));
-        params.append(Json::Value (outputFile.toStdString ()));
-        params.append(Json::Value ());
-        params.append(Json::Value (false));
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        params["profilename"] = null;
+        params["inputpath"] = Json::Value (inputFile.toStdString ());
+        params["outputpath"] = Json::Value (outputFile.toStdString ());
+        params["preprocessor"] = null;
+        params["skip_start_end"] = Json::Value (false);
+        params["archive_lvl"] = Json::Value ("all");
+        params["archive_dir"] = null;
         Json::Value const result
-            ( invoke_sync (this->m_jsonRpc, "printToFile", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "printToFile", params)
             );
-        Job * const job (new Job (printer, "0")); // TODO: fetch id from result
+
+        int const jobId(result["id"].asInt());
+
+        Job * const job
+            ( new Job
+                ( m_conveyor
+                , printer
+                , jobId));
+
+        m_jobs.insert(jobId, job);
+
         return job;
     }
 
@@ -236,15 +223,63 @@ namespace conveyor
         , QString const & outputFile
         )
     {
-        Json::Value params (Json::arrayValue);
-        params.append(Json::Value (inputFile.toStdString ()));
-        params.append(Json::Value (outputFile.toStdString ()));
-        params.append(Json::Value ());
-        params.append(Json::Value (false));
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        params["profilename"] = null;
+        params["inputpath"] = Json::Value (inputFile.toStdString ());
+        params["outputpath"] = Json::Value (outputFile.toStdString ());
+        params["preprocessor"] = null;
+        params["with_start_end"] = Json::Value (false);
         Json::Value const result
-            ( invoke_sync (this->m_jsonRpc, "slice", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
-        Job * const job (new Job (printer, "0")); // TODO: fetch id from result
+
+        int const jobId(result["id"].asInt());
+
+        Job * const job
+            ( new Job
+                ( m_conveyor
+                , printer
+                , jobId));
+
+        m_jobs.insert(jobId, job);
+
         return job;
+    }
+
+    void
+    ConveyorPrivate::emitPrinterAdded (Printer * const p)
+    {
+        m_conveyor->emitPrinterAdded(p);
+    }
+
+    void
+    ConveyorPrivate::emitPrinterChanged (Printer * const p)
+    {
+        p->emitChanged();
+    }
+
+    void
+    ConveyorPrivate::emitPrinterRemoved (Printer * const p)
+    {
+        m_conveyor->emitPrinterRemoved(p);
+    }
+
+    void
+    ConveyorPrivate::emitJobAdded (Job * const j)
+    {
+        m_conveyor->emitJobAdded(j);
+    }
+
+    void
+    ConveyorPrivate::emitJobChanged (Job * const j)
+    {
+        j->emitChanged();
+    }
+
+    void
+    ConveyorPrivate::emitJobRemoved (Job * const j)
+    {
+        m_conveyor->emitJobRemoved(j);
     }
 }

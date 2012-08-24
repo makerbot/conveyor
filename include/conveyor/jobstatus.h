@@ -5,14 +5,17 @@
 
 namespace conveyor
 {
-    enum JobStatus
-        { QUEUED
-        , STARTING
-        , PRINTING
-        , ENDING
-        , FINISHED
+    enum JobState
+        { PENDING
+        , RUNNING
+        , STOPPED
+        };
+
+    enum JobConclusion
+        { ENDED
+        , FAILED
         , CANCELLED
-        , PAUSED
+        , NOTCONCLUDED
         };
 }
 

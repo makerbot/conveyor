@@ -1,48 +1,97 @@
+// vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
+
 #ifndef CONVEYOR_EXCEPTIONS_H
-#define CONVEYOR_EXCEPTIONS_H
+#define CONVEYOR_EXCEPTIONS_H (1)
 
 #include <stdexcept>
 
-namespace conveyor {
-	class SocketError : public std::runtime_error {
-	public:
-		SocketError(const std::string &msg) : std::runtime_error(msg) {}
-	};
+namespace conveyor
+{
+    class SocketError : public std::runtime_error
+    {
+    public:
+        SocketError (std::string const & msg);
 
-	class SocketCreateError : public SocketError {
-	public:
-		SocketCreateError() : SocketError("Unable to create socket") {}
-	};
+        int getErrno (void) const
+        {
+            return this->m_errno;
+        }
 
-	class HostLookupError : public SocketError {
-	public:
-		HostLookupError(const std::string &host) 
-			: SocketError("Unable to lookup host" + host) {}
-	};
+    private:
+        int const m_errno;
+    };
 
-	class SocketConnectError : public SocketError {
-	public:
-		SocketConnectError(const std::string &host, const int)
-			: SocketError("Unable to connect to " + host) { };
-	};
+    class SocketCreateError : public SocketError
+    {
+    public:
+        SocketCreateError (void)
+            : SocketError ("Unable to create socket")
+        {
+        }
+    };
 
-	class SocketIOError : public SocketError {
-	public:
-		SocketIOError() : SocketError("IO error on socket") { }
-	};
+    class HostLookupError : public SocketError
+    {
+    public:
+        HostLookupError (std::string const & host)
+            : SocketError ("Unable to lookup host" + host)
+        {
+        }
+    };
 
-	class SocketWriteError : public SocketIOError {
-	public: 
-		//TODO: smarter error
-		SocketWriteError(int) : SocketIOError() { }
-	};
+    class SocketConnectError : public SocketError
+    {
+    public:
+        SocketConnectError (std::string const & host, int const = -1)
+            : SocketError ("Unable to connect to " + host)
+        {
+        };
+    };
 
-	class SocketReadError : public SocketIOError {
-	public: 
-		//TODO: smarter error
-		SocketReadError(int) : SocketIOError() { }
-	};
+    class SocketIOError : public SocketError
+    {
+    public:
+        SocketIOError (void)
+            : SocketError ("IO error on socket")
+        {
+        }
+    };
 
+    class SocketWriteError : public SocketIOError
+    {
+    public: 
+        //TODO: smarter error
+        SocketWriteError (int)
+        {
+        }
+    };
+
+    class SocketReadError : public SocketIOError
+    {
+    public: 
+        //TODO: smarter error
+        SocketReadError (int)
+        {
+        }
+    };
+
+    class InvalidAddressError : public std::runtime_error
+    {
+    public:
+        InvalidAddressError (std::string const & address)
+            : std::runtime_error ("Invalid address " + address)
+        {
+        }
+    };
+
+    class NotImplementedError : public std::logic_error
+    {
+    public:
+        NotImplementedError (std::string const & function)
+            : std::logic_error ("Not Implemented: " + function)
+        {
+        }
+    };
 }
 
 #endif

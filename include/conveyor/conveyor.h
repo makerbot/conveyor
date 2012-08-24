@@ -5,8 +5,11 @@
 
 #include <QList>
 #include <QObject>
+#include <QScopedPointer>
 
 #include <conveyor/fwd.h>
+
+#include <jsonrpc.h>
 
 namespace conveyor
 {
@@ -15,36 +18,44 @@ namespace conveyor
         Q_OBJECT
 
     public:
-		static Conveyor * connectToDaemon (Address const * address);
+        static Conveyor * connectToDaemon (Address const * address);
+
         ~Conveyor (void);
 
-        QList<Job *> const & jobs (void);
-        QList<Printer *> const & printers (void);
+        QList<Job *> jobs (void);
+        QList<Printer *> printers (void);
 
     signals:
-		void printerAdded (Printer *);
+        void printerAdded (Printer *);
         void printerRemoved (Printer *);
 
         /** Signals that a new job has been created */
         void jobAdded (Job *);
 
-        /** Signals that one or more jobs have been removed */
-        void jobRemoved (void);
+        /** Signals that a job has finished and been removed */
+        void jobRemoved (Job *);
 
     private:
-        Conveyor (ConveyorPrivate * private_);
+        Conveyor
+            ( Connection * connection
+            , ConnectionStream * connectionStream
+            , JsonRpc * jsonRpc
+            , ConnectionThread * connectionThread
+            );
 
-        ConveyorPrivate * const m_private;
+        QScopedPointer <ConveyorPrivate> m_private;
 
         friend class Job;
         friend class JobPrivate;
         friend class Printer;
         friend class PrinterPrivate;
+        friend class ConveyorPrivate;
 
-		QList<Printer *> m_printers;
+        void emitPrinterAdded (Printer *);
+        void emitPrinterRemoved (Printer *);
 
-	private slots:
-        void poll();
+        void emitJobAdded (Job *);
+        void emitJobRemoved (Job *);
     };
 }
 

@@ -3,6 +3,7 @@
 #ifndef CONVEYORPRIVATE_H
 #define CONVEYORPRIVATE_H
 
+#include <QHash>
 #include <QList>
 #include <QString>
 
@@ -13,6 +14,12 @@
 
 #include "connectionstream.h"
 #include "connectionthread.h"
+#include "printeraddedmethod.h"
+#include "printerchangedmethod.h"
+#include "printerremovedmethod.h"
+#include "jobaddedmethod.h"
+#include "jobchangedmethod.h"
+#include "jobremovedmethod.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -20,10 +27,11 @@ namespace conveyor
     class ConveyorPrivate
     {
     public:
-        static ConveyorPrivate * connect (Address const * address);
+        static Conveyor * connect (Address const * address);
 
         ConveyorPrivate
-            ( Connection * connection
+            ( Conveyor * conveyor
+            , Connection * connection
             , ConnectionStream * connectionStream
             , JsonRpc * jsonRpc
             , ConnectionThread * connectionThread
@@ -31,14 +39,11 @@ namespace conveyor
 
         ~ConveyorPrivate (void);
 
-        struct PrinterScanResult {
-            int pid;
-            int vid;
-            QString iSerial;
-            QString port;
-        };
+        QList<Printer *> printers();
+        QList<Job *> jobs();
 
-        QList<PrinterScanResult> printerScan();
+        Printer * printerByUniqueName(QString uniqueName);
+        Job * jobById(int id);
 
         Job * print
             ( Printer * printer
@@ -55,11 +60,29 @@ namespace conveyor
             , QString const & outputFile
             );
 
+        Conveyor * const m_conveyor;
         Connection * const m_connection;
         ConnectionStream * const m_connectionStream;
         JsonRpc * const m_jsonRpc;
         ConnectionThread * const m_connectionThread;
-        QList<Job *> m_jobs;
+
+        PrinterAddedMethod m_printerAddedMethod;
+        PrinterChangedMethod m_printerChangedMethod;
+        PrinterRemovedMethod m_printerRemovedMethod;
+        JobAddedMethod m_jobAddedMethod;
+        JobChangedMethod m_jobChangedMethod;
+        JobRemovedMethod m_jobRemovedMethod;
+        
+        QHash<int, Job *> m_jobs;
+        QHash<QString, Printer *> m_printers;
+
+        void emitPrinterAdded(Printer *);
+        void emitPrinterChanged(Printer *);
+        void emitPrinterRemoved(Printer *);
+
+        void emitJobAdded (Job *);
+        void emitJobChanged (Job *);
+        void emitJobRemoved (Job *);
     };
 }
 

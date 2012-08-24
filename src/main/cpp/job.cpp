@@ -2,6 +2,7 @@
 
 #include <QUuid>
 #include <QDebug>
+#include <QScopedPointer>
 
 #include <conveyor.h>
 
@@ -12,47 +13,59 @@
 namespace conveyor
 {
     Job::Job
-        ( Printer * printer __attribute__ ((unused))
-        , QString const & id
+        ( Conveyor * conveyor
+        , Printer * printer
+        , int const & id
         )
-        : m_private(new JobPrivate())
+        : m_private
+          ( new JobPrivate (conveyor, this, printer, id)
+          )
     {
-        m_private->m_progress = 0;
-        m_private->m_uniqueName = id;
-        m_private->m_Status = PRINTING;
     }
 
-    Job::Job
-        ( Printer * printer __attribute__ ((unused))
-        , QString const & name
-        , int progress
-        )
-        : m_private(new JobPrivate())
+    Job::~Job (void)
     {
-        m_private->m_displayName = name;
-        m_private->m_progress = progress;
-        m_private->m_uniqueName = QUuid::createUuid().toString();
-        m_private->m_Status = PRINTING;
     }
 
     int
-    Job::progress()
+    Job::id (void) const
     {
-        return m_private->m_progress;
+        return m_private->m_id;
     }
 
-    /*
+    QString
+    Job::name (void) const
+    {
+        return m_private->m_name;
+    }
+
+    JobState
+    Job::jobState (void) const
+    {
+        return m_private->m_state;
+    }
+
+    JobConclusion
+    Job::jobConclusion (void) const
+    {
+        return m_private->m_conclusion;
+    }
+
+    int
+    Job::currentStepProgress (void) const
+    {
+        return m_private->m_currentStepProgress;
+    }
+
+    QString
+    Job::currentStepName (void) const
+    {
+        return m_private->m_currentStepName;
+    }
+
     void
-    Job::incrementProgress()
+    Job::emitChanged (void)
     {
-        m_private->m_progress++;
-        emit JobPercentageChanged(m_private->m_progress);
-    }
-    */
-
-    JobStatus
-    Job::jobStatus() const
-    {
-        return m_private->m_Status;
+        emit changed();
     }
 }

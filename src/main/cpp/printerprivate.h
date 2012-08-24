@@ -5,8 +5,6 @@
 
 #include <conveyor.h>
 
-#include "conveyorprivate.h"
-
 namespace conveyor
 {
     class PrinterPrivate
@@ -28,6 +26,8 @@ namespace conveyor
             , QString const & outputFile
             );
 
+        void updateFromJson (Json::Value const &);
+
         Conveyor * const m_conveyor;
         Printer * const m_printer;
         QString m_displayName;
@@ -36,8 +36,7 @@ namespace conveyor
         QList<Job *> m_jobs;
         bool m_canPrint;
         bool m_canPrintToFile;
-        bool m_hasPlatform;
-        Conveyor * m_Conveyor;
+        bool m_hasHeatedPlatform;
         int m_numberOfToolheads;
         ConnectionStatus m_connectionStatus;
     };

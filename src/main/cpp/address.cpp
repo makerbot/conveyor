@@ -8,13 +8,24 @@
 #include <conveyor/address.h>
 #include <conveyor/pipeaddress.h>
 #include <conveyor/tcpaddress.h>
+#include <conveyor/exceptions.h>
 
 namespace
 {
     conveyor::TcpAddress DefaultTcpAddress ("localhost", 9999);
 
     conveyor::PipeAddress DefaultPipeAddress
-        ( "/var/run/conveyor/conveyord.socket"
+        ( 
+            #ifdef __APPLE__
+            /** Mac OS X treats /var/run differently than other unices and
+            launchd has no reliable way to create a /var/run/conveyor on launch.
+            Ideally conveyord should create this directory itself on OS X. However
+            we're going to leave that aside for now and get it done.
+            */
+            "/var/run/conveyord.socket"
+            #else
+            "/var/run/conveyor/conveyord.socket"
+            #endif
         );
 
     static
@@ -34,7 +45,7 @@ namespace
             stream >> port;
             if (stream.bad () or stream.fail ())
             {
-                throw std::exception ();
+                throw std::runtime_error ("Error writing to string stream");
             }
             else
             {
@@ -89,7 +100,7 @@ namespace conveyor
             }
             else
             {
-                throw std::exception ();
+                throw InvalidAddressError(str);
             }
             return address;
         }

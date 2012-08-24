@@ -28,6 +28,10 @@ AddOption('--test', action='store_true', dest='test')
 if GetOption('test'):
     testmode = 'run'
 
+#not used, added for consistency
+AddOption('--debug_build', action='store_true', dest='debug_build')
+debug = GetOption('debug_build')
+
 if testmode is not None:
     if testmode == 'run':
         build_unit_tests = True

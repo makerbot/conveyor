@@ -4,6 +4,7 @@
 #include <QDebug>
 
 #include <conveyor.h>
+#include <conveyor/exceptions.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"
@@ -21,33 +22,8 @@ namespace conveyor
     {
     }
 
-    Printer::Printer
-        ( Conveyor * const conveyor
-        , QString const & uniqueName
-        , bool const canPrint
-        , bool const canPrintToFile
-        , ConnectionStatus const connectionStatus
-        , QString const & printerType
-        , int const numberOfExtruders
-        , bool const hasHeatedPlatform
-        )
-        : m_private
-            ( new PrinterPrivate (conveyor, this, uniqueName)
-            )
-    {
-        m_private->m_canPrint = canPrint;
-        m_private->m_canPrintToFile = canPrintToFile;
-        m_private->m_connectionStatus = connectionStatus;
-        m_private->m_displayName = uniqueName;
-        m_private->m_printerType = printerType;
-        m_private->m_numberOfToolheads = numberOfExtruders;
-        m_private->m_hasPlatform = hasHeatedPlatform;
-        m_private->m_jobs = conveyor->jobs();
-    }
-
     Printer::~Printer ()
     {
-        delete m_private;
     }
 
     QList<Job *> const & 
@@ -91,7 +67,7 @@ namespace conveyor
 
     bool Printer::hasHeatedPlatform() const
     {
-        return m_private->m_hasPlatform;
+        return m_private->m_hasHeatedPlatform;
     }
 
     bool
@@ -132,7 +108,7 @@ namespace conveyor
     Conveyor * 
     Printer::conveyor()
     {
-        return m_private->m_Conveyor;
+        return m_private->m_conveyor;
     }
 
     Job *
@@ -172,28 +148,26 @@ namespace conveyor
         , float f
         )
     {
-        qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
-        //Jogz
+        QString message("Printer::jog x=%1 y=%2 z=%3 a=%4 b=%5 f=%6");
+        message = message.arg(x).arg(y).arg(z).arg(a).arg(b).arg(f);
+        throw NotImplementedError(message.toStdString());
     }
 
-    void Printer::togglePaused()
+    void
+    Printer::togglePaused (void)
     {
-        qDebug() << "1. jobstatus" << this->currentJob()->jobStatus();
-        if(this->currentJob()->jobStatus() == PRINTING)
-        {
-            this->currentJob()->m_private->m_Status = PAUSED;
-        }
-        else if(this->currentJob()->jobStatus() == PAUSED)
-        {
-            this->currentJob()->m_private->m_Status = PRINTING;
-        }
-        qDebug() << "2. jobstatus" << this->currentJob()->jobStatus();
-
+        throw NotImplementedError("Printer::togglePaused");
     }
 
-    void Printer::cancelCurrentJob()
+    void
+    Printer::cancelCurrentJob (void)
     {
-        this->m_private->m_jobs.first()->m_private->m_Status = CANCELLED;
-        emit m_private->m_Conveyor->jobRemoved();
+        throw NotImplementedError("Printer::cancelCurrentJob");
+    }
+
+    void
+    Printer::emitChanged (void)
+    {
+        emit changed();
     }
 }

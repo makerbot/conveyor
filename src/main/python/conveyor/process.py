@@ -1,4 +1,4 @@
-#vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
+# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
 # conveyor/src/main/python/conveyor/process.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.
@@ -30,17 +30,18 @@ import conveyor.event
 import conveyor.task
 import conveyor.visitor
 
-def tasksequence(tasklist):
+def tasksequence(job, tasklist):
     term = reduce(
         _TermSequence, (_TermYield(_TermTask(t)) for t in tasklist))
     machine = _Machine.create(term)
     task = conveyor.task.Task()
-    processhandler = _ProcessHandler(machine, task)
+    processhandler = _ProcessHandler(job, machine, task)
     return task
 
 class _ProcessHandler(object):
-    def __init__(self, machine, task):
+    def __init__(self, job, machine, task):
         self._child = None
+        self._job = job
         self._machine = machine
         self._task = task
         self._task.startevent.attach(self._taskstartcallback)

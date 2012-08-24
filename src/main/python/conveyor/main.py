@@ -25,7 +25,6 @@ import json
 import logging
 import os
 import sys
-import threading
 
 try:
     import unittest2 as unittest
@@ -151,10 +150,18 @@ class AbstractMain(object):
             os.path.abspath(os.path.dirname(__file__)), '../../../../')
         return conveyordir
 
+    # Mac OS X treats /var/run differently than other unices and
+    # launchd has no reliable way to create a /var/run/conveyor on launch.
+    # Ideally conveyord should create this directory itself on OS X. However
+    # we're going to leave that aside for now and get it done.
     def _setconfigdefaults_common(self):
+        if sys.platform == 'darwin':
+            defsock = 'unix:/var/run/conveyord.socket'
+        else:
+            defsock = 'unix:/var/run/conveyor/conveyord.socket'
         self._config.setdefault('common', {})
         self._config['common'].setdefault(
-            'socket', 'unix:/var/run/conveyor/conveyord.socket')
+            'socket', defsock)
         self._config['common'].setdefault('slicer', 'miraclegrue')
         self._config['common'].setdefault('serialport', '/dev/ttyACM0')
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
@@ -188,12 +195,18 @@ class AbstractMain(object):
                 'src/main/skeinforge/Replicator slicing defaults'))
         self._config['skeinforge'].setdefault('profile', profile)
 
+    # See above comments for why we do an explicit check for Mac OS X.
     def _setconfigdefaults_server(self):
+        if sys.platform == 'darwin':
+            defpid = '/var/run/conveyord.pid'
+        else:
+            defpid = '/var/run/conveyor/conveyord.pid'
         self._config.setdefault('server', {})
         self._config['server'].setdefault(
-            'pidfile', '/var/run/conveyor/conveyord.pid')
+            'pidfile', defpid)
         self._config['server'].setdefault('chdir', True)
         self._config['server'].setdefault('eventthreads', 2)
+        self._config['server'].setdefault('blacklisttime', 10.0)
         self._config['server'].setdefault('logging', None)
         return None
 
@@ -279,6 +292,7 @@ class AbstractMain(object):
         code = self._sequence(
             self._checkconfig_server_pidfile,
             self._checkconfig_server_chdir,
+            self._checkconfig_server_blacklisttime,
             self._checkconfig_server_eventthreads)
         return code
 
@@ -292,6 +306,10 @@ class AbstractMain(object):
 
     def _checkconfig_server_eventthreads(self):
         code = self._require_number('server', 'eventthreads')
+        return code
+
+    def _checkconfig_server_blacklisttime(self):
+        code = self._require_number('server', 'blacklisttime')
         return code
 
     def _checkconfig_client(self):
@@ -345,7 +363,8 @@ class AbstractMain(object):
                 code = None
                 if self._parsedargs.level:
                     root = logging.getLogger()
-                    root.setLevel(self._parsedargs.level)
+                    root.setLevel(
+                        conveyor.log.checklevel(self._parsedargs.level))
         return code
 
     def _parseaddress(self):
@@ -418,7 +437,8 @@ class AbstractMain(object):
             level = logging.ERROR
         self._log.log(
             level, '%s terminating with status code %d', self._program, code)
-        conveyor.debug.logthreads(logging.DEBUG)
+        #uncomment this to debug threads
+        #conveyor.debug.logthreads(logging.DEBUG)
         return code
 
 class _AbstractMainTestCase(unittest.TestCase):
