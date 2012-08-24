@@ -179,7 +179,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         gcodepath, skip_start_end, task)
         except:
             self._log.exception('unhandled exception')
-            self._server.evictprinter(self._devicename, self._fp)
+            self._server.evictprinter(self._portname, self._fp)
         finally:
             self._fp.close()
 
