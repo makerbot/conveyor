@@ -40,6 +40,7 @@ namespace conveyor
         ~ConveyorPrivate (void);
 
         QList<Printer *> printers();
+        QList<Job *> jobs();
 
         Printer * printerByUniqueName(QString uniqueName);
 
@@ -71,11 +72,16 @@ namespace conveyor
         JobChangedMethod m_jobChangedMethod;
         JobRemovedMethod m_jobRemovedMethod;
         
-        QList<Job *> m_jobs;
+        QHash<int, Job *> m_jobs;
         QHash<QString, Printer *> m_printers;
 
         void emitPrinterAdded(Printer *);
+        void emitPrinterChanged(Printer *);
         void emitPrinterRemoved(Printer *);
+
+        void emitJobAdded (Job *);
+        void emitJobChanged (Job *);
+        void emitJobRemoved (Job *);
     };
 }
 

@@ -47,10 +47,10 @@ namespace conveyor
         return m_private->printers();
     }
 
-    QList<Job *> const &
+    QList<Job *>
     Conveyor::jobs (void)
     {
-        return m_private->m_jobs;
+        return m_private->jobs();
     }
 
     void
@@ -63,5 +63,17 @@ namespace conveyor
     Conveyor::emitPrinterRemoved (Printer * const p)
     {
         emit printerRemoved(p);
+    }
+
+    void
+    Conveyor::emitJobAdded (Job * const j)
+    {
+        emit jobAdded(j);
+    }
+
+    void
+    Conveyor::emitJobRemoved (Job * const j)
+    {
+        emit jobRemoved(j);
     }
 }

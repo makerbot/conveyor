@@ -126,17 +126,17 @@ Common Types
         printer
 
             { "profilename":       (profile-name)
-            , "displayName":       (string)
-            , "uniqueName":        (unique-name)
-            , "printerType":       (string)
-            , "canPrint":          (bool)
-            , "canPrintToFile":    (bool)
-            , "hasHeatedPlatform": (bool)
-            , "numberOfToolheads": (number)
-            , "connectionStatus":  (connection-status)
+            , "displayname":       (string)
+            , "uniquename":        (printer-unique-name)
+            , "printertype":       (string)
+            , "canprint":          (bool)
+            , "canprinttofile":    (bool)
+            , "hasheatedplatform": (bool)
+            , "numberoftoolheads": (number)
+            , "connectionstatus":  (connection-status)
             }
 
-        unique-name :: (string)
+        printer-unique-name :: (string)
 
             A unique name to identify a unique printer.
 
@@ -217,7 +217,7 @@ Server
 
             params
 
-                { "uniquename":      (unique-name)
+                { "uniquename":      (printer-unique-name)
                 , "inputpath":       (absolute-file-path)
                 , "preprocessor":    (preprocessor-name)
                 , "skip_start_end":  (bool)
@@ -295,7 +295,7 @@ Server
 
             params
 
-                { "uniquename": (unique-name)
+                { "uniquename": (printer-unique-name)
                 }
 
             result

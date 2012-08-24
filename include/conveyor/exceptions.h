@@ -83,6 +83,15 @@ namespace conveyor
         {
         }
     };
+
+    class NotImplementedError : public std::logic_error
+    {
+    public:
+        NotImplementedError (std::string const & function)
+            : std::logic_error ("Not Implemented: " + function)
+        {
+        }
+    };
 }
 
 #endif

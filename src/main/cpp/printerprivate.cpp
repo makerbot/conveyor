@@ -4,6 +4,8 @@
 
 #include "printerprivate.h"
 
+#include "conveyorprivate.h"
+
 #include <stdexcept>
 
 namespace
