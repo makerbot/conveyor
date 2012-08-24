@@ -121,7 +121,7 @@ class AbstractMain(object):
     def _loadconfig(self):
         try:
             with open(self._parsedargs.config, 'r') as fp:
-                self._config = json.load(fp)
+                config = json.load(fp)
         except EnvironmentError as e:
             code = 1
             self._log.critical(
@@ -133,8 +133,30 @@ class AbstractMain(object):
                 'failed to parse configuration file: %s',
                 self._parsedargs.config, exc_info=True)
         else:
+            self._config = self._strconfig(config)
             code = None
         return code
+
+    def _strconfig(self, config):
+        '''Convert the configuration dict keys and values from unicode to plain
+        strings.
+
+        '''
+        if isinstance(config, dict):
+            dct = {}
+            for k, v in config.items():
+                k = str(k)
+                dct[k] = self._strconfig(v)
+            config = dct
+        elif isinstance(config, list):
+            lst = []
+            for v in config:
+                v = self._strconfig(v)
+                lst.append(v)
+            config = lst
+        elif isinstance(config, unicode):
+            config = str(config)
+        return config
 
     def _setconfigdefaults(self):
         code = self._sequence(
