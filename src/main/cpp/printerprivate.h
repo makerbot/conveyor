@@ -5,8 +5,6 @@
 
 #include <conveyor.h>
 
-#include "conveyorprivate.h"
-
 namespace conveyor
 {
     class PrinterPrivate

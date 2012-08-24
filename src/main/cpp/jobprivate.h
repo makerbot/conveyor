@@ -10,10 +10,24 @@ namespace conveyor
     class JobPrivate
     {
     public:
-        QString m_displayName;
-        QString m_uniqueName;
-        int m_progress;
-        JobStatus m_Status;
+        JobPrivate
+            ( Conveyor * conveyor
+            , Job * job
+            , Printer * printer
+            , int const & id
+            );
+
+        void updateFromJson (Json::Value const &);
+
+        Conveyor * const m_conveyor;
+        Job * const m_job;
+        Printer * m_printer;
+        int m_id;
+        QString m_name;
+        JobState m_state;
+        JobConclusion m_conclusion;
+        QString m_currentStepName;
+        int m_currentStepProgress;
     };
 }
 

@@ -23,8 +23,11 @@ namespace conveyor
     
     Json::Value PrinterChangedMethod::invoke (Json::Value const & params)
     {
-        qDebug() << "PrinterChangedMethod::invoke not implemented. ";
-        qDebug() << QString(params.toStyledString().c_str());
+        QString botId(params["id"].asString().c_str());
+
+        Printer * printer(m_conveyorPrivate->printerByUniqueName(botId));
+
+        m_conveyorPrivate->emitPrinterChanged(printer);
 
         return Json::Value(Json::nullValue);
     }

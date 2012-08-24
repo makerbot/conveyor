@@ -4,6 +4,7 @@
 #include <QDebug>
 
 #include <conveyor.h>
+#include <conveyor/exceptions.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"
@@ -147,28 +148,26 @@ namespace conveyor
         , float f
         )
     {
-        qDebug() << "jogging x"<<x<<" y"<<y<<" z"<<z<<" a"<<a<<" b"<<b<<" f"<<f;
-        //Jogz
+        QString message("Printer::jog x=%1 y=%2 z=%3 a=%4 b=%5 f=%6");
+        message = message.arg(x).arg(y).arg(z).arg(a).arg(b).arg(f);
+        throw NotImplementedError(message.toStdString());
     }
 
-    void Printer::togglePaused()
+    void
+    Printer::togglePaused (void)
     {
-        qDebug() << "1. jobstatus" << this->currentJob()->jobStatus();
-        if(this->currentJob()->jobStatus() == PRINTING)
-        {
-            this->currentJob()->m_private->m_Status = PAUSED;
-        }
-        else if(this->currentJob()->jobStatus() == PAUSED)
-        {
-            this->currentJob()->m_private->m_Status = PRINTING;
-        }
-        qDebug() << "2. jobstatus" << this->currentJob()->jobStatus();
-
+        throw NotImplementedError("Printer::togglePaused");
     }
 
-    void Printer::cancelCurrentJob()
+    void
+    Printer::cancelCurrentJob (void)
     {
-        this->m_private->m_jobs.first()->m_private->m_Status = CANCELLED;
-//        emit m_private->m_conveyor->jobRemoved();
+        throw NotImplementedError("Printer::cancelCurrentJob");
+    }
+
+    void
+    Printer::emitChanged (void)
+    {
+        emit changed();
     }
 }

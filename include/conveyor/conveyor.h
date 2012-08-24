@@ -22,7 +22,7 @@ namespace conveyor
 
         ~Conveyor (void);
 
-        QList<Job *> const & jobs (void);
+        QList<Job *> jobs (void);
         QList<Printer *> printers (void);
 
     signals:
@@ -32,8 +32,8 @@ namespace conveyor
         /** Signals that a new job has been created */
         void jobAdded (Job *);
 
-        /** Signals that one or more jobs have been removed */
-        void jobRemoved (void);
+        /** Signals that a job has finished and been removed */
+        void jobRemoved (Job *);
 
     private:
         Conveyor
@@ -51,8 +51,11 @@ namespace conveyor
         friend class PrinterPrivate;
         friend class ConveyorPrivate;
 
-        void emitPrinterAdded(Printer *);
-        void emitPrinterRemoved(Printer *);
+        void emitPrinterAdded (Printer *);
+        void emitPrinterRemoved (Printer *);
+
+        void emitJobAdded (Job *);
+        void emitJobRemoved (Job *);
     };
 }
 

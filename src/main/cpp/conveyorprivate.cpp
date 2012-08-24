@@ -137,6 +137,13 @@ namespace conveyor
         return p;
     }
 
+    QList<Job *>
+    ConveyorPrivate::jobs()
+    {
+        //TODO: Should this look more like printers()?
+        return m_jobs.values();
+    }
+
     Job *
     ConveyorPrivate::print
         ( Printer * const printer
@@ -156,7 +163,17 @@ namespace conveyor
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
             );
-        Job * const job (new Job (printer, "0")); // TODO: fetch id from result
+
+        int const jobId(result["id"].asInt());
+
+        Job * const job
+            ( new Job
+                ( m_conveyor
+                , printer
+                , jobId));
+
+        m_jobs.insert(jobId, job);
+
         return job;
     }
 
@@ -179,7 +196,17 @@ namespace conveyor
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "printToFile", params)
             );
-        Job * const job (new Job (printer, "0")); // TODO: fetch id from result
+
+        int const jobId(result["id"].asInt());
+
+        Job * const job
+            ( new Job
+                ( m_conveyor
+                , printer
+                , jobId));
+
+        m_jobs.insert(jobId, job);
+
         return job;
     }
 
@@ -200,7 +227,17 @@ namespace conveyor
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
-        Job * const job (new Job (printer, "0")); // TODO: fetch id from result
+
+        int const jobId(result["id"].asInt());
+
+        Job * const job
+            ( new Job
+                ( m_conveyor
+                , printer
+                , jobId));
+
+        m_jobs.insert(jobId, job);
+
         return job;
     }
 
@@ -211,8 +248,32 @@ namespace conveyor
     }
 
     void
+    ConveyorPrivate::emitPrinterChanged (Printer * const p)
+    {
+        p->emitChanged();
+    }
+
+    void
     ConveyorPrivate::emitPrinterRemoved (Printer * const p)
     {
         m_conveyor->emitPrinterRemoved(p);
+    }
+
+    void
+    ConveyorPrivate::emitJobAdded (Job * const j)
+    {
+        m_conveyor->emitJobAdded(j);
+    }
+
+    void
+    ConveyorPrivate::emitJobChanged (Job * const j)
+    {
+        j->emitChanged();
+    }
+
+    void
+    ConveyorPrivate::emitJobRemoved (Job * const j)
+    {
+        m_conveyor->emitJobRemoved(j);
     }
 }
