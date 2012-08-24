@@ -133,15 +133,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc = jsonrpc
         self._printers_seen = []
 
-    def printeradded(self, id, printerthread):
-        params = {'id': id}
+    def printeradded(self, params):
         self._jsonrpc.notify('printeradded', params)
 
-    def printerupdated(self, id, printer):
-        pass # TODO
+    def printerchanged(self, params):
+        self._jsonrpc.notify('printeradded', params)
 
-    def printerremoved(self, id, printer):
-        params = {'id': id}
+    def printerremoved(self, params):
         self._jsonrpc.notify('printerremoved', params)
 
     def _stoppedcallback(self, job):
@@ -236,24 +234,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             if None is printerthread:
                 raise Exception('no printer connected') # TODO: custom exception
         else:
-            printerthread = self._findprinter_printerid(name)
+            printerthread = self._server.findprinter_printerid(name)
             if None is printerthread:
-                printerthread = self._findprinter_portname(name)
+                printerthread = self._server.findprinter_portname(name)
             if None is printerthread:
                 raise Exception('unknown printer: %s' % (name,)) # TODO: custom exception
         return printerthread
-
-    def _findprinter_printerid(self, name):
-        for printerid, printerthread in self._server._printerthreads.items():
-            if name == printerid:
-                return printerthread
-        return None
-
-    def _findprinter_portname(self, name):
-        for printerthread in self._server._printerthreads.values():
-            if name == printerthread.getportname():
-                return printerthread
-        return None
 
     def _findprinter_default(self):
         keys = self._server._printerthreads.keys()
@@ -465,9 +451,6 @@ class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
     def stop(self):
         self._queue.stop()
 
-class _PrinterThread(threading.Thread, conveyor.stoppable.Stoppable):
-    pass
-
 class Server(object):
     def __init__(self, config, sock):
         self._clientthreads = []
@@ -480,6 +463,30 @@ class Server(object):
         self._queue = Queue()
         self._sock = sock
         self._printerthreads = {}
+
+    def _invokeclients(self, methodname, *args, **kwargs):
+        with self._lock:
+            clientthreads = self._clientthreads[:]
+        for clientthread in clientthreads:
+            try:
+                method = getattr(clientthread, methodname)
+                method(*args, **kwargs)
+            except:
+                self._log.exception('unhandled exception')
+
+    def findprinter_printerid(self, name):
+        with self._lock:
+            for printerthread in self._printerthreads.values():
+                if name == printerthread.getprinterid():
+                    return printerthread
+            return None
+
+    def findprinter_portname(self, name):
+        with self._lock:
+            for printerthread in self._printerthreads.values():
+                if name == printerthread.getportname():
+                    return printerthread
+            return None
 
     def createjob(self):
         with self._lock:
@@ -496,27 +503,19 @@ class Server(object):
         with self._lock:
             self._clientthreads.remove(clientthread)
 
-    def appendprinter(self, printerid, printerthread):
-        self._log.info('printer connected: %s', printerid)
+    def appendprinter(self, portname, printerthread):
+        self._log.info('printer connected: %s', portname)
         with self._lock:
-            self._printerthreads[printerid] = printerthread
-            clientthreads = self._clientthreads[:]
-        for clientthread in clientthreads:
-            clientthread.printeradded(printerid, printerthread)
+            self._printerthreads[portname] = printerthread
+        printerid = printerthread.getprinterid()
+        params = {'id': printerid}
+        self._invokeclients('printeradded', params)
 
-    def evictprinter(self, printerid, fp):
-        self._log.info('printer evicted due to error: %s', id)
-        self._detectorthread.blacklist(printerid)
-        self.removeprinter(printerid)
-        fp.close()
-
-    def updateprinter(self, printerid, temperature):
-        # TODO: refactor this to share code with _getprinters above.
-        with self._lock:
-            printerthread = self._printerthreads[printerid]
-            clientthreads = self._clientthreads[:]
+    def changeprinter(self, portname, temperature):
+        printerthread = self.findprinter_portname(portname)
+        printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
-        data = {
+        params = {
             'displayName': profile.values['type'],
             'uniqueName': printerid,
             'printerType': profile.values['type'],
@@ -527,22 +526,29 @@ class Server(object):
             'connectionStatus': 'connected',
             'temperature': temperature
         }
-        for clientthread in clientthreads:
-            clientthread.printerupdated(printerid, data)
+        self._invokeclients('printerchanged', params)
 
-    def removeprinter(self, printerid):
-        self._log.info('printer disconnected: %s', printerid)
+    def evictprinter(self, portname, fp):
+        self._log.info('printer evicted due to error: %s', id)
+        self._detectorthread.blacklist(portname)
+        self.removeprinter(portname)
+        fp.close()
+
+    def removeprinter(self, portname):
+        self._log.info('printer disconnected: %s', portname)
         with self._lock:
-            if printerid in self._printerthreads:
-                printerthread = self._printerthreads.pop(printerid)
+            if portname in self._printerthreads:
+                printerthread = self._printerthreads.pop(portname)
             else:
-                self._log.debug('disconnected unconnected printer: %s', printerid)
                 printerthread = None
-            clientthreads = self._clientthreads[:]
-        if None is not printerthread:
+        if None is printerthread:
+            self._log.debug(
+                'disconnected unconnected printer: %s', portname)
+        else:
             printerthread.stop()
-            for clientthread in clientthreads:
-                clientthread.printerremoved(printerid, printer)
+            printerid = printerthread.getprinterid()
+            params = {'id': printerid}
+            self._invokeclients('printerremoved', params)
 
     def printtofile(
         self, profile, buildname, inputpath, outputpath, skip_start_end,

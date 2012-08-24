@@ -70,7 +70,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
                         self._server, self._config, portname, printerid, profile,
                         fp)
                     s3gprinterthread.start()
-                    self._server.appendprinter(printerid, s3gprinterthread)
+                    self._server.appendprinter(portname, s3gprinterthread)
                 except:
                     self._log.exception('unhandled exception')
                     self.blacklist(portname)
@@ -130,6 +130,9 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def getportname(self):
         return self._portname
 
+    def getprinterid(self):
+        return self._printerid
+
     def getprofile(self):
         return self._profile
 
@@ -159,8 +162,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     if polltime <= now:
                         polltime = now + 5.0
                         temperature = _gettemperature(self._profile, s3g)
-                        self._server.updateprinter(
-                            self._printerid, temperature)
+                        self._server.changeprinter(
+                            self._portname, temperature)
                     with self._condition:
                         self._log.debug('waiting')
                         self._condition.wait(1.0)
