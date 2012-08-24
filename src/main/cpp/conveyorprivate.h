@@ -43,6 +43,7 @@ namespace conveyor
         QList<Job *> jobs();
 
         Printer * printerByUniqueName(QString uniqueName);
+        Printer * jobById(int id);
 
         Job * print
             ( Printer * printer

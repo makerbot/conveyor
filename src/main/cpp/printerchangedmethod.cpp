@@ -16,7 +16,7 @@ namespace conveyor
         : m_conveyorPrivate(conveyorPrivate)
     { 
     }
-    
+
     PrinterChangedMethod::~PrinterChangedMethod (void)
     {
     }

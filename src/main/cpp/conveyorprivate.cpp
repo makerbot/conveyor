@@ -145,6 +145,12 @@ namespace conveyor
     }
 
     Job *
+    ConveyorPrivate::jobById(int id)
+    {
+        return m_jobs.value(id);
+    }
+
+    Job *
     ConveyorPrivate::print
         ( Printer * const printer
         , QString const & inputFile

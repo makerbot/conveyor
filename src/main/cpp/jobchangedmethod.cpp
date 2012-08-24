@@ -23,8 +23,11 @@ namespace conveyor
     
     Json::Value JobChangedMethod::invoke (Json::Value const & params)
     {
-        qDebug() << "JobChangedMethod::invoke not implemented. ";
-        qDebug() << QString(params.toStyledString().c_str());
+        int const jobId(params["id"].asInt());
+
+        Job * job(m_conveyorPrivate->jobById(jobId));
+
+        m_conveyorPrivate->emitJobChanged(job);
 
         return Json::Value(Json::nullValue);
     }
