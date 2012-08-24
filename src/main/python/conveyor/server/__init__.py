@@ -133,7 +133,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc = jsonrpc
         self._printers_seen = []
 
-    def printeradded(self, id, printer):
+    def printeradded(self, id, printerthread):
         params = {'id': id}
         self._jsonrpc.notify('printeradded', params)
 
@@ -502,7 +502,7 @@ class Server(object):
             self._printerthreads[printerid] = printerthread
             clientthreads = self._clientthreads[:]
         for clientthread in clientthreads:
-            clientthread.printeradded(printerid, printer)
+            clientthread.printeradded(printerid, printerthread)
 
     def evictprinter(self, printerid, fp):
         self._log.info('printer evicted due to error: %s', id)

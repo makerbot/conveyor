@@ -437,7 +437,8 @@ class AbstractMain(object):
             level = logging.ERROR
         self._log.log(
             level, '%s terminating with status code %d', self._program, code)
-        conveyor.debug.logthreads(logging.DEBUG)
+        #uncomment this to debug threads
+        #conveyor.debug.logthreads(logging.DEBUG)
         return code
 
 class _AbstractMainTestCase(unittest.TestCase):
