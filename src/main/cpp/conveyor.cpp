@@ -47,6 +47,22 @@ namespace conveyor
         return m_private->printers();
     }
 
+    Job * 
+    Conveyor::read_eeprom
+        ( QString const & map_directory)
+        {
+            return m_private->read_eeprom(map_directory)
+        }
+
+    Job *
+    Conveyor::write_eeprom
+        ( JsonRpc const & eeprom_values
+        , QString const & map_directory
+        )
+        {
+            return m_private->write_eeprom(eeprom_values, map_directory)
+        }
+
     QList<Job *>
     Conveyor::jobs (void)
     {
