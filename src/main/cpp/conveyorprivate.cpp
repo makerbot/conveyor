@@ -247,6 +247,37 @@ namespace conveyor
         return job;
     }
 
+    Job *
+    ConveyorPrivate::read_eeprom
+        ( QString const & map_directory
+        )
+    {
+        Json::Value params (Json::objectValue);
+        params["map_directoty"] = Json::Value(map_directory.toStdString ());
+        Json::Value const result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
+            );
+
+        return result
+    }
+
+    Job *
+    ConveyorPrivate::write_eeprom
+        ( JsonRpc const & eeprom_values
+        , QString const & map_directory
+        )
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        params["eeprom_values"] = Json::Value eeprom_values;
+        params["map_directoty"] = Json::Value(map_directory.toStdString ());
+        Json::Value const result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "write_eeprom", params)
+            );
+
+        return result
+    }
+
     void
     ConveyorPrivate::emitPrinterAdded (Printer * const p)
     {

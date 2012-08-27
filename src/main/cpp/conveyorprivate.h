@@ -60,6 +60,15 @@ namespace conveyor
             , QString const & outputFile
             );
 
+        Job * read_eeprom
+            ( QString const & direcoty
+            );
+
+        Job * write_eeprom
+            ( JsonRpc const & eepromValues
+            , QString const & directory
+            );
+
         Conveyor * const m_conveyor;
         Connection * const m_connection;
         ConnectionStream * const m_connectionStream;
