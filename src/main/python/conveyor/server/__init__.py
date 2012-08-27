@@ -24,6 +24,7 @@ import errno
 import logging
 import makerbot_driver
 import os
+import os.path
 import sys
 import threading
 
@@ -256,6 +257,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         profile = makerbot_driver.Profile(name, self._config['common']['profiledir'])
         return profile
 
+    def _getbuildname(self, path):
+        root, ext = os.path.splitext(path)
+        buildname = os.path.basename(root)
+        return buildname
+
     @export('print')
     def _print(
         self, printername, inputpath, preprocessor, skip_start_end, archive_lvl,
@@ -266,10 +272,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 archive_lvl, archive_dir, slicer_settings, material)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
-            job = self._server.createjob()
-            recipe = recipemanager.getrecipe(job, inputpath, preprocessor)
+            build_name = self._getbuildname(inputpath)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, preprocessor,
+                skip_start_end, False)
+            recipe = recipemanager.getrecipe(job)
             printerthread = self._findprinter(printername)
-            process = recipe.print(printerthread, skip_start_end)
+            process = recipe.print(printerthread)
             def runningcallback(task):
                 self._log.info(
                     'printing: %s (job %d)', inputpath, job.id)
@@ -293,10 +302,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 material)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
-            job = self._server.createjob()
-            recipe = recipemanager.getrecipe(job, inputpath, preprocessor)
+            build_name = self._getbuildname(inputpath)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, preprocessor,
+                skip_start_end, False)
+            recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
-            process = recipe.printtofile(profile, outputpath, skip_start_end)
+            process = recipe.printtofile(profile, outputpath)
             def runningcallback(task):
                 self._log.info(
                     'printing to file: %s -> %s (job %d)', inputpath,
@@ -320,10 +332,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 with_start_end, slicer_settings, material)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
-            job = self._server.createjob()
-            recipe = recipemanager.getrecipe(job, inputpath, preprocessor)
+            build_name = self._getbuildname(inputpath)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, preprocessor, False,
+                with_start_end)
+            recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
-            process = recipe.slice(profile, outputpath, with_start_end)
+            process = recipe.slice(profile, outputpath)
             def runningcallback(task):
                 self._log.info(
                     'slicing: %s -> %s (job %d)', inputpath, outputpath,
@@ -488,12 +503,16 @@ class Server(object):
                     return printerthread
             return None
 
-    def createjob(self):
-        with self._lock:
-            id = self._jobcounter
-            self._jobcounter += 1
-        job = conveyor.job.Job(id)
-        return job
+    def createjob(
+        self, build_name, path, config, preprocessor, skip_start_end,
+        with_start_end):
+            with self._lock:
+                id = self._jobcounter
+                self._jobcounter += 1
+            job = conveyor.job.Job(
+                id, build_name, path, config, preprocessor, skip_start_end,
+                with_start_end)
+            return job
 
     def appendclientthread(self, clientthread):
         with self._lock:
