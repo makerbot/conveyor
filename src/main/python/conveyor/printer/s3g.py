@@ -77,6 +77,8 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._available = available
 
     def blacklist(self, portname):
+        if portname in self._available:
+            del self._available[portname]
         now = time.time()
         unlisttime = now + self._config['server']['blacklisttime']
         self._blacklist[portname] = unlisttime
