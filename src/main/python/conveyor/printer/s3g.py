@@ -58,6 +58,8 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         new_keys = set(available.keys())
         detached = old_keys - new_keys
         attached = new_keys - old_keys - set(self._blacklist.keys())
+        self._log.debug('detached = %r', detached)
+        self._log.debug('attached = %r', attached)
         for portname in detached:
             self._server.removeprinter(portname)
         if len(attached) > 0:
