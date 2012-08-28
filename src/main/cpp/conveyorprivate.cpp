@@ -167,8 +167,7 @@ namespace conveyor
         params["skip_start_end"] = Json::Value (false);
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
-        params["slicer-settings"] = slicer_conf.toJSON();
-        params["slicer_settings"] = null;
+        params["slicer_settings"] = slicer_conf.toJSON();
         params["material"] = null;
 
         Json::Value const result
