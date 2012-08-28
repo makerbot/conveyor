@@ -271,6 +271,8 @@ namespace conveyor
     ConveyorPrivate::emitPrinterRemoved (Printer * const p)
     {
         m_conveyor->emitPrinterRemoved(p);
+        // Disconnect all event listeners from the printer object.
+        p->disconnect();
     }
 
     void
