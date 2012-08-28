@@ -556,7 +556,7 @@ class Server(object):
         self._invokeclients('printerchanged', params)
 
     def evictprinter(self, portname, fp):
-        self._log.info('printer evicted due to error: %s', id)
+        self._log.info('printer evicted due to error: %s', portname)
         self._detectorthread.blacklist(portname)
         self.removeprinter(portname)
         fp.close()
