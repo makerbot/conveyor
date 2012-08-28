@@ -52,6 +52,6 @@ fi
 
 #DEBHELPER#
 
-/sbin/start conveyor
+/sbin/start conveyor || echo "Upstart failed; please consider starting Conveyor manually."
 
 exit 0
