@@ -138,7 +138,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.notify('printeradded', params)
 
     def printerchanged(self, params):
-        self._jsonrpc.notify('printeradded', params)
+        self._jsonrpc.notify('printerchanged', params)
 
     def printerremoved(self, params):
         self._jsonrpc.notify('printerremoved', params)
