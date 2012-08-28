@@ -110,6 +110,7 @@ namespace conveyor
                 )
             );
 
+        QList<Printer*> activePrinters;
         for (unsigned i = 0; i < results.size(); i++)
         {
             const Json::Value &r(results[i]);
@@ -119,9 +120,10 @@ namespace conveyor
                     ( QString(r["uniqueName"].asCString())));
 
             printer->m_private->updateFromJson(r);
+            activePrinters.append(printer);
         }
 
-        return m_printers.values();
+        return activePrinters;
     }
 
     Printer *
