@@ -52,4 +52,6 @@ fi
 
 #DEBHELPER#
 
+start conveyor
+
 exit 0
