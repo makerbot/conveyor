@@ -52,6 +52,6 @@ fi
 
 #DEBHELPER#
 
-start conveyor
+/sbin/start conveyor
 
 exit 0
