@@ -1,32 +1,34 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include "printeraddedmethod.h"
+#include "printerchangedmethod.h"
 #include "conveyorprivate.h"
 
 #include <QString>
 #include <QMetaObject>
 
+#include <QDebug>
+
 namespace conveyor
 {
-    PrinterAddedMethod::PrinterAddedMethod
+    PrinterChangedMethod::PrinterChangedMethod
         ( ConveyorPrivate * const conveyorPrivate
         )
         : m_conveyorPrivate(conveyorPrivate)
     { 
     }
-    
-    PrinterAddedMethod::~PrinterAddedMethod (void)
+
+    PrinterChangedMethod::~PrinterChangedMethod (void)
     {
     }
     
-    Json::Value PrinterAddedMethod::invoke (Json::Value const & params)
+    Json::Value PrinterChangedMethod::invoke (Json::Value const & params)
     {
         QString botId(params["id"].asString().c_str());
 
         Printer * printer(m_conveyorPrivate->printerByUniqueName(botId));
 
-        m_conveyorPrivate->emitPrinterAdded(printer);
-        
+        m_conveyorPrivate->emitPrinterChanged(printer);
+
         return Json::Value(Json::nullValue);
     }
 }

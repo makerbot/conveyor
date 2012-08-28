@@ -6,6 +6,7 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QScopedPointer>
 
 #include <conveyor/fwd.h>
 #include <conveyor/connectionstatus.h>
@@ -71,13 +72,7 @@ namespace conveyor
                              const SlicerConfiguration & slicer_conf);
 
     signals:
-        /** Emitted when the connectionStatus changes. 
-            Holds the new status */
-        void connectionStatusChanged(ConnectionStatus);
-
-        /** Emitted when the printer switches jobs. 
-            Holds the new Job */
-        void currentJobChanged(Job const *);
+        void changed (void);
 
     public slots:
         virtual void togglePaused();
@@ -88,6 +83,8 @@ namespace conveyor
         Printer (Conveyor * conveyor, QString const & uniqueName);
 
         QScopedPointer <PrinterPrivate> m_private;
+
+        void emitChanged (void);
 
         friend class Conveyor;
         friend class ConveyorPrivate;

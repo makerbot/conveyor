@@ -46,6 +46,25 @@ Common Types
 
                 "connected"
                 "notConnected"
+                
+        job-state :: (string)
+        
+            A job's state.
+            There are three states defined:
+            
+                "pending"
+                "running"
+                "stopped"
+                
+        job-conclusion :: (string)
+        
+            How did the job conclude?
+            four conclusions are defined:
+            
+                "notconcluded"
+                "ended"
+                "failed"
+                "cancelled"
 
         extruder-profile
 
@@ -72,11 +91,29 @@ Common Types
         job
 
             { "id": (job-id)
+            , "name": (job-name)
+            , "state": (job-state)
+            , "conclusion": (job-conclusion)
+            , "currentstep": (job-step)
             }
 
         job-id :: (number)
 
             A job identifier.
+            
+        job-name :: (string)
+        
+            A job name, human-readable.
+            
+        job-step
+        
+            { "name": (job-step-name)
+            , "progress": (number)
+            }
+            
+        job-step-name :: (string)
+        
+            The name of a job step, e.g "slicing", "printing".
 
         material-name :: (string)
 
@@ -89,17 +126,17 @@ Common Types
         printer
 
             { "profilename":       (profile-name)
-            , "displayName":       (string)
-            , "uniqueName":        (unique-name)
-            , "printerType":       (string)
-            , "canPrint":          (bool)
-            , "canPrintToFile":    (bool)
-            , "hasHeatedPlatform": (bool)
-            , "numberOfToolheads": (number)
-            , "connectionStatus":  (connection-status)
+            , "displayname":       (string)
+            , "uniquename":        (printer-unique-name)
+            , "printertype":       (string)
+            , "canprint":          (bool)
+            , "canprinttofile":    (bool)
+            , "hasheatedplatform": (bool)
+            , "numberoftoolheads": (number)
+            , "connectionstatus":  (connection-status)
             }
 
-        unique-name :: (string)
+        printer-unique-name :: (string)
 
             A unique name to identify a unique printer.
 
@@ -180,7 +217,7 @@ Server
 
             params
 
-                { "uniquename":      (unique-name)
+                { "uniquename":      (printer-unique-name)
                 , "inputpath":       (absolute-file-path)
                 , "preprocessor":    (preprocessor-name)
                 , "skip_start_end":  (bool)
@@ -258,7 +295,7 @@ Server
 
             params
 
-                { "uniquename": (unique-name)
+                { "uniquename": (printer-unique-name)
                 }
 
             result
@@ -362,4 +399,12 @@ Client
 
                 (job)
 
+        jobremoved
+
+            The server invokes this method after a job finishes.
+
+            params
+
+                (job)
+                
 <!-- vim:set ai et fenc=utf-8 ff=unix sw=4 syntax=markdown ts=4: -->

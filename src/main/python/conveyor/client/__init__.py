@@ -203,7 +203,9 @@ class ClientMain(conveyor.main.AbstractMain):
             'preprocessor': self._parsedargs.preprocessor,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
-            'archive_dir': None
+            'archive_dir': None,
+            'slicer_settings': None,
+            'material': None
         }
         self._log.info('printing: %s', self._parsedargs.thing)
         code = self._run_client('print', params)
@@ -211,13 +213,15 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_printtofile(self):
         params = {
-            'printername': None,
+            'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.thing),
             'outputpath': os.path.abspath(self._parsedargs.s3g),
             'preprocessor': self._parsedargs.preprocessor,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
-            'archive_dir': None
+            'archive_dir': None,
+            'slicer_settings': None,
+            'material': None
         }
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.thing,
@@ -227,11 +231,13 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_slice(self):
         params = {
-            'printername': None,
+            'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.thing),
             'outputpath': os.path.abspath(self._parsedargs.gcode),
             'preprocessor': self._parsedargs.preprocessor,
-            'with_start_end': self._parsedargs.with_start_end
+            'with_start_end': self._parsedargs.with_start_end,
+            'slicer_settings': None,
+            'material': None
         }
         self._log.info(
             'slicing to file: %s -> %s', self._parsedargs.thing,

@@ -15,7 +15,11 @@
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "printeraddedmethod.h"
+#include "printerchangedmethod.h"
 #include "printerremovedmethod.h"
+#include "jobaddedmethod.h"
+#include "jobchangedmethod.h"
+#include "jobremovedmethod.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -36,8 +40,10 @@ namespace conveyor
         ~ConveyorPrivate (void);
 
         QList<Printer *> printers();
+        QList<Job *> jobs();
 
         Printer * printerByUniqueName(QString uniqueName);
+        Job * jobById(int id);
 
         Job * print
             ( Printer * printer
@@ -64,13 +70,22 @@ namespace conveyor
         ConnectionThread * const m_connectionThread;
 
         PrinterAddedMethod m_printerAddedMethod;
+        PrinterChangedMethod m_printerChangedMethod;
         PrinterRemovedMethod m_printerRemovedMethod;
+        JobAddedMethod m_jobAddedMethod;
+        JobChangedMethod m_jobChangedMethod;
+        JobRemovedMethod m_jobRemovedMethod;
         
-        QList<Job *> m_jobs;
+        QHash<int, Job *> m_jobs;
         QHash<QString, Printer *> m_printers;
 
         void emitPrinterAdded(Printer *);
+        void emitPrinterChanged(Printer *);
         void emitPrinterRemoved(Printer *);
+
+        void emitJobAdded (Job *);
+        void emitJobChanged (Job *);
+        void emitJobRemoved (Job *);
     };
 }
 

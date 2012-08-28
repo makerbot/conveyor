@@ -34,7 +34,6 @@ import traceback
 
 import conveyor.enum
 import conveyor.event
-import conveyor.task
 
 SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 'FULL')
 
@@ -60,67 +59,65 @@ class SkeinforgeToolpath(object):
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
-    def generate(self, stlpath, gcodepath, with_start_end, printer):
-        def runningcallback(task):
-            self._log.info('slicing with Skeinforge')
+    def slice(self, profile, inputpath, outputpath, with_start_end, task):
+        self._log.info('slicing with Skeinforge')
+        try:
+            directory = tempfile.mkdtemp()
             try:
-                directory = tempfile.mkdtemp()
-                try:
-                    tmp_stlpath = os.path.join(
-                        directory, os.path.basename(stlpath))
-                    shutil.copy2(stlpath, tmp_stlpath)
-                    arguments = list(
-                        self._getarguments(tmp_stlpath))
-                    self._log.debug('arguments=%r', arguments)
-                    popen = subprocess.Popen(
-                        arguments, executable=sys.executable,
-                        stdout=subprocess.PIPE)
-                    log = ''
-                    buffer = ''
-                    while True:
-                        data = popen.stdout.read(1) # :(
-                        if '' == data:
-                            break
-                        else:
-                            buffer += data
-                            match = self._regex.search(buffer)
-                            if None is not match:
-                                buffer = buffer[match.end():]
-                                layer = int(match.group('layer'))
-                                total = int(match.group('total'))
-                                task.heartbeat((layer, total))
-                    code = popen.wait()
-                    self._log.debug(
-                        'Skeinforge terminated with status code %d', code)
-                    if 0 != code:
-                        raise Exception(code)
+                tmp_inputpath = os.path.join(
+                    directory, os.path.basename(inputpath))
+                shutil.copy2(inputpath, tmp_inputpath)
+                arguments = list(
+                    self._getarguments(tmp_inputpath))
+                self._log.debug('arguments=%r', arguments)
+                popen = subprocess.Popen(
+                    arguments, executable=sys.executable,
+                    stdout=subprocess.PIPE)
+                log = ''
+                buffer = ''
+                while True:
+                    data = popen.stdout.read(1) # :(
+                    if '' == data:
+                        break
                     else:
-                        tmp_gcodepath = self._gcodepath(tmp_stlpath)
-                        self._postprocess(gcodepath, tmp_gcodepath, with_start_end, printer)
-                finally:
-                    shutil.rmtree(directory)
-            except Exception as e:
-                self._log.exception('unhandled exception')
-                task.fail(e)
-            else:
-                task.end(None)
-        task = conveyor.task.Task()
-        task.runningevent.attach(runningcallback)
-        return task
+                        buffer += data
+                        match = self._regex.search(buffer)
+                        if None is not match:
+                            buffer = buffer[match.end():]
+                            layer = int(match.group('layer'))
+                            total = int(match.group('total'))
+                            task.heartbeat((layer, total))
+                code = popen.wait()
+                self._log.debug(
+                    'Skeinforge terminated with status code %d', code)
+                if 0 != code:
+                    raise Exception(code)
+                else:
+                    tmp_outputpath = self._outputpath(tmp_inputpath)
+                    self._postprocess(
+                        profile, outputpath, tmp_outputpath,
+                        with_start_end)
+            finally:
+                shutil.rmtree(directory)
+        except Exception as e:
+            self._log.exception('unhandled exception')
+            task.fail(e)
+        else:
+            task.end(None)
 
-    def _gcodepath(self, path):
+    def _outputpath(self, path):
         root, ext = os.path.splitext(path)
         gcode = ''.join((root, '.gcode'))
         return gcode
 
-    def _postprocess(self, gcodepath, tmp_gcodepath, with_start_end, printer):
-        with open(gcodepath, 'w') as fp:
+    def _postprocess(self, profile, outputpath, tmp_outputpath, with_start_end):
+        with open(outputpath, 'w') as fp:
             if with_start_end:
-                for line in printer._profile.values['print_start_sequence']:
+                for line in profile.values['print_start_sequence']:
                     print(line, file=fp)
-            self._appendgcode(fp, tmp_gcodepath)
+            self._appendgcode(fp, tmp_outputpath)
             if with_start_end:
-                for line in printer._profile.values['print_end_sequence']:
+                for line in profile.values['print_end_sequence']:
                     print(line, file=fp)
 
     def _appendgcode(self, wfp, path):
@@ -132,24 +129,24 @@ class SkeinforgeToolpath(object):
         yield '--option'
         yield ''.join((module, ':', preference, '=', unicode(value)))
 
-    def _getarguments(self, stlpath):
+    def _getarguments(self, inputpath):
         for method in (
             self._getarguments_executable,
             self._getarguments_python,
             self._getarguments_skeinforge,
             ):
-                for iterable in method(stlpath):
+                for iterable in method(inputpath):
                     for value in iterable:
                         yield value
 
-    def _getarguments_executable(self, stlpath):
+    def _getarguments_executable(self, inputpath):
         yield (sys.executable,)
 
-    def _getarguments_python(self, stlpath):
+    def _getarguments_python(self, inputpath):
         yield ('-u',)
         yield (self._configuration.skeinforgepath,)
 
-    def _getarguments_skeinforge(self, stlpath):
+    def _getarguments_skeinforge(self, inputpath):
         yield ('-p', self._configuration.profile,)
         for method in (
             self._getarguments_raft,
@@ -158,14 +155,14 @@ class SkeinforgeToolpath(object):
             self._getarguments_printomatic,
             self._getarguments_stl,
             ):
-                for iterable in method(stlpath):
+                for iterable in method(inputpath):
                     yield iterable
 
-    def _getarguments_raft(self, stlpath):
+    def _getarguments_raft(self, inputpath):
         yield self._option(
             'raft.csv', 'Add Raft, Elevate Nozzle, Orbit:', self._configuration.raft)
 
-    def _getarguments_support(self, stlpath):
+    def _getarguments_support(self, inputpath):
         if SkeinforgeSupport.NONE == self._configuration.support:
             yield self._option('raft.csv', 'None', 'true')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
@@ -184,12 +181,12 @@ class SkeinforgeToolpath(object):
         else:
             raise ValueError(self._configuration.support)
 
-    def _getarguments_bookend(self, stlpath):
+    def _getarguments_bookend(self, inputpath):
         if self._configuration.bookend:
             yield self._option('alteration.csv', 'Name of Start File:', '')
             yield self._option('alteration.csv', 'Name of End File:', '')
 
-    def _getarguments_printomatic(self, stlpath):
+    def _getarguments_printomatic(self, inputpath):
         yield self._option(
             'fill.csv', 'Infill Solidity (ratio):', self._configuration.infillratio)
         yield self._option(
@@ -217,40 +214,5 @@ class SkeinforgeToolpath(object):
             'fill.csv', 'Extra Shells on Sparse Layer (layers):',
             self._configuration.shells)
 
-    def _getarguments_stl(self, stlpath):
-        yield (stlpath,)
-
-def _main(argv):
-    if 3 != len(argv):
-        print('usage: %s STL GCODE' % (argv[0],), file=sys.stderr)
-        code = 1
-    else:
-        logging.basicConfig()
-        eventqueue = conveyor.event.geteventqueue()
-        thread = threading.Thread(target=eventqueue.run)
-        thread.start()
-        try:
-            condition = threading.Condition()
-            def stoppedcallback(task):
-                with condition:
-                    condition.notify_all()
-            generator = SkeinforgeToolpath()
-            task = generator.generate(argv[1], argv[2])
-            task.stoppedevent.attach(stoppedcallback)
-            task.start()
-            with condition:
-                condition.wait()
-            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                code = 0
-            else:
-                code = 1
-        finally:
-            eventqueue.quit()
-            thread.join(1)
-    return code
-
-if '__main__' == __name__:
-    code = _main(sys.argv)
-    if None is code:
-        code = 0
-    sys.exit(code)
+    def _getarguments_stl(self, inputpath):
+        yield (inputpath,)

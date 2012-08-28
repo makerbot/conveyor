@@ -93,6 +93,13 @@ testenv = cppenv.Clone()
 if build_unit_tests:
     testenv.Append(LIBS='cppunit')
 
+    testenv.Append(LIBPATH=[Dir('#/../json-cpp/obj/')])
+    testenv.Append(LIBPATH=[Dir('#/../jsonrpc/obj/')])
+    testenv.Append(LIBS=['jsonrpc'])
+    testenv.Append(LIBS=['json'])
+    if 'win32' == sys.platform:
+        testenv.Append(LIBS=['ws2_32'])
+
     test_common = ['src/test/cpp/UnitTestMain.cpp', libconveyor]
 
     testre = re.compile('(([^/]+)TestCase\.cpp)$')

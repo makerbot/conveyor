@@ -24,6 +24,7 @@ import errno
 import logging
 import makerbot_driver
 import os
+import os.path
 import sys
 import threading
 
@@ -133,30 +134,33 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc = jsonrpc
         self._printers_seen = []
 
-    def printeradded(self, id, printer):
-        params = {'id': id}
+    def printeradded(self, params):
         self._jsonrpc.notify('printeradded', params)
 
-    def printerremoved(self, id, printer):
-        params = {'id': id}
+    def printerchanged(self, params):
+        self._jsonrpc.notify('printeradded', params)
+
+    def printerremoved(self, params):
         self._jsonrpc.notify('printerremoved', params)
+
+    def _stoppedcallback(self, job):
+        def callback(task):
+            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
+                self._log.info('job %d ended', job)
+            elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+                self._log.info('job %d failed', job)
+            elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+                self._log.info('job %d canceled', job)
+            else:
+                raise ValueError(task.conclusion)
+            params = [job, conveyor.task.TaskState.STOPPED, task.conclusion]
+            self._jsonrpc.notify('notify', params)
+        return callback
 
     @export('hello')
     def _hello(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         return 'world'
- 
-    def _stoppedcallback(self, task):
-        if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-            self._log.info('job %d ended', self._id)
-        elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-            self._log.info('job %d failed', self._id)
-        elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
-            self._log.info('job %d canceled', self._id)
-        else:
-            raise ValueError(task.conclusion)
-        params = [self._id, conveyor.task.TaskState.STOPPED, task.conclusion]
-        self._jsonrpc.notify('notify', params)
 
     # TODO: broken, attempts to open a port that is already open
     @export('printer_query')
@@ -219,115 +223,154 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def _dir(self, *args, **kwargs):
         result = {}
         self._log.debug("doing a services dir conveyor service")
-        if(self._jsonrpc):
+        if self._jsonrpc:
             result = self._jsonrpc.dict_all_methods()
         result['__version__'] = conveyor.__version__
         return result
 
-    def _findprinter(self, printername):
-        if None is not printername:
-            if printername not in self._server._printers:
-                raise Exception('unknown printer: %s' % (printername,))
-            else:
-                printer = self._server._printers[printername]
+    def _findprinter(self, name):
+        printerthread = None
+        if None is name:
+            printerthread = self._findprinter_default()
+            if None is printerthread:
+                raise Exception('no printer connected') # TODO: custom exception
         else:
-            keys = self._server._printers.keys()
-            if 0 == len(keys):
-                # TODO: this is awful
-                profile = makerbot_driver.Profile('ReplicatorSingle')
-                printer = conveyor.printer.s3g.S3gPrinter(self._server, None, None, profile)
-            else:
-                printername = keys[0]
-                printer = self._server._printers[printername]
-        return printer
+            printerthread = self._server.findprinter_printerid(name)
+            if None is printerthread:
+                printerthread = self._server.findprinter_portname(name)
+            if None is printerthread:
+                raise Exception('unknown printer: %s' % (name,)) # TODO: custom exception
+        return printerthread
+
+    def _findprinter_default(self):
+        keys = self._server._printerthreads.keys()
+        if 0 == len(keys):
+            printerthread = None
+        else:
+            key = keys[0]
+            printerthread = self._server._printerthreads[key]
+        return printerthread
+
+    def _findprofile(self, name):
+        if None is name:
+            name = self._config['common']['profile']
+        profile = makerbot_driver.Profile(name, self._config['common']['profiledir'])
+        return profile
+
+    def _getbuildname(self, path):
+        root, ext = os.path.splitext(path)
+        buildname = os.path.basename(root)
+        return buildname
 
     @export('print')
     def _print(
         self, printername, inputpath, preprocessor, skip_start_end, archive_lvl,
-        archive_dir):
+        archive_dir, slicer_settings, material):
             self._log.debug(
-                'printername=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r',
+                'printername=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
                 printername, inputpath, preprocessor, skip_start_end,
-                archive_lvl, archive_dir)
+                archive_lvl, archive_dir, slicer_settings, material)
+            recipemanager = conveyor.recipe.RecipeManager(
+                self._server, self._config)
+            build_name = self._getbuildname(inputpath)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, preprocessor,
+                skip_start_end, False)
+            recipe = recipemanager.getrecipe(job)
+            printerthread = self._findprinter(printername)
+            process = recipe.print(printerthread)
             def runningcallback(task):
                 self._log.info(
-                    'printing: %s (job %d)', inputpath, self._id)
+                    'printing: %s (job %d)', inputpath, job.id)
+            process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
                 self._log.info('%r', task.progress)
-            recipemanager = conveyor.recipe.RecipeManager(self._config)
-            recipe = recipemanager.getrecipe(inputpath, preprocessor)
-            printer = self._findprinter(printername)
-            if None is printer:
-                raise Exception('printer not connected') # TODO: this is also awful
-            task = recipe.print(skip_start_end, printer)
-            task.runningevent.attach(runningcallback)
-            task.heartbeatevent.attach(heartbeatcallback)
-            task.stoppedevent.attach(self._stoppedcallback)
-            self._server.appendtask(task)
-            return None
+            process.heartbeatevent.attach(heartbeatcallback)
+            process.stoppedevent.attach(self._stoppedcallback)
+            process.start()
+            dct = job.todict()
+            return dct
 
     @export('printtofile')
     def _printtofile(
-        self, printername, inputpath, outputpath, preprocessor, skip_start_end,
-        archive_lvl, archive_dir):
+        self, profilename, inputpath, outputpath, preprocessor, skip_start_end,
+        archive_lvl, archive_dir, slicer_settings, material):
             self._log.debug(
-                'printername=%r, inputpath=%r, outputpath=%r, preprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r',
-                printername, inputpath, outputpath, preprocessor,
-                skip_start_end, archive_lvl, archive_dir)
+                'profilename=%r, inputpath=%r, outputpath=%r, preprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
+                profilename, inputpath, outputpath, preprocessor,
+                skip_start_end, archive_lvl, archive_dir, slicer_settings,
+                material)
+            recipemanager = conveyor.recipe.RecipeManager(
+                self._server, self._config)
+            build_name = self._getbuildname(inputpath)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, preprocessor,
+                skip_start_end, False)
+            recipe = recipemanager.getrecipe(job)
+            profile = self._findprofile(profilename)
+            process = recipe.printtofile(profile, outputpath)
             def runningcallback(task):
                 self._log.info(
                     'printing to file: %s -> %s (job %d)', inputpath,
-                    outputpath, self._id)
+                    outputpath, job.id)
+            process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
                 self._log.info('%r', task.progress)
-            recipemanager = conveyor.recipe.RecipeManager(self._config)
-            recipe = recipemanager.getrecipe(inputpath, preprocessor)
-            printer = self._findprinter(printername)
-            task = recipe.printtofile(outputpath, skip_start_end, printer)
-            task.runningevent.attach(runningcallback)
-            task.heartbeatevent.attach(heartbeatcallback)
-            task.stoppedevent.attach(self._stoppedcallback)
-            self._server.appendtask(task)
-            return None
+            process.heartbeatevent.attach(heartbeatcallback)
+            process.stoppedevent.attach(self._stoppedcallback)
+            process.start()
+            dct = job.todict()
+            return dct
 
     @export('slice')
     def _slice(
-        self, printername, inputpath, outputpath, preprocessor=None, with_start_end=False):
+        self, profilename, inputpath, outputpath, preprocessor,
+        with_start_end, slicer_settings, material):
             self._log.debug(
-                'inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r',
-                inputpath, outputpath, preprocessor, with_start_end)
+                'profilename=%r, inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r, slicer_settings=%r, material=%r',
+                profilename, inputpath, outputpath, preprocessor,
+                with_start_end, slicer_settings, material)
+            recipemanager = conveyor.recipe.RecipeManager(
+                self._server, self._config)
+            build_name = self._getbuildname(inputpath)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, preprocessor, False,
+                with_start_end)
+            recipe = recipemanager.getrecipe(job)
+            profile = self._findprofile(profilename)
+            process = recipe.slice(profile, outputpath)
             def runningcallback(task):
                 self._log.info(
-                    'slicing: %s -> %s (job %d)', thing, gcode, self._id)
-            recipemanager = conveyor.recipe.RecipeManager(self._config)
-            recipe = recipemanager.getrecipe(inputpath, preprocessor)
-            printer = self._findprinter(printername)
-            task = recipe.slice(outputpath, with_start_end, printer)
-            task.runningevent.attach(runningcallback)
-            task.stoppedevent.attach(self._stoppedcallback)
-            self._server.appendtask(task)
-            return None
+                    'slicing: %s -> %s (job %d)', inputpath, outputpath,
+                    job.id)
+            process.runningevent.attach(runningcallback)
+            def heartbeatcallback(task):
+                self._log.info('%r', task.progress)
+            process.heartbeatevent.attach(heartbeatcallback)
+            process.stoppedevent.attach(self._stoppedcallback)
+            process.start()
+            dct = job.todict()
+            return dct
 
     @export('cancel')
-    def _cancel(self,*args, **kwargs):
-        self._log.debug('ABORT ABORT ABORT! (conveyord print cancel)' )
-        self._log.error('server print cancel not yet implemented')
-        return None
+    def _cancel(self, id):
+        self._server.canceljob(id)
 
     @export('getprinters')
     def _getprinters(self):
         result = []
-        for id, printer in self._server._printers.items():
+        for printerid, printerthread in self._server._printerthreads.items():
+            profile = printerthread.getprofile()
             data = {
-                'displayName': printer._profile.values['type'],
-                'uniqueName': printer._devicename,
-                'printerType': printer._profile.values['type'],
+                'displayName': profile.values['type'],
+                'uniqueName': printerid,
+                'printerType': profile.values['type'],
                 'canPrint': True,
                 'canPrintToFile': True,
-                'hasHeatedPlatform': len(
-                    printer._profile.values['heated_platforms']) != 0,
-                'numberOfToolheads': len(printer._profile.values['tools']),
-                'connectionStatus': 'connected'
+                'hasHeatedPlatform': len(profile.values['heated_platforms']) != 0,
+                'numberOfToolheads': len(profile.values['tools']),
+                'connectionStatus': 'connected',
+                'temperature': None # TODO
             }
             result.append(data)
         return result
@@ -377,23 +420,22 @@ class Queue(object):
                 self._condition.wait()
                 self._log.debug('resumed')
             if 0 == len(self._queue):
-                task = None
+                self._log.debug('queue is empty')
+                func = None
             else:
-                task = self._queue.pop()
-        if None is not task:
-            tasklock = threading.Lock()
-            taskcondition = threading.Condition(tasklock)
-            def stoppedcallback(unused):
-                with taskcondition:
-                    taskcondition.notify_all()
-            task.stoppedevent.attach(stoppedcallback)
-            task.start()
-            with taskcondition:
-                taskcondition.wait()
+                self._log.debug('queue is not empty')
+                func = self._queue.pop()
+        if None is not func:
+            try:
+                self._log.debug('running func')
+                func()
+                self._log.debug('func ended')
+            except:
+                self._log.exception('unhandled exception')
 
-    def appendtask(self, task):
+    def appendfunc(self, func):
         with self._condition:
-            self._queue.appendleft(task)
+            self._queue.appendleft(func)
             self._condition.notify_all()
 
     def run(self):
@@ -424,20 +466,53 @@ class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
     def stop(self):
         self._queue.stop()
 
-class _PrinterThread(threading.Thread, conveyor.stoppable.Stoppable):
-    pass
-
 class Server(object):
     def __init__(self, config, sock):
         self._clientthreads = []
         self._config = config
         self._detectorthread = None
         self._idcounter = 0
+        self._jobcounter = 0
         self._lock = threading.Lock()
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = Queue()
         self._sock = sock
-        self._printers = {}
+        self._printerthreads = {}
+
+    def _invokeclients(self, methodname, *args, **kwargs):
+        with self._lock:
+            clientthreads = self._clientthreads[:]
+        for clientthread in clientthreads:
+            try:
+                method = getattr(clientthread, methodname)
+                method(*args, **kwargs)
+            except:
+                self._log.exception('unhandled exception')
+
+    def findprinter_printerid(self, name):
+        with self._lock:
+            for printerthread in self._printerthreads.values():
+                if name == printerthread.getprinterid():
+                    return printerthread
+            return None
+
+    def findprinter_portname(self, name):
+        with self._lock:
+            for printerthread in self._printerthreads.values():
+                if name == printerthread.getportname():
+                    return printerthread
+            return None
+
+    def createjob(
+        self, build_name, path, config, preprocessor, skip_start_end,
+        with_start_end):
+            with self._lock:
+                id = self._jobcounter
+                self._jobcounter += 1
+            job = conveyor.job.Job(
+                id, build_name, path, config, preprocessor, skip_start_end,
+                with_start_end)
+            return job
 
     def appendclientthread(self, clientthread):
         with self._lock:
@@ -447,44 +522,84 @@ class Server(object):
         with self._lock:
             self._clientthreads.remove(clientthread)
 
-    def appendtask(self, task):
+    def appendprinter(self, portname, printerthread):
+        self._log.info('printer connected: %s', portname)
         with self._lock:
-            self._queue.appendtask(task)
+            self._printerthreads[portname] = printerthread
+        printerid = printerthread.getprinterid()
+        params = {'id': printerid}
+        self._invokeclients('printeradded', params)
 
-    def appendprinter(self, id, printer):
-        self._log.info('printer connected: %s', id)
-        with self._lock:
-            self._printers[id] = printer
-            clientthreads = self._clientthreads[:]
-        for clientthread in clientthreads:
-            clientthread.printeradded(id, printer)
+    def changeprinter(self, portname, temperature):
+        printerthread = self.findprinter_portname(portname)
+        printerid = printerthread.getprinterid()
+        profile = printerthread.getprofile()
+        params = {
+            'displayName': profile.values['type'],
+            'uniqueName': printerid,
+            'printerType': profile.values['type'],
+            'canPrint': True,
+            'canPrintToFile': True,
+            'hasHeatedPlatform': len(profile.values['heated_platforms']) != 0,
+            'numberOfToolheads': len(profile.values['tools']),
+            'connectionStatus': 'connected',
+            'temperature': temperature
+        }
+        self._invokeclients('printerchanged', params)
 
-    def evictprinter(self, id, fp):
+    def evictprinter(self, portname, fp):
         self._log.info('printer evicted due to error: %s', id)
-        self._printers[id]._fp.close()
-        self._detectorthread.blacklist(id)
-        self.removeprinter(id)
+        self._detectorthread.blacklist(portname)
+        self.removeprinter(portname)
+        fp.close()
 
-    def removeprinter(self, id):
-        self._log.info('printer disconnected: %s', id)
+    def removeprinter(self, portname):
+        self._log.info('printer disconnected: %s', portname)
         with self._lock:
-            printer = self._printers.pop(id)
-            # TODO: printer.stop()
-            clientthreads = self._clientthreads[:]
-        for clientthread in clientthreads:
-            clientthread.printerremoved(id, printer)
+            if portname in self._printerthreads:
+                printerthread = self._printerthreads.pop(portname)
+            else:
+                printerthread = None
+        if None is printerthread:
+            self._log.debug(
+                'disconnected unconnected printer: %s', portname)
+        else:
+            printerthread.stop()
+            printerid = printerthread.getprinterid()
+            params = {'id': printerid}
+            self._invokeclients('printerremoved', params)
 
-    def checkprinter(self, id):
-        printer = self._printers[id]
-        alive = True
-        try:
-            printer.get_extruder_temp()
-        except Exception as e:
-            self._log.info('Evicting printer due to error: ', e)
-            self.evictprinter(id, printer._fp)
-            alive = False
-        
-        return alive
+    def printtofile(
+        self, profile, buildname, inputpath, outputpath, skip_start_end,
+        task):
+            def func():
+                driver = conveyor.printer.s3g.S3gDriver()
+                driver.printtofile(
+                    outputpath, profile, buildname, inputpath, skip_start_end,
+                    task)
+            self._queue.appendfunc(func)
+
+    def _getslicer(self, slicername):
+        if 'miraclegrue' == slicername:
+            configuration = conveyor.toolpath.miraclegrue.MiracleGrueConfiguration()
+            configuration.miraclegruepath = self._config['miraclegrue']['path']
+            configuration.miracleconfigpath = self._config['miraclegrue']['config']
+            slicer = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
+        elif 'skeinforge' == slicername:
+            configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+            configuration.skeinforgepath = self._config['skeinforge']['path']
+            configuration.profile = self._config['skeinforge']['profile']
+            slicer = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
+        else:
+            raise ValueError(slicer)
+        return slicer
+
+    def slice(self, profile, inputpath, outputpath, with_start_end, task):
+        def func():
+            slicername = self._config['common']['slicer']
+            slicer = self._getslicer(slicername)
+            slicer.slice(profile, inputpath, outputpath, with_start_end, task)
+        self._queue.appendfunc(func)
 
     def run(self):
         self._detectorthread = conveyor.printer.s3g.S3gDetectorThread(
@@ -503,12 +618,13 @@ class Server(object):
                         raise
                 else:
                     fp = conveyor.jsonrpc.socketadapter(conn)
-                    id = self._idcounter
-                    self._idcounter += 1
+                    with self._lock:
+                        id = self._idcounter
+                        self._idcounter += 1
                     clientthread = _ClientThread.create(
                         self._config, self, fp, id)
                     clientthread.start()
         finally:
             self._queue.stop()
-            taskqueuethread.join(5)
+            taskqueuethread.join(1)
         return 0

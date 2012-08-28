@@ -18,22 +18,25 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        Job (Printer * printer, QString const & id);
-        Job (Printer * printer, QString const & name, int progress);
-
         ~Job (void);
 
-        int progress (void);
-        JobStatus jobStatus (void) const;
+        int id (void) const;
+        QString name (void) const;
+        JobState jobState (void) const;
+        JobConclusion jobConclusion (void) const;
+
+        int currentStepProgress (void) const;
+        QString currentStepName (void) const;
 
     signals:
-        void JobPercentageChanged (int percent); // TODO: rename to progressChanged
-
-        /** Emitted when the jobStatus changes */
-        void jobStatusChanged (JobStatus);
+        void changed (void);
 
     private:
+        Job (Conveyor * conveyor, Printer * printer, int const & id);
+
         QScopedPointer <JobPrivate> m_private;
+
+        void emitChanged (void);
 
         friend class Conveyor;
         friend class ConveyorPrivate;
