@@ -207,7 +207,7 @@ Common Types
 
         tool-name :: (string)
 
-            The name of a tool or heated build platform on the printer.
+            The name of a tool or heated build platform on the printer. These are ordinarily numbers represented as strings.
 
         version :: (string)
 
