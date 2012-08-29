@@ -1,8 +1,9 @@
-#ifndef EEPROMMAP_H
-#define EEPROMMAP_H
+#ifndef EEPROMMAPPRIVATE_H
+#define EEPROMMAPPRIVATE_H
 
 #include <QString>
 #include <QStringList>
+#include <vector>
 
 #include <json/value.h>
 
@@ -13,17 +14,17 @@ namespace conveyor
         public:
             EepromMapPrivate(Json::Value eepromMap);
             ~EepromMapPrivate(void);
-            int getInt(QString path) const;
-            QString getString(QString path) const;
-            void setInt(QString path, int value);
-            void setString(QString path, QString value);
+            std::vector<int> getInt(QString path) const;
+            std::vector<QString> getString(QString path) const;
+            void setInt(QString path, std::vector<int> value);
+            void setString(QString path, std::vector<QString> value);
             Json::Value getEepromMap(void) const;
 
         private:
+            QString const m_mainMap;
             Json::Value m_eepromMap;
             QStringList splitPath(QString path) const;
             Json::Value getSubMap(QStringList path) const;
-            QString const m_mainMap;
     };
 }
 #endif

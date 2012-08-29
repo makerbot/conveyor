@@ -5,6 +5,7 @@
 #include <QStringList>
 
 #include <conveyor/fwd.h>
+#include <vector>
 
 #include <json/value.h>
 
@@ -16,13 +17,13 @@ namespace conveyor
         EepromMap(Json::Value eepromMap);
         ~EepromMap(void);
 
-        int getInt(QString path) const;
-        QString getString(QString path) const;
-        void setInt(QString path, int value);
-        void setString(QString path, QString value);
+        std::vector<int> getInt(QString path) const;
+        std::vector<QString> getString(QString path) const;
+        void setInt(QString path, std::vector<int> value);
+        void setString(QString path, std::vector<QString> value);
         Json::Value getEepromMap(void) const;
     private:
-        EepromMapPrivate * const m_private;
+        EepromMapPrivate * m_private;
     };
 }
 #endif
