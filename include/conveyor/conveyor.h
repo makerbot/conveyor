@@ -8,6 +8,7 @@
 #include <QScopedPointer>
 
 #include <conveyor/fwd.h>
+#include <conveyor/eeprommap.h>
 
 #include <jsonrpc.h>
 
@@ -24,6 +25,8 @@ namespace conveyor
 
         QList<Job *> jobs (void);
         QList<Printer *> printers (void);
+        EepromMap readEeprom(void) const;
+        void writeEeprom(EepromMap eepromMap);
 
     signals:
         void printerAdded (Printer *);

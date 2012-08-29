@@ -7,8 +7,6 @@
 #include <json/value.h>
 #include <jsonrpc.h>
 
-#include "eeprommap.h"
-
 namespace conveyor
 {
     class EepromMap

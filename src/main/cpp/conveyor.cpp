@@ -6,8 +6,8 @@
 
 #include <conveyor/address.h>
 #include <conveyor/conveyor.h>
+#include <conveyor/eeprommap.h>
 
-#include "eeprommap.h"
 #include "conveyorprivate.h"
 #include "jobprivate.h"
 #include "printerprivate.h"

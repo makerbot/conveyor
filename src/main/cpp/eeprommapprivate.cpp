@@ -8,7 +8,7 @@
 
 namespace conveyor
 {
-    EepromMapPrivate::EepromMapPrivate(EepromMapJson::Value eepromMap)
+    EepromMapPrivate::EepromMapPrivate(Json::Value eepromMap)
     : m_mainMap ("eeprom_map")
     , m_eepromMap (eepromMap)
     {

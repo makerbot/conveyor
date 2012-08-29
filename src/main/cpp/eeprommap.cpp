@@ -3,9 +3,9 @@
 
 #include <json/value.h>
 #include <jsonrpc.h>
+#include <conveyor/eeprommap.h>
 
 #include "eeprommapprivate.h"
-#include "eeprommap.h"
 
 namespace conveyor
 {
