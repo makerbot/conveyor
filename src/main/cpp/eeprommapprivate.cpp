@@ -2,7 +2,6 @@
 #include <QStringList>
 
 #include <json/value.h>
-#include <jsonrpc.h>
 
 #include "eeprommapprivate.h"
 
@@ -41,7 +40,7 @@ namespace conveyor
         theMap[path.size()-1]["value"] = value;
     }
 
-    void EepromMapPrivate::setQString(QString path, QString value)
+    void EepromMapPrivate::setString(QString path, QString value)
     {
         QStringList path = this->splitPath(path)
         Json::Value theMap = this->getSubMap(path);

@@ -3,13 +3,10 @@
 
 #include <QString>
 #include <QStringList>
-#include <QScopedPointer>
-#include <QObject>
 
 #include <conveyor/fwd.h>
 
 #include <json/value.h>
-#include <jsonrpc.h>
 
 namespace conveyor
 {

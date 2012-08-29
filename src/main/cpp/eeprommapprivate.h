@@ -3,8 +3,8 @@
 
 #include <QString>
 #include <QStringList>
+
 #include <json/value.h>
-#include <jsonrpc.h>
 
 namespace conveyor
 {
