@@ -77,4 +77,10 @@ namespace conveyor
         m_currentStepName = currentStepName;
         m_currentStepProgress = currentStepProgress;
     }
+    
+    void
+    JobPrivate::cancel (void)
+    {
+        m_conveyor->cancelJob(m_id);
+    }
 }

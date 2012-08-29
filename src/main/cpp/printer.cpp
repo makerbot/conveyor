@@ -162,18 +162,6 @@ namespace conveyor
     }
 
     void
-    Printer::togglePaused (void)
-    {
-        throw NotImplementedError("Printer::togglePaused");
-    }
-
-    void
-    Printer::cancelCurrentJob (void)
-    {
-        throw NotImplementedError("Printer::cancelCurrentJob");
-    }
-
-    void
     Printer::emitChanged (void)
     {
         emit changed();
