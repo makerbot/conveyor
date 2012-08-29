@@ -23,9 +23,11 @@ namespace conveyor
             Json::Value getEepromMap(void) const;
 
         private:
-            Json::Value eepromMap;
+            Json::Value m_eepromMap;
             QStringList splitPath(QString path) const;
             Json::Value getSubMap(QStringList path) const;
+            QString const m_mainMap;
+            
     }
 }
 #endif

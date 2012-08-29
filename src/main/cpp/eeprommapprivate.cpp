@@ -8,17 +8,14 @@
 
 namespace conveyor
 {
-
     EepromMapPrivate::EepromMapPrivate(EepromMapJson::Value eepromMap)
+    : m_mainMap ("eeprom_map")
+    , m_eepromMap (eepromMap)
     {
-        Json::Value this->eepromMap = eepromMap;
-        QString this->mainMap = "eeprom_map";
     }
 
     EepromMapPrivate::~EepromMapPrivate(void)
     {
-        delete this->eepromMap;
-        delete this->mainMap;
     }
     
     int EepromMapPrivate::getInt(QString path) const
@@ -49,7 +46,7 @@ namespace conveyor
 
     Json::Value EepromMapPrivate::getSubMap(QStringList path) const
     {
-        Json::Value theMap = this->eepromMap[this->mainMap];
+        Json::Value theMap = this->m_eepromMap[this->m_mainMap];
         QStringList path = this->splitPath(path);
         //-1, since the last part is the actual EEPROM value
         int pathSize = sizeof(path)-1;
@@ -69,7 +66,7 @@ namespace conveyor
 
     Json::Value getEepromMap(void) const
     {
-        return this->eepromMap;
+        return this->m_eepromMap;
     }
 
 }
