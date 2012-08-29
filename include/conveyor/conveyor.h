@@ -15,9 +15,9 @@
 namespace conveyor
 {
     class Conveyor : public QObject
+
     {
         Q_OBJECT
-
     public:
         static Conveyor * connectToDaemon (Address const * address);
 
@@ -53,6 +53,8 @@ namespace conveyor
         friend class Printer;
         friend class PrinterPrivate;
         friend class ConveyorPrivate;
+        friend class EepromMap;
+        friend class EepromMapPrivate;
 
         void emitPrinterAdded (Printer *);
         void emitPrinterRemoved (Printer *);

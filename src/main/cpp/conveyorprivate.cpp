@@ -250,10 +250,10 @@ namespace conveyor
     }
 
     EepromMap
-    ConveyorPrivate::readEeprom()
+    ConveyorPrivate::readEeprom(void) const
     {
         Json::Value params (Json::objectValue);
-        Json::Value const result
+        Json::Value result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
             );
         EepromMap map = EepromMap::EepromMap(result);

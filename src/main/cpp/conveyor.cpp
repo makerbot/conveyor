@@ -55,7 +55,7 @@ namespace conveyor
     }
 
     EepromMap
-    Conveyor::readEeprom()
+    Conveyor::readEeprom (void) const
     {
         return m_private->readEeprom();
     }

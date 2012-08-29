@@ -61,8 +61,7 @@ namespace conveyor
             , QString const & outputFile
             );
 
-        EepromMap readEeprom(void);
-
+        EepromMap readEeprom(void) const;
         void writeEeprom(EepromMap map);
 
         Conveyor * const m_conveyor;

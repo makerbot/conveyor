@@ -19,28 +19,28 @@ namespace conveyor
     {
     }
 
-    EepromMap getMap(void)
+    EepromMap EepromMap::getMap(void)
     {
-      return m_private->getEepromMap();
+        return this->m_private->getEepromMap();
     }
 
     int EepromMap::getInt(QString path)
     {
-        return m_private->getInt(path);
+        return this->m_private->getInt(path);
     }
 
     QString EepromMap::getString(QString path)
     {
-        return m_private->getString(path);
+        return this->m_private->getString(path);
     }
 
     void EepromMap::setInt(QString path, int value)
     {
-        m_private->setInt(path, value);
+        this->m_private->setInt(path, value);
     }
 
     void EepromMap::setString(QString path, QString value)
     {
-        m_private->setString(path, value);
+        this->m_private->setString(path, value);
     } 
 }
