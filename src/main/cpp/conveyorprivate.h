@@ -11,6 +11,7 @@
 #include <conveyor.h>
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
+#include <conveyor/eeprommap.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -21,7 +22,6 @@
 #include "jobchangedmethod.h"
 #include "jobremovedmethod.h"
 #include "printerprivate.h"
-#include "eeprommap.h"
 
 namespace conveyor
 {
@@ -61,9 +61,9 @@ namespace conveyor
             , QString const & outputFile
             );
 
-        EepromMap readEeprom();
+        EepromMap readEeprom(void);
 
-        EepromMap writeEeprom(EepromMap map);
+        void writeEeprom(EepromMap map);
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

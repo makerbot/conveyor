@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QStringList>
+#include <QScopedPointer>
 
 #include <json/value.h>
 #include <jsonrpc.h>
@@ -22,7 +23,7 @@ namespace conveyor
             Json::Value getEepromMap(void) const;
 
         private:
-            EepromMapPrivate e_private;
+            QScopedPointer <EepromMapPrivate> m_private;
     }
 }
 #endif

@@ -7,13 +7,13 @@
 
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
+#include <conveyor/eeprommap.h>
 
 
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "conveyorprivate.h"
 #include "synchronouscallback.h"
-#include "eeprommap.cpp"
 
 namespace conveyor
 {

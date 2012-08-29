@@ -10,7 +10,8 @@
 namespace conveyor
 {
     EepromMap::EepromMap(Json::Value eepromMap)
-      : e_private ( new EepromMapPrivate (eepromMap) ) 
+      : m_private 
+          ( new EepromMapPrivate (eepromMap) ) 
     {
     }
 
@@ -20,26 +21,26 @@ namespace conveyor
 
     EepromMap getMap(void)
     {
-      return this->e_private.getEepromMap();
+      return m_private->getEepromMap();
     }
 
     int EepromMap::getInt(QString path)
     {
-        return this->e_private.getInt(path);
+        return m_private->getInt(path);
     }
 
     QString EepromMap::getString(QString path)
     {
-        return this->e_private.getString(path);
+        return m_private->getString(path);
     }
 
     void EepromMap::setInt(QString path, int value)
     {
-        this->e_private.setInt(path, value);
+        m_private->setInt(path, value);
     }
 
     void EepromMap::setString(QString path, QString value)
     {
-        this->e_private.setString(path, value);
+        m_private->setString(path, value);
     } 
 }
