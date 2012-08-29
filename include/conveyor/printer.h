@@ -74,11 +74,6 @@ namespace conveyor
     signals:
         void changed (void);
 
-    public slots:
-        virtual void togglePaused();
-
-        virtual void cancelCurrentJob();
-
     private:
         Printer (Conveyor * conveyor, QString const & uniqueName);
 

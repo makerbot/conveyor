@@ -41,6 +41,12 @@ namespace conveyor
     {
     }
 
+    void
+    Conveyor::cancelJob (int jobId)
+    {
+        m_private->cancelJob(jobId);
+    }
+    
     QList<Printer *>
     Conveyor::printers (void)
     {

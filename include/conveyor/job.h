@@ -28,6 +28,9 @@ namespace conveyor
         int currentStepProgress (void) const;
         QString currentStepName (void) const;
 
+        void cancel (void);
+        void pause (void);
+        
     signals:
         void changed (void);
 
