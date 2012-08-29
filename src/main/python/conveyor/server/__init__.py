@@ -530,30 +530,33 @@ class Server(object):
         with self._lock:
             self._clientthreads.remove(clientthread)
 
+    def _get_printer_info(self, printerid, profile):
+        return {'displayName': profile.values['type'],
+                'uniqueName': printerid,
+                'printerType': profile.values['type'],
+                'canPrint': True,
+                'canPrintToFile': True,
+                'hasHeatedPlatform': len(profile.values['heated_platforms']) != 0,
+                'numberOfToolheads': len(profile.values['tools']),
+                'connectionStatus': 'connected',
+                'temperature': None # TODO
+                }
+
     def appendprinter(self, portname, printerthread):
         self._log.info('printer connected: %s', portname)
         with self._lock:
             self._printerthreads[portname] = printerthread
         printerid = printerthread.getprinterid()
-        params = {'id': printerid}
-        self._invokeclients('printeradded', params)
+        profile = printerthread.getprofile()
+        self._invokeclients('printeradded',
+                            self._get_printer_info(printerid, profile))
 
     def changeprinter(self, portname, temperature):
         printerthread = self.findprinter_portname(portname)
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
-        params = {
-            'displayName': profile.values['type'],
-            'uniqueName': printerid,
-            'printerType': profile.values['type'],
-            'canPrint': True,
-            'canPrintToFile': True,
-            'hasHeatedPlatform': len(profile.values['heated_platforms']) != 0,
-            'numberOfToolheads': len(profile.values['tools']),
-            'connectionStatus': 'connected',
-            'temperature': temperature
-        }
-        self._invokeclients('printerchanged', params)
+        self._invokeclients('printerchanged',
+                            self._get_printer_info(printerid, profile))
 
     def evictprinter(self, portname, fp):
         self._log.info('printer evicted due to error: %s', portname)

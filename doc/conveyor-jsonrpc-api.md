@@ -134,6 +134,7 @@ Common Types
             , "hasheatedplatform": (bool)
             , "numberoftoolheads": (number)
             , "connectionstatus":  (connection-status)
+            , "temperature":       (tool-temperatures)
             }
 
         printer-unique-name :: (string)
@@ -187,6 +188,26 @@ Common Types
         temperature :: (number)
 
             A temperature.
+
+        tool-temperatures :: (string)
+
+            A list of temperatures for all toolheads and heated build platforms on the printer.
+
+                { "tools" :
+                    { (tool-name) : 
+                        (temperature)
+                    , ...
+                    }
+                , "heated_platforms" :
+                    { (tool-name) : 
+                        (temperature)
+                    , ...
+                    }
+                }
+
+        tool-name :: (string)
+
+            The name of a tool or heated build platform on the printer. These are ordinarily numbers represented as strings.
 
         version :: (string)
 
