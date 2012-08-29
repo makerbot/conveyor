@@ -17,7 +17,7 @@ namespace conveyor
     {
     public:
         EepromMap(Json::Value eepromMap);
-        ~EepromMap();
+        ~EepromMap(void);
 
         int getInt(QString path) const;
         QString getString(QString path) const;
