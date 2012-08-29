@@ -110,6 +110,7 @@ namespace conveyor
                 )
             );
 
+        QList<Printer*> activePrinters;
         for (unsigned i = 0; i < results.size(); i++)
         {
             const Json::Value &r(results[i]);
@@ -119,9 +120,10 @@ namespace conveyor
                     ( QString(r["uniqueName"].asCString())));
 
             printer->m_private->updateFromJson(r);
+            activePrinters.append(printer);
         }
 
-        return m_printers.values();
+        return activePrinters;
     }
 
     Printer *
@@ -165,8 +167,7 @@ namespace conveyor
         params["skip_start_end"] = Json::Value (false);
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
-        params["slicer-settings"] = slicer_conf.toJSON();
-        params["slicer_settings"] = null;
+        params["slicer_settings"] = slicer_conf.toJSON();
         params["material"] = null;
 
         Json::Value const result
@@ -270,6 +271,8 @@ namespace conveyor
     ConveyorPrivate::emitPrinterRemoved (Printer * const p)
     {
         m_conveyor->emitPrinterRemoved(p);
+        // Disconnect all event listeners from the printer object.
+        p->disconnect();
     }
 
     void

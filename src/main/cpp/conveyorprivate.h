@@ -39,6 +39,7 @@ namespace conveyor
 
         ~ConveyorPrivate (void);
 
+        /** Return a QList of pointers to all currently connected printers. */
         QList<Printer *> printers();
         QList<Job *> jobs();
 
@@ -77,6 +78,7 @@ namespace conveyor
         JobRemovedMethod m_jobRemovedMethod;
         
         QHash<int, Job *> m_jobs;
+        /** Hash of all printers, connected and not. */
         QHash<QString, Printer *> m_printers;
 
         void emitPrinterAdded(Printer *);

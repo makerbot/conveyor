@@ -6,7 +6,7 @@
 
 set -e
 
-stop conveyor
+/sbin/stop conveyor || true
 
 #DEBHELPER#
 
