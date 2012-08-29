@@ -35,7 +35,7 @@ namespace
         std::string::size_type const colon (hostport.find (":"));
         if (std::string::npos == colon)
         {
-            throw std::exception ();
+            throw std::runtime_error ("Error on hostport");
         }
         else
         {
@@ -106,7 +106,7 @@ namespace conveyor
         }
         catch (std::out_of_range const & exception)
         {
-            throw std::exception ();
+            throw;
         }
     }
 

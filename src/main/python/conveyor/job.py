@@ -20,12 +20,26 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 class Job(object):
-    def __init__(self, id):
-        self.id = id
-        self.process = None
+    def __init__(
+        self, id, build_name, path, config, preprocessor, skip_start_end,
+        with_start_end):
+            self.build_name = build_name
+            self.config = config
+            self.id = id
+            self.path = path
+            self.preprocessor = preprocessor
+            self.process = None
+            self.skip_start_end = skip_start_end
+            self.with_start_end = with_start_end
 
     def todict(self):
         dct = {
-            'id': self.id
+            'id': self.id,
+            'build_name': self.build_name,
+            'config': self.config,
+            'path': self.path,
+            'preprocessor': self.preprocessor,
+            'skip_start_end': self.skip_start_end,
+            'with_start_end': self.with_start_end
         }
         return dct

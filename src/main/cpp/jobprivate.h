@@ -19,6 +19,8 @@ namespace conveyor
 
         void updateFromJson (Json::Value const &);
 
+        void cancel (void);
+        
         Conveyor * const m_conveyor;
         Job * const m_job;
         Printer * m_printer;

@@ -48,16 +48,18 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         factory = makerbot_driver.BotFactory(profiledir)
         now = time.time()
         for portname, unlisttime in self._blacklist.items():
-            if unlisttime >= now:
+            if now >= unlisttime:
                 del self._blacklist[portname]
                 self._log.debug('removing port from blacklist: %r', portname)
         available = self._detector.get_available_machines().copy()
         self._log.debug('available = %r', available)
         self._log.debug('blacklist = %r', self._blacklist)
         old_keys = set(self._available.keys())
-        new_keys = set(available.keys()) - set(self._blacklist.keys())
+        new_keys = set(available.keys())
         detached = old_keys - new_keys
-        attached = new_keys - old_keys
+        attached = new_keys - old_keys - set(self._blacklist.keys())
+        self._log.debug('detached = %r', detached)
+        self._log.debug('attached = %r', attached)
         for portname in detached:
             self._server.removeprinter(portname)
         if len(attached) > 0:
@@ -77,6 +79,8 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._available = available
 
     def blacklist(self, portname):
+        if portname in self._available:
+            del self._available[portname]
         now = time.time()
         unlisttime = now + self._config['server']['blacklisttime']
         self._blacklist[portname] = unlisttime
@@ -161,9 +165,15 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     now = time.time()
                     if polltime <= now:
                         polltime = now + 5.0
-                        temperature = _gettemperature(self._profile, s3g)
-                        self._server.changeprinter(
-                            self._portname, temperature)
+                        try:
+                            temperature = _gettemperature(self._profile, s3g)
+                        except makerbot_driver.BuildCancelledError:
+                            self._log.debug('handled exception', exc_info=True)
+                            # This happens when print from SD and cancel it on
+                            # the bot. There is no conveyor job to cancel.
+                        else:
+                            self._server.changeprinter(
+                                self._portname, temperature)
                     with self._condition:
                         self._log.debug('waiting')
                         self._condition.wait(1.0)
@@ -177,9 +187,21 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                             self._currenttask = None
                     task.stoppedevent.attach(stoppedcallback)
                     driver = S3gDriver()
-                    driver.print(
-                        self._fp, self._profile, buildname, True, 5.0,
-                        gcodepath, skip_start_end, task)
+                    try:
+                        driver.print(
+                            self._fp, self._profile, buildname, gcodepath,
+                            skip_start_end, task)
+                    except makerbot_driver.BuildCancelledError:
+                        self._log.debug('handled exception', exc_info=True)
+                        self._log.info('print canceled')
+                        with self._condition:
+                            if None is not self._currenttask:
+                                self._currenttask.cancel()
+                    except Exception as e:
+                        self._log.error('unhandled exception', exc_info=True)
+                        with self._condition:
+                            if None is not self._currenttask:
+                                self._currenttask.fail(e)
         except:
             self._log.exception('unhandled exception')
             self._server.evictprinter(self._portname, self._fp)
@@ -211,7 +233,8 @@ class S3gDriver(object):
         return start_gcode, end_gcode, variables
 
     def _gcodelines(self, profile, gcodepath, skip_start_end):
-        startgcode, endgcode, variables = self._get_start_end_variables(profile)
+        startgcode, endgcode, variables = self._get_start_end_variables(
+            profile)
         def generator():
             if not skip_start_end:
                 if None is not startgcode:
@@ -248,7 +271,9 @@ class S3gDriver(object):
             parser.s3g.writer = writer
             now = time.time()
             polltime = now + pollinterval
-            if polltemperature:
+            if not polltemperature:
+                temperature = None
+            else:
                 temperature = _gettemperature(profile, parser.s3g)
             gcodelines, variables = self._gcodelines(profile, gcodepath, skip_start_end)
             parser.environment.update(variables)
@@ -265,13 +290,13 @@ class S3gDriver(object):
                     data = data.strip()
                     now = time.time()
                     if polltemperature and polltime <= now:
-                        polltime = now + 5.0
                         temperature = _gettemperature(profile, parser.s3g)
                     self._log.debug('gcode: %r', data)
                     # The s3g module cannot handle unicode strings.
                     data = str(data)
                     parser.execute_line(data)
                     progress = {
+                        'percentage': parser.state.percentage,
                         'currentline': currentline,
                         'totallines': totallines,
                         'currentbyte': currentbyte,
@@ -286,12 +311,11 @@ class S3gDriver(object):
                 task.end(None)
 
     def print(
-        self, fp, profile, buildname, polltemperature,
-        pollinterval, gcodepath, skip_start_end, task):
+        self, fp, profile, buildname, gcodepath, skip_start_end, task):
             writer = makerbot_driver.Writer.StreamWriter(fp)
             self._genericprint(
-                profile, buildname, writer, polltemperature, pollinterval,
-                gcodepath, skip_start_end, task)
+                profile, buildname, writer, True, 5.0, gcodepath,
+                skip_start_end, task)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,

@@ -110,6 +110,7 @@ namespace conveyor
                 )
             );
 
+        QList<Printer*> activePrinters;
         for (unsigned i = 0; i < results.size(); i++)
         {
             const Json::Value &r(results[i]);
@@ -119,9 +120,10 @@ namespace conveyor
                     ( QString(r["uniqueName"].asCString())));
 
             printer->m_private->updateFromJson(r);
+            activePrinters.append(printer);
         }
 
-        return m_printers.values();
+        return activePrinters;
     }
 
     Printer *
@@ -154,6 +156,7 @@ namespace conveyor
     ConveyorPrivate::print
         ( Printer * const printer
         , QString const & inputFile
+        , const SlicerConfiguration & slicer_conf
         )
     {
         Json::Value params (Json::objectValue);
@@ -164,8 +167,9 @@ namespace conveyor
         params["skip_start_end"] = Json::Value (false);
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
-        params["slicer_settings"] = null;
+        params["slicer_settings"] = slicer_conf.toJSON();
         params["material"] = null;
+
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
             );
@@ -188,6 +192,7 @@ namespace conveyor
         ( Printer * const printer
         , QString const & inputFile
         , QString const & outputFile
+        , const SlicerConfiguration & slicer_conf
         )
     {
         Json::Value params (Json::objectValue);
@@ -199,6 +204,7 @@ namespace conveyor
         params["skip_start_end"] = Json::Value (false);
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
+        params["slicer-settings"] = slicer_conf.toJSON();
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "printToFile", params)
             );
@@ -221,6 +227,7 @@ namespace conveyor
         ( Printer * const printer
         , QString const & inputFile
         , QString const & outputFile
+        , const SlicerConfiguration & slicer_conf
         )
     {
         Json::Value params (Json::objectValue);
@@ -230,6 +237,7 @@ namespace conveyor
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["preprocessor"] = null;
         params["with_start_end"] = Json::Value (false);
+        params["slicer-settings"] = slicer_conf.toJSON();
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
@@ -248,6 +256,22 @@ namespace conveyor
     }
 
     void
+    ConveyorPrivate::cancelJob (int jobId)
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        
+        params["port"] = null;
+        params["job_id"] = Json::Value(jobId);
+        
+        Json::Value const result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
+            );
+            
+        // TODO: check result?
+    }
+    
+    void
     ConveyorPrivate::emitPrinterAdded (Printer * const p)
     {
         m_conveyor->emitPrinterAdded(p);
@@ -263,6 +287,8 @@ namespace conveyor
     ConveyorPrivate::emitPrinterRemoved (Printer * const p)
     {
         m_conveyor->emitPrinterRemoved(p);
+        // Disconnect all event listeners from the printer object.
+        p->disconnect();
     }
 
     void

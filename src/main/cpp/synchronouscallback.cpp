@@ -77,7 +77,7 @@ namespace conveyor
         else
         if (not isSuccessResponse (response))
         {
-            throw std::exception ();
+            throw std::runtime_error("Response is not success!");
         }
         else
         {

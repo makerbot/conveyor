@@ -12,6 +12,7 @@
 #include <conveyor/jobstatus.h>
 #include <conveyor/pipeaddress.h>
 #include <conveyor/printer.h>
+#include <conveyor/slicers.h>
 #include <conveyor/tcpaddress.h>
 
 #endif

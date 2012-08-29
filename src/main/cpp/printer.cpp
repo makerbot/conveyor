@@ -112,9 +112,11 @@ namespace conveyor
     }
 
     Job *
-    Printer::print (QString const & inputFile)
+    Printer::print (QString const & inputFile
+                    , const SlicerConfiguration & slicer_conf)
     {
-        Job * const result (this->m_private->print (inputFile));
+        Job * const result (this->m_private->print (inputFile,
+                                                    slicer_conf));
         return result;
     }
 
@@ -122,9 +124,12 @@ namespace conveyor
     Printer::printToFile
         ( QString const & inputFile
         , QString const & outputFile
+        , const SlicerConfiguration & slicer_conf
         )
     {
-        Job * const result (this->m_private->printToFile (inputFile, outputFile));
+        Job * const result (this->m_private->printToFile (inputFile,
+                                                          outputFile,
+                                                          slicer_conf));
         return result;
     }
 
@@ -132,9 +137,12 @@ namespace conveyor
     Printer::slice
         ( QString const & inputFile
         , QString const & outputFile
+        , const SlicerConfiguration & slicer_conf
         )
     {
-        Job * const result (this->m_private->slice (inputFile, outputFile));
+        Job * const result (this->m_private->slice (inputFile,
+                                                    outputFile,
+                                                    slicer_conf));
         return result;
     }
 
@@ -151,18 +159,6 @@ namespace conveyor
         QString message("Printer::jog x=%1 y=%2 z=%3 a=%4 b=%5 f=%6");
         message = message.arg(x).arg(y).arg(z).arg(a).arg(b).arg(f);
         throw NotImplementedError(message.toStdString());
-    }
-
-    void
-    Printer::togglePaused (void)
-    {
-        throw NotImplementedError("Printer::togglePaused");
-    }
-
-    void
-    Printer::cancelCurrentJob (void)
-    {
-        throw NotImplementedError("Printer::cancelCurrentJob");
     }
 
     void

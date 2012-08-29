@@ -1,0 +1,13 @@
+#! /bin/sh
+# prerm for conveyor
+
+# Conveyor runs as a daemon as its own system user. This script stops conveyor
+# prior to removing it.
+
+set -e
+
+/sbin/stop conveyor || true
+
+#DEBHELPER#
+
+exit 0

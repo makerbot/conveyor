@@ -44,61 +44,59 @@ class RecipeManager(object):
         self._config = config
         self._server = server
 
-    def getrecipe(self, job, path, preprocessor):
-        root, ext = os.path.splitext(path)
+    def getrecipe(self, job):
+        root, ext = os.path.splitext(job.path)
         if '.gcode' == ext.lower():
-            recipe = self._getrecipe_gcode(job, path, preprocessor)
+            recipe = self._getrecipe_gcode(job)
         elif '.stl' == ext.lower():
-            recipe = self._getrecipe_stl(job, path, preprocessor)
+            recipe = self._getrecipe_stl(job)
         elif '.thing' == ext.lower():
-            recipe = self._getrecipe_thing(job, path, preprocessor)
+            recipe = self._getrecipe_thing(job)
         else:
             #assuming a malformed thing. Print an error here someday
-            recipe = self._getrecipe_thing(job, path, preprocessor)
+            recipe = self._getrecipe_thing(job)
         return recipe
 
-    def _getrecipe_gcode(self, job, path, preprocessor):
-        if not os.path.exists(path):
+    def _getrecipe_gcode(self, job):
+        if not os.path.exists(job.path):
             raise Exception
-        elif not os.path.isfile(path):
+        elif not os.path.isfile(job.path):
             raise Exception
         else:
-            recipe = _GcodeRecipe(
-                self._server, self._config, job, path, preprocessor)
+            recipe = _GcodeRecipe(self._server, self._config, job)
         return recipe
 
-    def _getrecipe_stl(self, job, path, preprocessor):
-        if not os.path.exists(path):
+    def _getrecipe_stl(self, job):
+        if not os.path.exists(job.path):
             raise Exception
-        elif not os.path.isfile(path):
+        elif not os.path.isfile(job.path):
             raise Exception
         else:
-            recipe = _StlRecipe(
-                self._server, self._config, job, path, preprocessor)
+            recipe = _StlRecipe(self._server, self._config, job, job.path)
             return recipe
 
-    def _getrecipe_thing(self, job, path, preprocessor):
-        if not os.path.exists(path):
+    def _getrecipe_thing(self, job):
+        if not os.path.exists(job.path):
             raise Exception
         else:
-            if not os.path.isdir(path):
-                recipe = self._getrecipe_thing_zip(job, path, preprocessor)
+            if not os.path.isdir(job.path):
+                recipe = self._getrecipe_thing_zip(job)
             else:
-                recipe = self._getrecipe_thing_dir(job, path, preprocessor)
+                recipe = self._getrecipe_thing_dir(job, job.path)
             return recipe
 
-    def _getrecipe_thing_zip(self, job, path, preprocessor):
+    def _getrecipe_thing_zip(self, job):
         directory = tempfile.mkdtemp()
-        with zipfile.ZipFile(path, 'r') as zip:
+        with zipfile.ZipFile(job.path, 'r') as zip:
             zip.extractall(directory)
-        recipe = self._getrecipe_thing_dir(job, directory, preprocessor)
+        recipe = self._getrecipe_thing_dir(job, directory)
         return recipe
 
-    def _getrecipe_thing_dir(self, job, path, preprocessor):
-        if not os.path.isdir(path):
+    def _getrecipe_thing_dir(self, job, directory):
+        if not os.path.isdir(directory):
             raise Exception
         else:
-            manifestpath = os.path.join(path, 'manifest.json')
+            manifestpath = os.path.join(directory, 'manifest.json')
             if not os.path.exists(manifestpath):
                 raise Exception
             else:
@@ -108,36 +106,27 @@ class RecipeManager(object):
                     stlpath = os.path.join(
                         manifest.base, manifest.unified_mesh_hack)
                     recipe = _StlRecipe(
-                        self._server, self._config, job, stlpath,
-                        preprocessor)
+                        self._server, self._config, job, stlpath)
                 elif 1 == len(manifest.instances):
                     recipe = _SingleThingRecipe(
-                        self._server, self._config, job, preprocessor,
-                        manifest)
-                elif 2 == len(manifest.material_types()):
+                        self._server, self._config, job, manifest)
+                elif 2 == len(manifest.instances):
                     recipe = _DualThingRecipe(
-                        self._server, self._config, job, preprocessor,
-                        manifest)
+                        self._server, self._config, job, manifest)
                 else:
                     raise Exception
                 return recipe
 
 class Recipe(object):
-    def __init__(self, server, config, job, preprocessor):
+    def __init__(self, server, config, job):
         self._config = config
         self._job = job
-        self._preprocessor = preprocessor
         self._server = server
 
-    def _getbuildname(self, path):
-        root, ext = os.path.splitext(path)
-        buildname = os.path.basename(root)
-        return buildname
-
-    def _slicetask(self, profile, inputpath, outputpath, skip_start_end):
+    def _slicetask(self, profile, inputpath, outputpath, with_start_end):
         def runningcallback(task):
             self._server.slice(
-                profile, inputpath, outputpath, skip_start_end, task)
+                profile, inputpath, outputpath, with_start_end, task)
         toolpathtask = conveyor.task.Task()
         toolpathtask.runningevent.attach(runningcallback)
         return toolpathtask
@@ -145,7 +134,9 @@ class Recipe(object):
     def _preprocessortask(self, inputpath, outputpath):
         def runningcallback(task):
             try:
-                self._preprocessor.process_file(inputpath, outputpath)
+                # TODO: this is totally wrong because 'preprocessor' is a
+                # string at this point.
+                self._job.preprocessor.process_file(inputpath, outputpath)
             except Exception as e:
                 task.fail(e)
             else:
@@ -154,116 +145,110 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def _printtask(self, path, printerthread, inputpath, skip_start_end):
-        buildname = self._getbuildname(path)
+    def _printtask(self, printerthread, inputpath):
         def runningcallback(task):
             printerthread.print(
-                self._job, buildname, inputpath, skip_start_end, task)
+                self._job, self._job.build_name, inputpath,
+                self._job.skip_start_end, task)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
 
-    def _printtofiletask(
-        self, path, profile, inputpath, outputpath, skip_start_end):
-            buildname = self._getbuildname(path)
+    def _printtofiletask(self, profile, inputpath, outputpath):
             def runningcallback(task):
                 self._server.printtofile(
-                    self._job, profile, buildname, inputpath, outputpath,
-                    skip_start_end, task)
+                    profile, self._job.build_name, inputpath, outputpath,
+                    self._job.skip_start_end, task)
             task = conveyor.task.Task()
             task.runningevent.attach(runningcallback)
             return task
 
-    def print(self, printerthread, skip_start_end):
+    def print(self, printerthread):
         raise NotImplementedError
 
-    def printtofile(self, profile, outputpath, skip_start_end):
+    def printtofile(self, profile, outputpath):
         raise NotImplementedError
 
-    def slice(self, profile, outputpath, with_start_end):
+    def slice(self, profile, outputpath):
         raise NotImplementedError
 
 class _GcodeRecipe(Recipe):
-    def __init__(self, server, config, job, path, preprocessor):
-        Recipe.__init__(self, server, config, job, preprocessor)
-        self._path = path
-
-    def print(self, printerthread, skip_start_end):
+    def print(self, printerthread):
         tasks = []
 
         # Preprocess
-        if not self._preprocessor:
-            processed_gcodepath = self._path
+        if not self._job.preprocessor:
+            processed_gcodepath = self._job.path
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
-            preprocessortask = self._preprocessortask(self._path, processed_gcodepath)
+            preprocessortask = self._preprocessortask(
+                self._path, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
-        printtask = self._printtask(
-            self._path, printerthread, processed_gcodepath, skip_start_end)
+        printtask = self._printtask(printerthread, processed_gcodepath)
         tasks.append(printtask)
 
         def process_endcallback(task):
-            if processed_gcodepath != self._path:
+            if processed_gcodepath != self._job.path:
                 os.unlink(processed_gcodepath)
         process = conveyor.process.tasksequence(self._job, tasks)
         process.endevent.attach(process_endcallback)
         return process
 
-    def printtofile(self, profile, outputpath, skip_start_end):
+    def printtofile(self, profile, outputpath):
         tasks = []
 
         # Preprocess
-        if not self._preprocessor:
-            processed_gcodepath = self._path
+        if not self._job.preprocessor:
+            processed_gcodepath = self._job.path
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
-            preprocessortask = self._preprocessortask(self._path, processed_gcodepath)
+            preprocessortask = self._preprocessortask(
+                self._path, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
         printtofiletask = self._printtofiletask(
-            self._path, profile, processed_gcodepath, outputpath,
-            skip_start_end)
-        tasks.append(printtask)
+            profile, processed_gcodepath, outputpath)
+        tasks.append(printtofiletask)
 
         def process_endcallback(task):
-            if processed_gcodepath != self._path:
+            if processed_gcodepath != self._job.path:
                 os.unlink(processed_gcodepath)
         process = conveyor.process.tasksequence(self._job, tasks)
         process.endevent.attach(process_endcallback)
         return process
 
 class _StlRecipe(Recipe):
-    def __init__(self, server, config, job, path, preprocessor):
-        Recipe.__init__(self, server, config, job, preprocessor)
-        self._path = path
+    def __init__(self, server, config, job, stlpath):
+        Recipe.__init__(self, server, config, job)
+        self._stlpath = stlpath
 
-    def print(self, printerthread, skip_start_end):
+    def print(self, printerthread):
         tasks = []
 
         # Slice
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
         profile = printerthread.getprofile()
-        slicetask = self._slicetask(profile, self._path, gcodepath, False)
+        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Preprocess
-        if not self._preprocessor:
+        if not self._job.preprocessor:
             processed_gcodepath = gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
-            preprocessortask = self._preprocessortask(gcodepath, processed_gcodepath)
+            preprocessortask = self._preprocessortask(
+                gcodepath, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
-        printtask = self._printtask(
-            self._path, printerthread, processed_gcodepath, skip_start_end)
+        printtask = self._printtask(printerthread, processed_gcodepath)
         tasks.append(printtask)
 
         def process_endcallback(task):
@@ -274,28 +259,28 @@ class _StlRecipe(Recipe):
         process.endevent.attach(process_endcallback)
         return process
 
-    def printtofile(self, profile, outputpath, skip_start_end):
+    def printtofile(self, profile, outputpath):
         tasks = []
 
         # Slice
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
-        slicetask = self._slicetask(profile, self._path, gcodepath, False)
+        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Preprocess
-        if not self._preprocessor:
+        if not self._job.preprocessor:
             processed_gcodepath = gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
-            preprocessortask = self._preprocessortask(gcodepath, processed_gcodepath)
+            preprocessortask = self._preprocessortask(
+                gcodepath, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
         printtofiletask = self._printtofiletask(
-            self._path, profile, processed_gcodepath, outputpath,
-            skip_start_end)
+            profile, processed_gcodepath, outputpath)
         tasks.append(printtofiletask)
 
         def process_endcallback(task):
@@ -306,20 +291,21 @@ class _StlRecipe(Recipe):
         process.endevent.attach(process_endcallback)
         return process
 
-    def slice(self, profile, outputpath, with_start_end):
+    def slice(self, profile, outputpath):
         tasks = []
 
         # Slice
-        if not self._preprocessor:
+        if not self._job.preprocessor:
             gcodepath = outputpath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
                 gcodepath = gcodefp.name
-        slicetask = self._slicetask(profile, self._path, gcodepath, False)
+        slicetask = self._slicetask(
+            profile, self._stlpath, gcodepath, self._job.with_start_end)
         tasks.append(slicetask)
 
         # Preprocess
-        if self._preprocessor:
+        if self._job.preprocessor:
             preprocessortask = self._preprocessortask(gcodepath, outputpath)
             tasks.append(preprocessortask)
 
@@ -331,8 +317,8 @@ class _StlRecipe(Recipe):
         return process
 
 class _ThingRecipe(Recipe):
-    def __init__(self, server, config, job, preprocessor, manifest):
-        Recipe.__init__(self, server, config, job, preprocessor)
+    def __init__(self, server, config, job, manifest):
+        Recipe.__init__(self, server, config, job)
         self._manifest = manifest
 
     def _getinstance(self, name):
@@ -350,31 +336,28 @@ class _ThingRecipe(Recipe):
         return instance
 
 class _SingleThingRecipe(_ThingRecipe):
-    def print(self, printerthread, skip_start_end):
+    def print(self, printerthread):
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, objectpath,
-            self._preprocessor)
-        process = stlrecipe.print(printerthread, skip_start_end)
+            self._server, self._config, self._job, objectpath)
+        process = stlrecipe.print(printerthread)
         return process
 
-    def printtofile(self, profile, outputpath, skip_start_end):
+    def printtofile(self, profile, outputpath):
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, objectpath,
-            self._preprocessor)
-        process = stlrecipe.printtofile(profile, outputpath, skip_start_end)
+            self._server, self._config, self._job, objectpath)
+        process = stlrecipe.printtofile(profile, outputpath)
         return process
 
-    def slice(self, profile, outputpath, with_start_end):
+    def slice(self, profile, outputpath):
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, objectpath,
-            self._preprocessor)
-        process = stlrecipe.slice(profile, outputpath, with_start_end)
+            self._server, self._config, self._job, objectpath)
+        process = stlrecipe.slice(profile, outputpath)
         return process
 
 class _DualThingRecipe(_ThingRecipe):
