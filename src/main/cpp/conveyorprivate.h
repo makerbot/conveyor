@@ -21,7 +21,7 @@
 #include "jobchangedmethod.h"
 #include "jobremovedmethod.h"
 #include "printerprivate.h"
-#include "eeprommapprivate.h"
+#include "eeprommap.h"
 
 namespace conveyor
 {

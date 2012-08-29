@@ -5,6 +5,7 @@
 #include <jsonrpc.h>
 
 #include "eeprommapprivate.h"
+#include "eeprommap.h"
 
 namespace conveyor
 {

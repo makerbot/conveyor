@@ -7,7 +7,7 @@
 #include <conveyor/address.h>
 #include <conveyor/conveyor.h>
 
-#include "eeprommap.cpp"
+#include "eeprommap.h"
 #include "conveyorprivate.h"
 #include "jobprivate.h"
 #include "printerprivate.h"
