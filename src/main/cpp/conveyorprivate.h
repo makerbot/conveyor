@@ -21,6 +21,7 @@
 #include "jobchangedmethod.h"
 #include "jobremovedmethod.h"
 #include "printerprivate.h"
+#include "eeprommapprivate.h"
 
 namespace conveyor
 {
@@ -60,14 +61,9 @@ namespace conveyor
             , QString const & outputFile
             );
 
-        Job * read_eeprom
-            ( QString const & direcoty
-            );
+        EepromMap readEeprom();
 
-        Job * write_eeprom
-            ( JsonRpc const & eepromValues
-            , QString const & directory
-            );
+        EepromMap writeEeprom(EepromMap map);
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

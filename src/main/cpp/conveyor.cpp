@@ -7,6 +7,7 @@
 #include <conveyor/address.h>
 #include <conveyor/conveyor.h>
 
+#include "eeprommap.cpp"
 #include "conveyorprivate.h"
 #include "jobprivate.h"
 #include "printerprivate.h"
@@ -47,26 +48,22 @@ namespace conveyor
         return m_private->printers();
     }
 
-    Job * 
-    Conveyor::read_eeprom
-        ( QString const & map_directory)
-        {
-            return m_private->read_eeprom(map_directory)
-        }
-
-    Job *
-    Conveyor::write_eeprom
-        ( JsonRpc const & eeprom_values
-        , QString const & map_directory
-        )
-        {
-            return m_private->write_eeprom(eeprom_values, map_directory)
-        }
-
     QList<Job *>
     Conveyor::jobs (void)
     {
         return m_private->jobs();
+    }
+
+    EepromMap
+    Conveyor::readEeprom()
+    {
+        return m_private->readEeprom();
+    }
+
+    void
+    Conveyor::writeEeprom(EepromMap map)
+    {
+        m_private->writeEeprom(map);
     }
 
     void

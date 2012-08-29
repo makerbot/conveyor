@@ -14,15 +14,18 @@ namespace conveyor
             EepromMapPrivate(Json::Value eepromMap);
             ~EepromMapPrivate(void);
 
-            int getInt(QString path);
-            QString getString(QString path);
+            int getInt(QString path) const;
+            QString getString(QString path) const;
 
             void setInt(QString path, int value);
             void setString(QString path, QString value);
+          
+            Json::Value getEepromMap(void) const;
+
         private:
             Json::Value eepromMap;
-            QStringList splitPath(QString path);
-            Json::Value getSubMap(QStringList path);
+            QStringList splitPath(QString path) const;
+            Json::Value getSubMap(QStringList path) const;
     }
 }
 #endif

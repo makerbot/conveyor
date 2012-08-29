@@ -4,19 +4,22 @@
 #include <json/value.h>
 #include <jsonrpc.h>
 
-#include <eeprommapprivate.h>
+#include "eeprommapprivate.h"
 
 namespace conveyor
 {
-    EepromMap::Eepromap
-    ( Json::Value eepromMap 
-    )
-    : e_private ( new EepromMapPrivate (eepromMap) )
+    EepromMap::EepromMap(Json::Value eepromMap)
+      : e_private ( new EepromMapPrivate (eepromMap) ) 
     {
     }
 
     EepromMap::~EepromMap(void)
     {
+    }
+
+    EepromMap getMap(void)
+    {
+      return this->e_private.getEepromMap();
     }
 
     int EepromMap::getInt(QString path)

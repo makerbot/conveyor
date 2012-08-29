@@ -8,10 +8,12 @@
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
 
+
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "conveyorprivate.h"
 #include "synchronouscallback.h"
+#include "eeprommap.cpp"
 
 namespace conveyor
 {
@@ -247,35 +249,23 @@ namespace conveyor
         return job;
     }
 
-    Job *
-    ConveyorPrivate::read_eeprom
-        ( QString const & map_directory
-        )
+    EepromMap
+    ConveyorPrivate::readEeprom()
     {
         Json::Value params (Json::objectValue);
-        params["map_directoty"] = Json::Value(map_directory.toStdString ());
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
             );
-
-        return result
+        EepromMap map = EepromMap::EepromMap(result);
+        return map;
     }
 
-    Job *
-    ConveyorPrivate::write_eeprom
-        ( JsonRpc const & eeprom_values
-        , QString const & map_directory
-        )
+    void
+    ConveyorPrivate::writeEeprom(EepromMap map)
     {
         Json::Value params (Json::objectValue);
-        Json::Value null;
-        params["eeprom_values"] = Json::Value eeprom_values;
-        params["map_directoty"] = Json::Value(map_directory.toStdString ());
-        Json::Value const result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "write_eeprom", params)
-            );
-
-        return result
+        params["eeprom_values"] = map.getEepromMap();
+        SynchronousCallback::invoke (this->m_jsonRpc, "write_eeprom", params);
     }
 
     void
