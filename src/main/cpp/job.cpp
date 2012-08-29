@@ -5,6 +5,7 @@
 #include <QScopedPointer>
 
 #include <conveyor.h>
+#include <conveyor/exceptions.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"
@@ -63,6 +64,18 @@ namespace conveyor
         return m_private->m_currentStepName;
     }
 
+    void
+    Job::cancel (void)
+    {
+        m_private->cancel();
+    }
+    
+    void
+    Job::pause (void)
+    {
+        throw NotImplementedError("Job::pause");
+    }
+    
     void
     Job::emitChanged (void)
     {

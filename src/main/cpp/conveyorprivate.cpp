@@ -256,6 +256,22 @@ namespace conveyor
     }
 
     void
+    ConveyorPrivate::cancelJob (int jobId)
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value null;
+        
+        params["port"] = null;
+        params["job_id"] = Json::Value(jobId);
+        
+        Json::Value const result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
+            );
+            
+        // TODO: check result?
+    }
+    
+    void
     ConveyorPrivate::emitPrinterAdded (Printer * const p)
     {
         m_conveyor->emitPrinterAdded(p);

@@ -63,6 +63,8 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             );
+            
+        void cancelJob (int jobId);
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

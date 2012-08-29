@@ -24,6 +24,8 @@ namespace conveyor
 
         QList<Job *> jobs (void);
         QList<Printer *> printers (void);
+        
+        void cancelJob (int jobId);
 
     signals:
         void printerAdded (Printer *);

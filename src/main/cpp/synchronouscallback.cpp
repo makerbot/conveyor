@@ -51,7 +51,6 @@ namespace conveyor
     Json::Value
     SynchronousCallback::wait (void)
     {
-        QMutexLocker locker (& this->m_mutex);
         this->m_condition.wait (& this->m_mutex);
         return this->m_value;
     }
@@ -64,8 +63,19 @@ namespace conveyor
         )
     {
         SynchronousCallback callback;
+
+        // Acquire the mutex. This ensures the response thread is
+        // blocked until this thread has had a chance to start waiting
+        // for a response
+        QMutexLocker locker (& callback.m_mutex);
+
+        // Send the request
         jsonRpc->invoke (methodName, params, & callback);
+
+        // Start waiting for a response
         Json::Value const response (callback.wait ());
+
+        // Handle the response
         if (isErrorResponse (response))
         {
             Json::Value const error (response["error"]);
