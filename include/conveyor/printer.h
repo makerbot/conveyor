@@ -86,6 +86,7 @@ namespace conveyor
         friend class FakePrinter;
         friend class Job;
         friend class JobPrivate;
+        friend class PrinterAddedMethod;
     };
 }
 
