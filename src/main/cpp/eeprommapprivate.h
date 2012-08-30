@@ -9,6 +9,9 @@
 
 namespace conveyor
 {
+
+    class EepromMapPrivateTestCase;
+
     class EepromMapPrivate
     {
         public:
@@ -21,10 +24,13 @@ namespace conveyor
             Json::Value getEepromMap(void) const;
 
         private:
-            QString const m_mainMap;
+            QString m_mainMap;
             Json::Value m_eepromMap;
             QStringList splitPath(QString path) const;
             Json::Value getSubMap(QStringList path) const;
+
+            friend class EepromMapPrivateTestCase;
+
     };
 }
 #endif

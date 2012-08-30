@@ -10,9 +10,9 @@
 namespace conveyor
 {
     EepromMapPrivate::EepromMapPrivate(Json::Value eepromMap)
-    : m_mainMap ("eeprom_map")
-    , m_eepromMap (eepromMap)
+    : m_eepromMap (eepromMap)
     {
+      this->m_mainMap = QString("eeprom_map");
     }
 
     EepromMapPrivate::~EepromMapPrivate(void)
