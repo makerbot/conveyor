@@ -21,6 +21,8 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 # NOTE: If you convert it to or from JSON, it should go in this file.
 
+import conveyor.enum
+
 class DomainObject(object):
     def todict(self):
         raise NotImplementedError
@@ -108,3 +110,47 @@ class Printer(DomainObject):
             connection_status='connected',
             temperature=temperature)
         return printer
+
+Slicer = conveyor.enum.enum('Slicer', 'MIRACLEGRUE', 'SKEINFORGE')
+
+class SlicerConfiguration(DomainObject):
+    def __init__(
+        self, slicer, extruder, raft, support, infill, layer_height, shells,
+        extruder_temperature, platform_temperature, print_speed,
+        travel_speed):
+            self.slicer = slicer
+            self.extruder = extruder
+            self.raft = raft
+            self.support = support
+            self.infill = infill
+            self.layer_height = layer_height
+            self.shells = shells
+            self.extruder_temperature = extruder_temperature
+            self.platform_temperature = platform_temperature
+            self.print_speed = print_speed
+            self.travel_speed = travel_speed
+
+    def todict(self):
+        dct = {
+            'slicer': self.slicer,
+            'extruder': self.extruder,
+            'raft': self.raft,
+            'support': self.support,
+            'infill': self.infill,
+            'layer_height': self.layer_height,
+            'shells': self.shells,
+            'extruder_temperature': self.extruder_temperature,
+            'platform_temperature': self.platform_temperature,
+            'print_speed': self.print_speed,
+            'travel_speed': self.travel_speed
+        }
+        return dct
+
+    @staticmethod
+    def fromdict(dct):
+        slicerconfiguration = SlicerConfiguration(
+            dct['slicer'], dct['extruder'], dct['raft'], dct['support'],
+            dct['infill'], dct['layer_height'], dct['shells'],
+            dct['extruder_temperature'], dct['platform_temperature'],
+            dct['print_speed'], dct['travel_speed'])
+        return slicerconfiguration
