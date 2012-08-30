@@ -59,6 +59,14 @@ class MiracleGrueToolpath(object):
             popen = subprocess.Popen(
                 arguments, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
+            popen.poll()
+            while None is popen.returncode:
+                line = popen.stdout.readline()
+                if '' == line:
+                    break
+                else:
+                    self._log.debug('miracle-grue: %s', line)
+                    popen.poll()
             code = popen.wait()
             self._log.debug(
                 'Miracle Grue terminated with status code %d', code)
@@ -66,12 +74,6 @@ class MiracleGrueToolpath(object):
                 os.unlink(startpath)
                 os.unlink(endpath)
             else:
-                while True:
-                    line = popen.stdout.readline()
-                    if '' == line:
-                        break
-                    else:
-                        self._log.debug('miracle-grue: %s', line)
                 raise Exception(code)
         except Exception as e:
             self._log.exception('unhandled exception')
@@ -96,5 +98,5 @@ class MiracleGrueToolpath(object):
         yield ('-c', self._configuration.miracleconfigpath,)
         yield ('-o', outputpath,)
         yield ('-s', startpath,)
-        yield('-e', endpath,)
+        yield ('-e', endpath,)
         yield (inputpath,)
