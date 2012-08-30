@@ -2,6 +2,20 @@
 
 using namespace conveyor;
 
+SlicerConfiguration *
+SlicerConfiguration::miracleGrueDefaults(__attribute__((unused)) Quality quality)
+{
+    SlicerConfiguration * const config(new SlicerConfiguration(QString()));
+    return config;
+}
+
+SlicerConfiguration *
+SlicerConfiguration::skeinforgeDefaults(__attribute__((unused)) Quality quality)
+{
+    SlicerConfiguration * const config(new SlicerConfiguration(QString()));
+    return config;
+}
+
 SlicerConfiguration::SlicerConfiguration(const QString &) :
     m_slicer(MiracleGrue),
     m_extruder(Left),

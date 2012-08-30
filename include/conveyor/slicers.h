@@ -36,7 +36,7 @@ namespace conveyor
 
         // TODO:
         static SlicerConfiguration *miracleGrueDefaults(Quality quality);
-        static SlicerConfiguration *skeinforgeGrueDefaults(Quality quality);
+        static SlicerConfiguration *skeinforgeDefaults(Quality quality);
 
         /// Unpack a configuration serialized to JSON
         SlicerConfiguration(const QString &);
