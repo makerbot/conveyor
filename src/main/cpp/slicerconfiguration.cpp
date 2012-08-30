@@ -3,16 +3,23 @@
 using namespace conveyor;
 
 SlicerConfiguration *
-SlicerConfiguration::miracleGrueDefaults(__attribute__((unused)) Quality quality)
+SlicerConfiguration::defaultConfiguration(Quality quality)
 {
     SlicerConfiguration * const config(new SlicerConfiguration(QString()));
-    return config;
-}
 
-SlicerConfiguration *
-SlicerConfiguration::skeinforgeDefaults(__attribute__((unused)) Quality quality)
-{
-    SlicerConfiguration * const config(new SlicerConfiguration(QString()));
+    switch(quality)
+    {
+    case LowQuality:
+        config->setSlicer(MiracleGrue);
+        config->setLayerHeight(.3);
+        break;
+    case MediumQuality:
+        config->setSlicer(MiracleGrue);
+        break;
+    case HighQuality:
+        config->setSlicer(Skeinforge);
+        break;
+    }
     return config;
 }
 
