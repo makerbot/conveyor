@@ -66,7 +66,7 @@ class Printer(DomainObject):
             self.unique_name = unique_name
             self.printer_type = printer_type
             self.can_print = can_print
-            self.can_printotfile = can_printtofile
+            self.can_printtofile = can_printtofile
             self.has_heated_platform = has_heated_platform
             self.number_of_toolheads = number_of_toolheads
             self.connection_status = connection_status
