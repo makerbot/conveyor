@@ -30,8 +30,8 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.domain
 import conveyor.enum
-import conveyor.job
 import conveyor.printer.s3g
 import conveyor.process
 import conveyor.task

@@ -33,6 +33,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.domain
 import conveyor.jsonrpc
 import conveyor.main
 import conveyor.printer.s3g
@@ -364,18 +365,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         for portname, printerthread in printerthreads.items():
             profile = printerthread.getprofile()
             printerid = printerthread.getprinterid()
-            data = {
-                'displayName': profile.values['type'],
-                'uniqueName': printerid,
-                'printerType': profile.values['type'],
-                'canPrint': True,
-                'canPrintToFile': True,
-                'hasHeatedPlatform': len(profile.values['heated_platforms']) != 0,
-                'numberOfToolheads': len(profile.values['tools']),
-                'connectionStatus': 'connected',
-                'temperature': None # TODO
-            }
-            result.append(data)
+            printer = conveyor.domain.Printer.fromprofile(
+                profile, printerid, None)
+            dct = printer.todict()
+            result.append(dct)
         return result
 
     def _load_services(self):
@@ -517,7 +510,7 @@ class Server(object):
             with self._lock:
                 id = self._jobcounter
                 self._jobcounter += 1
-            job = conveyor.job.Job(
+            job = conveyor.domain.Job(
                 id, build_name, path, config, preprocessor, skip_start_end,
                 with_start_end)
             return job
@@ -530,33 +523,24 @@ class Server(object):
         with self._lock:
             self._clientthreads.remove(clientthread)
 
-    def _get_printer_info(self, printerid, profile):
-        return {'displayName': profile.values['type'],
-                'uniqueName': printerid,
-                'printerType': profile.values['type'],
-                'canPrint': True,
-                'canPrintToFile': True,
-                'hasHeatedPlatform': len(profile.values['heated_platforms']) != 0,
-                'numberOfToolheads': len(profile.values['tools']),
-                'connectionStatus': 'connected',
-                'temperature': None # TODO
-                }
-
     def appendprinter(self, portname, printerthread):
         self._log.info('printer connected: %s', portname)
         with self._lock:
             self._printerthreads[portname] = printerthread
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
-        self._invokeclients('printeradded',
-                            self._get_printer_info(printerid, profile))
+        printer = conveyor.domain.Printer.fromprofile(profile, printerid, None)
+        dct = printer.todict()
+        self._invokeclients('printeradded', dct)
 
     def changeprinter(self, portname, temperature):
         printerthread = self.findprinter_portname(portname)
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
-        self._invokeclients('printerchanged',
-                            self._get_printer_info(printerid, profile))
+        printer = conveyor.domain.Printer.fromprofile(
+            profile, printerid, temperature)
+        dct = printer.todict()
+        self._invokeclients('printerchanged', dct)
 
     def evictprinter(self, portname, fp):
         self._log.info('printer evicted due to error: %s', portname)
