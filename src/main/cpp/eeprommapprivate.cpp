@@ -1,10 +1,6 @@
 #include <QString>
 #include <QStringList>
-#include <iostream>
-#include <string>
-
 #include <vector>
-
 #include <json/value.h>
 
 #include "eeprommapprivate.h"
