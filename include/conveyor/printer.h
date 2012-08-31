@@ -23,7 +23,7 @@ namespace conveyor
         ~Printer ();
 
         /** A list of all the jobs the printer has queued */
-        QList<Job *> const & jobs ();
+        QList<Job *> jobs ();
 
         /** A Pointer to the current job */
         Job * currentJob();

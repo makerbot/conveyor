@@ -41,7 +41,6 @@ namespace conveyor
         this->m_printerType = "Replicator";
         this->m_numberOfToolheads = 2;
         this->m_hasHeatedPlatform = true;
-        this->m_jobs = conveyor->jobs();
     }
 
     void

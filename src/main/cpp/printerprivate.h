@@ -38,7 +38,6 @@ namespace conveyor
         QString m_displayName;
         QString m_uniqueName;
         QString m_printerType;
-        QList<Job *> m_jobs;
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasHeatedPlatform;
