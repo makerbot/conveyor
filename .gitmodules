@@ -1,12 +1,3 @@
-[submodule "submodule/skeinforge"]
-	path = submodule/skeinforge
-	url = ../skeinforge
-[submodule "submodule/Miracle-Grue"]
-	path = submodule/Miracle-Grue
-	url = ../Miracle-Grue
-[submodule "submodule/s3g"]
-	path = submodule/s3g
-	url = ../s3g-surprise
 [submodule "submodule/conveyor_bins"]
 	path = submodule/conveyor_bins
 	url = git@github.com:makerbot/conveyor_bins.git

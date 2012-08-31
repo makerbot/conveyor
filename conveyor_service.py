@@ -3,7 +3,7 @@
 import sys
 #override sys.path
 sys.path.insert(0,'./src/main/python')
-sys.path.insert(0,'./submodule/s3g')
+sys.path.insert(0,'../s3g')
 
 import conveyor
 import conveyor.log

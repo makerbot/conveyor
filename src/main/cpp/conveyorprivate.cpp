@@ -11,6 +11,7 @@
 #include "connectionstream.h"
 #include "connectionthread.h"
 #include "conveyorprivate.h"
+#include "jobprivate.h"
 #include "synchronouscallback.h"
 
 namespace conveyor
@@ -139,17 +140,60 @@ namespace conveyor
         return p;
     }
 
+    /**
+       Get a list jobs from the server.
+       
+       TODO: is there any filtering that needs to happen here?
+
+       The Job objects are cached, so any subsequent access of the
+       same job (which is referenced by its unique numeric ID) will
+       return the same Job object.
+
+       At present, Job objects live as long as Conveyor, so its safe
+       to keep references to a Job even after the Job has finished.
+     */
     QList<Job *>
     ConveyorPrivate::jobs()
     {
-        //TODO: Should this look more like printers()?
-        return m_jobs.values();
+        Json::Value params (Json::arrayValue);
+        Json::Value const results
+            ( SynchronousCallback::invoke
+                ( this->m_jsonRpc
+                , "getjobs"
+                , params
+                )
+            );
+
+        QList<Job *> jobs;
+        for (unsigned i = 0; i < results.size(); i++)
+        {
+            const Json::Value &r(results[i]);
+
+            Job * const job
+                ( jobById
+                    ( r["id"].asInt()));
+
+            job->m_private->updateFromJson(r);
+            jobs.append(job);
+        }
+
+        return jobs;
     }
 
     Job *
     ConveyorPrivate::jobById(int id)
     {
-        return m_jobs.value(id);
+        Job * job = m_jobs.value(id);
+
+        if (!job) {
+            // TODO: passing printer as null here, should look at this
+            // further. Can probably set a printer in
+            // Job::updateFromJson if we pass the printer's uniqueName
+            job = new Job(this->m_conveyor, 0, id);
+            m_jobs.insert(id, job);
+        }
+
+        return job;
     }
 
     Job *
@@ -161,7 +205,7 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         Json::Value null;
-        params["printername"] = null;
+        params["printername"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["preprocessor"] = null;
         params["skip_start_end"] = Json::Value (false);
@@ -197,7 +241,7 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         Json::Value null;
-        params["profilename"] = null;
+        params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["preprocessor"] = null;
@@ -232,7 +276,7 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         Json::Value null;
-        params["profilename"] = null;
+        params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["preprocessor"] = null;
@@ -265,7 +309,7 @@ namespace conveyor
         params["job_id"] = Json::Value(jobId);
         
         Json::Value const result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "cancel", params)
             );
             
         // TODO: check result?

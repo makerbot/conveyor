@@ -4,6 +4,7 @@
 #define CONVEYOR_PRINTER_H (1)
 
 #include <QList>
+#include <QMap>
 #include <QObject>
 #include <QString>
 #include <QScopedPointer>
@@ -15,6 +16,16 @@ namespace conveyor
 {
     class SlicerConfiguration;
 
+    // XXX: not sure what type we want for this
+    typedef float Temperature;
+
+    /// See "tool-temperature" in conveyor-jsonrpc-api.md
+    class ToolTemperature {
+    public:
+        QMap<QString, Temperature> tools;
+        QMap<QString, Temperature> heated_platforms;
+    };
+
     class Printer : public QObject
     {
         Q_OBJECT
@@ -23,7 +34,7 @@ namespace conveyor
         ~Printer ();
 
         /** A list of all the jobs the printer has queued */
-        QList<Job *> const & jobs ();
+        QList<Job *> jobs ();
 
         /** A Pointer to the current job */
         Job * currentJob();
@@ -58,6 +69,8 @@ namespace conveyor
 
         /** True if this printer can set the temperature of its platform */
         bool hasHeatedPlatform () const;
+
+        const ToolTemperature &toolTemperature () const;
 
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);

@@ -1,6 +1,7 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
 #include "jobaddedmethod.h"
+#include "jobprivate.h"
 #include "conveyorprivate.h"
 
 #include <QString>
@@ -23,8 +24,12 @@ namespace conveyor
     
     Json::Value JobAddedMethod::invoke (Json::Value const & params)
     {
-        qDebug() << "JobAddedMethod::invoke not implemented. ";
-        qDebug() << QString(params.toStyledString().c_str());
+        const int id(params["id"].asInt());
+
+        Job * job(m_conveyorPrivate->jobById(id));
+        job->m_private->updateFromJson(params);
+
+        m_conveyorPrivate->emitJobAdded(job);
 
         return Json::Value(Json::nullValue);
     }

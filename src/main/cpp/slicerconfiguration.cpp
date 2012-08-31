@@ -2,6 +2,27 @@
 
 using namespace conveyor;
 
+SlicerConfiguration *
+SlicerConfiguration::defaultConfiguration(Quality quality)
+{
+    SlicerConfiguration * const config(new SlicerConfiguration(QString()));
+
+    switch(quality)
+    {
+    case LowQuality:
+        config->setSlicer(MiracleGrue);
+        config->setLayerHeight(.3);
+        break;
+    case MediumQuality:
+        config->setSlicer(MiracleGrue);
+        break;
+    case HighQuality:
+        config->setSlicer(Skeinforge);
+        break;
+    }
+    return config;
+}
+
 SlicerConfiguration::SlicerConfiguration(const QString &) :
     m_slicer(MiracleGrue),
     m_extruder(Left),
