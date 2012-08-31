@@ -12,6 +12,19 @@
 
 namespace conveyor
 {
+    void ToolTemperature::updateFromJson
+    	( QMap<QString, Temperature> &tmap
+        , const Json::Value &json)
+    {
+        tmap.clear();
+        const Json::Value::Members names(json.getMemberNames());
+        const int len = names.size();
+        for (int i = 0; i < len; ++i) {
+            const std::string &name(names[i]);
+            tmap[name.c_str()] = json[name].asFloat();
+        }
+    }
+
     Printer::Printer
         ( Conveyor * const conveyor
         , QString const & uniqueName
