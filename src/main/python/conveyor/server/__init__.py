@@ -361,6 +361,16 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     @export('getprinters')
     def _getprinters(self):
         result = []
+        profiledir = self._config['common']['profiledir']
+        profile_names = list(makerbot_driver.list_profiles(profiledir))
+        for profile_name in profile_names:
+            if 'recipes' != profile_name:
+                profile = makerbot_driver.Profile(profile_name, profiledir)
+                printer = conveyor.domain.Printer.fromprofile(
+                    profile, profile_name, None)
+                printer.can_print = False
+                dct = printer.todict()
+                result.append(dct)
         printerthreads = self._server.getprinterthreads()
         for portname, printerthread in printerthreads.items():
             profile = printerthread.getprofile()
