@@ -78,8 +78,10 @@ namespace conveyor
         JobAddedMethod m_jobAddedMethod;
         JobChangedMethod m_jobChangedMethod;
         JobRemovedMethod m_jobRemovedMethod;
-        
+
+        /** Cached jobs, potentially including defunct jobs */
         QHash<int, Job *> m_jobs;
+
         /** Hash of all printers, connected and not. */
         QHash<QString, Printer *> m_printers;
 
