@@ -39,7 +39,8 @@ namespace conveyor
 
         ~ConveyorPrivate (void);
 
-        /** Return a QList of pointers to all currently connected printers. */
+        /** Return a QList of pointers to all currently
+            connected (and some archetype) printers. */
         QList<Printer *> printers();
         QList<Job *> jobs();
 

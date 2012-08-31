@@ -248,9 +248,11 @@ namespace conveyor
         params["skip_start_end"] = Json::Value (false);
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
-        params["slicer-settings"] = slicer_conf.toJSON();
+        params["slicer_settings"] = slicer_conf.toJSON();
+        params["material"] = null;
+
         Json::Value const result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "printToFile", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "printtofile", params)
             );
 
         int const jobId(result["id"].asInt());
@@ -281,7 +283,9 @@ namespace conveyor
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["preprocessor"] = null;
         params["with_start_end"] = Json::Value (false);
-        params["slicer-settings"] = slicer_conf.toJSON();
+        params["slicer_settings"] = slicer_conf.toJSON();
+        params["material"] = null;
+
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
