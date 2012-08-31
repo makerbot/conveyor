@@ -41,9 +41,9 @@ namespace conveyor
     std::vector<int> * EepromMapPrivate::getInt(QString path)
     {
         QStringList split_path = this->splitPath(path);
-        Json::Value theEntry(*this->getEntry(split_path));
-        Json::Value gotValues(theEntry["values"]);
-        std::vector<int> * return_values;
+        Json::Value * theEntry = this->getEntry(split_path);
+        Json::Value gotValues = (*theEntry)["value"];
+        std::vector<int> * return_values = new std::vector<int>;
         for (Json::ArrayIndex i = 0; i < gotValues.size(); ++i)
         {
             return_values->push_back(gotValues[i].asInt());

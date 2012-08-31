@@ -139,7 +139,7 @@ void EepromMapPrivateTestCase::testGetString(void)
 void EepromMapPrivateTestCase::testGetInt(void)
 {
   EepromMapPrivate * eepromMap = this->createEepromMap();
-  Json::Value backoffForwardTimeValues = eepromMap->getEepromMap()["T0_DATA_BASE"]["sub_map"]["BACKOFF_FORWARD_TIME"]["value"];
+  Json::Value backoffForwardTimeValues = eepromMap->getEepromMap()["eeprom_map"]["T0_DATA_BASE"]["sub_map"]["BACKOFF_FORWARD_TIME"]["value"];
   int expectedBackoffForwardTime = backoffForwardTimeValues[0].asInt();
   QString path = QString("T0_DATA_BASE/BACKOFF_FORWARD_TIME");
   std::vector<int> * gotValues = eepromMap->getInt(path);
