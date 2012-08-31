@@ -1,6 +1,3 @@
-[submodule "submodule/s3g"]
-	path = submodule/s3g
-	url = ../s3g
 [submodule "submodule/conveyor_bins"]
 	path = submodule/conveyor_bins
 	url = git@github.com:makerbot/conveyor_bins.git

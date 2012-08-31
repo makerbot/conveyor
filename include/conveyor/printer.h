@@ -70,7 +70,7 @@ namespace conveyor
         /** True if this printer can set the temperature of its platform */
         bool hasHeatedPlatform () const;
 
-        ToolTemperature toolTemperature () const;
+        const ToolTemperature &toolTemperature () const;
 
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);

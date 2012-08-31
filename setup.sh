@@ -5,7 +5,7 @@ BASEDIR=`echo $0|sed 's|/.*||'`
 
 if [ -z $PYVERSION ]
 then
-    PYVERSION=`python --version 2>&1 | sed s/'Python '//|sed s/\.[0-9]*$//`
+    PYVERSION=`python --version 2>&1 | sed s/'Python '//|sed s/\.[^.]*$//`
     echo "python version is $PYVERSION"
 else
     PYBINVERSION=$PYVERSION
@@ -38,4 +38,3 @@ pip install -q --use-mirrors coverage doxypy mock lockfile python-daemon unittes
 echo "Installing pyserial egg"
 easy_install -q submodule/conveyor_bins/pyserial-2.7_mb2.1-py$PYVERSION.egg
 
-export PYTHONPATH=./submodule/s3g:./src/main/python:$PYTHONPATH
