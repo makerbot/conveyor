@@ -120,7 +120,7 @@ namespace conveyor
         return status;
     }
 
-    ToolTemperature
+    const ToolTemperature &
     Printer::toolTemperature () const
     {
         return m_private->m_toolTemperature;
