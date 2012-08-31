@@ -309,7 +309,7 @@ namespace conveyor
         params["job_id"] = Json::Value(jobId);
         
         Json::Value const result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "cancel", params)
             );
             
         // TODO: check result?
