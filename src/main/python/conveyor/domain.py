@@ -43,7 +43,7 @@ class Job(DomainObject):
     def todict(self):
         dct = {
             'id': self.id,
-            'build_name': self.build_name,
+            'name': self.build_name,
             'config': self.config,
             'path': self.path,
             'preprocessor': self.preprocessor,
