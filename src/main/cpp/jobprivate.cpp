@@ -59,7 +59,10 @@ namespace conveyor
     JobPrivate::updateFromJson(Json::Value const & json)
     {
         int const id(json["id"].asInt());
+
+        // This is the filename that is being sliced/printed
         QString const name(json["name"].asCString());
+
         JobState const state
             ( jobStateFromString
               ( QString(json["state"].asCString())));
