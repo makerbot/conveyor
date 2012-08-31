@@ -165,7 +165,7 @@ class AbstractMain(object):
         self._config['common'].setdefault('slicer', 'miraclegrue')
         self._config['common'].setdefault('serialport', '/dev/ttyACM0')
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
-        self._config['common'].setdefault('profiledir', 'submodule/s3g/s3g/profiles')
+        self._config['common'].setdefault('profiledir', '../s3g/makerbot_driver/profiles')
         self._config['common'].setdefault('daemon_lockfile', 'conveyord.avail.lock')
         return None
 
