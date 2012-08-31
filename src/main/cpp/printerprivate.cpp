@@ -72,7 +72,9 @@ namespace conveyor
         m_toolTemperature.tools.clear();
         m_toolTemperature.heated_platforms.clear();
         m_toolTemperature.tools["Left Extruder"] = 42;
-        m_toolTemperature.heated_platforms["Platform"] = 12345;
+        m_toolTemperature.tools["Robot Arm"] = -22;
+        m_toolTemperature.tools["Death Laser"] = 9001;
+        m_toolTemperature.heated_platforms["Platform"] = 220;
     }
 
     Job *
