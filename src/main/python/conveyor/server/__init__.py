@@ -154,71 +154,18 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('job %d canceled', job)
             else:
                 raise ValueError(task.conclusion)
-            params = [job, conveyor.task.TaskState.STOPPED, task.conclusion]
-            self._jsonrpc.notify('notify', params)
+            params = {
+                'job': job.todict(),
+                'state': conveyor.task.TaskState.STOPPED,
+                'conclusion': task.conclusion
+            }
+            self._jsonrpc.notify('notify', params) # TODO: remove in favor of job progress (jobchanged)
         return callback
 
     @export('hello')
     def _hello(self, *args, **kwargs):
         self._log.debug('args=%r, kwargs=%r', args, kwargs)
         return 'world'
-
-    # TODO: broken, attempts to open a port that is already open
-    @export('printer_query')
-    def _printer_query(self,*args,**kwargs):
-        """ Queries a printer for it's name, extruder count, uuid, and other EEPROM info."""
-        if  'port' in kwargs:
-            s3gBot = makerbot_driver.s3g.from_filename(kwargs['port'])
-            if s3gBot :
-                version = s3gBot.get_version()
-                if(version >= 506):   #newer that 5.6 has 'advanced' version
-                    version = s3gBot.get_advanced_version()
-                name, uuid = s3gBot.get_advanced_name()
-                toolheads = s3gBot.get_toolhead_count()
-                verified = s3gBot.get_verified_status()
-                s3gBot.close()
-                info = { 'port':'port', 'class':ptr['class'],
-                    'version':version, 'uuid':uuid,
-                    'extruders':toolheads, 'displayname':name,
-                    'verified':verified 
-                } 
-                return info
-            else:
-               self._log.error("no bot at port %s", port)
-        return None
-
-    @export('printer_scan')
-    def _printer_scan(self,*args,**kwargs):
-        """ uses pyserial-mb to scan for ports, and return a list of ports
-        that have a machine matching the specifed VID/PID pair
-        """
-        result = None
-        self._log.debug("doing a printer scan via conveyor service")
-        vid, pid = None, None
-        #annoying case handling
-        if 'vid' in kwargs:
-            if kwargs['vid'] == None:           pass
-            elif isinstance(kwargs['vid'],int): vid = kwargs['vid']
-            else:                               vid = int(kwargs['vid'],16)
-        if 'pid' in kwargs:
-            if kwargs['pid'] == None:           pass
-            elif isinstance(kwargs['pid'],int): pid = kwargs['pid']
-            else:                               pid = int(kwargs['pid'],16)
-        try:
-            import serial.tools.list_ports as lp
-            ports = lp.list_ports_by_vid_pid(vid,pid)
-            result = list(ports)
-            for r in result:
-                self._printers_seen.append(r)
-            if result == None:
-              self._log.error("port= None")
-            else:
-              for port in result:
-                self._log.error("port= %r", port)
-        except Exception as e:
-            self._log.exception('unhandled exception')
-            result = None
-        return result
 
     @export('dir')
     def _dir(self, *args, **kwargs):
@@ -288,7 +235,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             def heartbeatcallback(task):
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
-            process.stoppedevent.attach(self._stoppedcallback)
+            process.stoppedevent.attach(self._stoppedcallback(job))
             process.start()
             dct = job.todict()
             return dct
@@ -319,7 +266,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             def heartbeatcallback(task):
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
-            process.stoppedevent.attach(self._stoppedcallback)
+            process.stoppedevent.attach(self._stoppedcallback(job))
             process.start()
             dct = job.todict()
             return dct
@@ -349,7 +296,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             def heartbeatcallback(task):
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
-            process.stoppedevent.attach(self._stoppedcallback)
+            process.stoppedevent.attach(self._stoppedcallback(job))
             process.start()
             dct = job.todict()
             return dct
@@ -381,6 +328,21 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             result.append(dct)
         return result
 
+    @export('getjobs')
+    def _getjobs(self):
+        jobs = self._server.getjobs()
+        result = {}
+        for job in jobs:
+            dct = job.todict()
+            result[job.id] = job
+        return result
+
+    @export('getjob')
+    def _getjob(self, id):
+        job = self._server.getjob(id)
+        result = job.todict()
+        return result
+
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
@@ -389,15 +351,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             ": takes (inputfile, outputfile) pair" )
         self._jsonrpc.addmethod('slice', self._slice,
             ": takes (inputfile, outputfile) pair" )
-        self._jsonrpc.addmethod('printer_scan',self._printer_scan,
-            ": takes {'vid':int(VID), 'pid':int(PID) } for USB target id's")
-        self._jsonrpc.addmethod('printer_query',self._printer_query,
-            ": takes {'port':string(port) } printer to query for data.")
         self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
         self._jsonrpc.addmethod('cancel',self._cancel, 
                 "takes {'port':string(port) 'job_id':jobid}"
                         "if Job is None, cancels by port. If port is None, cancels first bot")
         self._jsonrpc.addmethod('getprinters', self._getprinters)
+        self._jsonrpc.addmethod('getjob', self._getjob)
+        self._jsonrpc.addmethod('getjobs', self._getjobs)
 
     def run(self):
         # add our available functions to the json methods list
@@ -479,6 +439,7 @@ class Server(object):
         self._detectorthread = None
         self._idcounter = 0
         self._jobcounter = 0
+        self._jobs = {}
         self._lock = threading.Lock()
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = Queue()
@@ -520,9 +481,20 @@ class Server(object):
             with self._lock:
                 id = self._jobcounter
                 self._jobcounter += 1
-            job = conveyor.domain.Job(
-                id, build_name, path, config, preprocessor, skip_start_end,
-                with_start_end)
+                job = conveyor.domain.Job(
+                    id, build_name, path, config, preprocessor,
+                    skip_start_end, with_start_end)
+                self._jobs[id] = job
+            return job
+
+    def getjobs(self):
+        with self._lock:
+            jobs = self._jobs.copy()
+            return jobs
+
+    def getjob(self, id):
+        with self._lock:
+            job = self._jobs[id]
             return job
 
     def appendclientthread(self, clientthread):
