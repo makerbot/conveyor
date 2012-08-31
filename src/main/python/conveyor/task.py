@@ -45,6 +45,8 @@ class Task(object):
     def __init__(self, eventqueue=None):
         self.state = TaskState.PENDING
         self.conclusion = None
+        self.name = None
+        self.data = None
 
         self.progress = None # data from 'heartbeat'
         self.result = None   # data from 'end'
