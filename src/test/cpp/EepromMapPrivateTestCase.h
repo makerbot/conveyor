@@ -1,5 +1,5 @@
-#ifndef EEPROM_MAP_TEST_CASE_H
-#define EEPROM_MAP_TEST_CASE_H
+#ifndef EEPROM_MAP_PRIVATE_TEST_CASE_H
+#define EEPROM_MAP_PRIVATE_TEST_CASE_H
 
 #include <cppunit/extensions/HelperMacros.h>
 
@@ -13,13 +13,13 @@ class EepromMapPrivateTestCase : public CPPUNIT_NS::TestFixture
 	
 	CPPUNIT_TEST(testSplitPathNoSubMap);
   CPPUNIT_TEST(testSplitPathSubMap);
-  CPPUNIT_TEST(testGetSubMapTopLevelEntry);
-  CPPUNIT_TEST(testGetSubMapWithSubMap);
   CPPUNIT_TEST(testGetEepromMap);
   CPPUNIT_TEST(testSetString);
   CPPUNIT_TEST(testSetInt);
   CPPUNIT_TEST(testGetString);
   CPPUNIT_TEST(testGetInt);
+  CPPUNIT_TEST(testGetEntryTopLevelEntry);
+  CPPUNIT_TEST(testGetEntryWithSubMap);
 
 	CPPUNIT_TEST_SUITE_END();
 
@@ -29,8 +29,8 @@ public:
   
   void testSplitPathNoSubMap(void);
   void testSplitPathSubMap(void);
-  void testGetSubMapTopLevelEntry(void);
-  void testGetSubMapWithSubMap(void);
+  void testGetEntryTopLevelEntry(void);
+  void testGetEntryWithSubMap(void);
   void testGetEepromMap(void);
   void testSetString(void);
   void testSetInt(void);
@@ -38,7 +38,9 @@ public:
   void testGetInt(void);
 
 private:
-  EepromMapPrivate eepromMap;    
+  EepromMapPrivate* createEepromMap(void);
+  std::string eeprom_json;
+
 };
 }
 #endif

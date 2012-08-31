@@ -1,5 +1,7 @@
 #include <QString>
 #include <QStringList>
+#include <iostream>
+#include <string>
 
 #include <vector>
 
@@ -18,78 +20,92 @@ namespace conveyor
     EepromMapPrivate::~EepromMapPrivate(void)
     {
     }
+
+    EepromMapPrivate::EepromMapPrivate(EepromMapPrivate & other)
+    {
+      this->m_eepromMap = other.m_eepromMap;
+    }
+
+    EepromMapPrivate & EepromMapPrivate::operator= (EepromMapPrivate & other)
+    {
+      this->m_eepromMap = other.m_eepromMap;
+      return *this;
+    }
+
+    EepromMapPrivate & EepromMapPrivate::operator= (EepromMapPrivate other)
+    {
+      this->m_eepromMap = other.m_eepromMap;
+      return *this;
+    }
     
-    std::vector<int> EepromMapPrivate::getInt(QString path) const
+    std::vector<int> * EepromMapPrivate::getInt(QString path)
     {
         QStringList split_path = this->splitPath(path);
-        Json::Value theMap = this->getSubMap(split_path);
-        Json::Value values = theMap[split_path[split_path.size()-1].toStdString()]["value"];
-        std::vector<int> return_values;
-        for (Json::ArrayIndex i = 0; i < values.size(); i++)
+        Json::Value theEntry(*this->getEntry(split_path));
+        Json::Value gotValues(theEntry["values"]);
+        std::vector<int> * return_values;
+        for (Json::ArrayIndex i = 0; i < gotValues.size(); ++i)
         {
-            return_values.push_back(values[i].asInt());
+            return_values->push_back(gotValues[i].asInt());
         }
         return return_values;
     }
 
-    std::vector<QString> EepromMapPrivate::getString(QString path) const
+    std::vector<QString> * EepromMapPrivate::getString(QString path) 
     {
         QStringList split_path = this->splitPath(path);
-        Json::Value theMap = this->getSubMap(split_path);
-        Json::Value values = theMap[split_path[split_path.size()-1].toStdString()]["value"];
-        std::vector<QString> return_values;
-        for (Json::ArrayIndex i = 0; i < values.size(); i++)
+        Json::Value theEntry(*this->getEntry(split_path));
+        Json::Value gotValues(theEntry["value"]);
+        std::vector<QString> * return_values = new std::vector<QString>;
+        for (Json::ArrayIndex i = 0; i < gotValues.size(); ++i)
         {
-            return_values[i].push_back(QString(values[i].asCString()));
+            return_values->push_back(QString(gotValues[i].asCString()));
         }
         return return_values;
     }
 
-    void EepromMapPrivate::setInt(QString path, std::vector<int> value)
+    void EepromMapPrivate::setInt(QString path, std::vector<int> inValue)
     {
         QStringList split_path = this->splitPath(path);
-        Json::Value theMap = this->getSubMap(split_path);
-        Json::Value newValue = new Json::Value(Json::arrayValue);
-        newValue.resize(value.size());
-        for (Json::ArrayIndex i = 0; i < value.size(); i++)
+        Json::Value * theEntry = this->getEntry(split_path);
+        Json::Value * oldValues = &((*theEntry)["value"]);
+        for (unsigned i = 0; i < inValue.size(); ++i)
         {
-            newValue.append(Json::Value(value[i]));
+            (*oldValues)[i] = Json::Value(inValue[i]);
         }
-        theMap[split_path[split_path.size()-1].toStdString()]["value"] = newValue;
     }
 
-    void EepromMapPrivate::setString(QString path, std::vector<QString> value)
+    void EepromMapPrivate::setString(QString path, std::vector<QString> inValue)
     {
+        //Get the correct map
         QStringList split_path = this->splitPath(path);
-        Json::Value theMap = this->getSubMap(split_path);
-        Json::Value newValue = new Json::Value(Json::arrayValue);
-        newValue.resize(value.size());
-        for (Json::ArrayIndex i = 0; i < value.size(); i++)
+        Json::Value * theEntry = this->getEntry(split_path);
+        Json::Value * oldValues = &((*theEntry)["value"]);
+        for (unsigned i = 0; i < inValue.size(); ++i)
         {
-            newValue.append(Json::Value(value[i].toStdString()));
+            (*oldValues)[i] = Json::Value(inValue[i].toStdString());
         }
-        theMap[split_path[split_path.size()-1].toStdString()]["value"] = newValue;
     }
 
-    Json::Value EepromMapPrivate::getSubMap(QStringList path) const
+    Json::Value * EepromMapPrivate::getEntry(QStringList path) 
     {
-        Json::Value theMap = this->m_eepromMap[this->m_mainMap.toStdString()];
+        Json::Value * theMap = &(this->m_eepromMap[this->m_mainMap.toStdString()]);
         //-1, since the last part is the actual EEPROM value
-        for (int i = 0; i < path.size()-1; i++)
+        for (int i = 0; i < path.size()-1; ++i)
         {
-            Json::Value theMap = (Json::Value)theMap[path[i].toStdString()]["submap"];
+            theMap = &((*theMap)[path[i].toStdString()]["sub_map"]);
         }
+        theMap = &((*theMap)[path[path.size()-1].toStdString()]);
         return theMap;
     }
 
-    QStringList EepromMapPrivate::splitPath(QString path) const
+    QStringList EepromMapPrivate::splitPath(QString path) 
     {
         char deliminator = '/';
-        QStringList split_path = path.split(deliminator);
-        return split_path;
+        return path.split(deliminator);
     }
 
-    Json::Value EepromMapPrivate::getEepromMap(void) const
+    Json::Value EepromMapPrivate::getEepromMap(void) 
     {
         return this->m_eepromMap;
     }

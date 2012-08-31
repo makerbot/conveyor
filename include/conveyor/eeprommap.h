@@ -17,8 +17,8 @@ namespace conveyor
         EepromMap(Json::Value eepromMap);
         ~EepromMap(void);
 
-        std::vector<int> getInt(QString path) const;
-        std::vector<QString> getString(QString path) const;
+        std::vector<int> * getInt(QString path) const;
+        std::vector<QString> * getString(QString path) const;
         void setInt(QString path, std::vector<int> value);
         void setString(QString path, std::vector<QString> value);
         Json::Value getEepromMap(void) const;

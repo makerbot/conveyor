@@ -17,17 +17,20 @@ namespace conveyor
         public:
             EepromMapPrivate(Json::Value eepromMap);
             ~EepromMapPrivate(void);
-            std::vector<int> getInt(QString path) const;
-            std::vector<QString> getString(QString path) const;
+            EepromMapPrivate (EepromMapPrivate & other);
+            EepromMapPrivate & operator= (EepromMapPrivate & other);
+            EepromMapPrivate & operator= (EepromMapPrivate other);
+            std::vector<int> * getInt(QString path);
+            std::vector<QString> * getString(QString path) ;
             void setInt(QString path, std::vector<int> value);
             void setString(QString path, std::vector<QString> value);
-            Json::Value getEepromMap(void) const;
+            Json::Value getEepromMap(void) ;
 
         private:
             QString m_mainMap;
             Json::Value m_eepromMap;
-            QStringList splitPath(QString path) const;
-            Json::Value getSubMap(QStringList path) const;
+            QStringList splitPath(QString path) ;
+            Json::Value * getEntry(QStringList path);
 
             friend class EepromMapPrivateTestCase;
 
