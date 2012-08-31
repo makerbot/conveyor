@@ -83,7 +83,7 @@ void EepromMapPrivateTestCase::testGetEepromMap(void)
 void EepromMapPrivateTestCase::testSetString(void)
 {
   EepromMapPrivate* eepromMap = this->createEepromMap();
-  Json::Value the_map = eepromMap->getEepromMap();//["eeprom_map"]["MACHINE_NAME"]["value"].asString();
+  Json::Value the_map = eepromMap->getEepromMap();
   Json::Value the_value = the_map["eeprom_map"]["MACHINE_NAME"]["value"];
   Json::Value the_name = the_value[0];
   std::string  currentNameInMap= the_name.asString();
