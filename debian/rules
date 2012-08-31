@@ -3,4 +3,5 @@
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/scons.mk
 
-DEBUILD_DPKG_BUILDPACKAGE_OPTS="-us -uc -sa -i -I"
+# DEBUILD_DPKG_BUILDPACKAGE_OPTS="-us -uc -sa -i -I"
+DEB_SCONS_OPTIONS := debian_build=1

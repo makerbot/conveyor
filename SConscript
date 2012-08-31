@@ -54,8 +54,12 @@ env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('include/'))
-cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
-cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
+if ARGUMENTS.get('debian_build',0):
+    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/json/'))
+    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/jsonrpc/'))
+else:
+    cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
+    cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
 libconveyor_cpp = [Glob('src/main/cpp/*.cpp')]
 if 'win32' != sys.platform:
     libconveyor_cpp.append(Glob('src/main/cpp/posix/*.cpp'))
@@ -93,10 +97,16 @@ testenv = cppenv.Clone()
 if build_unit_tests:
     testenv.Append(LIBS='cppunit')
 
-    testenv.Append(LIBPATH=[Dir('#/../json-cpp/obj/')])
-    testenv.Append(LIBPATH=[Dir('#/../jsonrpc/obj/')])
-    testenv.Append(LIBS=['jsonrpc'])
-    testenv.Append(LIBS=['json'])
+    if ARGUMENTS.get('debian_build',0):
+        testenv.Append(LIBPATH=[Dir('/usr/lib/makerbot')])
+    	testenv.Append(LIBS=['jsonrpc'])
+    	testenv.Append(LIBS=['json'])
+    else:
+        testenv.Append(LIBPATH=[Dir('#/../json-cpp/obj/')])
+    	testenv.Append(LIBPATH=[Dir('#/../jsonrpc/obj/')])
+    	testenv.Append(LIBS=['jsonrpc'])
+    	testenv.Append(LIBS=['json'])
+
     if 'win32' == sys.platform:
         testenv.Append(LIBS=['ws2_32'])
 
