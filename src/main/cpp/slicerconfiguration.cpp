@@ -1,240 +1,170 @@
 #include <conveyor.h>
 
-using namespace conveyor;
+#include <conveyor/slicers.h>
 
-SlicerConfiguration *
-SlicerConfiguration::defaultConfiguration(Quality quality)
+#include "slicerconfigurationprivate.h"
+
+namespace conveyor
 {
-    SlicerConfiguration * const config(new SlicerConfiguration(QString()));
 
-    switch(quality)
+    SlicerConfiguration *
+    SlicerConfiguration::defaultConfiguration(Quality quality)
     {
-    case LowQuality:
-        config->setSlicer(MiracleGrue);
-        config->setLayerHeight(.3);
-        break;
-    case MediumQuality:
-        config->setSlicer(MiracleGrue);
-        break;
-    case HighQuality:
-        config->setSlicer(Skeinforge);
-        break;
-    }
-    return config;
-}
-
-SlicerConfiguration::SlicerConfiguration(const QString &) :
-    m_slicer(MiracleGrue),
-    m_extruder(Left),
-    m_raft(true),
-    m_supports(false),
-    m_infill(0.90),
-    m_layerHeight(0.2),
-    m_shells(3),
-    m_extruderTemperature(220),
-    m_platformTemperature(220),
-    m_printSpeed(80),
-    m_travelSpeed(150)
-{
-    // TODO
-}
-
-Json::Value SlicerConfiguration::toJSON() const
-{
-    const std::string slicer(slicerName().toStdString());
-    Json::Value root;
-
-    // Slicer name and min/max versions
-    root["slicer"]["slicerName"] = slicer;
-    switch (m_slicer) {
-    case Skeinforge:
-        root["slicer"]["minVersion"] = "50.0.0.0";
-        root["slicer"]["maxVersion"] = "50.0.0.0";
-        break;
-
-    case MiracleGrue:
-        root["slicer"]["minVersion"] = "0.0.4.0";
-        root["slicer"]["maxVersion"] = "0.0.5.0";
-        break;
+        return SlicerConfigurationPrivate::defaultConfiguration(quality);
     }
 
-    // The rest is formatted to match MiracleGrue's config
-
-    root[slicer]["doRaft"] = m_raft;
-    root[slicer]["doSupport"] = m_supports;
-
-    // "extruder" section
-    switch (m_extruder) {
-    case Left:
-        root[slicer]["extruder"]["defaultExtruder"] = 0;
-        break;
-
-    case Right:
-        root[slicer]["extruder"]["defaultExtruder"] = 1;
-        break;
+    SlicerConfiguration::SlicerConfiguration(Json::Value &json)
+        : m_private(new SlicerConfigurationPrivate(json))
+    {
     }
 
-    root[slicer]["infillDensity"] = m_infill;
-    root[slicer]["layerHeight"] = m_layerHeight;
-    root[slicer]["numberOfShells"] = m_shells;
-    root[slicer]["rapidMoveFeedRateXY"] = m_travelSpeed;
-
-    const char *profiles[] = {"insets",
-                              "infill",
-                              "firstlayer",
-                              "outlines"};
-
-    for (int i = 0; i < 4; ++i) {
-        root[slicer]["extrusionProfiles"][profiles[i]]["temperature"] =
-            m_extruderTemperature;
-        root[slicer]["extrusionProfiles"][profiles[i]]["feedrate"] =
-            m_printSpeed;
+    Json::Value
+    SlicerConfiguration::toJSON() const
+    {
+        return m_private->toJSON();
     }
 
-    // Nothing variable here, not sure if needed?
-    for (int i = 0; i < 2; ++i) {
-        root["extruderProfiles"][i]["firstLayerExtrusionProfile"] = "firstlayer";
-        root["extruderProfiles"][i]["insetsExtrusionProfile"] = "insets";
-        root["extruderProfiles"][i]["infillsExtrusionProfile"] = "infill";
-        root["extruderProfiles"][i]["outlinesExtrusionProfile"] = "outlines";
+    SlicerConfiguration::Slicer
+    SlicerConfiguration::slicer() const
+    {
+        return m_private->slicer();
     }
 
-    // TODO: not in miracle.conf?
-    root[slicer]["platformTemperature"] = m_platformTemperature;
-
-    return root;
-}
-
-SlicerConfiguration::Slicer SlicerConfiguration::slicer() const
-{
-    return m_slicer;
-}
-
-QString SlicerConfiguration::slicerName() const
-{
-    switch (m_slicer) {
-    case Skeinforge:
-        return "Skeinforge";
-    case MiracleGrue:
-        return "MiracleGrue";
-    default:
-        return QString();
+    QString
+    SlicerConfiguration::slicerName() const
+    {
+        return m_private->slicerName();
     }
-}
 
-SlicerConfiguration::Extruder SlicerConfiguration::extruder() const
-{
-    return m_extruder;
-}
-
-QString SlicerConfiguration::extruderName() const
-{
-    switch (m_extruder) {
-    case Left:
-        return "Left";
-    case Right:
-        return "Right";
-    default:
-        return QString();
+    SlicerConfiguration::Extruder
+    SlicerConfiguration::extruder() const
+    {
+        return m_private->extruder();
     }
-}
 
-bool SlicerConfiguration::raft() const
-{
-    return m_raft;
-}
+    QString
+    SlicerConfiguration::extruderName() const
+    {
+        return m_private->extruderName();
+    }
 
-bool SlicerConfiguration::supports() const
-{
-    return m_supports;
-}
+    bool
+    SlicerConfiguration::raft() const
+    {
+        return m_private->raft();
+    }
 
-double SlicerConfiguration::infill() const
-{
-    return m_infill;
-}
+    bool
+    SlicerConfiguration::supports() const
+    {
+        return m_private->supports();
+    }
 
-double SlicerConfiguration::layerHeight() const
-{
-    return m_layerHeight;
-}
+    double
+    SlicerConfiguration::infill() const
+    {
+        return m_private->infill();
+    }
 
-unsigned SlicerConfiguration::shells() const
-{
-    return m_shells;
-}
+    double
+    SlicerConfiguration::layerHeight() const
+    {
+        return m_private->layerHeight();
+    }
 
-unsigned SlicerConfiguration::extruderTemperature() const
-{
-    return m_extruderTemperature;
-}
+    unsigned
+    SlicerConfiguration::shells() const
+    {
+        return m_private->shells();
+    }
 
-unsigned SlicerConfiguration::platformTemperature() const
-{
-    return m_platformTemperature;
-}
+    unsigned
+    SlicerConfiguration::extruderTemperature() const
+    {
+        return m_private->extruderTemperature();
+    }
 
-unsigned SlicerConfiguration::printSpeed() const
-{
-    return m_printSpeed;
-}
+    unsigned
+    SlicerConfiguration::platformTemperature() const
+    {
+        return m_private->platformTemperature();
+    }
 
-unsigned SlicerConfiguration::travelSpeed() const
-{
-    return m_travelSpeed;
-}
+    unsigned
+    SlicerConfiguration::printSpeed() const
+    {
+        return m_private->printSpeed();
+    }
 
-void SlicerConfiguration::setSlicer(Slicer slicer)
-{
-    m_slicer = slicer;
-}
+    unsigned
+    SlicerConfiguration::travelSpeed() const
+    {
+        return m_private->travelSpeed();
+    }
 
-void SlicerConfiguration::setExtruder(Extruder extruder)
-{
-    m_extruder = extruder;
-}
+    void
+    SlicerConfiguration::setSlicer(Slicer slicer)
+    {
+        m_private->setSlicer(slicer);
+    }
 
-void SlicerConfiguration::setRaft(bool raft)
-{
-    m_raft = raft;
-}
+    void
+    SlicerConfiguration::setExtruder(Extruder extruder)
+    {
+        m_private->setExtruder(extruder);
+    }
 
-void SlicerConfiguration::setSupports(bool supports)
-{
-    m_supports = supports;
-}
+    void
+    SlicerConfiguration::setRaft(bool raft)
+    {
+        return m_private->setRaft(raft);
+    }
 
-void SlicerConfiguration::setInfill(double infill)
-{
-    m_infill = infill;
-}
+    void
+    SlicerConfiguration::setSupports(bool supports)
+    {
+        m_private->setSupports(supports);
+    }
 
-void SlicerConfiguration::setLayerHeight(double height)
-{
-    m_layerHeight = height;
-}
+    void
+    SlicerConfiguration::setInfill(double infill)
+    {
+        m_private->setInfill(infill);
+    }
 
-void SlicerConfiguration::setShells(unsigned shells)
-{
-    m_shells = shells;
-}
+    void
+    SlicerConfiguration::setLayerHeight(double height)
+    {
+        m_private->setLayerHeight(height);
+    }
 
-void SlicerConfiguration::setExtruderTemperature(unsigned temperature)
-{
-    m_extruderTemperature = temperature;
-}
+    void
+    SlicerConfiguration::setShells(unsigned shells)
+    {
+        m_private->setShells(shells);
+    }
 
-void SlicerConfiguration::setPlatformTemperature(unsigned temperature)
-{
-    m_platformTemperature = temperature;
-}
+    void
+    SlicerConfiguration::setExtruderTemperature(unsigned temperature)
+    {
+        m_private->setExtruderTemperature(temperature);
+    }
 
-void SlicerConfiguration::setPrintSpeed(unsigned speed)
-{
-    m_printSpeed = speed;
-}
+    void
+    SlicerConfiguration::setPlatformTemperature(unsigned temperature)
+    {
+        m_private->setPlatformTemperature(temperature);
+    }
 
-void SlicerConfiguration::setTravelSpeed(unsigned speed)
-{
-    m_travelSpeed = speed;
+    void
+    SlicerConfiguration::setPrintSpeed(unsigned speed)
+    {
+        m_private->setPrintSpeed(speed);
+    }
+
+    void
+    SlicerConfiguration::setTravelSpeed(unsigned speed)
+    {
+        m_private->setTravelSpeed(speed);
+    }
 }
