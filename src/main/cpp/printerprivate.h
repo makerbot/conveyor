@@ -42,6 +42,7 @@ namespace conveyor
         bool m_canPrintToFile;
         bool m_hasHeatedPlatform;
         int m_numberOfToolheads;
+        ToolTemperature m_toolTemperature;
         ConnectionStatus m_connectionStatus;
     };
 }

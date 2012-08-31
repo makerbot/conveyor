@@ -65,6 +65,14 @@ namespace conveyor
         m_printerType = printerType;
         m_numberOfToolheads = numberOfToolheads;
         m_hasHeatedPlatform = hasHeatedPlatform;
+
+        // TODO: putting in some fake data for now, to test the
+        // UI. Need to put real data into the json params from
+        // conveyor-py
+        m_toolTemperature.tools.clear();
+        m_toolTemperature.heated_platforms.clear();
+        m_toolTemperature.tools["Left Extruder"] = 42;
+        m_toolTemperature.heated_platforms["Platform"] = 12345;
     }
 
     Job *
