@@ -81,7 +81,7 @@ class Task(object):
                 raise IllegalTransitionException(self.state, event)
         elif TaskState.RUNNING == self.state:
             if TaskEvent.HEARTBEAT == event:
-                self.progress = data
+                self.progress = data["progress"]
                 self.heartbeatevent(self)
             elif TaskEvent.END == event:
                 self.state = TaskState.STOPPED
