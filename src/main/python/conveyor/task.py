@@ -81,12 +81,7 @@ class Task(object):
                 raise IllegalTransitionException(self.state, event)
         elif TaskState.RUNNING == self.state:
             if TaskEvent.HEARTBEAT == event:
-                #Heartbeat events are passed in via JSONRPC specs
-                if isinstance(data, dict):
-                  if "progress" in data:
-                    self.progress = data["progress"]
-                else:
-                  self.progress = data
+                self.progress = data
                 self.heartbeatevent(self)
             elif TaskEvent.END == event:
                 self.state = TaskState.STOPPED
