@@ -33,6 +33,7 @@ class Job(DomainObject):
         with_start_end):
             self.build_name = build_name
             self.config = config
+            self.currentstep = None
             self.id = id
             self.path = path
             self.preprocessor = preprocessor
@@ -40,11 +41,15 @@ class Job(DomainObject):
             self.skip_start_end = skip_start_end
             self.with_start_end = with_start_end
 
+    # TODO: we are not handling the currentstep and process fields evenly
+    # between todict() and fromdict().
+
     def todict(self):
         dct = {
             'id': self.id,
             'name': self.build_name,
             'config': self.config,
+            'currentstep': self.currentstep,
             'path': self.path,
             'preprocessor': self.preprocessor,
             'skip_start_end': self.skip_start_end,
