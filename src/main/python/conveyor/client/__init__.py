@@ -42,143 +42,134 @@ class ClientMain(conveyor.main.AbstractMain):
         conveyor.main.AbstractMain._initparser_common(self, parser)
 
     def _initsubparsers(self):
-        subparsers = self._parser.add_subparsers(dest='command', title='Commands')
+        subparsers = self._parser.add_subparsers(
+            dest='command',
+            title='Commands')
         for method in (
+            self._initsubparser_cancel,
+            self._initsubparser_dir,
+            self._initsubparser_job,
+            self._initsubparser_jobs,
             self._initsubparser_print,
-            self._initsubparser_query_printer,
-            self._initsubparser_list_printers,
             self._initsubparser_printers,
             self._initsubparser_printtofile,
             self._initsubparser_slice,
-            self._initsubparser_scan,
-            self._initsubparser_verify_usb_detect,
-            self._initsubparser_dir,
-            self._initsubparser_cancel
         ):
                 method(subparsers)
 
-    def _initsubparser_printers(self, subparsers):
-        parser = subparsers.add_parser('printers', help='list connected printers')
-        parser.set_defaults(func=self._list_printers)
-        self._initparser_common(parser)
-        parser.add_argument(
-            '--json',
-            action='store_true',
-            default=False,
-            help='print in JSON format')
-        parser.add_argument('--vid', action='store', 
-            type=int, default = 0x23C1, dest ='vid',
-            help='Limit printer scan by USB VendorId')
-        parser.add_argument('--pid', action='store', 
-             type=int, default = None, dest = 'pid',
-             help='Limit printer scan by USB ProductId')
-        parser.add_argument( '--port',dest='endpoint', default=None,
-             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
- 
-    def _initsubparser_print(self, subparsers):
-        parser = subparsers.add_parser('print', help='print an object')
-        parser.set_defaults(func=self._run_print)
-        self._initparser_common(parser)
-        parser.add_argument(
-            'thing', help='the path to the object file', metavar='PATH')
-        parser.add_argument(
-            '--skip-start-end', action='store_true', default=False,
-            help='use start/end gcode provided by file')
-        parser.add_argument('--preprocessor', dest='preprocessor',
-            default=False, help='preprocessor to run on the gcode file')
-        parser.add_argument( '--port',dest='endpoint', default=None,
-             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
-
-    def _initsubparser_printtofile(self, subparsers):
-        parser = subparsers.add_parser('printtofile', help='print an object to an .s3g file')
-        parser.set_defaults(func=self._run_printtofile)
-        self._initparser_common(parser)
-        parser.add_argument(
-            'thing', help='the path to the object file', metavar='PATH')
-        parser.add_argument(
-            's3g', help='the output path for the .s3g file', metavar='S3G')
-        parser.add_argument(
-            '--skip-start-end', action='store_true', default=False,
-            help='use start/end gcode provided by file')
-        parser.add_argument('--preprocessor', dest='preprocessor',
-            default=False, help='preprocessor to run on the gcode file')
-
-    def _initsubparser_slice(self, subparsers):
-        parser = subparsers.add_parser('slice', help='slice an object into .gcode')
-        parser.set_defaults(func=self._run_slice)
-        self._initparser_common(parser)
-        parser.add_argument('thing', help='the path to the object file', metavar='PATH')
-        parser.add_argument(
-            'gcode', help='the output path for the .gcode file',
-            metavar='GCODE')
-        parser.add_argument(
-            '--with-start-end', action='store_true', default=False,
-            help='append start and end gcode to .gcode file')
-        parser.add_argument(
-            '--preprocessor', dest='preprocessor', default=False,
-            help='preprocessor to run on the gcode file')
-        parser.add_argument( '--port',dest='endpoint', default=None,
-             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
-
-    def _initsubparser_query_printer(self, subparsers):
-        """ setup parser options for query printers """
-        parser = subparsers.add_parser('query_printer',help='connect to printers for status/data query')
-        parser.set_defaults(func=self._query_printer)
-        self._initparser_common(parser)
-        parser.add_argument( '--port',dest='endpoint', default=None,
-            help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
-
     def _initsubparser_cancel(self, subparsers):
-        """ setup parser options for query printers """
-        parser = subparsers.add_parser('cancel',help='connect to printers for status/data query')
-        parser.set_defaults(func=self._cancel_print)
+        parser = subparsers.add_parser(
+            'cancel',
+            help='cancel a job')
+        parser.set_defaults(func=self._run_cancel)
         self._initparser_common(parser)
-        parser.add_argument( '--job',dest='job_id', default=None,
-             help="specify a job to print by id string.")
-        parser.add_argument( '--port',dest='endpoint', default=None,
-             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
-
-    def _initsubparser_list_printers(self,subparsers):
-        """ setup parser options for 'list printers' option """
-        parser = subparsers.add_parser('list_printers',help='list known or found printers')
-        parser.set_defaults(func=self._list_printers)
-        self._initparser_common(parser)
-        parser.add_argument('--vid', action='store', 
-            type=int, default = 0x23C1, dest ='vid',
-            help='Limit printer scan by USB VendorId')
-        parser.add_argument('--pid', action='store', 
-             type=int, default = None, dest = 'pid',
-             help='Limit printer scan by USB ProductId')
-        parser.add_argument( '--port',dest='endpoint', default=None,
-             help="specify a connection for a printer ex. 'COM3' or '/dev/tty1'")
-
-    def _initsubparser_scan(self,subparsers):
-        """ setup parser options for 'scan for printers' option """
-        parser = subparsers.add_parser('scan',help='ping a service or tool')
-        parser.set_defaults(func=self._run_scan)
-        self._initparser_common(parser)
-        parser.add_argument('--vid', action='store', 
-            type=int, default = 0x23C1,
-            help='Limit printer scan by USB VendorId')
-        parser.add_argument('--pid', action='store', 
-             type=int, default = None,
-             help='Limit printer scan by USB ProductId')
+        parser.add_argument(
+            'job',
+            help='the ID of the job to cancel',
+            metavar='JOB')
 
     def _initsubparser_dir(self,subparsers):
-        parser = subparsers.add_parser('dir',help='ping a service or tool')
+        parser = subparsers.add_parser(
+            'dir',
+            help='list the methods available in the conveyor service')
         parser.set_defaults(func=self._run_dir)
         self._initparser_common(parser)
 
-    def _initsubparser_listen(self, subparsers):
-        parser = subparsers.add_parser('listen')
-        parser.set_defaults(func=self._run_listen)
+    def _initsubparser_job(self, subparsers):
+        parser = subparsers.add_parser(
+            'job',
+            help='get the details for a job')
+        parser.set_defaults(func=self._run_job)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'jobid',
+            type=int,
+            help='the job ID',
+            metavar='JOB')
+
+    def _initsubparser_jobs(self, subparsers):
+        parser = subparsers.add_parser(
+            'jobs',
+            help='get the details for all jobs')
+        parser.set_defaults(func=self._run_jobs)
         self._initparser_common(parser)
 
-    def _initsubparser_verify_usb_detect(self,subparsers):
-        """ setup parser options for 'verify USB' option """
-        parser = subparsers.add_parser('verify_usb_detect', help='functional test, does usb work?')
-        parser.set_defaults(func=self._verify_usb_detect)
+    def _initsubparser_print(self, subparsers):
+        parser = subparsers.add_parser(
+            'print',
+            help='print an object')
+        parser.set_defaults(func=self._run_print)
         self._initparser_common(parser)
+        parser.add_argument(
+            'inputpath',
+            help='the path to the object file', metavar='INPUTPATH')
+        parser.add_argument(
+            '--skip-start-end',
+            action='store_true',
+            default=False,
+            help='use start/end gcode provided by file')
+        parser.add_argument(
+            '--preprocessor',
+            default=False,
+            help='preprocessor to run on the gcode file',
+            dest='preprocessor')
+
+    def _initsubparser_printers(self, subparsers):
+        parser = subparsers.add_parser(
+            'printers',
+            help='list connected printers')
+        parser.set_defaults(func=self._run_printers)
+        self._initparser_common(parser)
+ 
+    def _initsubparser_printtofile(self, subparsers):
+        parser = subparsers.add_parser(
+            'printtofile',
+            help='print an object to an .s3g file')
+        parser.set_defaults(func=self._run_printtofile)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'inputpath',
+            help='the path to the object file',
+            metavar='INPUTPATH')
+        parser.add_argument(
+            'outputpath',
+            help='the output path for the .s3g file',
+            metavar='OUTPUTPATH')
+        parser.add_argument(
+            '--skip-start-end',
+            action='store_true',
+            default=False,
+            help='use start/end gcode provided by file')
+        parser.add_argument(
+            '--preprocessor',
+            default=False,
+            help='preprocessor to run on the gcode file',
+            dest='preprocessor')
+
+    def _initsubparser_slice(self, subparsers):
+        parser = subparsers.add_parser(
+            'slice',
+            help='slice an object into .gcode')
+        parser.set_defaults(func=self._run_slice)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'inputpath',
+            help='the path to the object file',
+            metavar='INPUTPATH')
+        parser.add_argument(
+            'outputpath',
+            help='the output path for the .gcode file',
+            metavar='OUTPUTPATH')
+        parser.add_argument(
+            '--with-start-end',
+            action='store_true',
+            default=False,
+            help='include start and end gcode in .gcode file')
+        parser.add_argument(
+            '--preprocessor',
+            default=False,
+            help='preprocessor to run on the gcode file',
+            dest='preprocessor')
 
     def _run(self):
         self._initeventqueue()
@@ -191,15 +182,39 @@ class ClientMain(conveyor.main.AbstractMain):
                 self._config['common']['socket'], e.strerror, exc_info=True)
             if not self._has_daemon_lock():
               self._log.critical(
-                'no server lock found. Verify conveyor service is running')
+                'Unable to connect to conveyor server. Please verify that it is running.')
         else:
             code = self._parsedargs.func()
+        return code
+
+    def _run_cancel(self):
+        self._log.error('cancel not implemented')
+        code = 1
+        return code
+
+    def _run_dir(self):
+        self._log.error('dir not implemented')
+        code = 1
+        return code
+
+    def _run_job(self):
+        params = {'id': int(self._parsedargs.jobid)}
+        def display(result):
+            self._log.info('%s', result)
+        code = self._run_client('getjob', params, False, display)
+        return code
+
+    def _run_jobs(self):
+        params = {}
+        def display(result):
+            self._log.info('%s', result)
+        code = self._run_client('getjobs', params, False, display)
         return code
 
     def _run_print(self):
         params = {
             'printername': None,
-            'inputpath': os.path.abspath(self._parsedargs.thing),
+            'inputpath': os.path.abspath(self._parsedargs.inputpath),
             'preprocessor': self._parsedargs.preprocessor,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
@@ -207,15 +222,20 @@ class ClientMain(conveyor.main.AbstractMain):
             'slicer_settings': None,
             'material': None
         }
-        self._log.info('printing: %s', self._parsedargs.thing)
-        code = self._run_client('print', params)
+        self._log.info('printing: %s', self._parsedargs.inputpath)
+        code = self._run_client('print', params, True, None)
+        return code
+
+    def _run_printers(self):
+        self._log.error('jobs not implemented')
+        code = 1
         return code
 
     def _run_printtofile(self):
         params = {
             'profilename': None,
-            'inputpath': os.path.abspath(self._parsedargs.thing),
-            'outputpath': os.path.abspath(self._parsedargs.s3g),
+            'inputpath': os.path.abspath(self._parsedargs.inputpath),
+            'outputpath': os.path.abspath(self._parsedargs.outputpath),
             'preprocessor': self._parsedargs.preprocessor,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
@@ -224,172 +244,56 @@ class ClientMain(conveyor.main.AbstractMain):
             'material': None
         }
         self._log.info(
-            'printing to file: %s -> %s', self._parsedargs.thing,
-            self._parsedargs.s3g)
-        code = self._run_client('printtofile', params)
+            'printing to file: %s -> %s', self._parsedargs.inputpath,
+            self._parsedargs.outputpath)
+        code = self._run_client('printtofile', params, True, None)
         return code
 
     def _run_slice(self):
         params = {
             'profilename': None,
-            'inputpath': os.path.abspath(self._parsedargs.thing),
-            'outputpath': os.path.abspath(self._parsedargs.gcode),
+            'inputpath': os.path.abspath(self._parsedargs.inputpath),
+            'outputpath': os.path.abspath(self._parsedargs.outputpath),
             'preprocessor': self._parsedargs.preprocessor,
             'with_start_end': self._parsedargs.with_start_end,
             'slicer_settings': None,
             'material': None
         }
         self._log.info(
-            'slicing to file: %s -> %s', self._parsedargs.thing,
-            self._parsedargs.gcode)
-        code = self._run_client('slice', params)
+            'slicing to file: %s -> %s', self._parsedargs.inputpath,
+            self._parsedargs.outputpath)
+        code = self._run_client('slice', params, True, None)
         return code
 
-    def _run_scan(self):
-        params = {"vid":self._parsedargs.vid, "pid":self._parsedargs.pid}
-        code = self._run_client('printer_scan', params) #from server/__init__.py
-        return code 
-
-    def _cancel_print(self):
-        params = { 'port':self._parsedargs.endpoint, 'job_id':self._parsedargs.job_id} 
-        code = self._run_client('cancel', params ) #from server/__init__.py
-        return code
-
-    def _query_printer(self):
-        params = { 'port':self._parsedargs.endpoint} 
-        code = self._run_client('printer_query', params, self._show_query_printer_result) #from server/__init__.py
-        return code 
-
-    def _list_printers(self):
-        import pdb
-        pdb.set_trace()
-        params = {'pid':self._parsedargs.pid,
-                'vid':self._parsedargs.vid,
-                'endpoint':self._parsedargs.endpoint } 
-        code = self._run_client('printer_scan', params, self._show_list_printers_result) #from server/__init__.py
-        return code 
-
-    def _run_dir(self):
-        params = []
-        code = self._run_client('dir', params, self._show_results_to_user ) #from server/__init__.py
-        return code
-
-    def _show_results_to_user(self, task):
-        """ prints servers response to the end user that called
-        the task. """
-        import json
-        import sys
-        x = json.dumps(task.result, sys.stderr, indent = 2)
-        print(x)
-
-    def _show_list_printers_result(self, task):
-        """ custom callback to display results to the user.  Must match 
-        behavior and core of Client.defaultcallback """
-        # do activity of default callback
-        printers = []
-        for dict in task.result:
-            r = { 'name' : 'Name Not Fetched',
-                'displayname': 'display not fetched',
-                 'kind': 'kind not fetched',
-                 'extruders':1,
-                 'port': dict['port']
-            }
-            printers.append(r)
-        import json
-        import sys
-        x = json.dumps(task.result, sys.stderr)
-        print(x)
-
-    def _verify_usb_detect(self):
-        """ interactive test to verify that bot printers are listed correctly """
-
-        endpoint = raw_input("Verify a printer is plugged in and type the port here: ")
-
-        # Params for the fuction to send to the server
-        params = {'pid':None, 'vid':None, 'endpoint':endpoint }
-        # Run the standard list printers' function, using the 'show the list to a user' callback
-        # TODO: Un-comment when master is merged into release branch
-        # code = self._run_client('printer_scan', params, self._show_list_printers_result) 
-        code = 0
-        if code != 0: return code
-
-        # Ask for confirmation the tech read the list
-        answer = raw_input("Did you see a printer listed above (y/N)?:")
-        if answer.lower() == 'n': return -40
-
-        raw_input("Please unplug printer and hit <enter> to continue")
-
-        # TODO: Un-comment when master is merged into release branch
-        # code = self._run_client('printer_scan',params, self._show_list_printers_result)
-        if code != 0: return code
-
-        answer = raw_input("Did you see no printers listed above (y/N)?:")
-        if answer.lower() == 'n': return -60
-
-        return 0
-
-    def _show_query_printer_result(self, task):
-        """ custom callback to display results to the user.  Must match 
-        behavior and core of Client.defaultcallback """
-        # do activity of default callback
-        import json
-        import sys
-        x = json.dumps(task.result, sys.stderr)
-        print(x)
-
-    def _run_client(self, method, params, displaycallback=None):
-        """ Creates a client object to run a single command to the server, 
-        then waits for a reply and return the success code.
-        """
-        client = conveyor.client.Client.clientFactory(self._socket, method, params, displaycallback)
+    def _run_client(self, method, params, wait, display):
+        client = conveyor.client.Client.clientFactory(
+            self._socket, method, params, wait, display)
         code = client.run()
         return code
 
     def _has_daemon_lock(self):
-        """ 
-        Returns true of a conveyor service 'lock' file is found,
-        indicating converyor daemon is running
-        @param self
-        @returns True if lockfile found, false otherwise
-        """
-        lock_filename = 'conveyord.lock'
-        try: 
-            lock_filename = self._config['common']['daemon_lockfile']
-        except KeyError as e:
-            self._log.critical("no config['common'][daemon_lockfile'] found")
-        return os.path.isfile(lock_filename)
-
-class _ClientMainTestCase(unittest.TestCase):
-    pass
+        result = os.path.isfile(self._config['common']['daemon_lockfile'])
+        return result
 
 class Client(object):
-    """ Client object represents one complete task transaction to the server,
-         including verification 'hello', waiting for task completin for syncronous
-         tasks, and returning an error code. 
-    """
-
     @classmethod
-    def clientFactory(cls, sock, method, params, displaycallback=None):
-        """constructs a client to execute a command, send cmd to the server, and wait for reply """
+    def clientFactory(cls, sock, method, params, wait, display):
         fp = conveyor.jsonrpc.socketadapter(sock)
         jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
-        client = Client(sock, fp, jsonrpc, method, params, displaycallback)
+        client = Client(sock, fp, jsonrpc, method, params, wait, display)
         return client
 
-    def __init__(self, sock, fp, jsonrpc, method, params, displaycallback=None):
-        """ Create a client object to throw a request to the server,
-        and receive a reply. If no callback is specified, a generic callback
-        that stores return values to a tmpfile is called when a reply is received. 
-        """
+    def __init__(self, sock, fp, jsonrpc, method, params, wait, display):
         self._code = None
+        self._display = display
         self._fp = fp
+        self._job = None
         self._jsonrpc = jsonrpc
         self._log = logging.getLogger(self.__class__.__name__)
         self._method = method
         self._params = params
         self._sock = sock
-        self._methodcallback = self.defaultcallback
-        self._displaycallback = displaycallback
+        self._wait = wait # Wait for a job to complete (as opposed to a plain task)
 
     def _stop(self):
         self._fp.stop()
@@ -410,50 +314,36 @@ class Client(object):
             self._stop()
 
     def _hellocallback(self, task):
-        """ default callback to handle reply to a 'hello' event """
         self._log.debug('task=%r', task)
-        #hello was a success. do core method calls now that we verified a server 
-        task1 = self._jsonrpc.request(self._method, self._params, self._methodcallback)
-        task1.start()
+        if (conveyor.task.TaskConclusion.ENDED != task.conclusion
+            or 'world' != task.result):
+                self._log.error('failed to connect with conveyor')
+                self._code = 1
+                self._stop()
+        else:
+            task1 = self._jsonrpc.request(self._method, self._params)
+            task1.stoppedevent.attach(self._methodcallback)
+            task1.start()
 
-    def _write_result_to_tmpfile(self, task, suffix='.results.txt', delete=False):
-        try:
-            fh = tempfile.NamedTemporaryFile('w+', suffix=suffix, delete=delete)
-            fh.write(str(task.result))
-            self._log.info('task results stored in: %s',  str(fh.name) )
-            fh.close()
-        except Exception, e:
-            self.log.error('Attempt to store task results failed %r', e)
- 
-    def defaultcallback(self, task):
-        """ default callback. Checks for errors, tries to write
-        any return values to a temp file for end user user
-        """
+    def _methodcallback(self, task):
         self._log.debug('task=%r', task)
-        if conveyor.task.TaskState.STOPPED == task.state:
-            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                 if  task.result == None:
-                    self._log.error('task success. Error: task result: None')
-                 else:
-                     self._write_result_to_tmpfile(task, suffix="result.txt")
-                     if self._displaycallback :
-                           self._displaycallback(task)
-                 self._code = 0
-                 self._stop()
-            elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-                self._log.error('task failed: %r', task.failure)
+        if self._wait:
+            # Record the job details and keep running (at least until the
+            # server calls the notify method).
+            self._job = task.result
+        else:
+            if conveyor.task.TaskConclusion.ENDED != task.conclusion:
                 self._code = 1
-                self._stop()
-            elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
-                self._log.warning('task canceled')
-                self._code = 1
-                self._stop()
+                self._log.error('%s', task.failure)
             else:
-                raise ValueError(task.conclusion)
+                self._code = 0
+                self._display(task.result)
+            self._stop()
 
     def run(self):
         self._jsonrpc.addmethod('notify', self._notify)
-        task = self._jsonrpc.request("hello", [], self._hellocallback)
+        task = self._jsonrpc.request("hello", {})
+        task.stoppedevent.attach(self._hellocallback)
         task.start()
         self._jsonrpc.run()
         return self._code
