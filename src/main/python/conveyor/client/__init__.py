@@ -77,12 +77,13 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _initsubparser_job(self, subparsers):
         parser = subparsers.add_parser(
-            'getjob',
+            'job',
             help='get the details for a job')
         parser.set_defaults(func=self._run_job)
         self._initparser_common(parser)
         parser.add_argument(
-            'job',
+            'jobid',
+            type=int,
             help='the job ID',
             metavar='JOB')
 
@@ -197,13 +198,17 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_job(self):
-        self._log.error('job not implemented')
-        code = 1
+        params = {'id': int(self._parsedargs.jobid)}
+        def display(result):
+            self._log.info('%s', result)
+        code = self._run_client('getjob', params, False, display)
         return code
 
     def _run_jobs(self):
-        self._log.error('jobs not implemented')
-        code = 1
+        params = {}
+        def display(result):
+            self._log.info('%s', result)
+        code = self._run_client('getjobs', params, False, display)
         return code
 
     def _run_print(self):
