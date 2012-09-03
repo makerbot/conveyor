@@ -303,7 +303,7 @@ Server
 
             params
 
-                { "id": (job-id)
+                { "job_id": (job-id)
                 }
 
             result

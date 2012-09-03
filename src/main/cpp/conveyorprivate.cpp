@@ -315,7 +315,6 @@ namespace conveyor
         Json::Value params (Json::objectValue);
         Json::Value null;
         
-        params["port"] = null;
         params["job_id"] = Json::Value(jobId);
         
         Json::Value const result
