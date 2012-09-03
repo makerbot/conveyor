@@ -1,5 +1,5 @@
 obj/include/*			usr/include/makerbot
-obj/libconveyor.a				usr/lib
+obj/libconveyor.a				usr/lib/makerbot
 obj/etc/conveyor.conf			etc
 obj/module						usr/share/conveyor/lib
 submodule/conveyor_bins/pyserial-2.7_mb2.1-py2.7.egg usr/share/conveyor
