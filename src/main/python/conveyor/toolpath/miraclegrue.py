@@ -56,50 +56,53 @@ class MiracleGrueToolpath(object):
             #this happens when the line is not json
             pass
 
-    def slice(self, profile, inputpath, outputpath, with_start_end, task):
-        self._log.info('slicing with Miracle Grue')
-        try:
-            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
-                if with_start_end:
-                    for line in profile.values['print_start_sequence']:
-                        print(line, file=startfp)
-            startpath = startfp.name
-            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
-                if with_start_end:
-                    for line in profile.values['print_end_sequence']:
-                        print(line, file=endfp)
-            endpath = endfp.name
-            arguments = list(
-                self._getarguments(
-                    inputpath, outputpath, startpath, endpath))
-            self._log.debug('arguments=%r', arguments)
-            popen = subprocess.Popen(
-                arguments, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            def cancelcallback(task):
-                popen.terminate()
-            task.cancelevent.attach(cancelcallback)
-            popen.poll()
-            while None is popen.returncode:
-                line = popen.stdout.readline()
-                if '' == line:
-                    break
-                else:
-                    self._log.debug('miracle-grue: %s', line)
-                    self.progress(line, task) #Progress gets updated in this func
-                    popen.poll()
-            code = popen.wait()
-            os.unlink(startpath)
-            os.unlink(endpath)
-            if 0 != code:
-                self._log.debug('miracle-grue: terminated with code %s', code)
-                raise Exception(code)
-        except Exception as e:
-            self._log.exception('unhandled exception')
-            task.fail(e)
-            raise
-        else:
-            task.end(None)
+    def slice(
+        self, profile, inputpath, outputpath, with_start_end,
+        slicer_settings, material, task):
+            self._log.info('slicing with Miracle Grue')
+            try:
+                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
+                    if with_start_end:
+                        for line in profile.values['print_start_sequence']:
+                            print(line, file=startfp)
+                startpath = startfp.name
+                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
+                    if with_start_end:
+                        for line in profile.values['print_end_sequence']:
+                            print(line, file=endfp)
+                endpath = endfp.name
+                arguments = list(
+                    self._getarguments(
+                        inputpath, outputpath, startpath, endpath))
+                self._log.debug('arguments=%r', arguments)
+                popen = subprocess.Popen(
+                    arguments, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+                def cancelcallback(task):
+                    popen.terminate()
+                task.cancelevent.attach(cancelcallback)
+                popen.poll()
+                while None is popen.returncode:
+                    line = popen.stdout.readline()
+                    if '' == line:
+                        break
+                    else:
+                        self._log.debug('miracle-grue: %s', line)
+                        self.progress(line, task) #Progress gets updated in this func
+                        popen.poll()
+                code = popen.wait()
+                os.unlink(startpath)
+                os.unlink(endpath)
+                if 0 != code:
+                    self._log.debug(
+                        'miracle-grue: terminated with code %s', code)
+                    raise Exception(code)
+            except Exception as e:
+                self._log.exception('unhandled exception')
+                task.fail(e)
+                raise
+            else:
+                task.end(None)
 
     def _getarguments(self, inputpath, outputpath, startpath, endpath):
         for method in (

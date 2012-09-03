@@ -59,58 +59,59 @@ class SkeinforgeToolpath(object):
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
-    def slice(self, profile, inputpath, outputpath, with_start_end, task):
-        self._log.info('slicing with Skeinforge')
-        try:
-            directory = tempfile.mkdtemp()
+    def slice(
+        self, profile, inputpath, outputpath, with_start_end,
+        slicer_settings, material, task):
+            self._log.info('slicing with Skeinforge')
             try:
-                tmp_inputpath = os.path.join(
-                    directory, os.path.basename(inputpath))
-                shutil.copy2(inputpath, tmp_inputpath)
-                arguments = list(
-                    self._getarguments(tmp_inputpath))
-                self._log.debug('arguments=%r', arguments)
-                popen = subprocess.Popen(
-                    arguments, executable=sys.executable,
-                    stdout=subprocess.PIPE)
-                log = ''
-                buffer = ''
-                while True:
-                    data = popen.stdout.read(1) # :(
-                    if '' == data:
-                        break
-                    else:
-                        buffer += data
-                        match = self._regex.search(buffer)
-                        if None is not match:
-                            buffer = buffer[match.end():]
-                            layer = int(match.group('layer'))
-                            total = int(match.group('total'))
-                            progress = {
-                                "layer" : layer,
-                                "total" : total,
-                                "name" : "slice",
-                                "progress" : (layer/float(total))*100,
-      
+                directory = tempfile.mkdtemp()
+                try:
+                    tmp_inputpath = os.path.join(
+                        directory, os.path.basename(inputpath))
+                    shutil.copy2(inputpath, tmp_inputpath)
+                    arguments = list(
+                        self._getarguments(tmp_inputpath))
+                    self._log.debug('arguments=%r', arguments)
+                    popen = subprocess.Popen(
+                        arguments, executable=sys.executable,
+                        stdout=subprocess.PIPE)
+                    log = ''
+                    buffer = ''
+                    while True:
+                        data = popen.stdout.read(1) # :(
+                        if '' == data:
+                            break
+                        else:
+                            buffer += data
+                            match = self._regex.search(buffer)
+                            if None is not match:
+                                buffer = buffer[match.end():]
+                                layer = int(match.group('layer'))
+                                total = int(match.group('total'))
+                                progress = {
+                                    "layer" : layer,
+                                    "total" : total,
+                                    "name" : "slice",
+                                    "progress" : (layer/float(total))*100,
                                 }
-                            task.heartbeat(progress)
-                code = popen.wait()
-                self._log.debug(
-                    'Skeinforge terminated with status code %d', code)
-                if 0 != code:
-                    raise Exception(code)
-                else:
-                    tmp_outputpath = self._outputpath(tmp_inputpath)
-                    self._postprocess(
-                        profile, outputpath, tmp_outputpath,
-                        with_start_end)
-            finally:
-                shutil.rmtree(directory)
-        except Exception as e:
-            self._log.exception('unhandled exception')
-            task.fail(e)
-        else:
-            task.end(None)
+                                task.heartbeat(progress)
+                    code = popen.wait()
+                    self._log.debug(
+                        'Skeinforge terminated with status code %d', code)
+                    if 0 != code:
+                        raise Exception(code)
+                    else:
+                        tmp_outputpath = self._outputpath(tmp_inputpath)
+                        self._postprocess(
+                            profile, outputpath, tmp_outputpath,
+                            with_start_end)
+                finally:
+                    shutil.rmtree(directory)
+            except Exception as e:
+                self._log.exception('unhandled exception')
+                task.fail(e)
+            else:
+                task.end(None)
 
     def _outputpath(self, path):
         root, ext = os.path.splitext(path)
