@@ -86,7 +86,12 @@ class SkeinforgeToolpath(object):
                             buffer = buffer[match.end():]
                             layer = int(match.group('layer'))
                             total = int(match.group('total'))
-                            task.heartbeat((layer, total))
+                            progress = {
+                                "layer" : layer,
+                                "total" : total,
+                                "progress" : layer/float(total),
+                                }
+                            task.heartbeat(progress)
                 code = popen.wait()
                 self._log.debug(
                     'Skeinforge terminated with status code %d', code)
