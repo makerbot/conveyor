@@ -64,7 +64,8 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.set_defaults(func=self._run_cancel)
         self._initparser_common(parser)
         parser.add_argument(
-            'job',
+            'jobid',
+            type=int,
             help='the ID of the job to cancel',
             metavar='JOB')
 
@@ -188,8 +189,8 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_cancel(self):
-        self._log.error('cancel not implemented')
-        code = 1
+        params = {'id': int(self._parsedargs.jobid)}
+        code = self._run_client('canceljob', params, False, None)
         return code
 
     def _run_dir(self):
@@ -337,7 +338,8 @@ class Client(object):
                 self._log.error('%s', task.failure)
             else:
                 self._code = 0
-                self._display(task.result)
+                if None is not self._display:
+                    self._display(task.result)
             self._stop()
 
     def run(self):

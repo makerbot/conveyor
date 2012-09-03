@@ -59,6 +59,9 @@ class MiracleGrueToolpath(object):
             popen = subprocess.Popen(
                 arguments, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
+            def cancelcallback(task):
+                popen.terminate()
+            task.cancelevent.attach(cancelcallback)
             popen.poll()
             while None is popen.returncode:
                 line = popen.stdout.readline()

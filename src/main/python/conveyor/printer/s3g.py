@@ -197,6 +197,12 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         with self._condition:
                             if None is not self._currenttask:
                                 self._currenttask.cancel()
+                    except makerbot_driver.ExternalStopError:
+                        self._log.debug('handled exception', exc_info=True)
+                        self._log.info('print canceled')
+                        with self._condition:
+                            if None is not self._currenttask:
+                                self._currenttask.cancel()
                     except Exception as e:
                         self._log.error('unhandled exception', exc_info=True)
                         with self._condition:

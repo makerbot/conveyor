@@ -242,6 +242,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
+            job.process = process
+            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
@@ -273,6 +275,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
+            job.process = process
+            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
@@ -303,12 +307,14 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
+            job.process = process
+            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
 
-    @export('cancel')
-    def _cancel(self, id):
+    @export('canceljob')
+    def _canceljob(self, id):
         self._server.canceljob(id)
 
     @export('getprinters')
@@ -358,7 +364,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('slice', self._slice,
             ": takes (inputfile, outputfile) pair" )
         self._jsonrpc.addmethod('dir',self._dir, "takes no params ") 
-        self._jsonrpc.addmethod('cancel',self._cancel, 
+        self._jsonrpc.addmethod('canceljob',self._canceljob,
                 "takes {'port':string(port) 'job_id':jobid}"
                         "if Job is None, cancels by port. If port is None, cancels first bot")
         self._jsonrpc.addmethod('getprinters', self._getprinters)
@@ -481,6 +487,13 @@ class Server(object):
                     return printerthread
             return None
 
+    # NOTE: the difference between createjob and addjob is that createjob
+    # creates a new job domain object while add job takes a job domain object,
+    # adds it to the list of jobs, and notifies connected clients.
+    #
+    # The job created by createjob will have None as its process. The job
+    # passed to addjob must have a valid process.
+
     def createjob(
         self, build_name, path, config, preprocessor, skip_start_end,
         with_start_end):
@@ -490,10 +503,18 @@ class Server(object):
                 job = conveyor.domain.Job(
                     id, build_name, path, config, preprocessor,
                     skip_start_end, with_start_end)
-                self._jobs[id] = job
-            dct = job.todict()
-            self._invokeclients('jobadded', dct)
-            return job
+                return job
+
+    def addjob(self, job):
+        with self._lock:
+            self._jobs[job.id] = job
+        dct = job.todict()
+        self._invokeclients('jobadded', dct)
+
+    def canceljob(self, id):
+        with self._lock:
+            job = self._jobs[id]
+        job.process.cancel()
 
     def getjobs(self):
         with self._lock:
