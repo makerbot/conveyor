@@ -89,7 +89,9 @@ class SkeinforgeToolpath(object):
                             progress = {
                                 "layer" : layer,
                                 "total" : total,
-                                "progress" : layer/float(total),
+                                "name" : "slice",
+                                "progress" : (layer/float(total))*100,
+      
                                 }
                             task.heartbeat(progress)
                 code = popen.wait()
