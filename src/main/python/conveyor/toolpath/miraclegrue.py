@@ -46,10 +46,11 @@ class MiracleGrueToolpath(object):
             if not isinstance(jsonresult, dict):
                 #this is not something we handle
                 return
-            if 'type' not in jsonresult:
-                return
-            if jsonresult.get('type') == 'progress':
-                task.heartbeat(jsonresult.get('percentComplete'))
+            if jsonresult.get('type', None) == 'progress':
+                progress = {
+                    "progress" : jsonresult["percentComplete"],
+                    }
+                task.heartbeat(progress)
         except ValueError as ve:
             #this happens when the line is not json
             pass
@@ -76,7 +77,7 @@ class MiracleGrueToolpath(object):
                 stderr=subprocess.STDOUT)
             for line in popen.stdout:
                 self._log.info('miracle-grue: %s', line)
-                self.progress(line, task)
+                self.progress(line, task) #Progress gets updated in this func
             code = popen.wait()
             os.unlink(startpath)
             os.unlink(endpath)
