@@ -55,8 +55,7 @@ env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('include/'))
 if ARGUMENTS.get('debian_build',0):
-    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/json/'))
-    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/jsonrpc/'))
+    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/'))
 else:
     cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
     cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
