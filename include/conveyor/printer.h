@@ -12,6 +12,10 @@
 #include <conveyor/fwd.h>
 #include <conveyor/connectionstatus.h>
 
+namespace Json {
+    class Value;
+}
+
 namespace conveyor
 {
     class SlicerConfiguration;
@@ -24,6 +28,9 @@ namespace conveyor
     public:
         QMap<QString, Temperature> tools;
         QMap<QString, Temperature> heated_platforms;
+
+        static void updateFromJson(QMap<QString, Temperature> &tmap,
+                                   const Json::Value &json);
     };
 
     class Printer : public QObject
@@ -100,6 +107,7 @@ namespace conveyor
         friend class Job;
         friend class JobPrivate;
         friend class PrinterAddedMethod;
+        friend class PrinterChangedMethod;
     };
 }
 

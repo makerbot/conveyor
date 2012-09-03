@@ -23,9 +23,10 @@ namespace conveyor
     
     Json::Value PrinterChangedMethod::invoke (Json::Value const & params)
     {
-        QString botId(params["id"].asString().c_str());
+        QString botId(params["uniqueName"].asString().c_str());
 
         Printer * printer(m_conveyorPrivate->printerByUniqueName(botId));
+        printer->m_private->updateFromJson(params);
 
         m_conveyorPrivate->emitPrinterChanged(printer);
 

@@ -26,6 +26,7 @@ import sys
 import threading
 import tempfile
 import traceback
+import json
 
 import conveyor.event
 
@@ -38,6 +39,22 @@ class MiracleGrueToolpath(object):
     def __init__(self, configuration):
         self._configuration = configuration
         self._log = logging.getLogger(self.__class__.__name__)
+
+    def progress(self, line, task):
+        try:
+            jsonresult = json.loads(line)
+            if not isinstance(jsonresult, dict):
+                #this is not something we handle
+                return
+            if jsonresult.get('type', None) == 'progress':
+                progress = {
+                    'name': 'slice',
+                    'progress': jsonresult['totalPercentComplete']
+                    }
+                task.heartbeat(progress)
+        except ValueError as ve:
+            #this happens when the line is not json
+            pass
 
     def slice(self, profile, inputpath, outputpath, with_start_end, task):
         self._log.info('slicing with Miracle Grue')
@@ -59,6 +76,9 @@ class MiracleGrueToolpath(object):
             popen = subprocess.Popen(
                 arguments, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
+            def cancelcallback(task):
+                popen.terminate()
+            task.cancelevent.attach(cancelcallback)
             popen.poll()
             while None is popen.returncode:
                 line = popen.stdout.readline()
@@ -66,14 +86,13 @@ class MiracleGrueToolpath(object):
                     break
                 else:
                     self._log.debug('miracle-grue: %s', line)
+                    self.progress(line, task) #Progress gets updated in this func
                     popen.poll()
             code = popen.wait()
-            self._log.debug(
-                'Miracle Grue terminated with status code %d', code)
-            if 0 == code:
-                os.unlink(startpath)
-                os.unlink(endpath)
-            else:
+            os.unlink(startpath)
+            os.unlink(endpath)
+            if 0 != code:
+                self._log.debug('miracle-grue: terminated with code %s', code)
                 raise Exception(code)
         except Exception as e:
             self._log.exception('unhandled exception')
@@ -98,5 +117,6 @@ class MiracleGrueToolpath(object):
         yield ('-c', self._configuration.miracleconfigpath,)
         yield ('-o', outputpath,)
         yield ('-s', startpath,)
-        yield ('-e', endpath,)
+        yield('-e', endpath,)
+        yield('-j',)
         yield (inputpath,)
