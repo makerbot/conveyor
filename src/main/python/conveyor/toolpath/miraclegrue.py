@@ -39,7 +39,7 @@ class MiracleGrueToolpath(object):
     def __init__(self, configuration):
         self._configuration = configuration
         self._log = logging.getLogger(self.__class__.__name__)
-       
+
     def progress(self, line, task):
         try:
             jsonresult = json.loads(line)
@@ -75,9 +75,18 @@ class MiracleGrueToolpath(object):
             popen = subprocess.Popen(
                 arguments, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
-            for line in popen.stdout:
-                self._log.info('miracle-grue: %s', line)
-                self.progress(line, task) #Progress gets updated in this func
+            def cancelcallback(task):
+                popen.terminate()
+            task.cancelevent.attach(cancelcallback)
+            popen.poll()
+            while None is popen.returncode:
+                line = popen.stdout.readline()
+                if '' == line:
+                    break
+                else:
+                    self._log.debug('miracle-grue: %s', line)
+                    self.progress(line, task) #Progress gets updated in this func
+                    popen.poll()
             code = popen.wait()
             os.unlink(startpath)
             os.unlink(endpath)

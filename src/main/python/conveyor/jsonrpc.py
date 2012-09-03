@@ -344,11 +344,10 @@ class JsonRpc(object):
         data = json.dumps(request)
         self._send(data)
 
-    def request(self, method, params, methodcallback=None):
+    def request(self, method, params):
         """ Builds a jsonrpc request task.
         @param method: json rpc method to run as a task
         @param params: params for method
-        @param methodcallback: optional callback to run when rpc reply is received
         @return a Task object with methods setup properly
         """
         with self._idcounterlock:
@@ -369,8 +368,6 @@ class JsonRpc(object):
         task = conveyor.task.Task()
         task.runningevent.attach(runningevent)
         task.stoppedevent.attach(stoppedevent)
-        if methodcallback != None :
-                task.stoppedevent.attach(methodcallback) 
         return task
 
     #
