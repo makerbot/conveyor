@@ -135,6 +135,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc = jsonrpc
         self._printers_seen = []
 
+    def jobchanged(self, params):
+        self._jsonrpc.notify('jobchanged', params)
+
     def printeradded(self, params):
         self._jsonrpc.notify('printeradded', params)
 
@@ -286,6 +289,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                     'printing: %s (job %d)', inputpath, job.id)
             process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
+                progress = task.progress
+                job.progress = progress
+                self.server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback)
@@ -317,6 +323,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                     outputpath, job.id)
             process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
+                progress = task.progress
+                job.progress = progress
+                self.server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback)
@@ -347,6 +356,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                     job.id)
             process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
+                progress = task.progress
+                job.progress = progress
+                self.server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, task.progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback)
@@ -484,6 +496,12 @@ class Server(object):
         self._queue = Queue()
         self._sock = sock
         self._printerthreads = {}
+
+    def changejob(self, job):
+        with self._lock:
+            params = job.todict()
+            params.update({"progress" : job.progress})
+            self._invokeclients("jobchanged", params)
 
     def _invokeclients(self, methodname, *args, **kwargs):
         with self._lock:
