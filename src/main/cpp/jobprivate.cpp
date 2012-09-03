@@ -8,6 +8,7 @@
 
 namespace
 {
+    #if 0
     static
     conveyor::JobState
     jobStateFromString (QString const & string)
@@ -37,6 +38,7 @@ namespace
 
         throw std::invalid_argument (string.toStdString());
     }
+    #endif
 }
 
 namespace conveyor
@@ -63,7 +65,7 @@ namespace conveyor
         // This is the filename that is being sliced/printed
         QString const name(json["name"].asCString());
 
-        JobState const state
+        /*JobState const state
             ( jobStateFromString
               ( QString(json["state"].asCString())));
         JobConclusion const conclusion
@@ -71,14 +73,14 @@ namespace conveyor
               ( QString(json["conclusion"].asCString())));
 
         QString const currentStepName(json["currentstep"]["name"].asCString());
-        int const currentStepProgress(json["currentstep"]["progress"].asInt());
+        int const currentStepProgress(json["currentstep"]["progress"].asInt());*/
 
         m_id = id;
         m_name = name;
-        m_state = state;
+        /*m_state = state;
         m_conclusion = conclusion;
         m_currentStepName = currentStepName;
-        m_currentStepProgress = currentStepProgress;
+        m_currentStepProgress = currentStepProgress;*/
     }
     
     void
