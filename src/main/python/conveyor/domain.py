@@ -37,8 +37,12 @@ class Job(DomainObject):
             self.path = path
             self.preprocessor = preprocessor
             self.process = None
+            self.progress = None
             self.skip_start_end = skip_start_end
             self.with_start_end = with_start_end
+
+    # TODO: we are not handling the process and progress fields evenly between
+    # todict() and fromdict().
 
     def todict(self):
         dct = {
@@ -47,6 +51,7 @@ class Job(DomainObject):
             'config': self.config,
             'path': self.path,
             'preprocessor': self.preprocessor,
+            'progress': self.progress,
             'skip_start_end': self.skip_start_end,
             'with_start_end': self.with_start_end
         }

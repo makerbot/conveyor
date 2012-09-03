@@ -242,10 +242,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                     'printing: %s (job %d)', inputpath, job.id)
             process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
-                progress = task.progress
+                childtask = task.progress
+                progress = childtask.progress
                 job.progress = progress
                 self._server.changejob(job)
-                self._log.info('progress: (job %d) %r', job.id, task.progress)
+                self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
             job.process = process
@@ -278,10 +279,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                     outputpath, job.id)
             process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
-                progress = task.progress
+                childtask = task.progress
+                progress = childtask.progress
                 job.progress = progress
                 self._server.changejob(job)
-                self._log.info('progress: (job %d) %r', job.id, task.progress)
+                self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
             job.process = process
@@ -313,10 +315,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                     job.id)
             process.runningevent.attach(runningcallback)
             def heartbeatcallback(task):
-                progress = task.progress
+                childtask = task.progress
+                progress = childtask.progress
                 job.progress = progress
                 self._server.changejob(job)
-                self._log.info('progress: (job %d) %r', job.id, task.progress)
+                self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
             job.process = process
@@ -470,12 +473,6 @@ class Server(object):
         self._sock = sock
         self._printerthreads = {}
 
-    def changejob(self, job):
-        with self._lock:
-            params = job.todict()
-            params.update({"progress" : job.progress})
-            self._invokeclients("jobchanged", params)
-
     def _invokeclients(self, methodname, *args, **kwargs):
         with self._lock:
             clientthreads = self._clientthreads[:]
@@ -528,6 +525,11 @@ class Server(object):
             self._jobs[job.id] = job
         dct = job.todict()
         self._invokeclients('jobadded', dct)
+
+    def changejob(self, job):
+        params = job.todict()
+        params.update({"progress" : job.progress})
+        self._invokeclients("jobchanged", params)
 
     def canceljob(self, id):
         with self._lock:
