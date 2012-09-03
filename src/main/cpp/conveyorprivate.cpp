@@ -1,5 +1,7 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
+#include <QDebug>
+
 #include <string>
 
 #include <json/value.h>
@@ -164,16 +166,20 @@ namespace conveyor
                 )
             );
 
+        const Json::Value::Members &ids(results.getMemberNames());
+
         QList<Job *> jobs;
-        for (unsigned i = 0; i < results.size(); i++)
+        for (unsigned i = 0; i < ids.size(); i++)
         {
-            const Json::Value &r(results[i]);
+            // Job ID is sent as a string
+            const std::string &key(ids[i]);
+            int id = QString(key.c_str()).toInt();
 
-            Job * const job
-                ( jobById
-                    ( r["id"].asInt()));
+            // Look up Job by its ID. This will also create the Job
+            // object if it doesn't exist already.
+            Job * const job(jobById(id));
 
-            job->m_private->updateFromJson(r);
+            job->m_private->updateFromJson(results[key]);
             jobs.append(job);
         }
 
