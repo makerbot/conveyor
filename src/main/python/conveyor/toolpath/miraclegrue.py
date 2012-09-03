@@ -48,7 +48,8 @@ class MiracleGrueToolpath(object):
                 return
             if jsonresult.get('type', None) == 'progress':
                 progress = {
-                    "progress" : jsonresult["percentComplete"],
+                    'name': 'slice',
+                    'progress': jsonresult['totalPercentComplete']
                     }
                 task.heartbeat(progress)
         except ValueError as ve:
