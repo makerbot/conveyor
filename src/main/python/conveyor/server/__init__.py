@@ -144,6 +144,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def printerremoved(self, params):
         self._jsonrpc.notify('printerremoved', params)
 
+    def jobadded(self, params):
+        self._jsonrpc.notify('jobadded', params)
+
+    def jobchanged(self, params):
+        self._jsonrpc.notify('jobchanged', params)
+
     def _stoppedcallback(self, job):
         def callback(task):
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
@@ -485,6 +491,8 @@ class Server(object):
                     id, build_name, path, config, preprocessor,
                     skip_start_end, with_start_end)
                 self._jobs[id] = job
+            dct = job.todict()
+            self._invokeclients('jobadded', dct)
             return job
 
     def getjobs(self):
