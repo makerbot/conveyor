@@ -302,7 +302,8 @@ class S3gDriver(object):
                     data = str(data)
                     parser.execute_line(data)
                     progress = {
-                        'percentage': parser.state.percentage,
+                        'name': 'print',
+                        'progress': parser.state.percentage,
                         'currentline': currentline,
                         'totallines': totallines,
                         'currentbyte': currentbyte,
