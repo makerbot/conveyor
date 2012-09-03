@@ -1,4 +1,4 @@
-obj/include/conveyor.h			usr/include
+obj/include/*			usr/include/makerbot
 obj/libconveyor.a				usr/lib
 obj/etc/conveyor.conf			etc
 obj/module						usr/share/conveyor/lib
