@@ -70,17 +70,24 @@ namespace conveyor
               ( QString(json["state"].asCString())));
         JobConclusion const conclusion
             ( jobConclusionFromString
-              ( QString(json["conclusion"].asCString())));
+            ( QString(json["conclusion"].asCString())));*/
 
-        QString const currentStepName(json["currentstep"]["name"].asCString());
-        int const currentStepProgress(json["currentstep"]["progress"].asInt());*/
+        if (!json["currentstep"].isNull()) {
+            const QString currentStepName(json["currentstep"]["name"].asCString());
+            const int currentStepProgress(json["currentstep"]["progress"].asInt());
+
+            m_currentStepName = currentStepName;
+            m_currentStepProgress = currentStepProgress;
+        }
+        else {
+            m_currentStepName = "";
+            m_currentStepProgress = 0;
+        }
 
         m_id = id;
         m_name = name;
         /*m_state = state;
-        m_conclusion = conclusion;
-        m_currentStepName = currentStepName;
-        m_currentStepProgress = currentStepProgress;*/
+          m_conclusion = conclusion;*/
     }
     
     void

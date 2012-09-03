@@ -2,6 +2,7 @@
 
 #include "jobchangedmethod.h"
 #include "conveyorprivate.h"
+#include "jobprivate.h"
 
 #include <QString>
 #include <QMetaObject>
@@ -26,6 +27,7 @@ namespace conveyor
         int const jobId(params["id"].asInt());
 
         Job * job(m_conveyorPrivate->jobById(jobId));
+        job->m_private->updateFromJson(params);
 
         m_conveyorPrivate->emitJobChanged(job);
 
