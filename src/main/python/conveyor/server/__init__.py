@@ -332,9 +332,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def _getjobs(self):
         jobs = self._server.getjobs()
         result = {}
-        for job in jobs:
+        for job in jobs.values():
             dct = job.todict()
-            result[job.id] = job
+            result[job.id] = dct
         return result
 
     @export('getjob')
