@@ -296,14 +296,14 @@ Server
 
                 (job)
 
-        cancel
+        canceljob
 
             This method schedules a job for cancellation.
             The job may or may not be canceled when this method returns.
 
             params
 
-                { "job_id": (job-id)
+                { "id": (job-id)
                 }
 
             result

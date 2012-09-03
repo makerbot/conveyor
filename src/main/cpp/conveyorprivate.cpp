@@ -315,11 +315,11 @@ namespace conveyor
         Json::Value params (Json::objectValue);
         Json::Value null;
         
-        params["job_id"] = Json::Value(jobId);
+        params["id"] = Json::Value(jobId);
         
         Json::Value const result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "cancel", params)
-            );
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "canceljob", params)
+              );
             
         // TODO: check result?
     }
