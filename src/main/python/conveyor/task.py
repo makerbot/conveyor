@@ -82,7 +82,11 @@ class Task(object):
         elif TaskState.RUNNING == self.state:
             if TaskEvent.HEARTBEAT == event:
                 #Heartbeat events are passed in via JSONRPC specs
-                self.progress = data["progress"]
+                if isinstance(data, dict):
+                  if "progress" in data:
+                    self.progress = data["progress"]
+                else:
+                  self.progress = data
                 self.heartbeatevent(self)
             elif TaskEvent.END == event:
                 self.state = TaskState.STOPPED
