@@ -35,7 +35,7 @@ namespace conveyor
         void changed (void);
 
     private:
-        Job (Conveyor * conveyor, Printer * printer, int const & id);
+        Job (Conveyor * conveyor, int const & id);
 
         QScopedPointer <JobPrivate> m_private;
 
