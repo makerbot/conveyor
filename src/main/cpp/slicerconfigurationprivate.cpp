@@ -4,9 +4,10 @@ namespace conveyor
 {
 
     SlicerConfiguration *
-    SlicerConfigurationPrivate::defaultConfiguration(Quality quality)
+    SlicerConfigurationPrivate::defaultConfiguration(SlicerConfiguration::Quality quality)
     {
-        SlicerConfiguration * const config(new SlicerConfiguration(QString()));
+        Json::Value null;
+        SlicerConfiguration * const config(new SlicerConfiguration(null));
 
         switch(quality)
         {
@@ -24,9 +25,9 @@ namespace conveyor
         return config;
     }
 
-    SlicerConfigurationPrivate::SlicerConfiguration(Json::Value &) :
+    SlicerConfigurationPrivate::SlicerConfigurationPrivate(Json::Value &) :
         m_slicer(SlicerConfiguration::MiracleGrue),
-        m_extruder(Left),
+        m_extruder(SlicerConfiguration::Left),
         m_raft(true),
         m_supports(false),
         m_infill(0.90),
@@ -66,11 +67,11 @@ namespace conveyor
 
         // "extruder" section
         switch (m_extruder) {
-        case Left:
+        case SlicerConfiguration::Left:
             root[slicer]["extruder"]["defaultExtruder"] = 0;
             break;
 
-        case Right:
+        case SlicerConfiguration::Right:
             root[slicer]["extruder"]["defaultExtruder"] = 1;
             break;
         }

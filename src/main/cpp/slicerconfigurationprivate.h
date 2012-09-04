@@ -10,6 +10,8 @@
 
 #include <conveyor/fwd.h>
 
+#include <conveyor/slicers.h>
+
 namespace conveyor
 {
     /**
