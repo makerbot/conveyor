@@ -617,7 +617,7 @@ class Server(object):
                 driver = conveyor.printer.s3g.S3gDriver()
                 driver.printtofile(
                     outputpath, profile, buildname, inputpath, skip_start_end,
-                    material, task)
+                    slicer_settings, material, task)
             self._queue.appendfunc(func)
 
     def _getslicer(self, slicer_settings):

@@ -184,7 +184,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         self._condition.wait(1.0)
                         self._log.debug('resumed')
                 else:
-                    job, buildname, gcodepath, skip_start_end, material, task = tuple_
                     job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = tuple_
                     with self._condition:
                         self._currenttask = task
@@ -237,7 +236,7 @@ class S3gDriver(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def _get_start_end_variables(self, profile, material):
+    def _get_start_end_variables(self, profile, slicer_settings, material):
     # TODO: It makes me sad that we pass "slicer"_settings here, but that's the
     # object that has the extruder and platform temperatures. Domain modeling
     # error.
@@ -253,7 +252,7 @@ class S3gDriver(object):
 
     def _gcodelines(
         self, profile, gcodepath, skip_start_end, slicer_settings, material):
-            startgcode, endgcode, variables = self.get_start_end_variables(
+            startgcode, endgcode, variables = self._get_start_end_variables(
                 profile, slicer_settings, material)
             def generator():
                 if not skip_start_end:

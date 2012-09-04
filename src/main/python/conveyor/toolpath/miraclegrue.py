@@ -67,7 +67,7 @@ class MiracleGrueToolpath(object):
                     startpath = None
                     endpath = None
                 else:
-                    startgcode, endgcode, variables = driver.get_start_end_variables(
+                    startgcode, endgcode, variables = driver._get_start_end_variables(
                         profile, slicer_settings, material)
                     with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
                         startpath = startfp.name
