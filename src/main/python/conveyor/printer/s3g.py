@@ -231,16 +231,16 @@ class S3gDriver(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def _get_start_end_variables(self, profile):
+    def get_start_end_variables(self, profile, material):
         ga = makerbot_driver.GcodeAssembler(profile, profile.path)
         start_template, end_template, variables = ga.assemble_recipe()
         start_gcode = ga.assemble_start_sequence(start_template)
         end_gcode = ga.assemble_end_sequence(end_template)
         return start_gcode, end_gcode, variables
 
-    def _gcodelines(self, profile, gcodepath, skip_start_end):
-        startgcode, endgcode, variables = self._get_start_end_variables(
-            profile)
+    def _gcodelines(self, profile, gcodepath, skip_start_end, material):
+        startgcode, endgcode, variables = self.get_start_end_variables(
+            profile, material)
         def generator():
             if not skip_start_end:
                 if None is not startgcode:
@@ -266,7 +266,7 @@ class S3gDriver(object):
 
     def _genericprint(
         self, profile, buildname, writer, polltemperature, pollinterval,
-        gcodepath, skip_start_end, task):
+        gcodepath, skip_start_end, material, task):
             def stoppedcallback(task):
                 writer.set_external_stop()
             task.stoppedevent.attach(stoppedcallback)
@@ -281,7 +281,8 @@ class S3gDriver(object):
                 temperature = None
             else:
                 temperature = _gettemperature(profile, parser.s3g)
-            gcodelines, variables = self._gcodelines(profile, gcodepath, skip_start_end)
+            gcodelines, variables = self._gcodelines(
+                profile, gcodepath, skip_start_end, material)
             parser.environment.update(variables)
             totallines, totalbytes = self._countgcodelines(gcodelines)
             currentbyte = 0
@@ -318,17 +319,18 @@ class S3gDriver(object):
                 task.end(None)
 
     def print(
-        self, fp, profile, buildname, gcodepath, skip_start_end, task):
+        self, fp, profile, buildname, gcodepath, skip_start_end, material,
+        task):
             writer = makerbot_driver.Writer.StreamWriter(fp)
             self._genericprint(
                 profile, buildname, writer, True, 5.0, gcodepath,
-                skip_start_end, task)
+                skip_start_end, material, task)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,
-        task):
+        material, task):
             with open(outputpath, 'wb') as fp:
                 writer = makerbot_driver.Writer.FileWriter(fp)
                 self._genericprint(
                     profile, buildname, writer, False, 5.0,
-                    gcodepath, skip_start_end, task)
+                    gcodepath, skip_start_end, material, task)

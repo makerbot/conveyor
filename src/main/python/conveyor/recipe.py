@@ -123,16 +123,14 @@ class Recipe(object):
         self._job = job
         self._server = server
 
-    def _slicetask(
-        self, profile, inputpath, outputpath, with_start_end,
-        slicer_settings, material):
-            def runningcallback(task):
-                self._server.slice(
-                    profile, inputpath, outputpath, with_start_end,
-                    slicer_settings, material, task)
-            toolpathtask = conveyor.task.Task()
-            toolpathtask.runningevent.attach(runningcallback)
-            return toolpathtask
+    def _slicetask(self, profile, inputpath, outputpath, with_start_end):
+        def runningcallback(task):
+            self._server.slice(
+                profile, inputpath, outputpath, with_start_end,
+                self._job.slicer_settings, self._job.material, task)
+        toolpathtask = conveyor.task.Task()
+        toolpathtask.runningevent.attach(runningcallback)
+        return toolpathtask
 
     def _preprocessortask(self, inputpath, outputpath):
         def runningcallback(task):
@@ -152,7 +150,7 @@ class Recipe(object):
         def runningcallback(task):
             printerthread.print(
                 self._job, self._job.build_name, inputpath,
-                self._job.skip_start_end, task)
+                self._job.skip_start_end, self._job.material, task)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
@@ -161,7 +159,7 @@ class Recipe(object):
             def runningcallback(task):
                 self._server.printtofile(
                     profile, self._job.build_name, inputpath, outputpath,
-                    self._job.skip_start_end, task)
+                    self._job.skip_start_end, self._job.material, task)
             task = conveyor.task.Task()
             task.runningevent.attach(runningcallback)
             return task
@@ -237,9 +235,7 @@ class _StlRecipe(Recipe):
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
         profile = printerthread.getprofile()
-        slicetask = self._slicetask(
-            profile, self._stlpath, gcodepath, False,
-            self._job.slicer_settings, self._job.material)
+        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Preprocess
@@ -270,9 +266,7 @@ class _StlRecipe(Recipe):
         # Slice
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
-        slicetask = self._slicetask(
-            profile, self._stlpath, gcodepath, False,
-            self._job.slicer_settings, self._job.material)
+        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Preprocess
@@ -308,8 +302,7 @@ class _StlRecipe(Recipe):
             with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
                 gcodepath = gcodefp.name
         slicetask = self._slicetask(
-            profile, self._stlpath, gcodepath, self._job.with_start_end,
-            self._job.slicer_settings, self._job.material)
+            profile, self._stlpath, gcodepath, self._job.with_start_end)
         tasks.append(slicetask)
 
         # Preprocess
