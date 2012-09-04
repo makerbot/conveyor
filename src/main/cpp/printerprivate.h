@@ -19,16 +19,19 @@ namespace conveyor
             );
 
         Job * print (QString const & inputFile
-                     , const SlicerConfiguration & slicer_conf);
+                     , const SlicerConfiguration & slicer_conf
+                     , QString const & material);
         Job * printToFile
             ( QString const & inputFile
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
+            , QString const & material
             );
         Job * slice
             ( QString const & inputFile
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
+            , QString const & material
             );
 
         void updateFromJson (Json::Value const &);

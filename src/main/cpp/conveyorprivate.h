@@ -51,18 +51,21 @@ namespace conveyor
             ( Printer * printer
             , QString const & inputFile
             , const SlicerConfiguration & slicer_conf
+            , QString const & material
             );
         Job * printToFile
             ( Printer * printer
             , QString const & inputFile
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
+            , QString const & material
             );
         Job * slice
             ( Printer * printer
             , QString const & inputFile
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
+            , QString const & material
             );
             
         void cancelJob (int jobId);

@@ -83,13 +83,16 @@ namespace conveyor
         void jog (float x, float y, float z, float a, float b, float f);
 
         virtual Job * print (QString const & inputFile,
-                             const SlicerConfiguration & slicer_conf);
+                             const SlicerConfiguration & slicer_conf,
+                             QString const & material);
 
         virtual Job * printToFile (QString const & inputFile, QString const & outputFile,
-                                   const SlicerConfiguration & slicer_conf);
+                                   const SlicerConfiguration & slicer_conf,
+                                   QString const & material);
 
         virtual Job * slice (QString const & inputFile, QString const & outputFile,
-                             const SlicerConfiguration & slicer_conf);
+                             const SlicerConfiguration & slicer_conf,
+                             QString const & material);
 
     signals:
         void changed (void);

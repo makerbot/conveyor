@@ -204,6 +204,7 @@ namespace conveyor
         ( Printer * const printer
         , QString const & inputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Json::Value params (Json::objectValue);
@@ -215,7 +216,7 @@ namespace conveyor
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = null;
+        params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
@@ -230,6 +231,7 @@ namespace conveyor
         , QString const & inputFile
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Json::Value params (Json::objectValue);
@@ -242,7 +244,7 @@ namespace conveyor
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = null;
+        params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "printtofile", params)
@@ -257,6 +259,7 @@ namespace conveyor
         , QString const & inputFile
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Json::Value params (Json::objectValue);
@@ -267,7 +270,7 @@ namespace conveyor
         params["preprocessor"] = null;
         params["with_start_end"] = Json::Value (false);
         params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = null;
+        params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
