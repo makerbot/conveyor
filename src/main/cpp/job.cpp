@@ -78,6 +78,6 @@ namespace conveyor
     void
     Job::emitChanged (void)
     {
-        emit changed();
+        emit changed(this);
     }
 }

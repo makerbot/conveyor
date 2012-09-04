@@ -32,7 +32,7 @@ namespace conveyor
         void pause (void);
         
     signals:
-        void changed (void);
+        void changed (const Job *);
 
     private:
         Job (Conveyor * conveyor, int const & id);

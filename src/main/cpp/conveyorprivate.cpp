@@ -175,12 +175,14 @@ namespace conveyor
             const std::string &key(ids[i]);
             int id = QString(key.c_str()).toInt();
 
-            // Look up Job by its ID. This will also create the Job
-            // object if it doesn't exist already.
-            Job * const job(jobById(id));
+            if (results[key]["conclusion"].isNull()) {
+                // Look up Job by its ID. This will also create the Job
+                // object if it doesn't exist already.
+                Job * const job(jobById(id));
 
-            job->m_private->updateFromJson(results[key]);
-            jobs.append(job);
+                job->m_private->updateFromJson(results[key]);
+                jobs.append(job);
+            }
         }
 
         return jobs;
