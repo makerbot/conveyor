@@ -32,7 +32,7 @@ class Job(DomainObject):
         self, id, build_name, path, config, printerid, preprocessor,
         skip_start_end, with_start_end, slicer_settings, material):
             self.build_name = build_name
-            self.conclusion = "notconcluded"
+            self.conclusion = None
             self.config = config
             self.currentstep = None
             self.id = id
@@ -44,7 +44,7 @@ class Job(DomainObject):
             self.process = None
             self.skip_start_end = skip_start_end
             self.slicer_settings = slicer_settings
-            self.state = "running"
+            self.state = "RUNNING"
             self.with_start_end = with_start_end
 
     # TODO: we are not handling the currentstep and process fields evenly
