@@ -34,7 +34,7 @@ namespace conveyor
         m_layerHeight(0.2),
         m_shells(3),
         m_extruderTemperature(220),
-        m_platformTemperature(220),
+        m_platformTemperature(110),
         m_printSpeed(80),
         m_travelSpeed(150)
     {
