@@ -64,7 +64,7 @@ Common Types
                 "notconcluded"
                 "ended"
                 "failed"
-                "cancelled"
+                "canceled"
 
         extruder-profile
 

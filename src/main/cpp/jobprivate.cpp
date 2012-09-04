@@ -9,7 +9,6 @@
 
 namespace
 {
-    #if 0
     static
     conveyor::JobState
     jobStateFromString (QString const & string)
@@ -39,7 +38,6 @@ namespace
 
         throw std::invalid_argument (string.toStdString());
     }
-    #endif
 }
 
 namespace conveyor
@@ -69,12 +67,12 @@ namespace conveyor
         const QString printerUniqueName(json["printerid"].asCString());
         m_printer = m_conveyor->m_private->printerByUniqueName(printerUniqueName);
 
-        /*JobState const state
+        JobState const state
             ( jobStateFromString
               ( QString(json["state"].asCString())));
         JobConclusion const conclusion
             ( jobConclusionFromString
-            ( QString(json["conclusion"].asCString())));*/
+            ( QString(json["conclusion"].asCString())));
 
         if (!json["currentstep"].isNull()) {
             const QString currentStepName(json["currentstep"]["name"].asCString());
@@ -90,8 +88,8 @@ namespace conveyor
 
         m_id = id;
         m_name = name;
-        /*m_state = state;
-          m_conclusion = conclusion;*/
+        m_state = state;
+        m_conclusion = conclusion;
     }
     
     void

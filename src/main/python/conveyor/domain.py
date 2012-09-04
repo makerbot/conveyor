@@ -41,6 +41,8 @@ class Job(DomainObject):
             self.process = None
             self.skip_start_end = skip_start_end
             self.with_start_end = with_start_end
+            self.conclusion = "notconcluded"
+            self.state = "running"
 
     # TODO: we are not handling the currentstep and process fields evenly
     # between todict() and fromdict().
@@ -55,7 +57,9 @@ class Job(DomainObject):
             'preprocessor': self.preprocessor,
             'printerid': self.printerid,
             'skip_start_end': self.skip_start_end,
-            'with_start_end': self.with_start_end
+            'with_start_end': self.with_start_end,
+            'conclusion': self.conclusion,
+            'state': self.state
         }
         return dct
 
