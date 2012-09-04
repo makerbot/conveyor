@@ -617,14 +617,14 @@ class Server(object):
                     task)
             self._queue.appendfunc(func)
 
-    def _getslicer(self, slicername):
-        if 'miraclegrue' == slicername:
+    def _getslicer(self, slicer_settings):
+        if 'miraclegrue' == slicer_settings.slicer:
             configuration = conveyor.toolpath.miraclegrue.MiracleGrueConfiguration()
             configuration.miraclegruepath = self._config['miraclegrue']['path']
             configuration.miracleconfigpath = self._config['miraclegrue']['config']
             slicer = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
-        elif 'skeinforge' == slicername:
-            configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+        elif 'skeinforge' == slicer_settings.slicer:
+            configuration = self._createskeinforgeconfiguration(slicer_settings)
             configuration.skeinforgepath = self._config['skeinforge']['path']
             configuration.profile = self._config['skeinforge']['profile']
             slicer = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
@@ -632,12 +632,23 @@ class Server(object):
             raise ValueError(slicer)
         return slicer
 
+    def _createskeinforgeconfiguration(self, slicer_settings):
+        configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+        configuration.raft = slicer_settings.raft
+        configuration.support = slicer_settings.support
+        configuration.infillratio = slicer_settings.infill
+        configuration.feedrate = slicer_settings.print_speed
+        configuration.travelrate = slicer_settings.travel_speed
+        configuration.layerheight = slicer_settings.layer_height
+        configuration.shells = slicer_settings.shells
+        return configuration
+
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
         slicer_settings, material, task):
             def func():
                 slicername = self._config['common']['slicer']
-                slicer = self._getslicer(slicername)
+                slicer = self._getslicer(slicer_settings)
                 slicer.slice(
                     profile, inputpath, outputpath, with_start_end,
                     slicer_settings, material, task)
