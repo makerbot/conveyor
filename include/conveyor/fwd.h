@@ -16,6 +16,8 @@ namespace conveyor
     class PipeAddress;
     class Printer;
     class PrinterPrivate;
+    class SlicerConfiguration;
+    class SlicerConfigurationPrivate;
     class TcpAddress;
 }
 

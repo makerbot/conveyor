@@ -1,7 +1,7 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#ifndef SLICERS_H
-#define SLICERS_H (1)
+#ifndef SLICERCONFIGURATIONPRIVATE_H
+#define SLICERCONFIGURATIONPRIVATE_H (1)
 
 #include <QObject>
 #include <QString>
@@ -15,39 +15,21 @@ namespace conveyor
     /**
        Settings for the Skeinforge and MiracleGrue slicers
      */
-    class SlicerConfiguration : public QObject
+    class SlicerConfigurationPrivate
     {
-        Q_OBJECT
-
     public:
-        enum Slicer {
-            Skeinforge,
-            MiracleGrue
-        };
-
-        enum Quality {
-            LowQuality,
-            MediumQuality,
-            HighQuality
-        };
-
-        enum Extruder {
-            Left,
-            Right
-        };
-
-        static SlicerConfiguration * defaultConfiguration(Quality quality);
+        static SlicerConfiguration * defaultConfiguration(SlicerConfiguration::Quality quality);
 
         /// Unpack a configuration serialized to JSON
-        SlicerConfiguration(Json::Value &);
+        SlicerConfigurationPrivate(Json::Value &);
 
         /// Serialize configuration as JSON
         Json::Value toJSON() const;
 
-        Slicer slicer() const;
+        SlicerConfiguration::Slicer slicer() const;
         QString slicerName() const;
 
-        Extruder extruder() const;
+        SlicerConfiguration::Extruder extruder() const;
         QString extruderName() const;
 
         bool raft() const;
@@ -63,9 +45,8 @@ namespace conveyor
         unsigned printSpeed() const;
         unsigned travelSpeed() const;
 
-    public slots:
-        void setSlicer(Slicer slicer);
-        void setExtruder(Extruder extruder);
+        void setSlicer(SlicerConfiguration::Slicer slicer);
+        void setExtruder(SlicerConfiguration::Extruder extruder);
 
         void setRaft(bool raft);
         void setSupports(bool supports);
@@ -80,9 +61,22 @@ namespace conveyor
         void setPrintSpeed(unsigned speed);
         void setTravelSpeed(unsigned speed);
 
-    private:
-        SlicerConfigurationPrivate * const m_private;
+        SlicerConfiguration::Slicer m_slicer;
+        SlicerConfiguration::Extruder m_extruder;
+
+        bool m_raft;
+        bool m_supports;
+
+        double m_infill;
+        double m_layerHeight;
+        unsigned m_shells;
+
+        unsigned m_extruderTemperature;
+        unsigned m_platformTemperature;
+
+        unsigned m_printSpeed;
+        unsigned m_travelSpeed;
     };
 }
 
-#endif
+#endif // SLICERCONFIGURATIONPRIVATE
