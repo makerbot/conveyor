@@ -236,11 +236,13 @@ class S3gDriver(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def _get_start_end_variables(self, profile, slicer_settings, material):
     # TODO: It makes me sad that we pass "slicer"_settings here, but that's the
     # object that has the extruder and platform temperatures. Domain modeling
     # error.
 
+    def _get_start_end_variables(self, profile, slicer_settings, material):
+        if None is material:
+            material = 'PLA'
         ga = makerbot_driver.GcodeAssembler(profile, profile.path)
         start_template, end_template, variables = ga.assemble_recipe(material=material)
         start_gcode = ga.assemble_start_sequence(start_template)
