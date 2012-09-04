@@ -357,7 +357,7 @@ class AbstractMain(object):
             except ValueError as e:
                 code = 1
                 self._log.critical(
-                    'invalid logging configuration: %s', e.message,
+                    'invalid logging configuration: %r', e.args,
                     exc_info=True)
             else:
                 code = None

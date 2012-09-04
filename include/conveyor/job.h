@@ -44,6 +44,7 @@ namespace conveyor
         friend class Conveyor;
         friend class ConveyorPrivate;
         friend class JobAddedMethod;
+        friend class JobChangedMethod;
         friend class JobPrivate;
         friend class Printer;
         friend class PrinterPrivate;
