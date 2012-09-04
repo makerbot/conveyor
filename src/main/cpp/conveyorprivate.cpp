@@ -224,17 +224,7 @@ namespace conveyor
             ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
             );
 
-        int const jobId(result["id"].asInt());
-
-        Job * const job
-            ( new Job
-                ( m_conveyor
-                , printer
-                , jobId));
-
-        m_jobs.insert(jobId, job);
-
-        return job;
+        return jobById(result["id"].asInt());
     }
 
     Job *
@@ -261,17 +251,7 @@ namespace conveyor
             ( SynchronousCallback::invoke (this->m_jsonRpc, "printtofile", params)
             );
 
-        int const jobId(result["id"].asInt());
-
-        Job * const job
-            ( new Job
-                ( m_conveyor
-                , printer
-                , jobId));
-
-        m_jobs.insert(jobId, job);
-
-        return job;
+        return jobById(result["id"].asInt());
     }
 
     Job *
@@ -296,17 +276,7 @@ namespace conveyor
             ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
 
-        int const jobId(result["id"].asInt());
-
-        Job * const job
-            ( new Job
-                ( m_conveyor
-                , printer
-                , jobId));
-
-        m_jobs.insert(jobId, job);
-
-        return job;
+        return jobById(result["id"].asInt());
     }
 
     void
