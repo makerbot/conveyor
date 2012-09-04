@@ -2,6 +2,7 @@
 
 #include <conveyor.h>
 
+#include "conveyorprivate.h"
 #include "jobprivate.h"
 
 #include <stdexcept>
@@ -46,12 +47,11 @@ namespace conveyor
     JobPrivate::JobPrivate
         ( Conveyor * conveyor
         , Job * job
-        , Printer * printer
         , const int & id
         )
         : m_conveyor(conveyor)
         , m_job(job)
-        , m_printer(printer)
+        , m_printer(0)
         , m_id(id)
     {
 
@@ -64,6 +64,10 @@ namespace conveyor
 
         // This is the filename that is being sliced/printed
         QString const name(json["name"].asCString());
+
+        // Get printer from ID
+        const QString printerUniqueName(json["printerid"].asCString());
+        m_printer = m_conveyor->m_private->printerByUniqueName(printerUniqueName);
 
         /*JobState const state
             ( jobStateFromString
