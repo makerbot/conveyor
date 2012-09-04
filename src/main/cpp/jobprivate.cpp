@@ -33,8 +33,8 @@ namespace
             return conveyor::ENDED;
         else if("failed" == string)
             return conveyor::FAILED;
-        else if("cancelled" == string)
-            return conveyor::CANCELLED;
+        else if("canceled" == string)
+            return conveyor::CANCELED;
 
         throw std::invalid_argument (string.toStdString());
     }

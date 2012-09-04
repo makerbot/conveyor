@@ -14,7 +14,7 @@ namespace conveyor
     enum JobConclusion
         { ENDED
         , FAILED
-        , CANCELLED
+        , CANCELED
         , NOTCONCLUDED
         };
 }
