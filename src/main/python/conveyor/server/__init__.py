@@ -237,6 +237,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             recipe = recipemanager.getrecipe(job)
             printerthread = self._findprinter(printername)
             process = recipe.print(printerthread)
+            job.process = process
+            def startcallback(task):
+                self._server.addjob(job)
+            process.startevent.attach(startcallback)
             def runningcallback(task):
                 self._log.info(
                     'printing: %s (job %d)', inputpath, job.id)
@@ -249,8 +253,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
-            job.process = process
-            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
@@ -273,6 +275,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
             process = recipe.printtofile(profile, outputpath)
+            job.process = process
+            def startcallback(task):
+                self._server.addjob(job)
+            process.startevent.attach(startcallback)
             def runningcallback(task):
                 self._log.info(
                     'printing to file: %s -> %s (job %d)', inputpath,
@@ -286,8 +292,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
-            job.process = process
-            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
@@ -309,6 +313,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
             process = recipe.slice(profile, outputpath)
+            job.process = process
+            def startcallback(task):
+                self._server.addjob(job)
+            process.startevent.attach(startcallback)
             def runningcallback(task):
                 self._log.info(
                     'slicing: %s -> %s (job %d)', inputpath, outputpath,
@@ -322,8 +330,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
-            job.process = process
-            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
