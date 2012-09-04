@@ -232,6 +232,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 'printername=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
                 printername, inputpath, preprocessor, skip_start_end,
                 archive_lvl, archive_dir, slicer_settings, material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
@@ -240,7 +241,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = printerthread.getprofile()
             job = self._server.createjob(
                 build_name, inputpath, self._config, printerid, profile,
-                preprocessor, skip_start_end, False)
+                preprocessor, skip_start_end, False, slicer_settings,
+                material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.print(printerthread)
             job.process = process
@@ -272,13 +274,15 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 profilename, inputpath, outputpath, preprocessor,
                 skip_start_end, archive_lvl, archive_dir, slicer_settings,
                 material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
             profile = self._findprofile(profilename)
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
-                preprocessor, skip_start_end, False)
+                preprocessor, skip_start_end, False, slicer_settings,
+                material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.printtofile(profile, outputpath)
             job.process = process
@@ -310,13 +314,15 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 'profilename=%r, inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r, slicer_settings=%r, material=%r',
                 profilename, inputpath, outputpath, preprocessor,
                 with_start_end, slicer_settings, material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
             profile = self._findprofile(profilename)
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
-                preprocessor, False, with_start_end)
+                preprocessor, False, with_start_end, slicer_settings,
+                material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.slice(profile, outputpath)
             job.process = process
@@ -523,7 +529,7 @@ class Server(object):
 
     def createjob(
         self, build_name, path, config, printerid, profile, preprocessor,
-        skip_start_end, with_start_end):
+        skip_start_end, with_start_end, slicer_settings, material):
             # NOTE: The profile is not currently included in the actual job
             # because it can't be converted to or from JSON.
             with self._lock:
@@ -531,7 +537,7 @@ class Server(object):
                 self._jobcounter += 1
                 job = conveyor.domain.Job(
                     id, build_name, path, config, printerid, preprocessor,
-                    skip_start_end, with_start_end)
+                    skip_start_end, with_start_end, slicer_settings, material)
                 return job
 
     def addjob(self, job):
@@ -610,35 +616,50 @@ class Server(object):
 
     def printtofile(
         self, profile, buildname, inputpath, outputpath, skip_start_end,
-        task):
+        slicer_settings, material, task):
             def func():
                 driver = conveyor.printer.s3g.S3gDriver()
                 driver.printtofile(
                     outputpath, profile, buildname, inputpath, skip_start_end,
-                    task)
+                    slicer_settings, material, task)
             self._queue.appendfunc(func)
 
-    def _getslicer(self, slicername):
-        if 'miraclegrue' == slicername:
+    def _getslicer(self, slicer_settings):
+        if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
             configuration = conveyor.toolpath.miraclegrue.MiracleGrueConfiguration()
             configuration.miraclegruepath = self._config['miraclegrue']['path']
             configuration.miracleconfigpath = self._config['miraclegrue']['config']
             slicer = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
-        elif 'skeinforge' == slicername:
-            configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+        elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
+            configuration = self._createskeinforgeconfiguration(slicer_settings)
             configuration.skeinforgepath = self._config['skeinforge']['path']
             configuration.profile = self._config['skeinforge']['profile']
             slicer = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
         else:
-            raise ValueError(slicer)
+            raise ValueError(slicer_settings.slicer)
         return slicer
 
-    def slice(self, profile, inputpath, outputpath, with_start_end, task):
-        def func():
-            slicername = self._config['common']['slicer']
-            slicer = self._getslicer(slicername)
-            slicer.slice(profile, inputpath, outputpath, with_start_end, task)
-        self._queue.appendfunc(func)
+    def _createskeinforgeconfiguration(self, slicer_settings):
+        configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+        configuration.raft = slicer_settings.raft
+        configuration.support = slicer_settings.support
+        configuration.infillratio = slicer_settings.infill
+        configuration.feedrate = slicer_settings.print_speed
+        configuration.travelrate = slicer_settings.travel_speed
+        configuration.layerheight = slicer_settings.layer_height
+        configuration.shells = slicer_settings.shells
+        return configuration
+
+    def slice(
+        self, profile, inputpath, outputpath, with_start_end,
+        slicer_settings, material, task):
+            def func():
+                slicername = self._config['common']['slicer']
+                slicer = self._getslicer(slicer_settings)
+                slicer.slice(
+                    profile, inputpath, outputpath, with_start_end,
+                    slicer_settings, material, task)
+            self._queue.appendfunc(func)
 
     def run(self):
         self._detectorthread = conveyor.printer.s3g.S3gDetectorThread(

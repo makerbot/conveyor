@@ -157,32 +157,17 @@ Common Types
 
             A slicer settings object.
 
-                { (slicer-name):
-                    { "doRaft":              (bool)
-                    , "doSupport":           (bool)
-                    , "extruder":
-                        { "defaultExtruder": (number)
-                        }
-                    , "extruderProfiles":
-                        [ (extruder-profile)
-                        , ...
-                        ]
-                    , "extrusionProfiles":
-                        { (extrusion-profile-name):
-                            (extrusion-profile)
-                        , ...
-                        }
-                    , "infillDensity":       (number)
-                    , "layerHeight":         (number)
-                    , "numberOfShells":      (number)
-                    , "platformTemperature": (temperature)
-                    , "rapidMoveFeedRateXY": (rate)
-                    }
-                , "slicer":
-                    { "maxVersion":          (version)
-                    , "minVersion":          (version)
-                    , "slicerName":          (slicer-name)
-                    }
+                { 'slicer':               (slicer-name)
+                , 'extruder':             (extruder-name)
+                , 'raft':                 (bool)
+                , 'support':              (bool)
+                , 'infill':               (number)
+                , 'layer_height':         (number)
+                , 'shells':               (number)
+                , 'extruder_temperature': (temperature)
+                , 'platform_temperature': (temperature)
+                , 'print_speed':          (rate)
+                , 'travel_speed':         (rate)
                 }
 
         temperature :: (number)
