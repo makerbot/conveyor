@@ -13,11 +13,11 @@ namespace
     conveyor::JobState
     jobStateFromString (QString const & string)
     {
-        if("pending" == string)
+        if("PENDING" == string)
             return conveyor::PENDING;
-        else if("running" == string)
+        else if("RUNNING" == string)
             return conveyor::RUNNING;
-        else if("stopped" == string)
+        else if("STOPPED" == string)
             return conveyor::STOPPED;
 
         throw std::invalid_argument (string.toStdString());
@@ -27,13 +27,11 @@ namespace
     conveyor::JobConclusion
     jobConclusionFromString (QString const & string)
     {
-        if("notconcluded" == string)
-            return conveyor::NOTCONCLUDED;
-        else if("ended" == string)
+        if("ENDED" == string)
             return conveyor::ENDED;
-        else if("failed" == string)
+        else if("FAILED" == string)
             return conveyor::FAILED;
-        else if("canceled" == string)
+        else if("CANCELED" == string)
             return conveyor::CANCELED;
 
         throw std::invalid_argument (string.toStdString());
@@ -70,9 +68,11 @@ namespace conveyor
         JobState const state
             ( jobStateFromString
               ( QString(json["state"].asCString())));
-        JobConclusion const conclusion
-            ( jobConclusionFromString
-            ( QString(json["conclusion"].asCString())));
+
+        JobConclusion conclusion = conveyor::NOTCONCLUDED;
+        if (!json["currentstep"].isNull()) {
+            conclusion = jobConclusionFromString(QString(json["conclusion"].asCString()));
+        }
 
         if (!json["currentstep"].isNull()) {
             const QString currentStepName(json["currentstep"]["name"].asCString());
