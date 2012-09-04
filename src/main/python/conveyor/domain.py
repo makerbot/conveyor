@@ -58,17 +58,18 @@ class Job(DomainObject):
             'preprocessor': self.preprocessor,
             'printerid': self.printerid,
             'skip_start_end': self.skip_start_end,
-            'slicer_settings': self.slicer_settings,
+            'slicer_settings': self.slicer_settings.todict(),
             'with_start_end': self.with_start_end
         }
         return dct
 
     @staticmethod
     def fromdict(dct):
+        slicer_settings = SlicerConfiguration.fromdict(dct['slicer_settings'])
         job = Job(
             dct['id'], dct['build_name'], dct['path'], dct['config'],
             dct['printerid'], dct['preprocessor'], dct['skip_start_end'],
-            dct['with_start_end'], dct['slicer_settings'], dct['material'])
+            dct['with_start_end'], slicer_settings, dct['material'])
         return job
 
 class Printer(DomainObject):

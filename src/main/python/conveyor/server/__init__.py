@@ -228,6 +228,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 'printername=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
                 printername, inputpath, preprocessor, skip_start_end,
                 archive_lvl, archive_dir, slicer_settings, material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
@@ -269,6 +270,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 profilename, inputpath, outputpath, preprocessor,
                 skip_start_end, archive_lvl, archive_dir, slicer_settings,
                 material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
@@ -308,6 +310,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 'profilename=%r, inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r, slicer_settings=%r, material=%r',
                 profilename, inputpath, outputpath, preprocessor,
                 with_start_end, slicer_settings, material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
@@ -609,7 +612,7 @@ class Server(object):
 
     def printtofile(
         self, profile, buildname, inputpath, outputpath, skip_start_end,
-        task):
+        slicer_settings, material, task):
             def func():
                 driver = conveyor.printer.s3g.S3gDriver()
                 driver.printtofile(
@@ -618,18 +621,18 @@ class Server(object):
             self._queue.appendfunc(func)
 
     def _getslicer(self, slicer_settings):
-        if 'miraclegrue' == slicer_settings.slicer:
+        if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
             configuration = conveyor.toolpath.miraclegrue.MiracleGrueConfiguration()
             configuration.miraclegruepath = self._config['miraclegrue']['path']
             configuration.miracleconfigpath = self._config['miraclegrue']['config']
             slicer = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
-        elif 'skeinforge' == slicer_settings.slicer:
+        elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
             configuration = self._createskeinforgeconfiguration(slicer_settings)
             configuration.skeinforgepath = self._config['skeinforge']['path']
             configuration.profile = self._config['skeinforge']['profile']
             slicer = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
         else:
-            raise ValueError(slicer)
+            raise ValueError(slicer_settings.slicer)
         return slicer
 
     def _createskeinforgeconfiguration(self, slicer_settings):

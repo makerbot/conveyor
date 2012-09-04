@@ -29,6 +29,7 @@ import traceback
 import json
 
 import conveyor.event
+import conveyor.printer.s3g # TODO: aww, bad coupling
 
 class MiracleGrueConfiguration(object):
     def __init__(self):
@@ -61,19 +62,28 @@ class MiracleGrueToolpath(object):
         slicer_settings, material, task):
             self._log.info('slicing with Miracle Grue')
             try:
-                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
-                    if with_start_end:
-                        for line in profile.values['print_start_sequence']:
+                driver = conveyor.printer.s3g.S3gDriver()
+                if not with_start_end:
+                    startpath = None
+                    endpath = None
+                else:
+                    startgcode, endgcode, variables = driver.get_start_end_variables(
+                        profile, slicer_settings, material)
+                    with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
+                        startpath = startfp.name
+                        for line in startgcode:
                             print(line, file=startfp)
-                startpath = startfp.name
-                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
-                    if with_start_end:
-                        for line in profile.values['print_end_sequence']:
+                    with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
+                        endpath = endfp.name
+                        for line in endgcode:
                             print(line, file=endfp)
-                endpath = endfp.name
+                with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
+                    configpath = configfp.name
+                    self._generateconfig(slicer_settings, configfp)
                 arguments = list(
                     self._getarguments(
-                        inputpath, outputpath, startpath, endpath))
+                        configpath, inputpath, outputpath, startpath,
+                        endpath))
                 self._log.debug('arguments=%r', arguments)
                 popen = subprocess.Popen(
                     arguments, stdout=subprocess.PIPE,
@@ -88,11 +98,13 @@ class MiracleGrueToolpath(object):
                         break
                     else:
                         self._log.debug('miracle-grue: %s', line)
-                        self.progress(line, task) #Progress gets updated in this func
+                        self.progress(line, task) # Progress gets updated in this func
                         popen.poll()
                 code = popen.wait()
-                os.unlink(startpath)
-                os.unlink(endpath)
+                if None is not startpath:
+                    os.unlink(startpath)
+                if None is not endpath:
+                    os.unlink(endpath)
                 if 0 != code:
                     self._log.debug(
                         'miracle-grue: terminated with code %s', code)
@@ -104,22 +116,103 @@ class MiracleGrueToolpath(object):
             else:
                 task.end(None)
 
-    def _getarguments(self, inputpath, outputpath, startpath, endpath):
-        for method in (
-            self._getarguments_executable,
-            self._getarguments_miraclegrue,
-            ):
-                for iterable in method(inputpath, outputpath, startpath, endpath):
-                    for value in iterable:
-                        yield value
+    def _generateconfig(self, slicer_settings, fp):
+        dct = {
+            'infillDensity'           : slicer_settings.infill,
+            'numberOfShells'          : slicer_settings.shells,
+            'insetDistanceMultiplier' : 0.9,
+            'roofLayerCount'          : 5,
+            'floorLayerCount'         : 5,
+            'layerWidthRatio'         : 1.6,
+            'coarseness'              : 0.05,
+            'doGraphOptimization'     : True,
+            'rapidMoveFeedRateXY'     : slicer_settings.travel_speed,
+            'rapidMoveFeedRateZ'      : 23.0,
+            'doRaft'                  : slicer_settings.raft,
+            'raftLayers'              : 2,
+            'raftBaseThickness'       : 0.6,
+            'raftInterfaceThickness'  : 0.3,
+            'raftOutset'              : 6.0,
+            'raftModelSpacing'        : 0.0,
+            'raftDensity'             : 0.2,
+            'doSupport'               : slicer_settings.support,
+            'supportMargin'           : 1.5,
+            'supportDensity'          : 0.2,
+            'bedZOffset'              : 0.0,
+            'layerHeight'             : slicer_settings.layer_height,
+            'startX'                  : -110.4,
+            'startY'                  : -74.0,
+            'startZ'                  : 0.2,
+            'doPrintProgress'         : True,
+            'defaultExtruder'         : 0, # TODO: there's a field in SlicerConfiguration for this, but... so many other things need to be changed for it to work
+            'extruderProfiles'        : [
+                {
+                    'firstLayerExtrusionProfile' : 'firstlayer',
+                    'insetsExtrusionProfile'     : 'insets',
+                    'infillsExtrusionProfile'    : 'infill',
+                    'outlinesExtrusionProfile'   : 'outlines',
+                    'feedDiameter'               : 1.82,
+                    'nozzleDiameter'             : 0.4,
+                    'retractDistance'            : 1.0,
+                    'retractRate'                : 20.0,
+                    'restartExtraDistance'       : 0.0
+                },
+                {
+                    'firstLayerExtrusionProfile' : 'firstlayer',
+                    'insetsExtrusionProfile'     : 'insets',
+                    'infillsExtrusionProfile'    : 'infill',
+                    'outlinesExtrusionProfile'   : 'outlines',
+                    'feedDiameter'               : 1.82,
+                    'nozzleDiameter'             : 0.4,
+                    'retractDistance'            : 1.0,
+                    'retractRate'                : 20.0,
+                    'restartExtraDistance'       : 0.0
+                }
+            ],
+            'extrusionProfiles': {
+                'insets': {
+                    'temperature': slicer_settings.extruder_temperature, # TODO: Miracle Grue current requires these but it does not actually use them.
+                    'feedrate': slicer_settings.print_speed
+                },
+                'infill': {
+                    'temperature': slicer_settings.extruder_temperature,
+                    'feedrate': slicer_settings.print_speed
+                },
+                'firstlayer': {
+                    'temperature': slicer_settings.extruder_temperature,
+                    'feedrate': 30.0
+                },
+                'outlines': {
+                    'temperature': slicer_settings.extruder_temperature,
+                    'feedrate': 35.0
+                }
+            }
+        }
+        json.dump(dct, fp, indent=8)
 
-    def _getarguments_executable(self, inputpath, outputpath, startpath, endpath):
-        yield (self._configuration.miraclegruepath,)
+    def _getarguments(
+        self, configpath, inputpath, outputpath, startpath, endpath):
+            for method in (
+                self._getarguments_executable,
+                self._getarguments_miraclegrue,
+                ):
+                    for iterable in method(
+                        configpath, inputpath, outputpath, startpath,
+                        endpath):
+                            for value in iterable:
+                                yield value
 
-    def _getarguments_miraclegrue(self, inputpath, outputpath, startpath, endpath):
-        yield ('-c', self._configuration.miracleconfigpath,)
-        yield ('-o', outputpath,)
-        yield ('-s', startpath,)
-        yield('-e', endpath,)
-        yield('-j',)
-        yield (inputpath,)
+    def _getarguments_executable(
+        self, configpath, inputpath, outputpath, startpath, endpath):
+            yield (self._configuration.miraclegruepath,)
+
+    def _getarguments_miraclegrue(
+        self, configpath, inputpath, outputpath, startpath, endpath):
+            yield ('-c', configpath,)
+            yield ('-o', outputpath,)
+            if None is not startpath:
+                yield ('-s', startpath,)
+            if None is not endpath:
+                yield ('-e', endpath,)
+            yield ('-j',)
+            yield (inputpath,)

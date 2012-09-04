@@ -150,7 +150,8 @@ class Recipe(object):
         def runningcallback(task):
             printerthread.print(
                 self._job, self._job.build_name, inputpath,
-                self._job.skip_start_end, self._job.material, task)
+                self._job.skip_start_end, self._job.slicer_settings,
+                self._job.material, task)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
@@ -159,7 +160,8 @@ class Recipe(object):
             def runningcallback(task):
                 self._server.printtofile(
                     profile, self._job.build_name, inputpath, outputpath,
-                    self._job.skip_start_end, self._job.material, task)
+                    self._job.skip_start_end, self._job.slier_settings,
+                    self._job.material, task)
             task = conveyor.task.Task()
             task.runningevent.attach(runningcallback)
             return task
