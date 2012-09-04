@@ -70,7 +70,7 @@ namespace conveyor
               ( QString(json["state"].asCString())));
 
         JobConclusion conclusion = conveyor::NOTCONCLUDED;
-        if (!json["currentstep"].isNull()) {
+        if (!json["conclusion"].isNull()) {
             conclusion = jobConclusionFromString(QString(json["conclusion"].asCString()));
         }
 
