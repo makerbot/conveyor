@@ -77,9 +77,9 @@ namespace conveyor
     {
         switch (m_slicer) {
         case SlicerConfiguration::Skeinforge:
-            return "Skeinforge";
+            return "SKEINFORGE";
         case SlicerConfiguration::MiracleGrue:
-            return "MiracleGrue";
+            return "MIRACLEGRUE";
         default:
             return QString();
         }
