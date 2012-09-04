@@ -43,66 +43,27 @@ namespace conveyor
 
     Json::Value SlicerConfigurationPrivate::toJSON() const
     {
-        const std::string slicer(slicerName().toStdString());
         Json::Value root;
 
         // Slicer name and min/max versions
-        root["slicer"]["slicerName"] = slicer;
-        switch (m_slicer) {
-        case SlicerConfiguration::Skeinforge:
-            root["slicer"]["minVersion"] = "50.0.0.0";
-            root["slicer"]["maxVersion"] = "50.0.0.0";
-            break;
+        root["slicer"] = slicerName().toStdString();
 
-        case SlicerConfiguration::MiracleGrue:
-            root["slicer"]["minVersion"] = "0.0.4.0";
-            root["slicer"]["maxVersion"] = "0.0.5.0";
-            break;
-        }
+        // TODO: rewrite the software stack, using strings
+        // instead of integers to represent toolheads
+        root["extruder"] = 0;
 
-        // The rest is formatted to match MiracleGrue's config
+        root["raft"] = m_raft;
+        root["support"] = m_supports;
 
-        root[slicer]["doRaft"] = m_raft;
-        root[slicer]["doSupport"] = m_supports;
+        root["infill"] = m_infill;
+        root["layer_height"] = m_layerHeight;
+        root["shells"] = m_shells;
 
-        // "extruder" section
-        switch (m_extruder) {
-        case SlicerConfiguration::Left:
-            root[slicer]["extruder"]["defaultExtruder"] = 0;
-            break;
+        root["extruder_temperature"] = m_extruderTemperature;
+        root["platform_temperature"] = m_platformTemperature;
 
-        case SlicerConfiguration::Right:
-            root[slicer]["extruder"]["defaultExtruder"] = 1;
-            break;
-        }
-
-        root[slicer]["infillDensity"] = m_infill;
-        root[slicer]["layerHeight"] = m_layerHeight;
-        root[slicer]["numberOfShells"] = m_shells;
-        root[slicer]["rapidMoveFeedRateXY"] = m_travelSpeed;
-
-        const char *profiles[] = {"insets",
-                                  "infill",
-                                  "firstlayer",
-                                  "outlines"};
-
-        for (int i = 0; i < 4; ++i) {
-            root[slicer]["extrusionProfiles"][profiles[i]]["temperature"] =
-                m_extruderTemperature;
-            root[slicer]["extrusionProfiles"][profiles[i]]["feedrate"] =
-                m_printSpeed;
-        }
-
-        // Nothing variable here, not sure if needed?
-        for (int i = 0; i < 2; ++i) {
-            root["extruderProfiles"][i]["firstLayerExtrusionProfile"] = "firstlayer";
-            root["extruderProfiles"][i]["insetsExtrusionProfile"] = "insets";
-            root["extruderProfiles"][i]["infillsExtrusionProfile"] = "infill";
-            root["extruderProfiles"][i]["outlinesExtrusionProfile"] = "outlines";
-        }
-
-        // TODO: not in miracle.conf?
-        root[slicer]["platformTemperature"] = m_platformTemperature;
+        root["travel_speed"] = m_travelSpeed;
+        root["print_speed"] = m_printSpeed;
 
         return root;
     }
