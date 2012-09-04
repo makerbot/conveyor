@@ -46,47 +46,6 @@ Common Types
 
                 "connected"
                 "notConnected"
-                
-        job-state :: (string)
-        
-            A job's state.
-            There are three states defined:
-            
-                "pending"
-                "running"
-                "stopped"
-                
-        job-conclusion :: (string)
-        
-            How did the job conclude?
-            four conclusions are defined:
-            
-                "notconcluded"
-                "ended"
-                "failed"
-                "canceled"
-
-        extruder-profile
-
-            { "firstLayerExtrusionProfile": (extrusion-profile-name)
-            , "insetsExtrusionProfile":     (extrusion-profile-name)
-            , "infillsExtrusionProfile":    (extrusion-profile-name)
-            , "outlineExtrusionProfile":    (extrusion-profile-name)
-            }
-
-        extruder-profile-name :: (string)
-
-            An extruder profile name.
-
-        extrusion-profile
-
-            { "temperature": (temperature)
-            , "feedrate":    (rate)
-            }
-
-        extrusion-profile-name :: (string)
-
-            An extrusion profile name.
 
         job
 
@@ -97,22 +56,41 @@ Common Types
             , "currentstep": (job-step)
             }
 
+        job-conclusion :: (string)
+
+            How did the job conclude?
+            four conclusions are defined:
+
+                null (meaning not concluded)
+                "ENDED"
+                "FAILED"
+                "CANCELED"
+
         job-id :: (number)
 
             A job identifier.
-            
+
         job-name :: (string)
-        
+
             A job name, human-readable.
-            
+
+        job-state :: (string)
+
+            A job's state.
+            There are three states defined:
+
+                "PENDING"
+                "RUNNING"
+                "STOPPED"
+
         job-step
-        
+
             { "name": (job-step-name)
             , "progress": (number)
             }
-            
+
         job-step-name :: (string)
-        
+
             The name of a job step, e.g "slicing", "printing".
 
         material-name :: (string)

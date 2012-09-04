@@ -257,6 +257,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 childtask = task.progress
                 progress = childtask.progress
                 job.currentstep = progress
+                job.state = task.state
+                job.conclusion = task.conclusion
                 self._server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
@@ -298,6 +300,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 childtask = task.progress
                 progress = childtask.progress
                 job.currentstep = progress
+                job.state = task.state
+                job.conclusion = task.conclusion
                 self._server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
@@ -338,6 +342,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 childtask = task.progress
                 progress = childtask.progress
                 job.currentstep = progress
+                job.state = task.state
+                job.conclusion = task.conclusion
                 self._server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)

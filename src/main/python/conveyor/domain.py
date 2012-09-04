@@ -49,6 +49,8 @@ class Job(DomainObject):
 
     # TODO: we are not handling the currentstep and process fields evenly
     # between todict() and fromdict().
+    #
+    # TODO: and state and conclusion.
 
     def todict(self):
         dct = {
