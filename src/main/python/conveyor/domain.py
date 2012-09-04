@@ -30,16 +30,18 @@ class DomainObject(object):
 class Job(DomainObject):
     def __init__(
         self, id, build_name, path, config, printerid, preprocessor,
-        skip_start_end, with_start_end, material):
+        skip_start_end, with_start_end, slicer_settings, material):
             self.build_name = build_name
             self.config = config
             self.currentstep = None
             self.id = id
+            self.material = material
             self.path = path
             self.preprocessor = preprocessor
             self.printerid = printerid
             self.process = None
             self.skip_start_end = skip_start_end
+            self.slicer_settings = slicer_settings
             self.with_start_end = with_start_end
             self.material = material
 
@@ -52,21 +54,24 @@ class Job(DomainObject):
             'name': self.build_name,
             'config': self.config,
             'currentstep': self.currentstep,
+            'material': self.material,
             'path': self.path,
             'preprocessor': self.preprocessor,
             'printerid': self.printerid,
             'skip_start_end': self.skip_start_end,
             'with_start_end': self.with_start_end,
             'material': self.material,
+            'slicer_settings': self.slicer_settings.todict(),
         }
         return dct
 
     @staticmethod
     def fromdict(dct):
+        slicer_settings = SlicerConfiguration.fromdict(dct['slicer_settings'])
         job = Job(
             dct['id'], dct['build_name'], dct['path'], dct['config'],
             dct['printerid'], dct['preprocessor'], dct['skip_start_end'],
-            dct['with_start_end'], dct['material'])
+            dct['with_start_end'], slicer_settings, dct['material'])
         return job
 
 class Printer(DomainObject):

@@ -29,6 +29,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.domain
 import conveyor.jsonrpc
 import conveyor.main
 import conveyor.task
@@ -230,7 +231,23 @@ class ClientMain(conveyor.main.AbstractMain):
         code = self._run_client('getjobs', params, False, display)
         return code
 
+    def _createslicerconfiguration(self):
+        slicer_settings = conveyor.domain.SlicerConfiguration(
+            slicer=conveyor.domain.Slicer.MIRACLEGRUE,
+            extruder=0,
+            raft=False,
+            support=False,
+            infill=0.1,
+            layer_height=0.27,
+            shells=1,
+            extruder_temperature=230.0,
+            platform_temperature=110.0,
+            print_speed=80.0,
+            travel_speed=100.0)
+        return slicer_settings
+
     def _run_print(self):
+        slicer_settings = self._createslicerconfiguration()
         params = {
             'printername': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
@@ -239,7 +256,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
             'archive_dir': None,
-            'slicer_settings': None,
+            'slicer_settings': slicer_settings.todict(),
         }
         self._log.info('printing: %s', self._parsedargs.inputpath)
         code = self._run_client('print', params, True, None)
@@ -251,6 +268,7 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_printtofile(self):
+        slicer_settings = self._createslicerconfiguration()
         params = {
             'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
@@ -260,7 +278,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
             'archive_dir': None,
-            'slicer_settings': None,
+            'slicer_settings': slicer_settings.todict(),
         }
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.inputpath,
@@ -269,6 +287,7 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_slice(self):
+        slicer_settings = self._createslicerconfiguration()
         params = {
             'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
@@ -276,7 +295,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'preprocessor': self._parsedargs.preprocessor,
             'material':self._parsedargs.material,
             'with_start_end': self._parsedargs.with_start_end,
-            'slicer_settings': None,
+            'slicer_settings': slicer_settings.todict(),
         }
         self._log.info(
             'slicing to file: %s -> %s', self._parsedargs.inputpath,
