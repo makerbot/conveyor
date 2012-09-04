@@ -140,14 +140,19 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def getprofile(self):
         return self._profile
 
-    def print(self, job, buildname, gcodepath, skip_start_end, task):
-        self._log.debug(
-            'job=%r, buildname=%r, gcodepath=%r, skip_start_end=%r, task=%r',
-            job, buildname, gcodepath, skip_start_end, task)
-        with self._condition:
-            tuple_ = job, buildname, gcodepath, skip_start_end, task
-            self._queue.appendleft(tuple_)
-            self._condition.notify_all()
+    def print(
+        self, job, buildname, gcodepath, skip_start_end, slicer_settings,
+        material, task):
+            self._log.debug(
+                'job=%r, buildname=%r, gcodepath=%r, skip_start_end=%r, slicer_settings=%r, material=%r, task=%r',
+                job, buildname, gcodepath, skip_start_end, slicer_settings,
+                material, task)
+            with self._condition:
+                tuple_ = (
+                    job, buildname, gcodepath, skip_start_end,
+                    slicer_settings, material, task)
+                self._queue.appendleft(tuple_)
+                self._condition.notify_all()
 
     def run(self):
         try:
@@ -179,7 +184,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         self._condition.wait(1.0)
                         self._log.debug('resumed')
                 else:
-                    job, buildname, gcodepath, skip_start_end, task = tuple_
+                    job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = tuple_
                     with self._condition:
                         self._currenttask = task
                     def stoppedcallback(task):
@@ -190,7 +195,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     try:
                         driver.print(
                             self._fp, self._profile, buildname, gcodepath,
-                            skip_start_end, task)
+                            skip_start_end, slicer_settings, material, task)
                     except makerbot_driver.BuildCancelledError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
@@ -231,30 +236,38 @@ class S3gDriver(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def get_start_end_variables(self, profile, material):
+    # TODO: It makes me sad that we pass "slicer"_settings here, but that's the
+    # object that has the extruder and platform temperatures. Domain modeling
+    # error.
+
+    def get_start_end_variables(self, profile, slicer_settings, material):
         ga = makerbot_driver.GcodeAssembler(profile, profile.path)
         start_template, end_template, variables = ga.assemble_recipe()
         start_gcode = ga.assemble_start_sequence(start_template)
         end_gcode = ga.assemble_end_sequence(end_template)
+        variables['TOOL_0_TEMP'] = slicer_settings.extruder_temperature
+        variables['TOOL_1_TEMP'] = slicer_settings.extruder_temperature
+        variables['PLATFORM_TEMP'] = slicer_settings.platform_temperature
         return start_gcode, end_gcode, variables
 
-    def _gcodelines(self, profile, gcodepath, skip_start_end, material):
-        startgcode, endgcode, variables = self.get_start_end_variables(
-            profile, material)
-        def generator():
-            if not skip_start_end:
-                if None is not startgcode:
-                    for data in startgcode:
+    def _gcodelines(
+        self, profile, gcodepath, skip_start_end, slicer_settings, material):
+            startgcode, endgcode, variables = self.get_start_end_variables(
+                profile, slicer_settings, material)
+            def generator():
+                if not skip_start_end:
+                    if None is not startgcode:
+                        for data in startgcode:
+                            yield data
+                with open(gcodepath, 'r') as fp:
+                    for data in fp:
                         yield data
-            with open(gcodepath, 'r') as fp:
-                for data in fp:
-                    yield data
-            if not skip_start_end:
-                if None is not endgcode:
-                    for data in endgcode:
-                        yield data
-        gcodelines = list(generator())
-        return gcodelines, variables
+                if not skip_start_end:
+                    if None is not endgcode:
+                        for data in endgcode:
+                            yield data
+            gcodelines = list(generator())
+            return gcodelines, variables
 
     def _countgcodelines(self, gcodelines):
         lines = 0
@@ -266,7 +279,7 @@ class S3gDriver(object):
 
     def _genericprint(
         self, profile, buildname, writer, polltemperature, pollinterval,
-        gcodepath, skip_start_end, material, task):
+        gcodepath, skip_start_end, slicer_settings, material, task):
             def stoppedcallback(task):
                 writer.set_external_stop()
             task.stoppedevent.attach(stoppedcallback)
@@ -282,7 +295,7 @@ class S3gDriver(object):
             else:
                 temperature = _gettemperature(profile, parser.s3g)
             gcodelines, variables = self._gcodelines(
-                profile, gcodepath, skip_start_end, material)
+                profile, gcodepath, skip_start_end, slicer_settings, material)
             parser.environment.update(variables)
             totallines, totalbytes = self._countgcodelines(gcodelines)
             currentbyte = 0
@@ -319,18 +332,19 @@ class S3gDriver(object):
                 task.end(None)
 
     def print(
-        self, fp, profile, buildname, gcodepath, skip_start_end, material,
-        task):
+        self, fp, profile, buildname, gcodepath, skip_start_end,
+        slicer_settings, material, task):
             writer = makerbot_driver.Writer.StreamWriter(fp)
             self._genericprint(
                 profile, buildname, writer, True, 5.0, gcodepath,
-                skip_start_end, material, task)
+                skip_start_end, slicer_settings, material, task)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,
-        material, task):
+        slicer_settings, material, task):
             with open(outputpath, 'wb') as fp:
                 writer = makerbot_driver.Writer.FileWriter(fp)
                 self._genericprint(
                     profile, buildname, writer, False, 5.0,
-                    gcodepath, skip_start_end, material, task)
+                    gcodepath, skip_start_end, slicer_settings, material,
+                    task)

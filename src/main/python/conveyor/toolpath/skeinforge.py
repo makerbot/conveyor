@@ -19,8 +19,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-from decimal import *
-
 import logging
 import os
 import os.path
@@ -44,12 +42,12 @@ class SkeinforgeConfiguration(object):
         self.raft = False
         self.support = SkeinforgeSupport.NONE
         self.bookend = True
-        self.infillratio = Decimal('0.1')
-        self.feedrate = Decimal('40')
-        self.travelrate = Decimal('55')
-        self.filamentdiameter = Decimal('1.82')
-        self.pathwidth = Decimal('0.4')
-        self.layerheight = Decimal('0.27')
+        self.infillratio = 0.1
+        self.feedrate = 40.0
+        self.travelrate = 55.0
+        self.filamentdiameter = 1.82
+        self.pathwidth = 0.4
+        self.layerheight = 0.27
         self.shells = 1
 
 class SkeinforgeToolpath(object):
@@ -171,17 +169,22 @@ class SkeinforgeToolpath(object):
             'raft.csv', 'Add Raft, Elevate Nozzle, Orbit:', self._configuration.raft)
 
     def _getarguments_support(self, inputpath):
-        if SkeinforgeSupport.NONE == self._configuration.support:
+        # TODO: Support the exterior support. Endless domain model problems... :(
+        if not self._configuration.support:
+            support = SkeinforgeSupport.NONE
+        else:
+            support = SkeinforgeSupport.FULL
+        if SkeinforgeSupport.NONE == support:
             yield self._option('raft.csv', 'None', 'true')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'false')
             yield self._option('raft.csv', 'Exterior Only', 'false')
-        elif SkeinforgeSupport.EXTERIOR == self._configuration.support:
+        elif SkeinforgeSupport.EXTERIOR == support:
             yield self._option('raft.csv', 'None', 'false')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'false')
             yield self._option('raft.csv', 'Exterior Only', 'true')
-        elif SkeinforgeSupport.FULL == self._configuration.support:
+        elif SkeinforgeSupport.FULL == support:
             yield self._option('raft.csv', 'None', 'false')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'true')
