@@ -30,7 +30,7 @@ class DomainObject(object):
 class Job(DomainObject):
     def __init__(
         self, id, build_name, path, config, printerid, preprocessor,
-        skip_start_end, with_start_end):
+        skip_start_end, with_start_end, material):
             self.build_name = build_name
             self.config = config
             self.currentstep = None
@@ -41,6 +41,7 @@ class Job(DomainObject):
             self.process = None
             self.skip_start_end = skip_start_end
             self.with_start_end = with_start_end
+            self.material = material
 
     # TODO: we are not handling the currentstep and process fields evenly
     # between todict() and fromdict().
@@ -55,7 +56,8 @@ class Job(DomainObject):
             'preprocessor': self.preprocessor,
             'printerid': self.printerid,
             'skip_start_end': self.skip_start_end,
-            'with_start_end': self.with_start_end
+            'with_start_end': self.with_start_end,
+            'material': self.material,
         }
         return dct
 
@@ -64,7 +66,7 @@ class Job(DomainObject):
         job = Job(
             dct['id'], dct['build_name'], dct['path'], dct['config'],
             dct['printerid'], dct['preprocessor'], dct['skip_start_end'],
-            dct['with_start_end'])
+            dct['with_start_end'], dct['material'])
         return job
 
 class Printer(DomainObject):

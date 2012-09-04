@@ -114,6 +114,12 @@ class ClientMain(conveyor.main.AbstractMain):
             default=False,
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
+        parser.add_argument(
+            '-m',
+            '--material',
+            default='PLA',
+            help='Material to print with',
+            dest='material')
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser(
@@ -146,6 +152,12 @@ class ClientMain(conveyor.main.AbstractMain):
             default=False,
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
+        parser.add_argument(
+            '-m',
+            '--material',
+            default='PLA',
+            help='Material to print with',
+            dest='material')
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser(
@@ -171,6 +183,12 @@ class ClientMain(conveyor.main.AbstractMain):
             default=False,
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
+        parser.add_argument(
+            '-m',
+            '--material',
+            default='PLA',
+            help='Material to print with',
+            dest='material')
 
     def _run(self):
         self._initeventqueue()
@@ -217,11 +235,11 @@ class ClientMain(conveyor.main.AbstractMain):
             'printername': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
             'preprocessor': self._parsedargs.preprocessor,
+            'material': self._parsedargs.material,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
             'archive_dir': None,
             'slicer_settings': None,
-            'material': None
         }
         self._log.info('printing: %s', self._parsedargs.inputpath)
         code = self._run_client('print', params, True, None)
@@ -238,11 +256,11 @@ class ClientMain(conveyor.main.AbstractMain):
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
             'outputpath': os.path.abspath(self._parsedargs.outputpath),
             'preprocessor': self._parsedargs.preprocessor,
+            'material':self._parsedargs.material,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
             'archive_dir': None,
             'slicer_settings': None,
-            'material': None
         }
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.inputpath,
@@ -256,9 +274,9 @@ class ClientMain(conveyor.main.AbstractMain):
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
             'outputpath': os.path.abspath(self._parsedargs.outputpath),
             'preprocessor': self._parsedargs.preprocessor,
+            'material':self._parsedargs.material,
             'with_start_end': self._parsedargs.with_start_end,
             'slicer_settings': None,
-            'material': None
         }
         self._log.info(
             'slicing to file: %s -> %s', self._parsedargs.inputpath,

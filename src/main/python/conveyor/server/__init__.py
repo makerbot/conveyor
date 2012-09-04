@@ -236,7 +236,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = printerthread.getprofile()
             job = self._server.createjob(
                 build_name, inputpath, self._config, printerid, profile,
-                preprocessor, skip_start_end, False)
+                preprocessor, skip_start_end, False, material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.print(printerthread)
             job.process = process
@@ -274,7 +274,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = self._findprofile(profilename)
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
-                preprocessor, skip_start_end, False)
+                preprocessor, skip_start_end, False, material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.printtofile(profile, outputpath)
             job.process = process
@@ -312,7 +312,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = self._findprofile(profilename)
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
-                preprocessor, False, with_start_end)
+                preprocessor, False, with_start_end, material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.slice(profile, outputpath)
             job.process = process
@@ -519,7 +519,7 @@ class Server(object):
 
     def createjob(
         self, build_name, path, config, printerid, profile, preprocessor,
-        skip_start_end, with_start_end):
+        skip_start_end, with_start_end, material):
             # NOTE: The profile is not currently included in the actual job
             # because it can't be converted to or from JSON.
             with self._lock:
@@ -527,7 +527,7 @@ class Server(object):
                 self._jobcounter += 1
                 job = conveyor.domain.Job(
                     id, build_name, path, config, printerid, preprocessor,
-                    skip_start_end, with_start_end)
+                    skip_start_end, with_start_end, material)
                 return job
 
     def addjob(self, job):
@@ -606,12 +606,12 @@ class Server(object):
 
     def printtofile(
         self, profile, buildname, inputpath, outputpath, skip_start_end,
-        task):
+        material, task):
             def func():
                 driver = conveyor.printer.s3g.S3gDriver()
                 driver.printtofile(
                     outputpath, profile, buildname, inputpath, skip_start_end,
-                    task)
+                    material, task)
             self._queue.appendfunc(func)
 
     def _getslicer(self, slicername):
@@ -629,11 +629,11 @@ class Server(object):
             raise ValueError(slicer)
         return slicer
 
-    def slice(self, profile, inputpath, outputpath, with_start_end, task):
+    def slice(self, profile, inputpath, outputpath, with_start_end, material, task):
         def func():
             slicername = self._config['common']['slicer']
             slicer = self._getslicer(slicername)
-            slicer.slice(profile, inputpath, outputpath, with_start_end, task)
+            slicer.slice(profile, inputpath, outputpath, with_start_end, material, task)
         self._queue.appendfunc(func)
 
     def run(self):
