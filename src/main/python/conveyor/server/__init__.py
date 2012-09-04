@@ -231,11 +231,14 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
-            job = self._server.createjob(
-                build_name, inputpath, self._config, preprocessor,
-                skip_start_end, False, slicer_settings, material)
-            recipe = recipemanager.getrecipe(job)
             printerthread = self._findprinter(printername)
+            printerid = printerthread.getprinterid()
+            profile = printerthread.getprofile()
+            job = self._server.createjob(
+                build_name, inputpath, self._config, printerid, profile,
+                preprocessor, skip_start_end, False, slicer_settings,
+                material)
+            recipe = recipemanager.getrecipe(job)
             process = recipe.print(printerthread)
             job.process = process
             def startcallback(task):
@@ -269,11 +272,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
-            job = self._server.createjob(
-                build_name, inputpath, self._config, preprocessor,
-                skip_start_end, False, slicer_settings, material)
-            recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, None, profile,
+                preprocessor, skip_start_end, False, slicer_settings,
+                material)
+            recipe = recipemanager.getrecipe(job)
             process = recipe.printtofile(profile, outputpath)
             job.process = process
             def startcallback(task):
@@ -307,11 +311,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
-            job = self._server.createjob(
-                build_name, inputpath, self._config, preprocessor, False,
-                with_start_end, slicer_settings, material)
-            recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, None, profile,
+                preprocessor, False, with_start_end, slicer_settings,
+                material)
+            recipe = recipemanager.getrecipe(job)
             process = recipe.slice(profile, outputpath)
             job.process = process
             def startcallback(task):
@@ -516,13 +521,15 @@ class Server(object):
     # passed to addjob must have a valid process.
 
     def createjob(
-        self, build_name, path, config, preprocessor, skip_start_end,
-        with_start_end, slicer_settings, material):
+        self, build_name, path, config, printerid, profile, preprocessor,
+        skip_start_end, with_start_end, slicer_settings, material):
+            # NOTE: The profile is not currently included in the actual job
+            # because it can't be converted to or from JSON.
             with self._lock:
                 id = self._jobcounter
                 self._jobcounter += 1
                 job = conveyor.domain.Job(
-                    id, build_name, path, config, preprocessor,
+                    id, build_name, path, config, printerid, preprocessor,
                     skip_start_end, with_start_end, slicer_settings, material)
                 return job
 
