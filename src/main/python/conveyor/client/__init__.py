@@ -19,9 +19,11 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import json
 import logging
 import os.path
 import socket
+import sys
 import tempfile
 
 try:
@@ -127,6 +129,13 @@ class ClientMain(conveyor.main.AbstractMain):
             'printers',
             help='list connected printers')
         parser.set_defaults(func=self._run_printers)
+        parser.add_argument(
+            '-j',
+            '--json',
+            action='store_true',
+            default=False,
+            help='use JSON output',
+            dest='json')
         self._initparser_common(parser)
  
     def _initsubparser_printtofile(self, subparsers):
@@ -263,8 +272,24 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_printers(self):
-        self._log.error('jobs not implemented')
-        code = 1
+        def display(result):
+            if self._parsedargs.json:
+                json.dump(result, sys.stdout)
+                print()
+            else:
+                for dct in result:
+                    printer = conveyor.domain.Printer.fromdict(dct)
+                    self._log.info('Printer:')
+                    self._log.info('  display name: %s', printer.display_name)
+                    self._log.info('  unique name: %s', printer.unique_name)
+                    self._log.info('  printer type: %s', printer.printer_type)
+                    self._log.info('  can print: %s', printer.can_print)
+                    self._log.info('  can print to file: %s', printer.can_printtofile)
+                    self._log.info('  heated platform: %s', printer.has_heated_platform)
+                    self._log.info('  number of toolheads: %s', printer.number_of_toolheads)
+                    self._log.info('  connection status: %s', printer.connection_status)
+        params = {}
+        code = self._run_client('getprinters', params, False, display)
         return code
 
     def _run_printtofile(self):
