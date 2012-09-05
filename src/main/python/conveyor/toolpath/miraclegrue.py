@@ -88,26 +88,25 @@ class MiracleGrueToolpath(object):
                 popen = subprocess.Popen(
                     arguments, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT)
+                self._log.debug('popen=%r, popen.pid=%r, popen.returncode=%r', popen, popen.pid, popen.returncode) # TODO: remove this silly temporary debugging output
                 def cancelcallback(task):
                     popen.terminate()
                 task.cancelevent.attach(cancelcallback)
-                popen.poll()
-                while None is popen.returncode:
+                self._log.debug('reading from miracle grue')
+                while True:
                     line = popen.stdout.readline()
                     if '' == line:
                         break
                     else:
                         self._log.debug('miracle-grue: %s', line)
                         self.progress(line, task) # Progress gets updated in this func
-                        popen.poll()
                 code = popen.wait()
+                self._log.debug('miracle-grue terminated with code %s', code)
                 if None is not startpath:
                     os.unlink(startpath)
                 if None is not endpath:
                     os.unlink(endpath)
                 if 0 != code:
-                    self._log.debug(
-                        'miracle-grue: terminated with code %s', code)
                     raise Exception(code)
             except Exception as e:
                 self._log.exception('unhandled exception')
