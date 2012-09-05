@@ -30,7 +30,7 @@ namespace conveyor
         m_extruder(SlicerConfiguration::Left),
         m_raft(true),
         m_supports(false),
-        m_infill(0.90),
+        m_infill(0.10),
         m_layerHeight(0.2),
         m_shells(3),
         m_extruderTemperature(220),
