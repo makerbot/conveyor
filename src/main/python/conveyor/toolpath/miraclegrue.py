@@ -179,7 +179,7 @@ class MiracleGrueToolpath(object):
                 },
                 'firstlayer': {
                     'temperature': slicer_settings.extruder_temperature,
-                    'feedrate': 30.0
+                    'feedrate': 20.0
                 },
                 'outlines': {
                     'temperature': slicer_settings.extruder_temperature,
