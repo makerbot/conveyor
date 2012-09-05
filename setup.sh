@@ -5,7 +5,7 @@ BASEDIR=`echo $0|sed 's|/.*||'`
 
 if [ -z $PYVERSION ]
 then
-    PYVERSION=`python --version 2>&1 | sed s/'Python '//|sed s/\.[^.]*$//`
+    PYVERSION=`python -c 'import sys; print ".".join(sys.version.split()[0].split(".")[0:2])'`
     echo "python version is $PYVERSION"
 else
     PYBINVERSION=$PYVERSION
