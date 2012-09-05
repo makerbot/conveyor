@@ -6,3 +6,4 @@ submodule/conveyor_bins/pyserial-2.7_mb2.1-py2.7.egg usr/share/conveyor
 data/conveyor.conf				etc/init
 wrapper/conveyord				usr/bin
 wrapper/conveyor_service.py		usr/share/conveyor
+virtualenv.py                   usr/share/conveyor
