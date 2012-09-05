@@ -77,6 +77,13 @@ class ClientMain(conveyor.main.AbstractMain):
             'dir',
             help='list the methods available in the conveyor service')
         parser.set_defaults(func=self._run_dir)
+        parser.add_argument(
+            '-j',
+            '--json',
+            action='store_true',
+            default=False,
+            help='use JSON output',
+            dest='json')
         self._initparser_common(parser)
 
     def _initsubparser_job(self, subparsers):
@@ -222,8 +229,15 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_dir(self):
-        self._log.error('dir not implemented')
-        code = 1
+        params = {}
+        def display(result):
+            if self._parsedargs.json:
+                json.dump(result, sys.stdout)
+                print()
+            else:
+                for methodname, description in result.items():
+                    self._log.info('%s: %s', methodname, description)
+        code = self._run_client('dir', params, False, display)
         return code
 
     def _run_job(self):
