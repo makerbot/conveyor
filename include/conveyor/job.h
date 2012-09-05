@@ -32,10 +32,10 @@ namespace conveyor
         void pause (void);
         
     signals:
-        void changed (void);
+        void changed (const Job *);
 
     private:
-        Job (Conveyor * conveyor, Printer * printer, int const & id);
+        Job (Conveyor * conveyor, int const & id);
 
         QScopedPointer <JobPrivate> m_private;
 

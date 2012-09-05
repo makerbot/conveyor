@@ -15,11 +15,10 @@ namespace conveyor
 {
     Job::Job
         ( Conveyor * conveyor
-        , Printer * printer
         , int const & id
         )
         : m_private
-          ( new JobPrivate (conveyor, this, printer, id)
+          ( new JobPrivate (conveyor, this, id)
           )
     {
     }
@@ -79,6 +78,6 @@ namespace conveyor
     void
     Job::emitChanged (void)
     {
-        emit changed();
+        emit changed(this);
     }
 }

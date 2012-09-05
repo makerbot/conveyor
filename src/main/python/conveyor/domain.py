@@ -29,39 +29,55 @@ class DomainObject(object):
 
 class Job(DomainObject):
     def __init__(
-        self, id, build_name, path, config, preprocessor, skip_start_end,
-        with_start_end):
+        self, id, build_name, path, config, printerid, preprocessor,
+        skip_start_end, with_start_end, slicer_settings, material):
             self.build_name = build_name
+            self.conclusion = None
             self.config = config
             self.currentstep = None
             self.id = id
+            self.material = material
+            self.material = material
             self.path = path
             self.preprocessor = preprocessor
+            self.printerid = printerid
             self.process = None
             self.skip_start_end = skip_start_end
+            self.slicer_settings = slicer_settings
+            self.state = "RUNNING"
             self.with_start_end = with_start_end
 
     # TODO: we are not handling the currentstep and process fields evenly
     # between todict() and fromdict().
+    #
+    # TODO: and state and conclusion.
 
     def todict(self):
         dct = {
-            'id': self.id,
-            'name': self.build_name,
+            'conclusion': self.conclusion,
             'config': self.config,
             'currentstep': self.currentstep,
+            'id': self.id,
+            'material': self.material,
+            'material': self.material,
+            'name': self.build_name,
             'path': self.path,
             'preprocessor': self.preprocessor,
+            'printerid': self.printerid,
             'skip_start_end': self.skip_start_end,
+            'slicer_settings': self.slicer_settings.todict(),
+            'state': self.state,
             'with_start_end': self.with_start_end
         }
         return dct
 
     @staticmethod
     def fromdict(dct):
+        slicer_settings = SlicerConfiguration.fromdict(dct['slicer_settings'])
         job = Job(
             dct['id'], dct['build_name'], dct['path'], dct['config'],
-            dct['preprocessor'], dct['skip_start_end'], dct['with_start_end'])
+            dct['printerid'], dct['preprocessor'], dct['skip_start_end'],
+            dct['with_start_end'], slicer_settings, dct['material'])
         return job
 
 class Printer(DomainObject):

@@ -1,5 +1,6 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
+#include <QDebug>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QWaitCondition>
@@ -82,6 +83,10 @@ namespace conveyor
             int const code (error["code"].asInt ());
             std::string const message (error["message"].asString ());
             Json::Value const data (error["data"]);
+
+            qDebug() << "SynchronousCallback error:";
+            qDebug() << response.toStyledString().c_str();
+
             throw JsonRpcException (code, message, data);
         }
         else

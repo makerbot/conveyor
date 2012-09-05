@@ -13,7 +13,6 @@ namespace conveyor
         JobPrivate
             ( Conveyor * conveyor
             , Job * job
-            , Printer * printer
             , int const & id
             );
 

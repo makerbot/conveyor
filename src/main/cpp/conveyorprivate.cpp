@@ -175,12 +175,14 @@ namespace conveyor
             const std::string &key(ids[i]);
             int id = QString(key.c_str()).toInt();
 
-            // Look up Job by its ID. This will also create the Job
-            // object if it doesn't exist already.
-            Job * const job(jobById(id));
+            if (results[key]["conclusion"].isNull()) {
+                // Look up Job by its ID. This will also create the Job
+                // object if it doesn't exist already.
+                Job * const job(jobById(id));
 
-            job->m_private->updateFromJson(results[key]);
-            jobs.append(job);
+                job->m_private->updateFromJson(results[key]);
+                jobs.append(job);
+            }
         }
 
         return jobs;
@@ -192,10 +194,7 @@ namespace conveyor
         Job * job = m_jobs.value(id);
 
         if (!job) {
-            // TODO: passing printer as null here, should look at this
-            // further. Can probably set a printer in
-            // Job::updateFromJson if we pass the printer's uniqueName
-            job = new Job(this->m_conveyor, 0, id);
+            job = new Job(this->m_conveyor, id);
             m_jobs.insert(id, job);
         }
 
@@ -207,6 +206,7 @@ namespace conveyor
         ( Printer * const printer
         , QString const & inputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Json::Value params (Json::objectValue);
@@ -218,23 +218,13 @@ namespace conveyor
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = null;
+        params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
             );
 
-        int const jobId(result["id"].asInt());
-
-        Job * const job
-            ( new Job
-                ( m_conveyor
-                , printer
-                , jobId));
-
-        m_jobs.insert(jobId, job);
-
-        return job;
+        return jobById(result["id"].asInt());
     }
 
     Job *
@@ -243,6 +233,7 @@ namespace conveyor
         , QString const & inputFile
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Json::Value params (Json::objectValue);
@@ -255,23 +246,13 @@ namespace conveyor
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = null;
+        params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "printtofile", params)
             );
 
-        int const jobId(result["id"].asInt());
-
-        Job * const job
-            ( new Job
-                ( m_conveyor
-                , printer
-                , jobId));
-
-        m_jobs.insert(jobId, job);
-
-        return job;
+        return jobById(result["id"].asInt());
     }
 
     Job *
@@ -280,6 +261,7 @@ namespace conveyor
         , QString const & inputFile
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Json::Value params (Json::objectValue);
@@ -290,23 +272,13 @@ namespace conveyor
         params["preprocessor"] = null;
         params["with_start_end"] = Json::Value (false);
         params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = null;
+        params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
 
-        int const jobId(result["id"].asInt());
-
-        Job * const job
-            ( new Job
-                ( m_conveyor
-                , printer
-                , jobId));
-
-        m_jobs.insert(jobId, job);
-
-        return job;
+        return jobById(result["id"].asInt());
     }
 
     void

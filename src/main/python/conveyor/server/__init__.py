@@ -156,13 +156,17 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def _stoppedcallback(self, job):
         def callback(task):
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
+                job.state = "STOPPED"
                 self._log.info('job %d ended', job)
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+                job.conclusion = "FAILED"
                 self._log.info('job %d failed', job)
             elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+                job.conclusion = "CANCELED"
                 self._log.info('job %d canceled', job)
             else:
                 raise ValueError(task.conclusion)
+            job.state = "STOPPED"
             params = {
                 'job': job.todict(),
                 'state': conveyor.task.TaskState.STOPPED,
@@ -228,15 +232,23 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 'printername=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
                 printername, inputpath, preprocessor, skip_start_end,
                 archive_lvl, archive_dir, slicer_settings, material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
-            job = self._server.createjob(
-                build_name, inputpath, self._config, preprocessor,
-                skip_start_end, False)
-            recipe = recipemanager.getrecipe(job)
             printerthread = self._findprinter(printername)
+            printerid = printerthread.getprinterid()
+            profile = printerthread.getprofile()
+            job = self._server.createjob(
+                build_name, inputpath, self._config, printerid, profile,
+                preprocessor, skip_start_end, False, slicer_settings,
+                material)
+            recipe = recipemanager.getrecipe(job)
             process = recipe.print(printerthread)
+            job.process = process
+            def startcallback(task):
+                self._server.addjob(job)
+            process.startevent.attach(startcallback)
             def runningcallback(task):
                 self._log.info(
                     'printing: %s (job %d)', inputpath, job.id)
@@ -245,12 +257,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 childtask = task.progress
                 progress = childtask.progress
                 job.currentstep = progress
+                job.state = task.state
+                job.conclusion = task.conclusion
                 self._server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
-            job.process = process
-            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
@@ -264,15 +276,21 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 profilename, inputpath, outputpath, preprocessor,
                 skip_start_end, archive_lvl, archive_dir, slicer_settings,
                 material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
-            job = self._server.createjob(
-                build_name, inputpath, self._config, preprocessor,
-                skip_start_end, False)
-            recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, None, profile,
+                preprocessor, skip_start_end, False, slicer_settings,
+                material)
+            recipe = recipemanager.getrecipe(job)
             process = recipe.printtofile(profile, outputpath)
+            job.process = process
+            def startcallback(task):
+                self._server.addjob(job)
+            process.startevent.attach(startcallback)
             def runningcallback(task):
                 self._log.info(
                     'printing to file: %s -> %s (job %d)', inputpath,
@@ -282,12 +300,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 childtask = task.progress
                 progress = childtask.progress
                 job.currentstep = progress
+                job.state = task.state
+                job.conclusion = task.conclusion
                 self._server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
-            job.process = process
-            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
@@ -300,15 +318,21 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 'profilename=%r, inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r, slicer_settings=%r, material=%r',
                 profilename, inputpath, outputpath, preprocessor,
                 with_start_end, slicer_settings, material)
+            slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
                 self._server, self._config)
             build_name = self._getbuildname(inputpath)
-            job = self._server.createjob(
-                build_name, inputpath, self._config, preprocessor, False,
-                with_start_end)
-            recipe = recipemanager.getrecipe(job)
             profile = self._findprofile(profilename)
+            job = self._server.createjob(
+                build_name, inputpath, self._config, None, profile,
+                preprocessor, False, with_start_end, slicer_settings,
+                material)
+            recipe = recipemanager.getrecipe(job)
             process = recipe.slice(profile, outputpath)
+            job.process = process
+            def startcallback(task):
+                self._server.addjob(job)
+            process.startevent.attach(startcallback)
             def runningcallback(task):
                 self._log.info(
                     'slicing: %s -> %s (job %d)', inputpath, outputpath,
@@ -318,12 +342,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 childtask = task.progress
                 progress = childtask.progress
                 job.currentstep = progress
+                job.state = task.state
+                job.conclusion = task.conclusion
                 self._server.changejob(job)
                 self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
-            job.process = process
-            self._server.addjob(job)
             process.start()
             dct = job.todict()
             return dct
@@ -510,14 +534,16 @@ class Server(object):
     # passed to addjob must have a valid process.
 
     def createjob(
-        self, build_name, path, config, preprocessor, skip_start_end,
-        with_start_end):
+        self, build_name, path, config, printerid, profile, preprocessor,
+        skip_start_end, with_start_end, slicer_settings, material):
+            # NOTE: The profile is not currently included in the actual job
+            # because it can't be converted to or from JSON.
             with self._lock:
                 id = self._jobcounter
                 self._jobcounter += 1
                 job = conveyor.domain.Job(
-                    id, build_name, path, config, preprocessor,
-                    skip_start_end, with_start_end)
+                    id, build_name, path, config, printerid, preprocessor,
+                    skip_start_end, with_start_end, slicer_settings, material)
                 return job
 
     def addjob(self, job):
@@ -596,35 +622,50 @@ class Server(object):
 
     def printtofile(
         self, profile, buildname, inputpath, outputpath, skip_start_end,
-        task):
+        slicer_settings, material, task):
             def func():
                 driver = conveyor.printer.s3g.S3gDriver()
                 driver.printtofile(
                     outputpath, profile, buildname, inputpath, skip_start_end,
-                    task)
+                    slicer_settings, material, task)
             self._queue.appendfunc(func)
 
-    def _getslicer(self, slicername):
-        if 'miraclegrue' == slicername:
+    def _getslicer(self, slicer_settings):
+        if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
             configuration = conveyor.toolpath.miraclegrue.MiracleGrueConfiguration()
             configuration.miraclegruepath = self._config['miraclegrue']['path']
             configuration.miracleconfigpath = self._config['miraclegrue']['config']
             slicer = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
-        elif 'skeinforge' == slicername:
-            configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+        elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
+            configuration = self._createskeinforgeconfiguration(slicer_settings)
             configuration.skeinforgepath = self._config['skeinforge']['path']
             configuration.profile = self._config['skeinforge']['profile']
             slicer = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
         else:
-            raise ValueError(slicer)
+            raise ValueError(slicer_settings.slicer)
         return slicer
 
-    def slice(self, profile, inputpath, outputpath, with_start_end, task):
-        def func():
-            slicername = self._config['common']['slicer']
-            slicer = self._getslicer(slicername)
-            slicer.slice(profile, inputpath, outputpath, with_start_end, task)
-        self._queue.appendfunc(func)
+    def _createskeinforgeconfiguration(self, slicer_settings):
+        configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+        configuration.raft = slicer_settings.raft
+        configuration.support = slicer_settings.support
+        configuration.infillratio = slicer_settings.infill
+        configuration.feedrate = slicer_settings.print_speed
+        configuration.travelrate = slicer_settings.travel_speed
+        configuration.layerheight = slicer_settings.layer_height
+        configuration.shells = slicer_settings.shells
+        return configuration
+
+    def slice(
+        self, profile, inputpath, outputpath, with_start_end,
+        slicer_settings, material, task):
+            def func():
+                slicername = self._config['common']['slicer']
+                slicer = self._getslicer(slicer_settings)
+                slicer.slice(
+                    profile, inputpath, outputpath, with_start_end,
+                    slicer_settings, material, task)
+            self._queue.appendfunc(func)
 
     def run(self):
         self._detectorthread = conveyor.printer.s3g.S3gDetectorThread(

@@ -82,13 +82,15 @@ namespace conveyor
 
     Job *
     PrinterPrivate::print (QString const & inputFile
-                           , const SlicerConfiguration & slicer_conf)
+                           , const SlicerConfiguration & slicer_conf
+                           , QString const & material)
     {
         Job * const result
             ( this->m_conveyor->m_private->print
                 ( this->m_printer
                 , inputFile
                 , slicer_conf
+                , material
                 )
             );
         return result;
@@ -99,6 +101,7 @@ namespace conveyor
         ( QString const & inputFile
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Job * const result
@@ -107,6 +110,7 @@ namespace conveyor
                 , inputFile
                 , outputFile
                 , slicer_conf
+                , material
                 )
             );
         return result;
@@ -117,6 +121,7 @@ namespace conveyor
         ( QString const & inputFile
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
+        , QString const & material
         )
     {
         Job * const result
@@ -125,6 +130,7 @@ namespace conveyor
                 , inputFile
                 , outputFile
                 , slicer_conf
+                , material
                 )
             );
         return result;

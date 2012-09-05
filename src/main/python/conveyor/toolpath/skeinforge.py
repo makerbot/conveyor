@@ -19,8 +19,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-from decimal import *
-
 import logging
 import os
 import os.path
@@ -44,12 +42,12 @@ class SkeinforgeConfiguration(object):
         self.raft = False
         self.support = SkeinforgeSupport.NONE
         self.bookend = True
-        self.infillratio = Decimal('0.1')
-        self.feedrate = Decimal('40')
-        self.travelrate = Decimal('55')
-        self.filamentdiameter = Decimal('1.82')
-        self.pathwidth = Decimal('0.4')
-        self.layerheight = Decimal('0.27')
+        self.infillratio = 0.1
+        self.feedrate = 40.0
+        self.travelrate = 55.0
+        self.filamentdiameter = 1.82
+        self.pathwidth = 0.4
+        self.layerheight = 0.27
         self.shells = 1
 
 class SkeinforgeToolpath(object):
@@ -59,58 +57,59 @@ class SkeinforgeToolpath(object):
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
-    def slice(self, profile, inputpath, outputpath, with_start_end, task):
-        self._log.info('slicing with Skeinforge')
-        try:
-            directory = tempfile.mkdtemp()
+    def slice(
+        self, profile, inputpath, outputpath, with_start_end,
+        slicer_settings, material, task):
+            self._log.info('slicing with Skeinforge')
             try:
-                tmp_inputpath = os.path.join(
-                    directory, os.path.basename(inputpath))
-                shutil.copy2(inputpath, tmp_inputpath)
-                arguments = list(
-                    self._getarguments(tmp_inputpath))
-                self._log.debug('arguments=%r', arguments)
-                popen = subprocess.Popen(
-                    arguments, executable=sys.executable,
-                    stdout=subprocess.PIPE)
-                log = ''
-                buffer = ''
-                while True:
-                    data = popen.stdout.read(1) # :(
-                    if '' == data:
-                        break
-                    else:
-                        buffer += data
-                        match = self._regex.search(buffer)
-                        if None is not match:
-                            buffer = buffer[match.end():]
-                            layer = int(match.group('layer'))
-                            total = int(match.group('total'))
-                            progress = {
-                                "layer" : layer,
-                                "total" : total,
-                                "name" : "slice",
-                                "progress" : (layer/float(total))*100,
-      
+                directory = tempfile.mkdtemp()
+                try:
+                    tmp_inputpath = os.path.join(
+                        directory, os.path.basename(inputpath))
+                    shutil.copy2(inputpath, tmp_inputpath)
+                    arguments = list(
+                        self._getarguments(tmp_inputpath))
+                    self._log.debug('arguments=%r', arguments)
+                    popen = subprocess.Popen(
+                        arguments, executable=sys.executable,
+                        stdout=subprocess.PIPE)
+                    log = ''
+                    buffer = ''
+                    while True:
+                        data = popen.stdout.read(1) # :(
+                        if '' == data:
+                            break
+                        else:
+                            buffer += data
+                            match = self._regex.search(buffer)
+                            if None is not match:
+                                buffer = buffer[match.end():]
+                                layer = int(match.group('layer'))
+                                total = int(match.group('total'))
+                                progress = {
+                                    "layer" : layer,
+                                    "total" : total,
+                                    "name" : "slice",
+                                    "progress" : (layer/float(total))*100,
                                 }
-                            task.heartbeat(progress)
-                code = popen.wait()
-                self._log.debug(
-                    'Skeinforge terminated with status code %d', code)
-                if 0 != code:
-                    raise Exception(code)
-                else:
-                    tmp_outputpath = self._outputpath(tmp_inputpath)
-                    self._postprocess(
-                        profile, outputpath, tmp_outputpath,
-                        with_start_end)
-            finally:
-                shutil.rmtree(directory)
-        except Exception as e:
-            self._log.exception('unhandled exception')
-            task.fail(e)
-        else:
-            task.end(None)
+                                task.heartbeat(progress)
+                    code = popen.wait()
+                    self._log.debug(
+                        'Skeinforge terminated with status code %d', code)
+                    if 0 != code:
+                        raise Exception(code)
+                    else:
+                        tmp_outputpath = self._outputpath(tmp_inputpath)
+                        self._postprocess(
+                            profile, outputpath, tmp_outputpath,
+                            with_start_end)
+                finally:
+                    shutil.rmtree(directory)
+            except Exception as e:
+                self._log.exception('unhandled exception')
+                task.fail(e)
+            else:
+                task.end(None)
 
     def _outputpath(self, path):
         root, ext = os.path.splitext(path)
@@ -170,17 +169,22 @@ class SkeinforgeToolpath(object):
             'raft.csv', 'Add Raft, Elevate Nozzle, Orbit:', self._configuration.raft)
 
     def _getarguments_support(self, inputpath):
-        if SkeinforgeSupport.NONE == self._configuration.support:
+        # TODO: Support the exterior support. Endless domain model problems... :(
+        if not self._configuration.support:
+            support = SkeinforgeSupport.NONE
+        else:
+            support = SkeinforgeSupport.FULL
+        if SkeinforgeSupport.NONE == support:
             yield self._option('raft.csv', 'None', 'true')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'false')
             yield self._option('raft.csv', 'Exterior Only', 'false')
-        elif SkeinforgeSupport.EXTERIOR == self._configuration.support:
+        elif SkeinforgeSupport.EXTERIOR == support:
             yield self._option('raft.csv', 'None', 'false')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'false')
             yield self._option('raft.csv', 'Exterior Only', 'true')
-        elif SkeinforgeSupport.FULL == self._configuration.support:
+        elif SkeinforgeSupport.FULL == support:
             yield self._option('raft.csv', 'None', 'false')
             yield self._option('raft.csv', 'Empty Layers Only', 'false')
             yield self._option('raft.csv', 'Everywhere', 'true')
