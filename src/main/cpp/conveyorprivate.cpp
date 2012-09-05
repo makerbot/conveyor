@@ -175,7 +175,7 @@ namespace conveyor
             const std::string &key(ids[i]);
             int id = QString(key.c_str()).toInt();
 
-            if (results[key]["conclusion"].isNull()) {
+            if (results[key]["state"].asString() != "STOPPED") {
                 // Look up Job by its ID. This will also create the Job
                 // object if it doesn't exist already.
                 Job * const job(jobById(id));
