@@ -268,8 +268,7 @@ class S3gDriver(object):
             parser.s3g.writer = writer
             def stoppedcallback(task):
                 #Reset the bot
-                parser.s3g.clear_buffer()
-                parser.s3g.build_end_notification()
+                parser.s3g.abort_immediately()
                 writer.set_external_stop()
             task.stoppedevent.attach(stoppedcallback)
             now = time.time()
