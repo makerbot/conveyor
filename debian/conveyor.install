@@ -7,3 +7,4 @@ data/conveyor.conf				etc/init
 wrapper/conveyord				usr/bin
 wrapper/conveyor_service.py		usr/share/conveyor
 virtualenv.py                   usr/share/conveyor
+
