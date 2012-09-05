@@ -62,8 +62,11 @@ namespace conveyor
         QString const name(json["name"].asCString());
 
         // Get printer from ID
-        const QString printerUniqueName(json["printerid"].asCString());
-        m_printer = m_conveyor->m_private->printerByUniqueName(printerUniqueName);
+        
+        if (!json["printerid"].isNull()) {
+            const QString printerUniqueName = json["printerid"].asCString();
+            m_printer = m_conveyor->m_private->printerByUniqueName(printerUniqueName);
+        }
 
         JobState const state
             ( jobStateFromString
