@@ -53,8 +53,14 @@ def earlylogging(program): # pragma: no cover
         'version': 1,
         'formatters': {
             'console': {
-                # '()': 'conveyor.log.ConsoleFormatter',
+                '()': 'conveyor.log.ConsoleFormatter',
                 'format': '%s: %%(levelname)s: %%(message)s' % (program,)
+            },
+            "log": {
+                "()": "conveyor.log.DebugFormatter",
+                "format": "%(asctime)s - %(levelname)s - %(message)s",
+                "datefmt": None,
+                "debugformat": "%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s"
             }
         },
         'filters': {
@@ -88,6 +94,17 @@ def earlylogging(program): # pragma: no cover
         'incremental': False,
         'disable_existing_loggers': True
     }
+    early_debugging = False # Flip this to enable early debugging
+    if early_debugging:
+        dct['handlers']['log'] = {
+            "class": "logging.FileHandler",
+            "level": "NOTSET",
+            "formatter": "log",
+            "filters": [],
+            "filename": "conveyor-startup.log"
+        }
+        dct['root']['level'] = 'NOTSET'
+        dct['root']['handlers'].append('log')
     logging.config.dictConfig(dct)
 
 def getfiles():

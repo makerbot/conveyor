@@ -370,25 +370,38 @@ class Client(object):
         self._method = method
         self._params = params
         self._sock = sock
+        self._stopped = False
         self._wait = wait # Wait for a job to complete (as opposed to a plain task)
 
     def _stop(self):
+        self._stopped = True
         self._fp.stop()
 
-    def _notify(self, job, state, conclusion):
-        self._log.debug('job=%r, state=%r, conclusion=%r', job, state, conclusion)
-        if conveyor.task.TaskState.STOPPED == state:
-            if conveyor.task.TaskConclusion.ENDED == conclusion:
-                self._code = 0
-            elif conveyor.task.TaskConclusion.FAILED == conclusion:
-                self._log.error('job failed')
-                self._code = 1
-            elif conveyor.task.TaskConclusion.CANCELED == conclusion:
-                self._log.warning('job canceled')
-                self._code = 1
-            else:
-                raise ValueError(task.conclusion)
-            self._stop()
+    # TODO: !*@**#&... _jobchanged should take a single parameter called "job"
+    # that has the job details, instead of all of the job contents as separate
+    # parameters.  Can't fix this correctly yet since it will break the C++
+    # binding...
+
+    def _jobchanged(self, *args, **kwargs):
+        if not self._stopped:
+            job = conveyor.domain.Job.fromdict(kwargs)
+            jobid = None
+            if None is not self._job:
+                jobid = self._job.id
+            if None is not self._job and self._job.id == job.id:
+                if conveyor.task.TaskState.STOPPED == job.state:
+                    if conveyor.task.TaskConclusion.ENDED == job.conclusion:
+                        self._log.info('job ended')
+                        self._code = 0
+                    elif conveyor.task.TaskConclusion.FAILED == job.conclusion:
+                        self._log.error('job failed')
+                        self._code = 1
+                    elif conveyor.task.TaskConclusion.CANCELED == job.conclusion:
+                        self._log.warning('job canceled')
+                        self._code = 1
+                    else:
+                        raise ValueError(task.conclusion)
+                    self._stop()
 
     def _hellocallback(self, task):
         self._log.debug('task=%r', task)
@@ -403,11 +416,10 @@ class Client(object):
             task1.start()
 
     def _methodcallback(self, task):
-        self._log.debug('task=%r', task)
         if self._wait:
             # Record the job details and keep running (at least until the
-            # server calls the notify method).
-            self._job = task.result
+            # server calls the jobchanged method).
+            self._job = conveyor.domain.Job.fromdict(task.result)
         else:
             if conveyor.task.TaskConclusion.ENDED != task.conclusion:
                 self._code = 1
@@ -419,9 +431,13 @@ class Client(object):
             self._stop()
 
     def run(self):
-        self._jsonrpc.addmethod('notify', self._notify)
+        self._jsonrpc.addmethod('jobchanged', self._jobchanged)
         task = self._jsonrpc.request("hello", {})
         task.stoppedevent.attach(self._hellocallback)
         task.start()
-        self._jsonrpc.run()
+        try:
+            self._jsonrpc.run()
+        except IOError as e:
+            if not self._stopped:
+                raise
         return self._code

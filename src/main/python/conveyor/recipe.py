@@ -134,10 +134,24 @@ class Recipe(object):
 
     def _preprocessortask(self, inputpath, outputpath):
         def runningcallback(task):
+            """
+            We assume that the preprocessor is a comma separated list of
+            preprocessors, so we need to iterate through them all
+            """
             try:
-                # TODO: this is totally wrong because 'preprocessor' is a
-                # string at this point.
-                self._job.preprocessor.process_file(inputpath, outputpath)
+                factory = makerbot_driver.Preprocessors.PreprocessorFactory()
+                #TODO: Attention future dave: makerbot_driver needs to import unicode literals
+                preprocessors = list(factory.get_preprocessors(str(self._job.preprocessor)))
+                in_name = inputpath
+                for preprocessor in preprocessors:
+                    #The last prepro should output to the outputpath
+                    if preprocessor == preprocessors[-1]:
+                        out_name = outputpath
+                    else:
+                        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+                            out_name = f.name 
+                    preprocessor.process_file(in_name, out_name)
+                    in_name = out_name
             except Exception as e:
                 task.fail(e)
             else:
@@ -186,7 +200,7 @@ class _GcodeRecipe(Recipe):
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             preprocessortask = self._preprocessortask(
-                self._path, processed_gcodepath)
+                self._job.path, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
@@ -210,7 +224,7 @@ class _GcodeRecipe(Recipe):
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             preprocessortask = self._preprocessortask(
-                self._path, processed_gcodepath)
+                self._job.path, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
