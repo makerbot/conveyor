@@ -32,6 +32,7 @@ import traceback
 
 import conveyor.enum
 import conveyor.event
+import conveyor.printer.s3g # TODO: aww, more bad coupling
 
 SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 'FULL')
 
@@ -57,11 +58,24 @@ class SkeinforgeToolpath(object):
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
+    def _update_progress(self, current_progress, new_progress, task):
+        if None is not new_progress and new_progress != current_progress:
+            current_progress = new_progress
+            task.heartbeat(current_progress)
+        return current_progress
+
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
         slicer_settings, material, task):
             self._log.info('slicing with Skeinforge')
             try:
+                current_progress = None
+                new_progress = {
+                    'name': 'slice',
+                    'progress': 0
+                }
+                current_progress = self._update_progress(
+                    current_progress, new_progress, task)
                 directory = tempfile.mkdtemp()
                 try:
                     tmp_inputpath = os.path.join(
@@ -90,7 +104,7 @@ class SkeinforgeToolpath(object):
                                     "layer" : layer,
                                     "total" : total,
                                     "name" : "slice",
-                                    "progress" : (layer/float(total))*100,
+                                    "progress" : int((layer/float(total))*100),
                                 }
                                 task.heartbeat(progress)
                     code = popen.wait()

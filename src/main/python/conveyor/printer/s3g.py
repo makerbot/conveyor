@@ -279,9 +279,22 @@ class S3gDriver(object):
             bytes += len(data)
         return (lines, bytes)
 
+    def _update_progress(self, current_progress, new_progress, task):
+        if None is not new_progress and new_progress != current_progress:
+            current_progress = new_progress
+            task.heartbeat(current_progress)
+        return current_progress
+
     def _genericprint(
         self, profile, buildname, writer, polltemperature, pollinterval,
         gcodepath, skip_start_end, slicer_settings, material, task):
+            current_progress = None
+            new_progress = {
+                'name': 'print',
+                'progress': 0
+            }
+            current_progress = self._update_progress(
+                current_progress, new_progress, task)
             def stoppedcallback(task):
                 writer.set_external_stop()
             task.stoppedevent.attach(stoppedcallback)
@@ -299,6 +312,8 @@ class S3gDriver(object):
             gcodelines, variables = self._gcodelines(
                 profile, gcodepath, skip_start_end, slicer_settings, material)
             parser.environment.update(variables)
+            # TODO: remove this {current,total}{byte,line} stuff; we have
+            # proper progress from the slicer now.
             totallines, totalbytes = self._countgcodelines(gcodelines)
             currentbyte = 0
             for currentline, data in enumerate(gcodelines):
@@ -317,20 +332,25 @@ class S3gDriver(object):
                     # The s3g module cannot handle unicode strings.
                     data = str(data)
                     parser.execute_line(data)
-                    progress = {
+                    new_progress = {
                         'name': 'print',
-                        'progress': parser.state.percentage,
-                        'currentline': currentline,
-                        'totallines': totallines,
-                        'currentbyte': currentbyte,
-                        'totalbytes': totalbytes,
+                        'progress': int(parser.state.percentage)
                     }
                     if polltime <= now:
                         polltime = now + pollinterval
                         if polltemperature:
-                            progress['temperature'] = temperature
-                        task.heartbeat(progress)
+                            pass
+                            # TODO: issue printerchanged
+                            # new_progress['temperature'] = temperature
+                    current_progress = self._update_progress(
+                        current_progress, new_progress, task)
             if conveyor.task.TaskState.STOPPED != task.state:
+                new_progress = {
+                    'name': 'print',
+                    'progress': 100
+                }
+                current_progress = self._update_progress(
+                    current_progress, new_progress, task)
                 task.end(None)
 
     def print(
