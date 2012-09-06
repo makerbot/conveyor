@@ -409,3 +409,26 @@ class S3gDriver(object):
                     profile, buildname, writer, False, 5.0,
                     gcodepath, skip_start_end, slicer_settings, material,
                     task)
+
+    def write_eeprom(
+        self, eeprom_values, fp, directory=None):
+            s = self.create_s3g_from_fp(fp)
+            version = str(s.get_version())
+            version = version.replace('0', '.')
+            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version, directory)
+            eeprom_writer.write_entire_map(eeprom_values)
+            return True
+
+    def read_eeprom(
+        self, fp, directory=None):
+            s = self.create_s3g_from_fp(fp)
+            version = str(s.get_version())
+            version = version.replace('0', '.')
+            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version, directory)
+            the_map = eeprom_reader.read_entire_map()
+            return the_map
+
+    def create_s3g_from_fp(self, fp):
+        s = makerbot_driver.s3g()
+        s.writer = makerbot_driver.Writer.StreamWriter(fp)
+        return s

@@ -9,6 +9,8 @@
 
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
+#include <conveyor/eeprommap.h>
+
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -312,6 +314,25 @@ namespace conveyor
             );
 
         return jobById(result["id"].asInt());
+    }
+
+    EepromMap
+    ConveyorPrivate::readEeprom(void) const
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
+            );
+        EepromMap map = EepromMap::EepromMap(result);
+        return map;
+    }
+
+    void
+    ConveyorPrivate::writeEeprom(EepromMap map)
+    {
+        Json::Value params (Json::objectValue);
+        params["eeprom_values"] = map.getEepromMap();
+        SynchronousCallback::invoke (this->m_jsonRpc, "write_eeprom", params);
     }
 
     void

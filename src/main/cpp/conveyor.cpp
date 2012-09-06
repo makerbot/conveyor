@@ -6,6 +6,7 @@
 
 #include <conveyor/address.h>
 #include <conveyor/conveyor.h>
+#include <conveyor/eeprommap.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"
@@ -75,6 +76,18 @@ namespace conveyor
     Conveyor::uploadFirmware(QString machinetype, QString version)
     {
         m_private->m_uploadFirmware(machinetype, version);
+    }
+
+    EepromMap
+    Conveyor::readEeprom (void) const
+    {
+        return m_private->readEeprom();
+    }
+
+    void
+    Conveyor::writeEeprom(EepromMap map)
+    {
+        m_private->writeEeprom(map);
     }
 
     void

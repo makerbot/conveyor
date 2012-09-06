@@ -11,6 +11,7 @@
 #include <conveyor.h>
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
+#include <conveyor/eeprommap.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -73,6 +74,9 @@ namespace conveyor
         Json::Value m_getUploadableMachines(void);
         Json::Value m_getMachineVersions(QString machineType);
         void m_uploadFirmware(QString machineType, QString version);
+
+        EepromMap readEeprom(void) const;
+        void writeEeprom(EepromMap map);
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

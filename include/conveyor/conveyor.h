@@ -8,15 +8,16 @@
 #include <QScopedPointer>
 
 #include <conveyor/fwd.h>
+#include <conveyor/eeprommap.h>
 
 #include <jsonrpc.h>
 
 namespace conveyor
 {
     class Conveyor : public QObject
+
     {
         Q_OBJECT
-
     public:
         static Conveyor * connectToDaemon (Address const * address);
 
@@ -30,6 +31,8 @@ namespace conveyor
         Json::Value getUploadableMachines();
         Json::Value getMachineVersions(QString machinetype);
         void uploadFirmware(QString machinetype, QString version);
+        EepromMap readEeprom(void) const;
+        void writeEeprom(EepromMap eepromMap);
 
     signals:
         void printerAdded (Printer *);
