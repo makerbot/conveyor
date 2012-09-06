@@ -19,7 +19,6 @@
 #include "printerremovedmethod.h"
 #include "jobaddedmethod.h"
 #include "jobchangedmethod.h"
-#include "jobremovedmethod.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -81,7 +80,6 @@ namespace conveyor
         PrinterRemovedMethod m_printerRemovedMethod;
         JobAddedMethod m_jobAddedMethod;
         JobChangedMethod m_jobChangedMethod;
-        JobRemovedMethod m_jobRemovedMethod;
 
         /** Cached jobs, potentially including defunct jobs */
         QHash<int, Job *> m_jobs;
