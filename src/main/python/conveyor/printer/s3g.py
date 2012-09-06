@@ -131,6 +131,23 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         self._server = server
         self._stop = False
 
+        #states
+        self._states = {
+            "idle" : True,
+            "printing"  : False,
+            "uploading_firmware"  : False,
+            "reading_eeprom"  : False,
+            "writing_eeprom"  : False,
+            }
+
+    def _statetransition(self, current, new):
+        #The current state should be true
+        assert(self._states[current])
+        self._states[current] = False
+        #All states should be false at this point
+        assert(not all(self._states.values()))
+        self._states[new] = True
+
     def getportname(self):
         return self._portname
 
@@ -160,6 +177,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp)
             now = time.time()
             polltime = now + 5.0
+j
             while not self._stop:
                 with self._condition:
                     if 0 == len(self._queue):
@@ -184,6 +202,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         self._condition.wait(1.0)
                         self._log.debug('resumed')
                 else:
+                    self._statetransition("idle", "printing")
                     job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = tuple_
                     with self._condition:
                         self._currenttask = task
@@ -213,11 +232,56 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         with self._condition:
                             if None is not self._currenttask:
                                 self._currenttask.fail(e)
+                    finally:
+                        self._statetransition("printing", "idle")
         except:
             self._log.exception('unhandled exception')
             self._server.evictprinter(self._portname, self._fp)
         finally:
             self._fp.close()
+
+    def read_eeprom(self, directory=None):
+        with self._condition:
+            self._statetransition("idle", "reading_eeprom")
+            driver = S3gDriver()
+            eeprom_map = driver.read_eeprom(self._fp, directory)
+            self._fp.close()
+            self._condition.notify_all()
+            self._statetransition("reading_eeprom", "idle")
+        return eeprom_map
+
+    def write_eeprom(self, eeprom_values, directory=None):
+        with self._condition:
+            self._statetransition("idle", "writing_eeprom")
+            driver = S3gDriver()
+            driver.write_eeprom(eeprom_values, directory)
+            self._fp.close()
+            self._condition.notify_all()
+            self._statetransition("writing_eeprom", "idle")
+        return eeprom_map
+
+    def get_uploadable_machines(self, source_url=None, dest_path=None):
+        uploader = makerbot_driver.Firmware.Uploader(source_url=source_url, dest_path = dest_path)
+        machines = uploader.list_machines()
+        return machines
+
+    def get_firmware_versions(self, machine_type, source_url=None, dest_path=None):
+        uploader = makerbot_driver.Firmware.Uploader(source_url=source_url, dest_path = dest_path)
+        versions = uploader.list_firmware_versions(machine_type)
+        return versions
+
+    def upload_firmware(self, machine_type, version, source_url=None, dest_path=None):
+        def runningcallback(task):
+            self._statetransition("idle", "upload_firmware")
+            self._uploadfirmware(machine_type, version, source_url=source_url, dest_path=dest_path)
+            self._statetransition("upload_firmware", "idle")
+        firmwaretask = conveyor.task.Task()
+        firmwaretask.runningevent.attach(runningcallback)
+        firmwaretask.start()
+
+    def _uploadfirmware(self, machine_type, version, source_url=None, dest_path=None):
+        uploader = makerbot_driver.Firmware_uploader(source_url=source_url, dest_path=dest_path)
+        uploader.upload_firmware(self._fp.port, machine_type, version)
 
     def stop(self):
         with self._condition:
