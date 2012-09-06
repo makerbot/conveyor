@@ -55,6 +55,12 @@ def earlylogging(program): # pragma: no cover
             'console': {
                 # '()': 'conveyor.log.ConsoleFormatter',
                 'format': '%s: %%(levelname)s: %%(message)s' % (program,)
+            },
+            "log": {
+                "()": "conveyor.log.DebugFormatter",
+                "format": "%(asctime)s - %(levelname)s - %(message)s",
+                "datefmt": None,
+                "debugformat": "%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s"
             }
         },
         'filters': {
@@ -75,20 +81,30 @@ def earlylogging(program): # pragma: no cover
                 'formatter': 'console',
                 'filters': ['stderr'],
                 'stream': 'ext://sys.stderr'
+            },
+            "log": {
+                "class": "logging.FileHandler",
+                "level": "NOTSET",
+                "formatter": "log",
+                "filters": [],
+                "filename": "conveyor-startup.log"
             }
         },
         'loggers': {
         },
         'root': {
-            'level': 'INFO',
+            'level': 'NOTSET',
             'propagate': True,
             'filters': [],
-            'handlers': ['stdout', 'stderr']
+            'handlers': ['stdout', 'stderr', 'log']
         },
         'incremental': False,
         'disable_existing_loggers': True
     }
     logging.config.dictConfig(dct)
+    logger = logging.getLogger(None)
+    logger.info('conveyor early logging')
+    logger.debug('if you see this in the log file, then debug logging is enabled')
 
 def getfiles():
     '''Return an iterator of the files open by the logging system.
