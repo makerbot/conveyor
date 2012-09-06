@@ -27,6 +27,10 @@ namespace conveyor
         
         void cancelJob (int jobId);
 
+        Json::Value getUploadableMachines();
+        Json::Value getMachineVersions(QString machinetype);
+        void uploadFirmware(QString machinetype, QString version);
+
     signals:
         void printerAdded (Printer *);
         void printerRemoved (Printer *);

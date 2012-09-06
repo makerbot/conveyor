@@ -70,6 +70,10 @@ namespace conveyor
             
         void cancelJob (int jobId);
 
+        Json::Value m_getUploadableMachines(void);
+        Json::Value m_getMachineVersions(QString machineType);
+        void m_uploadFirmware(QString machineType, QString version);
+
         Conveyor * const m_conveyor;
         Connection * const m_connection;
         ConnectionStream * const m_connectionStream;

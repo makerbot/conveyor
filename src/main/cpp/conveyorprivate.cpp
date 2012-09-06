@@ -255,6 +255,39 @@ namespace conveyor
         return jobById(result["id"].asInt());
     }
 
+    Json::Value
+    ConveyorPrivate::m_getUploadableMachines(void)
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "getuploadablemachines", params)
+            );
+        return result;
+    }
+
+    Json::Value
+    ConveyorPrivate::m_getMachineVersions(QString machineType)
+    {
+        Json::Value params (Json::objectValue);
+        params["machinetype"] = Json::Value (machineType.toStdString());
+        
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "getmachineversions", params)
+            );
+        return result;
+    }
+
+    void
+    ConveyorPrivate::m_uploadFirmware(QString machineType, QString version)
+    {
+        Json::Value params (Json::objectValue);
+        params["machinetype"] = Json::Value (machineType.toStdString());
+        params["version"] = Json::Value (version.toStdString());
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "uploadfirmware", params)
+            );
+    }
+
     Job *
     ConveyorPrivate::slice
         ( Printer * const printer

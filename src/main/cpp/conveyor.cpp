@@ -59,6 +59,24 @@ namespace conveyor
         return m_private->jobs();
     }
 
+    Json::Value
+    Conveyor::getUploadableMachines(void)
+    {
+        return m_private->m_getUploadableMachines();
+    }
+
+    Json::Value
+    Conveyor::getMachineVersions(QString machinetype)
+    {
+        return m_private->m_getMachineVersions(machinetype);
+    }
+    
+    void
+    Conveyor::uploadFirmware(QString machinetype, QString version)
+    {
+        m_private->m_uploadFirmware(machinetype, version);
+    }
+
     void
     Conveyor::emitPrinterAdded (Printer * const p)
     {
