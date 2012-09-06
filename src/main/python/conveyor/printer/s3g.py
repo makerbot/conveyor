@@ -260,15 +260,6 @@ j
             self._statetransition("writing_eeprom", "idle")
         return eeprom_map
 
-    def get_uploadable_machines(self, source_url=None, dest_path=None):
-        uploader = makerbot_driver.Firmware.Uploader(source_url=source_url, dest_path = dest_path)
-        machines = uploader.list_machines()
-        return machines
-
-    def get_firmware_versions(self, machine_type, source_url=None, dest_path=None):
-        uploader = makerbot_driver.Firmware.Uploader(source_url=source_url, dest_path = dest_path)
-        versions = uploader.list_firmware_versions(machine_type)
-        return versions
 
     def upload_firmware(self, machine_type, version, source_url=None, dest_path=None):
         def runningcallback(task):
