@@ -135,9 +135,9 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         self._states = {
             "idle" : True,
             "printing"  : False,
-            "uploading_firmware"  : False,
-            "reading_eeprom"  : False,
-            "writing_eeprom"  : False,
+            "uploadingfirmware"  : False,
+            "readingeeprom"  : False,
+            "writingeeprom"  : False,
             }
 
     def _statetransition(self, current, new):
@@ -177,7 +177,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp)
             now = time.time()
             polltime = now + 5.0
-j
             while not self._stop:
                 with self._condition:
                     if 0 == len(self._queue):
@@ -240,7 +239,7 @@ j
         finally:
             self._fp.close()
 
-    def read_eeprom(self, directory=None):
+    def readeeprom(self, directory=None):
         with self._condition:
             self._statetransition("idle", "reading_eeprom")
             driver = S3gDriver()
@@ -250,7 +249,7 @@ j
             self._statetransition("reading_eeprom", "idle")
         return eeprom_map
 
-    def write_eeprom(self, eeprom_values, directory=None):
+    def writeeeprom(self, eeprom_values, directory=None):
         with self._condition:
             self._statetransition("idle", "writing_eeprom")
             driver = S3gDriver()
@@ -261,7 +260,7 @@ j
         return eeprom_map
 
 
-    def upload_firmware(self, machine_type, version, source_url=None, dest_path=None):
+    def uploadfirmware(self, machine_type, version, source_url=None, dest_path=None):
         def runningcallback(task):
             self._statetransition("idle", "upload_firmware")
             try:
@@ -276,8 +275,10 @@ j
 
     def _uploadfirmware(self, machine_type, version, source_url=None, dest_path=None):
         with self._condition:
-            uploader = makerbot_driver.Firmware_uploader(source_url=source_url, dest_path=dest_path)
+            self._fp.close()
+            uploader = makerbot_driver.Firmware.Uploader(source_url=source_url, dest_path=dest_path)
             uploader.upload_firmware(self._fp.port, machine_type, version)
+            self._fp.open()
 
     def stop(self):
         with self._condition:
