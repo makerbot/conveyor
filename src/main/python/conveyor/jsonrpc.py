@@ -578,62 +578,64 @@ class _JsonReaderTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             jsonreader._transition('')
 
-    @unittest.skip('being moved')
-    def test_feedfile(self):
-        '''Test that feedfile handles JSON data that is split across multiple
-        calls to feedfile.
-
-        '''
-
-        eventqueue = conveyor.event.geteventqueue()
-
-        jsonreader = _JsonReader()
-        callback = conveyor.event.Callback()
-        jsonreader.event.attach(callback)
-
-        data0 = '{"key":"value"'
-        stream0 = StringIO.StringIO(data0.encode())
-        jsonreader.feedfile(stream0)
-        eventqueue.runiteration(False)
-        self.assertFalse(callback.delivered)
-
-        data1 = '}'
-        stream1 = StringIO.StringIO(data1.encode())
-        jsonreader.feedfile(stream1)
-        eventqueue.runiteration(False)
-        self.assertTrue(callback.delivered)
-        self.assertEqual(('{"key":"value"}',), callback.args)
-
-    @unittest.skip('being moved')
-    def test_feedfile_eintr(self):
-        '''Test that feedfile handles EINTR.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-
-        jsonreader = _JsonReader()
-        callback = conveyor.event.Callback()
-        jsonreader.event.attach(callback)
-
-        stub = _JsonReaderStubFile()
-        stub.exception = IOError(errno.EINTR, 'interrupted')
-        stub.data = '{"key":"value"}'
-        jsonreader.feedfile(stub)
-        eventqueue.runiteration(False)
-        self.assertTrue(callback.delivered)
-        self.assertEqual(('{"key":"value"}',), callback.args)
-
-    @unittest.skip('being moved')
-    def test_feedfile_exception(self):
-        '''Test that feedfile propagates exceptions.'''
-
-        jsonreader = _JsonReader()
-        stub = _JsonReaderStubFile()
-        stub.exception = IOError(errno.EPERM, 'permission')
-        with self.assertRaises(IOError) as cm:
-            jsonreader.feedfile(stub)
-        self.assertEqual(errno.EPERM, cm.exception.errno)
-        self.assertEqual('permission', cm.exception.strerror)
-
+# removed for shipping, python 2.6 on osx 10.6 has problems with unittest.skip
+# TECHNICAL DEBT : ^^
+#    @unittest.skip('being moved')
+#    def test_feedfile(self):
+#        '''Test that feedfile handles JSON data that is split across multiple
+#        calls to feedfile.
+#
+#        '''
+#
+#        eventqueue = conveyor.event.geteventqueue()
+#
+#        jsonreader = _JsonReader()
+#        callback = conveyor.event.Callback()
+#        jsonreader.event.attach(callback)
+#
+#        data0 = '{"key":"value"'
+#        stream0 = StringIO.StringIO(data0.encode())
+#        jsonreader.feedfile(stream0)
+#        eventqueue.runiteration(False)
+#        self.assertFalse(callback.delivered)
+#
+#        data1 = '}'
+#        stream1 = StringIO.StringIO(data1.encode())
+#        jsonreader.feedfile(stream1)
+#        eventqueue.runiteration(False)
+#        self.assertTrue(callback.delivered)
+#        self.assertEqual(('{"key":"value"}',), callback.args)
+#
+#    @unittest.skip('being moved')
+#    def test_feedfile_eintr(self):
+#        '''Test that feedfile handles EINTR.'''
+#
+#        eventqueue = conveyor.event.geteventqueue()
+#
+#        jsonreader = _JsonReader()
+#        callback = conveyor.event.Callback()
+#        jsonreader.event.attach(callback)
+#
+#        stub = _JsonReaderStubFile()
+#        stub.exception = IOError(errno.EINTR, 'interrupted')
+#        stub.data = '{"key":"value"}'
+#        jsonreader.feedfile(stub)
+#        eventqueue.runiteration(False)
+#        self.assertTrue(callback.delivered)
+#        self.assertEqual(('{"key":"value"}',), callback.args)
+#
+#    @unittest.skip('being moved')
+#    def test_feedfile_exception(self):
+#        '''Test that feedfile propagates exceptions.'''
+#
+#        jsonreader = _JsonReader()
+#        stub = _JsonReaderStubFile()
+#        stub.exception = IOError(errno.EPERM, 'permission')
+#        with self.assertRaises(IOError) as cm:
+#            jsonreader.feedfile(stub)
+#        self.assertEqual(errno.EPERM, cm.exception.errno)
+#        self.assertEqual('permission', cm.exception.strerror)
+#
     def test_invalid(self):
         '''Test the receipt of invalid JSON text.'''
 
