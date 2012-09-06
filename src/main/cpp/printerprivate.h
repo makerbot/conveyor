@@ -20,12 +20,14 @@ namespace conveyor
 
         Job * print (QString const & inputFile
                      , const SlicerConfiguration & slicer_conf
-                     , QString const & material);
+                     , QString const & material
+                     , bool const skipStartEnd);
         Job * printToFile
             ( QString const & inputFile
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const skipStartEnd
             );
         Job * slice
             ( QString const & inputFile

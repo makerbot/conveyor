@@ -83,7 +83,8 @@ namespace conveyor
     Job *
     PrinterPrivate::print (QString const & inputFile
                            , const SlicerConfiguration & slicer_conf
-                           , QString const & material)
+                           , QString const & material
+                           , bool const skipStartEnd)
     {
         Job * const result
             ( this->m_conveyor->m_private->print
@@ -91,6 +92,7 @@ namespace conveyor
                 , inputFile
                 , slicer_conf
                 , material
+                , skipStartEnd
                 )
             );
         return result;
@@ -102,6 +104,7 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
+        , bool const skipStartEnd
         )
     {
         Job * const result
@@ -111,6 +114,7 @@ namespace conveyor
                 , outputFile
                 , slicer_conf
                 , material
+                , skipStartEnd
                 )
             );
         return result;

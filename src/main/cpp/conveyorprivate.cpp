@@ -205,6 +205,7 @@ namespace conveyor
         , QString const & inputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
+        , bool const skipStartEnd 
         )
     {
         Json::Value params (Json::objectValue);
@@ -212,7 +213,7 @@ namespace conveyor
         params["printername"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["preprocessor"] = Json::Value (Json::arrayValue);
-        params["skip_start_end"] = Json::Value (false);
+        params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
@@ -232,6 +233,7 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
+        , bool const skipStartEnd 
         )
     {
         Json::Value params (Json::objectValue);
@@ -240,7 +242,7 @@ namespace conveyor
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["preprocessor"] = Json::Value (Json::arrayValue);
-        params["skip_start_end"] = Json::Value (false);
+        params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
