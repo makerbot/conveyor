@@ -130,6 +130,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         self._queue = collections.deque()
         self._server = server
         self._stop = False
+        self._functionparams = []
 
         #states
         self._states = {
@@ -147,6 +148,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         #All states should be false at this point
         assert(not all(self._states.values()))
         self._states[new] = True
+        self._log.debug('oldstate=%s, newstate=%s', current, new)
 
     def getportname(self):
         return self._portname
@@ -160,6 +162,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def print(
         self, job, buildname, gcodepath, skip_start_end, slicer_settings,
         material, task):
+            self._statetransition("idle", "printing")
             self._log.debug(
                 'job=%r, buildname=%r, gcodepath=%r, skip_start_end=%r, slicer_settings=%r, material=%r, task=%r',
                 job, buildname, gcodepath, skip_start_end, slicer_settings,
@@ -201,13 +204,13 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         self._condition.wait(1.0)
                         self._log.debug('resumed')
                 else:
-                    self._statetransition("idle", "printing")
                     job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = tuple_
                     with self._condition:
                         self._currenttask = task
                     def stoppedcallback(task):
                         with self._condition:
                             self._currenttask = None
+                        self._statetransition("printing", "idle")
                     task.stoppedevent.attach(stoppedcallback)
                     driver = S3gDriver()
                     try:
@@ -231,52 +234,32 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         with self._condition:
                             if None is not self._currenttask:
                                 self._currenttask.fail(e)
-                    finally:
-                        self._statetransition("printing", "idle")
         except:
             self._log.exception('unhandled exception')
             self._server.evictprinter(self._portname, self._fp)
         finally:
             self._fp.close()
 
-    def readeeprom(self):
-        with self._condition:
-            self._statetransition("idle", "reading_eeprom")
-            driver = S3gDriver()
-            eeprom_map = driver.read_eeprom(self._fp)
-            self._fp.close()
-            self._condition.notify_all()
+    def readeeprom(self, task):
+        self._statetransition("idle", "reading_eeprom")
+        def stoppedcallback(task):
             self._statetransition("reading_eeprom", "idle")
-        return eeprom_map
+        task.stoppedevent.attach(stoppedcallback)
+        self._params.append(task)
 
-    def writeeeprom(self, eeprom_values):
-        with self._condition:
-            self._statetransition("idle", "writing_eeprom")
-            driver = S3gDriver()
-            driver.write_eeprom(eeprom_values)
-            self._fp.close()
-            self._condition.notify_all()
+    def writeeeprom(self, eeprom_values, task):
+        self._statetransition("idle", "writing_eeprom")
+        def stoppedcallback(task):
             self._statetransition("writing_eeprom", "idle")
-        return eeprom_map
+        task.stoppedevent.attach(stoppedcallback)
+        self._params.extend([eeprom_values, task])
 
-    def uploadfirmware(self, machine_type, version, source_url=None, dest_path=None):
-        def runningcallback(task):
-            self._statetransition("idle", "upload_firmware")
-            try:
-                self._uploadfirmware(machine_type, version, source_url=source_url, dest_path=dest_path)
-            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                task.fail(e)
-            finally:
-                self._statetransition("upload_firmware", "idle")
-        firmwaretask = conveyor.task.Task()
-        firmwaretask.runningevent.attach(runningcallback)
-        firmwaretask.start()
-
-    def _uploadfirmware(self, machine_type, version, source_url=None, dest_path=None):
-        with self._condition:
-            self._fp.close()
-            uploader = makerbot_driver.Firmware.Uploader(source_url=source_url, dest_path=dest_path)
-            uploader.upload_firmware(self._fp.port, machine_type, version)
+    def uploadfirmware(self, machine_type, version, task):
+        self._statetransition("idle", "uploading_firmware")
+        def stoppedcallback(task):
+            self._statetransition("uploading_firmware", "idle")
+        task.stoppedevent.attach(stoppedcallback)
+        self._params.extend([machine_type, version, task])
 
     def stop(self):
         with self._condition:
