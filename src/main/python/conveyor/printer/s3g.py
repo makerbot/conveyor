@@ -259,7 +259,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._statetransition("writing_eeprom", "idle")
         return eeprom_map
 
-
     def uploadfirmware(self, machine_type, version, source_url=None, dest_path=None):
         def runningcallback(task):
             self._statetransition("idle", "upload_firmware")
@@ -278,7 +277,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._fp.close()
             uploader = makerbot_driver.Firmware.Uploader(source_url=source_url, dest_path=dest_path)
             uploader.upload_firmware(self._fp.port, machine_type, version)
-            self._fp.open()
 
     def stop(self):
         with self._condition:
