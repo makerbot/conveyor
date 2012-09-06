@@ -264,15 +264,20 @@ j
     def upload_firmware(self, machine_type, version, source_url=None, dest_path=None):
         def runningcallback(task):
             self._statetransition("idle", "upload_firmware")
-            self._uploadfirmware(machine_type, version, source_url=source_url, dest_path=dest_path)
-            self._statetransition("upload_firmware", "idle")
+            try:
+                self._uploadfirmware(machine_type, version, source_url=source_url, dest_path=dest_path)
+            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
+                task.fail(e)
+            finally:
+                self._statetransition("upload_firmware", "idle")
         firmwaretask = conveyor.task.Task()
         firmwaretask.runningevent.attach(runningcallback)
         firmwaretask.start()
 
     def _uploadfirmware(self, machine_type, version, source_url=None, dest_path=None):
-        uploader = makerbot_driver.Firmware_uploader(source_url=source_url, dest_path=dest_path)
-        uploader.upload_firmware(self._fp.port, machine_type, version)
+        with self._condition:
+            uploader = makerbot_driver.Firmware_uploader(source_url=source_url, dest_path=dest_path)
+            uploader.upload_firmware(self._fp.port, machine_type, version)
 
     def stop(self):
         with self._condition:
