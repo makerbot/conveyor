@@ -113,7 +113,8 @@ class ClientMain(conveyor.main.AbstractMain):
         self._initparser_common(parser)
         parser.add_argument(
             'inputpath',
-            help='the path to the object file', metavar='INPUTPATH')
+            help='the path to the object file',
+            metavar='INPUTPATH')
         parser.add_argument(
             '--skip-start-end',
             action='store_true',
@@ -121,15 +122,23 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument(
             '--preprocessor',
-            default=False,
+            action='append',
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
         parser.add_argument(
             '-m',
             '--material',
             default='PLA',
-            help='Material to print with',
+            choices=('ABS', 'PLA'),
+            help='set the material',
             dest='material')
+        parser.add_argument(
+            '-s',
+            '--slicer',
+            default='miraclegrue',
+            choices=('miraclegrue', 'skeinforge'),
+            help='set the slicer (miraclegrue or skeinforge)',
+            dest='slicer')
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser(
@@ -166,15 +175,23 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument(
             '--preprocessor',
-            default=False,
+            action='append',
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
         parser.add_argument(
             '-m',
             '--material',
             default='PLA',
-            help='Material to print with',
+            choices=('ABS', 'PLA'),
+            help='set the material',
             dest='material')
+        parser.add_argument(
+            '-s',
+            '--slicer',
+            default='miraclegrue',
+            choices=('miraclegrue', 'skeinforge'),
+            help='set the slicer',
+            dest='slicer')
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser(
@@ -197,17 +214,26 @@ class ClientMain(conveyor.main.AbstractMain):
             help='include start and end gcode in .gcode file')
         parser.add_argument(
             '--preprocessor',
-            default=False,
+            action='append',
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
         parser.add_argument(
             '-m',
             '--material',
             default='PLA',
-            help='Material to print with',
+            choices=('ABS', 'PLA'),
+            help='set the material',
             dest='material')
+        parser.add_argument(
+            '-s',
+            '--slicer',
+            default='miraclegrue',
+            choices=('miraclegrue', 'skeinforge'),
+            help='set the slicer',
+            dest='slicer')
 
     def _run(self):
+        self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
         try:
             self._socket = self._address.connect()
@@ -255,8 +281,14 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _createslicerconfiguration(self):
+        if 'miraclegrue' == self._parsedargs.slicer:
+            slicer = conveyor.domain.Slicer.MIRACLEGRUE
+        elif 'skeinforge' == self._parsedargs.slicer:
+            slicer = conveyor.domain.Slicer.SKEINFORGE
+        else:
+            raise ValueError(self._parsedargs.slicer)
         slicer_settings = conveyor.domain.SlicerConfiguration(
-            slicer=conveyor.domain.Slicer.MIRACLEGRUE,
+            slicer=slicer,
             extruder=0,
             raft=False,
             support=False,
@@ -394,7 +426,7 @@ class Client(object):
                         self._log.info('job ended')
                         self._code = 0
                     elif conveyor.task.TaskConclusion.FAILED == job.conclusion:
-                        self._log.error('job failed')
+                        self._log.error('job failed: %s', job.failure)
                         self._code = 1
                     elif conveyor.task.TaskConclusion.CANCELED == job.conclusion:
                         self._log.warning('job canceled')
@@ -417,9 +449,14 @@ class Client(object):
 
     def _methodcallback(self, task):
         if self._wait:
-            # Record the job details and keep running (at least until the
-            # server calls the jobchanged method).
-            self._job = conveyor.domain.Job.fromdict(task.result)
+            if None is task.result:
+                self._log.error('%s', task.failure)
+                self._code = 1
+                self._stop()
+            else:
+                # Record the job details and keep running (at least until the
+                # server calls the jobchanged method).
+                self._job = conveyor.domain.Job.fromdict(task.result)
         else:
             if conveyor.task.TaskConclusion.ENDED != task.conclusion:
                 self._code = 1

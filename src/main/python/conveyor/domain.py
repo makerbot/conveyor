@@ -35,6 +35,7 @@ class Job(DomainObject):
             self.conclusion = None
             self.config = config
             self.currentstep = None
+            self.failure = None
             self.id = id
             self.material = material
             self.path = path
@@ -57,6 +58,7 @@ class Job(DomainObject):
             'conclusion': self.conclusion,
             'config': self.config,
             'currentstep': self.currentstep, # TODO: not quite right
+            'failure': self.failure, # TODO: also not quite right
             'id': self.id,
             'material': self.material,
             'name': self.build_name, # TODO: arrgh purge this
@@ -82,6 +84,7 @@ class Job(DomainObject):
             dct['with_start_end'], slicer_settings, dct['material'])
         job.state = dct['state'] # TODO: :(
         job.conclusion = dct['conclusion'] # TODO: :'(
+        job.failure = dct['failure'] # TODO: :''(
         return job
 
 class Printer(DomainObject):

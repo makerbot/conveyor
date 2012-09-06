@@ -154,10 +154,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         def callback(task):
             job.state = task.state
             job.conclusion = task.conclusion
+            job.failure = None
+            if None is not task.failure:
+                job.failure = str(task.failure.failure)
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
                 self._log.info('job %d ended', job.id)
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-                self._log.info('job %d failed', job.id)
+                self._log.info('job %d failed: %s', job.id, job.failure)
             elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
                 self._log.info('job %d canceled', job.id)
             else:
