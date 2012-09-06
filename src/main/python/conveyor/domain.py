@@ -37,7 +37,6 @@ class Job(DomainObject):
             self.currentstep = None
             self.id = id
             self.material = material
-            self.material = material
             self.path = path
             self.preprocessor = preprocessor
             self.printerid = printerid
@@ -54,22 +53,25 @@ class Job(DomainObject):
 
     def todict(self):
         dct = {
+            'build_name': self.build_name,
             'conclusion': self.conclusion,
             'config': self.config,
-            'currentstep': self.currentstep,
+            'currentstep': self.currentstep, # TODO: not quite right
             'id': self.id,
             'material': self.material,
-            'material': self.material,
-            'name': self.build_name,
+            'name': self.build_name, # TODO: arrgh purge this
             'path': self.path,
             'preprocessor': self.preprocessor,
             'printerid': self.printerid,
+            # TODO: process
             'skip_start_end': self.skip_start_end,
             'slicer_settings': self.slicer_settings.todict(),
             'state': self.state,
             'with_start_end': self.with_start_end
         }
         return dct
+
+    # TODO: fix all of this @*$!*$!%*!%!%&.
 
     @staticmethod
     def fromdict(dct):
@@ -78,6 +80,8 @@ class Job(DomainObject):
             dct['id'], dct['build_name'], dct['path'], dct['config'],
             dct['printerid'], dct['preprocessor'], dct['skip_start_end'],
             dct['with_start_end'], slicer_settings, dct['material'])
+        job.state = dct['state'] # TODO: :(
+        job.conclusion = dct['conclusion'] # TODO: :'(
         return job
 
 class Printer(DomainObject):
