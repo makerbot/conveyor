@@ -448,24 +448,26 @@ class Client(object):
             task1.start()
 
     def _methodcallback(self, task):
-        if self._wait:
-            if None is task.result:
-                self._log.error('%s', task.failure)
-                self._code = 1
-                self._stop()
-            else:
+        if conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+            self._log.warning('canceled')
+            self._code = 1
+            self._stop()
+        elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+            self._log.error('%s', task.failure)
+            self._code = 1
+            self._stop()
+        elif conveyor.task.TaskConclusion.ENDED == task.conclusion:
+            if self._wait:
                 # Record the job details and keep running (at least until the
                 # server calls the jobchanged method).
                 self._job = conveyor.domain.Job.fromdict(task.result)
-        else:
-            if conveyor.task.TaskConclusion.ENDED != task.conclusion:
-                self._code = 1
-                self._log.error('%s', task.failure)
             else:
                 self._code = 0
                 if None is not self._display:
                     self._display(task.result)
-            self._stop()
+                self._stop()
+        else:
+            raise ValueError(task.conclusion)
 
     def run(self):
         self._jsonrpc.addmethod('jobchanged', self._jobchanged)
