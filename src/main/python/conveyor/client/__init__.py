@@ -57,6 +57,9 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_printers,
             self._initsubparser_printtofile,
             self._initsubparser_slice,
+            self._initsubparser_getuploadablemachines,
+            self._initsubparser_getmachineversions,
+            self._initsubparser_uploadfirmware,
         ):
                 method(subparsers)
 
@@ -207,6 +210,45 @@ class ClientMain(conveyor.main.AbstractMain):
             help='Material to print with',
             dest='material')
 
+    def _initsubparser_getuploadablemachines(self):
+        parser = subparsers.add_parser(
+            'getuploadablemachines',
+            help='get list of machines we can upload to')
+        parser.set_defaults(func=self._run_getuploadablemachines)
+        self._initparser_common(parser)
+
+    def _initsubparser_get_machine_versions(self):
+        parser = subparser.add_parser(
+            'getmachineversions',
+            help='get versions associated with this machine')
+        parser.set_defaults(func=self.run_getmachineversions)
+        self._initparser_common(parser)
+        parser.add_argument(
+            '-m',
+            '--machine_type',
+            default='TheReplicator',
+            help='get version numbers associated with this machine',
+            dest='machine_type')
+
+    def _initsubparser_upload_firmware(self):
+        parser = subparser.add_parser(
+            'uploadfirmware',
+            help='upload firmware to the bot')
+        parser.set_defaults(func=self.run_getmachineversions)
+        self._initparser_common(parser)
+        parser.add_argument(
+            '-m',
+            '--machine_type',
+            default='TheReplicator',
+            help='machine to upload to',
+            dest='machine_type')
+        parser.add_argument(
+            '-v',
+            '--version_number',
+            default='5.5',
+            help='version to upload',
+            dest='version')
+
     def _run(self):
         self._initeventqueue()
         try:
@@ -221,6 +263,25 @@ class ClientMain(conveyor.main.AbstractMain):
                 'Unable to connect to conveyor server. Please verify that it is running.')
         else:
             code = self._parsedargs.func()
+        return code
+
+    def _run_getuploadablemachines(self):
+        params = {}
+        code = self._run_client('get_uploadable_machines', params, False None)
+        return code
+
+    def _run_getmachineversions(self):
+        params = {'machine_type': self._parsedargs.machinetype}
+        code = self._run_client('get_machine_versions', params, False, None)
+        return code
+
+    def _run_uploadfirmware(self):
+        params = {
+            'printername' : None,
+            'machine_type' : self._parsedargs.machinetype,
+            'version' : self._parsedargs.version,
+            }
+        code = self._run_client('upload_firmware', params, True, None)
         return code
 
     def _run_cancel(self):
