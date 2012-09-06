@@ -307,18 +307,19 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_readeeprom(self):
         outputpath = os.path.abspath(self._parsedargs.outputpath)
-        def display(result):
+        def writeout(result):
             dumps = json.dumps(result, sort_keys=True, indent=2)
             with open(outputpath, 'w') as f:
                 f.write(dumps)
         params = {
             'printername' : None,
             }
-        code = self._run_client('readeeprom', params, False, display)
+        code = self._run_client('readeeprom', params, False, writeout)
         return code
 
     def _run_writeeeprom(self):
-        with open(self._parsedargs.inputpath) as f:
+        inputpath = os.path.abspath(self._parsedargs.inputpath)
+        with open(inputpath) as f:
             eeprommap = json.load(f)
         params = {
             'printername' : None,
