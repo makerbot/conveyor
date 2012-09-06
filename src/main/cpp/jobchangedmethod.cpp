@@ -27,9 +27,16 @@ namespace conveyor
         int const jobId(params["id"].asInt());
 
         Job * job(m_conveyorPrivate->jobById(jobId));
+
+        JobState const initialJobState(job->state());
+
         job->m_private->updateFromJson(params);
 
+        // Signal job-changed, and check if the job state has changed
+        // to STOPPED, in which case send the job-removed signal too
         m_conveyorPrivate->emitJobChanged(job);
+        if ((initialJobState != STOPPED) && job->state() == STOPPED)
+            m_conveyorPrivate->emitJobRemoved(job);
 
         return Json::Value(Json::nullValue);
     }

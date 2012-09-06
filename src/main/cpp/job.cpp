@@ -40,13 +40,13 @@ namespace conveyor
     }
 
     JobState
-    Job::jobState (void) const
+    Job::state (void) const
     {
         return m_private->m_state;
     }
 
     JobConclusion
-    Job::jobConclusion (void) const
+    Job::conclusion (void) const
     {
         return m_private->m_conclusion;
     }
