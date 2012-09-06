@@ -57,6 +57,8 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_printers,
             self._initsubparser_printtofile,
             self._initsubparser_slice,
+            self._initsubparser_readeeprom,
+            self._initsubparser_writeeeprom,
             self._initsubparser_getuploadablemachines,
             self._initsubparser_getmachineversions,
             self._initsubparser_uploadfirmware,
@@ -246,6 +248,28 @@ class ClientMain(conveyor.main.AbstractMain):
             help='version to upload',
             dest='version')
 
+    def _initsubparser_readeeprom(self, subparsers):
+        parser = subparsers.add_parser(
+            'readeeprom',
+            help="read a machine's eeprom")
+        parser.set_defaults(func=self._run_readeeprom)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'outputpath',
+            help='the output path for the read eeprom map',
+            metavar='OUTPUTPATH')
+
+    def _initsubparser_writeeeprom(self, subparsers):
+        parser = subparsers.add_parser(
+            'writeeeprom',
+            help="write a json map to a machine's eeprom")
+        parser.set_defaults(func=self._run_writeeeprom)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'inputpath',
+            help="the path to the json eeprom map",
+            metavar="INPUTPATH")
+
     def _run(self):
         self._initeventqueue()
         try:
@@ -279,6 +303,28 @@ class ClientMain(conveyor.main.AbstractMain):
             'version' : self._parsedargs.version,
             }
         code = self._run_client('uploadfirmware', params, False, None)
+        return code
+
+    def _run_readeeprom(self):
+        outputpath = os.path.abspath(self._parsedargs.outputpath)
+        def display(result):
+            dumps = json.dumps(result, sort_keys=True, indent=2)
+            with open(outputpath, 'w') as f:
+                f.write(dumps)
+        params = {
+            'printername' : None,
+            }
+        code = self._run_client('readeeprom', params, False, display)
+        return code
+
+    def _run_writeeeprom(self):
+        with open(self._parsedargs.inputpath) as f:
+            eeprommap = json.load(f)
+        params = {
+            'printername' : None,
+            'eeprommap' : eeprommap,
+            }
+        code = self._run_client('writeeeprom', params, False, None)
         return code
 
     def _run_cancel(self):

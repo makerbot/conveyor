@@ -239,21 +239,21 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         finally:
             self._fp.close()
 
-    def readeeprom(self, directory=None):
+    def readeeprom(self):
         with self._condition:
             self._statetransition("idle", "reading_eeprom")
             driver = S3gDriver()
-            eeprom_map = driver.read_eeprom(self._fp, directory)
+            eeprom_map = driver.read_eeprom(self._fp)
             self._fp.close()
             self._condition.notify_all()
             self._statetransition("reading_eeprom", "idle")
         return eeprom_map
 
-    def writeeeprom(self, eeprom_values, directory=None):
+    def writeeeprom(self, eeprom_values):
         with self._condition:
             self._statetransition("idle", "writing_eeprom")
             driver = S3gDriver()
-            driver.write_eeprom(eeprom_values, directory)
+            driver.write_eeprom(eeprom_values)
             self._fp.close()
             self._condition.notify_all()
             self._statetransition("writing_eeprom", "idle")

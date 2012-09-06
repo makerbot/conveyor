@@ -395,15 +395,15 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         return result
 
     @export('writeeeprom')
-    def _writeeeprom(self, printername, eeprom_values):
+    def _writeeeprom(self, printername, eeprommap):
         printerthread = self._findprinter(printername)
-        printerthread.write_eeprom(eeprom_values)
+        printerthread.write_eeprom(eeprommap)
 
     @export('readeeprom')
     def _readeeprom(self, printername):
         printerthread = self._findprinter(printername)
-        eeprom_values= printerthread.read_eeprom()
-        return eeprom_values
+        eeprommap = printerthread.read_eeprom()
+        return eeprommap
 
     @export('getuploadablemachines')
     def _getuploadablemachines(self):
