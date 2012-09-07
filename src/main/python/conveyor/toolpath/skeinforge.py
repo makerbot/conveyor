@@ -91,7 +91,7 @@ class SkeinforgeToolpath(object):
 
                     popen = subprocess.Popen(
                         arguments, executable=sys.executable,
-                        stdout=subprocess.PIPE)
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                     log = StringIO.StringIO()
                     buffer = ''
                     while True:
