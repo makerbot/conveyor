@@ -19,7 +19,6 @@
 #include "printerremovedmethod.h"
 #include "jobaddedmethod.h"
 #include "jobchangedmethod.h"
-#include "jobremovedmethod.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -52,6 +51,7 @@ namespace conveyor
             , QString const & inputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const skipStartEnd
             );
         Job * printToFile
             ( Printer * printer
@@ -59,6 +59,7 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const skipStartEnd
             );
         Job * slice
             ( Printer * printer
@@ -81,7 +82,6 @@ namespace conveyor
         PrinterRemovedMethod m_printerRemovedMethod;
         JobAddedMethod m_jobAddedMethod;
         JobChangedMethod m_jobChangedMethod;
-        JobRemovedMethod m_jobRemovedMethod;
 
         /** Cached jobs, potentially including defunct jobs */
         QHash<int, Job *> m_jobs;

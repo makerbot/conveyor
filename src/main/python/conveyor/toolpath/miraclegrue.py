@@ -41,27 +41,39 @@ class MiracleGrueToolpath(object):
         self._configuration = configuration
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def progress(self, line, task):
+    def _parse_progress(self, line):
+        progress = None
         try:
-            jsonresult = json.loads(line)
-            if not isinstance(jsonresult, dict):
-                #this is not something we handle
-                return
-            if jsonresult.get('type', None) == 'progress':
-                progress = {
-                    'name': 'slice',
-                    'progress': jsonresult['totalPercentComplete']
-                    }
-                task.heartbeat(progress)
-        except ValueError as ve:
-            #this happens when the line is not json
+            dct = json.loads(line)
+        except ValueError:
             pass
+        else:
+            if (isinstance(dct, dict) and 'progress' == dct.get('type')
+                and 'totalPercentComplete' in dct):
+                    progress = {
+                        'name': 'slice',
+                        'progress': int(dct['totalPercentComplete'])
+                    }
+        return progress
+
+    def _update_progress(self, current_progress, new_progress, task):
+        if None is not new_progress and new_progress != current_progress:
+            current_progress = new_progress
+            task.heartbeat(current_progress)
+        return current_progress
 
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
         slicer_settings, material, task):
             self._log.info('slicing with Miracle Grue')
             try:
+                current_progress = None
+                new_progress = {
+                    'name': 'slice',
+                    'progress': 0
+                }
+                current_progress = self._update_progress(
+                    current_progress, new_progress, task)
                 driver = conveyor.printer.s3g.S3gDriver()
                 if not with_start_end:
                     startpath = None
@@ -99,7 +111,9 @@ class MiracleGrueToolpath(object):
                         break
                     else:
                         self._log.debug('miracle-grue: %s', line)
-                        self.progress(line, task) # Progress gets updated in this func
+                        new_progress = self._parse_progress(line)
+                        current_progress = self._update_progress(
+                            current_progress, new_progress, task)
                 code = popen.wait()
                 self._log.debug('miracle-grue terminated with code %s', code)
                 if None is not startpath:
@@ -113,6 +127,12 @@ class MiracleGrueToolpath(object):
                 task.fail(e)
                 raise
             else:
+                new_progress = {
+                    'name': 'slice',
+                    'progress': 100
+                }
+                current_progress = self._update_progress(
+                    current_progress, new_progress, task)
                 task.end(None)
 
     def _generateconfig(self, slicer_settings, fp):

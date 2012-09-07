@@ -113,7 +113,8 @@ class ClientMain(conveyor.main.AbstractMain):
         self._initparser_common(parser)
         parser.add_argument(
             'inputpath',
-            help='the path to the object file', metavar='INPUTPATH')
+            help='the path to the object file',
+            metavar='INPUTPATH')
         parser.add_argument(
             '--skip-start-end',
             action='store_true',
@@ -121,15 +122,23 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument(
             '--preprocessor',
-            default=False,
+            action='append',
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
         parser.add_argument(
             '-m',
             '--material',
             default='PLA',
-            help='Material to print with',
+            choices=('ABS', 'PLA'),
+            help='set the material',
             dest='material')
+        parser.add_argument(
+            '-s',
+            '--slicer',
+            default='miraclegrue',
+            choices=('miraclegrue', 'skeinforge'),
+            help='set the slicer (miraclegrue or skeinforge)',
+            dest='slicer')
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser(
@@ -166,15 +175,23 @@ class ClientMain(conveyor.main.AbstractMain):
             help='use start/end gcode provided by file')
         parser.add_argument(
             '--preprocessor',
-            default=False,
+            action='append',
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
         parser.add_argument(
             '-m',
             '--material',
             default='PLA',
-            help='Material to print with',
+            choices=('ABS', 'PLA'),
+            help='set the material',
             dest='material')
+        parser.add_argument(
+            '-s',
+            '--slicer',
+            default='miraclegrue',
+            choices=('miraclegrue', 'skeinforge'),
+            help='set the slicer',
+            dest='slicer')
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser(
@@ -197,17 +214,26 @@ class ClientMain(conveyor.main.AbstractMain):
             help='include start and end gcode in .gcode file')
         parser.add_argument(
             '--preprocessor',
-            default=False,
+            action='append',
             help='preprocessor to run on the gcode file',
             dest='preprocessor')
         parser.add_argument(
             '-m',
             '--material',
             default='PLA',
-            help='Material to print with',
+            choices=('ABS', 'PLA'),
+            help='set the material',
             dest='material')
+        parser.add_argument(
+            '-s',
+            '--slicer',
+            default='miraclegrue',
+            choices=('miraclegrue', 'skeinforge'),
+            help='set the slicer',
+            dest='slicer')
 
     def _run(self):
+        self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
         try:
             self._socket = self._address.connect()
@@ -255,14 +281,20 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _createslicerconfiguration(self):
+        if 'miraclegrue' == self._parsedargs.slicer:
+            slicer = conveyor.domain.Slicer.MIRACLEGRUE
+        elif 'skeinforge' == self._parsedargs.slicer:
+            slicer = conveyor.domain.Slicer.SKEINFORGE
+        else:
+            raise ValueError(self._parsedargs.slicer)
         slicer_settings = conveyor.domain.SlicerConfiguration(
-            slicer=conveyor.domain.Slicer.MIRACLEGRUE,
+            slicer=slicer,
             extruder=0,
             raft=False,
             support=False,
             infill=0.1,
             layer_height=0.27,
-            shells=1,
+            shells=3,
             extruder_temperature=230.0,
             platform_temperature=110.0,
             print_speed=80.0,
@@ -370,25 +402,38 @@ class Client(object):
         self._method = method
         self._params = params
         self._sock = sock
+        self._stopped = False
         self._wait = wait # Wait for a job to complete (as opposed to a plain task)
 
     def _stop(self):
+        self._stopped = True
         self._fp.stop()
 
-    def _notify(self, job, state, conclusion):
-        self._log.debug('job=%r, state=%r, conclusion=%r', job, state, conclusion)
-        if conveyor.task.TaskState.STOPPED == state:
-            if conveyor.task.TaskConclusion.ENDED == conclusion:
-                self._code = 0
-            elif conveyor.task.TaskConclusion.FAILED == conclusion:
-                self._log.error('job failed')
-                self._code = 1
-            elif conveyor.task.TaskConclusion.CANCELED == conclusion:
-                self._log.warning('job canceled')
-                self._code = 1
-            else:
-                raise ValueError(task.conclusion)
-            self._stop()
+    # TODO: !*@**#&... _jobchanged should take a single parameter called "job"
+    # that has the job details, instead of all of the job contents as separate
+    # parameters.  Can't fix this correctly yet since it will break the C++
+    # binding...
+
+    def _jobchanged(self, *args, **kwargs):
+        if not self._stopped:
+            job = conveyor.domain.Job.fromdict(kwargs)
+            jobid = None
+            if None is not self._job:
+                jobid = self._job.id
+            if None is not self._job and self._job.id == job.id:
+                if conveyor.task.TaskState.STOPPED == job.state:
+                    if conveyor.task.TaskConclusion.ENDED == job.conclusion:
+                        self._log.info('job ended')
+                        self._code = 0
+                    elif conveyor.task.TaskConclusion.FAILED == job.conclusion:
+                        self._log.error('job failed: %s', job.failure)
+                        self._code = 1
+                    elif conveyor.task.TaskConclusion.CANCELED == job.conclusion:
+                        self._log.warning('job canceled')
+                        self._code = 1
+                    else:
+                        raise ValueError(task.conclusion)
+                    self._stop()
 
     def _hellocallback(self, task):
         self._log.debug('task=%r', task)
@@ -403,25 +448,35 @@ class Client(object):
             task1.start()
 
     def _methodcallback(self, task):
-        self._log.debug('task=%r', task)
-        if self._wait:
-            # Record the job details and keep running (at least until the
-            # server calls the notify method).
-            self._job = task.result
-        else:
-            if conveyor.task.TaskConclusion.ENDED != task.conclusion:
-                self._code = 1
-                self._log.error('%s', task.failure)
+        if conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+            self._log.warning('canceled')
+            self._code = 1
+            self._stop()
+        elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+            self._log.error('%s', task.failure)
+            self._code = 1
+            self._stop()
+        elif conveyor.task.TaskConclusion.ENDED == task.conclusion:
+            if self._wait:
+                # Record the job details and keep running (at least until the
+                # server calls the jobchanged method).
+                self._job = conveyor.domain.Job.fromdict(task.result)
             else:
                 self._code = 0
                 if None is not self._display:
                     self._display(task.result)
-            self._stop()
+                self._stop()
+        else:
+            raise ValueError(task.conclusion)
 
     def run(self):
-        self._jsonrpc.addmethod('notify', self._notify)
+        self._jsonrpc.addmethod('jobchanged', self._jobchanged)
         task = self._jsonrpc.request("hello", {})
         task.stoppedevent.attach(self._hellocallback)
         task.start()
-        self._jsonrpc.run()
+        try:
+            self._jsonrpc.run()
+        except IOError as e:
+            if not self._stopped:
+                raise
         return self._code

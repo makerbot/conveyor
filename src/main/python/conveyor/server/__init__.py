@@ -135,9 +135,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc = jsonrpc
         self._printers_seen = []
 
-    def jobchanged(self, params):
-        self._jsonrpc.notify('jobchanged', params)
-
     def printeradded(self, params):
         self._jsonrpc.notify('printeradded', params)
 
@@ -155,24 +152,20 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     def _stoppedcallback(self, job):
         def callback(task):
+            job.state = task.state
+            job.conclusion = task.conclusion
+            job.failure = None
+            if None is not task.failure:
+                job.failure = str(task.failure.failure)
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                job.state = "STOPPED"
-                self._log.info('job %d ended', job)
+                self._log.info('job %d ended', job.id)
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-                job.conclusion = "FAILED"
-                self._log.info('job %d failed', job)
+                self._log.info('job %d failed: %s', job.id, job.failure)
             elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
-                job.conclusion = "CANCELED"
-                self._log.info('job %d canceled', job)
+                self._log.info('job %d canceled', job.id)
             else:
                 raise ValueError(task.conclusion)
-            job.state = "STOPPED"
-            params = {
-                'job': job.todict(),
-                'state': conveyor.task.TaskState.STOPPED,
-                'conclusion': task.conclusion
-            }
-            self._jsonrpc.notify('notify', params) # TODO: remove in favor of job progress (jobchanged)
+            self._server.changejob(job)
         return callback
 
     @export('hello')

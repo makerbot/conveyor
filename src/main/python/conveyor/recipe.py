@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import logging
 import makerbot_driver
 import os
 import os.path
@@ -120,8 +121,18 @@ class RecipeManager(object):
 class Recipe(object):
     def __init__(self, server, config, job):
         self._config = config
+        self._log = logging.getLogger(self.__class__.__name__)
         self._job = job
         self._server = server
+
+    def _getpreprocessors(self):
+        preprocessors = self._job.preprocessor
+        if None is preprocessors:
+            preprocessors = []
+        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer
+            and 'Skeinforge50Preprocessor' not in preprocessors):
+                preprocessors.insert(0, 'Skeinforge50Preprocessor')
+        return preprocessors
 
     def _slicetask(self, profile, inputpath, outputpath, with_start_end):
         def runningcallback(task):
@@ -133,12 +144,24 @@ class Recipe(object):
         return toolpathtask
 
     def _preprocessortask(self, inputpath, outputpath):
+        factory = makerbot_driver.Preprocessors.PreprocessorFactory()
+        preprocessor_list = self._getpreprocessors()
+        preprocessors = list(factory.get_preprocessors(preprocessor_list))
         def runningcallback(task):
             try:
-                # TODO: this is totally wrong because 'preprocessor' is a
-                # string at this point.
-                self._job.preprocessor.process_file(inputpath, outputpath)
+                # TODO: Attention future dave: makerbot_driver needs to import unicode literals
+                in_name = inputpath
+                for preprocessor in preprocessors:
+                    #The last prepro should output to the outputpath
+                    if preprocessor == preprocessors[-1]:
+                        out_name = outputpath
+                    else:
+                        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+                            out_name = f.name 
+                    preprocessor.process_file(in_name, out_name)
+                    in_name = out_name
             except Exception as e:
+                self._log.debug('unhandled exception', exc_info=True)
                 task.fail(e)
             else:
                 task.end(None)
@@ -180,13 +203,14 @@ class _GcodeRecipe(Recipe):
         tasks = []
 
         # Preprocess
-        if not self._job.preprocessor:
+        preprocessors = self._getpreprocessors()
+        if 0 == len(preprocessors):
             processed_gcodepath = self._job.path
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             preprocessortask = self._preprocessortask(
-                self._path, processed_gcodepath)
+                self._job.path, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
@@ -204,13 +228,14 @@ class _GcodeRecipe(Recipe):
         tasks = []
 
         # Preprocess
-        if not self._job.preprocessor:
+        preprocessors = self._getpreprocessors()
+        if 0 == len(preprocessors):
             processed_gcodepath = self._job.path
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             preprocessortask = self._preprocessortask(
-                self._path, processed_gcodepath)
+                self._job.path, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
@@ -241,7 +266,8 @@ class _StlRecipe(Recipe):
         tasks.append(slicetask)
 
         # Preprocess
-        if not self._job.preprocessor:
+        preprocessors = self._getpreprocessors()
+        if 0 == len(preprocessors):
             processed_gcodepath = gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
@@ -272,7 +298,8 @@ class _StlRecipe(Recipe):
         tasks.append(slicetask)
 
         # Preprocess
-        if not self._job.preprocessor:
+        preprocessors = self._getpreprocessors()
+        if 0 == len(preprocessors):
             processed_gcodepath = gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
@@ -298,7 +325,8 @@ class _StlRecipe(Recipe):
         tasks = []
 
         # Slice
-        if not self._job.preprocessor:
+        preprocessors = self._getpreprocessors()
+        if 0 == len(preprocessors):
             gcodepath = outputpath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
@@ -308,7 +336,7 @@ class _StlRecipe(Recipe):
         tasks.append(slicetask)
 
         # Preprocess
-        if self._job.preprocessor:
+        if 0 != len(preprocessors):
             preprocessortask = self._preprocessortask(gcodepath, outputpath)
             tasks.append(preprocessortask)
 
