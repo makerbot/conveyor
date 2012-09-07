@@ -323,7 +323,7 @@ namespace conveyor
         Json::Value result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
             );
-        EepromMap map = EepromMap::EepromMap(result);
+        EepromMap map (result);
         return map;
     }
 
