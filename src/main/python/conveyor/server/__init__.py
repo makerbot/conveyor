@@ -397,7 +397,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     @export('writeeeprom')
     def _writeeeprom(self, printername, eeprommap):
         printerthread = self._findprinter(printername)
-        printerthread.writeeeprom(eeprommap)
+        task = conveyor.task.Task()
+        printerthread.writeeeprom(eeprommap, task)
         return None
 
     @export('readeeprom')
@@ -421,7 +422,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     @export('uploadfirmware')
     def _uploadfirmware(self, printername, machinetype, version):
         printerthread = self._findprinter(printername)
-        printerthread.uploadfirmware(machinetype, version)
+        task = conveyor.task.Task()
+        printerthread.uploadfirmware(machinetype, version, task)
 
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")

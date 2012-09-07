@@ -287,13 +287,17 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_getuploadablemachines(self):
+        def display(result):
+            print(result)
         params = {}
-        code = self._run_client('getuploadablemachines', params, False, None)
+        code = self._run_client('getuploadablemachines', params, False, display)
         return code
 
     def _run_getmachineversions(self):
+        def display(result):
+            print(result)
         params = {'machine_type': self._parsedargs.machinetype}
-        code = self._run_client('getmachineversions', params, False, None)
+        code = self._run_client('getmachineversions', params, False, display)
         return code
 
     def _run_uploadfirmware(self):
