@@ -194,15 +194,10 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     driver = S3gDriver()
                     try:
                         driver.print(
-                            self._fp, self._profile, buildname, gcodepath,
+                            self._server, self._portname, self._fp,
+                            self._profile, buildname, gcodepath,
                             skip_start_end, slicer_settings, material, task)
                     except makerbot_driver.BuildCancelledError:
-                        self._log.debug('handled exception', exc_info=True)
-                        self._log.info('print canceled')
-                        with self._condition:
-                            if None is not self._currenttask:
-                                self._currenttask.cancel()
-                    except makerbot_driver.Writer.ExternalStopError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
                         with self._condition:
@@ -286,8 +281,9 @@ class S3gDriver(object):
         return current_progress
 
     def _genericprint(
-        self, profile, buildname, writer, polltemperature, pollinterval,
-        gcodepath, skip_start_end, slicer_settings, material, task):
+        self, server, portname, profile, buildname, writer, polltemperature,
+        pollinterval, gcodepath, skip_start_end, slicer_settings, material,
+        task):
             current_progress = None
             new_progress = {
                 'name': 'print',
@@ -303,12 +299,18 @@ class S3gDriver(object):
             parser.state.set_build_name(str(buildname))
             parser.s3g = makerbot_driver.s3g()
             parser.s3g.writer = writer
+            def stoppedcallback(task):
+                #Reset the bot
+                parser.s3g.abort_immediately()
+                writer.set_external_stop()
+            task.stoppedevent.attach(stoppedcallback)
             now = time.time()
             polltime = now + pollinterval
             if not polltemperature:
                 temperature = None
             else:
                 temperature = _gettemperature(profile, parser.s3g)
+                server.changeprinter(portname, temperature)
             gcodelines, variables = self._gcodelines(
                 profile, gcodepath, skip_start_end, slicer_settings, material)
             parser.environment.update(variables)
@@ -331,7 +333,14 @@ class S3gDriver(object):
                     self._log.debug('gcode: %r', data)
                     # The s3g module cannot handle unicode strings.
                     data = str(data)
-                    parser.execute_line(data)
+                    try:
+                        parser.execute_line(data)
+                    except makerbot_driver.ExternalStopError:
+                        self._log.debug('handled exception', exc_info=True)
+                        self._log.info('print canceled')
+                        with self._condition:
+                            if None is not self._currenttask:
+                                self._currenttask.cancel()
                     new_progress = {
                         'name': 'print',
                         'progress': int(parser.state.percentage)
@@ -339,9 +348,7 @@ class S3gDriver(object):
                     if polltime <= now:
                         polltime = now + pollinterval
                         if polltemperature:
-                            pass
-                            # TODO: issue printerchanged
-                            # new_progress['temperature'] = temperature
+                            server.changeprinter(portname, temperature)
                     current_progress = self._update_progress(
                         current_progress, new_progress, task)
             if conveyor.task.TaskState.STOPPED != task.state:
@@ -354,12 +361,12 @@ class S3gDriver(object):
                 task.end(None)
 
     def print(
-        self, fp, profile, buildname, gcodepath, skip_start_end,
-        slicer_settings, material, task):
+        self, server, portname, fp, profile, buildname, gcodepath,
+        skip_start_end, slicer_settings, material, task):
             writer = makerbot_driver.Writer.StreamWriter(fp)
             self._genericprint(
-                profile, buildname, writer, True, 5.0, gcodepath,
-                skip_start_end, slicer_settings, material, task)
+                server, portname, profile, buildname, writer, True, 5.0,
+                gcodepath, skip_start_end, slicer_settings, material, task)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,
@@ -367,6 +374,6 @@ class S3gDriver(object):
             with open(outputpath, 'wb') as fp:
                 writer = makerbot_driver.Writer.FileWriter(fp)
                 self._genericprint(
-                    profile, buildname, writer, False, 5.0,
+                    None, None, profile, buildname, writer, False, 5.0,
                     gcodepath, skip_start_end, slicer_settings, material,
                     task)

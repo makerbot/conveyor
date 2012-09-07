@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import cStringIO as StringIO
 import logging
 import os
 import os.path
@@ -84,16 +85,21 @@ class SkeinforgeToolpath(object):
                     arguments = list(
                         self._getarguments(tmp_inputpath))
                     self._log.debug('arguments=%r', arguments)
+
+                    quoted_arguments = [''.join(('"', str(a), '"')) for a in arguments]
+                    self._log.info('quoted_arguments=%s', ' '.join(quoted_arguments))
+
                     popen = subprocess.Popen(
                         arguments, executable=sys.executable,
-                        stdout=subprocess.PIPE)
-                    log = ''
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    log = StringIO.StringIO()
                     buffer = ''
                     while True:
                         data = popen.stdout.read(1) # :(
                         if '' == data:
                             break
                         else:
+                            log.write(data)
                             buffer += data
                             match = self._regex.search(buffer)
                             if None is not match:
@@ -111,8 +117,10 @@ class SkeinforgeToolpath(object):
                     self._log.debug(
                         'Skeinforge terminated with status code %d', code)
                     if 0 != code:
+                        self._log.error('%s', log.getvalue())
                         raise Exception(code)
                     else:
+                        self._log.debug('%s', log.getvalue())
                         tmp_outputpath = self._outputpath(tmp_inputpath)
                         self._postprocess(
                             profile, outputpath, tmp_outputpath,

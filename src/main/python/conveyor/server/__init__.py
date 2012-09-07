@@ -583,6 +583,7 @@ class Server(object):
         self._invokeclients('printeradded', dct)
 
     def changeprinter(self, portname, temperature):
+        self._log.debug('portname=%r, temperature=%r', portname, temperature)
         printerthread = self.findprinter_portname(portname)
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
