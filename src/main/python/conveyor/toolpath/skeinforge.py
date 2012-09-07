@@ -85,9 +85,13 @@ class SkeinforgeToolpath(object):
                     arguments = list(
                         self._getarguments(tmp_inputpath))
                     self._log.debug('arguments=%r', arguments)
+
+                    quoted_arguments = [''.join(('"', str(a), '"')) for a in arguments]
+                    self._log.info('quoted_arguments=%s', ' '.join(quoted_arguments))
+
                     popen = subprocess.Popen(
                         arguments, executable=sys.executable,
-                        stdout=subprocess.PIPE)
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                     log = StringIO.StringIO()
                     buffer = ''
                     while True:
