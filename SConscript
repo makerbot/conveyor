@@ -22,7 +22,19 @@ import fnmatch
 import re
 import glob
 
-env = Environment(ENV=os.environ)
+# We require Qt 4.8.1; Oneiric ships with 4.7.4. On Oneiric, use the manually installed SDK.
+if sys.platform == 'linux2':
+    import subprocess
+    distro=subprocess.Popen(['lsb_release','-c','-s'], stdout=subprocess.PIPE).communicate()[0].strip()
+    if distro == 'oneiric':
+        os.environ['QTDIR']='/opt/QtSDK/Desktop/Qt/4.8.1/gcc/'
+        os.environ['PKG_CONFIG_PATH']='/opt/QtSDK/Desktop/Qt/4.8.1/gcc/lib/pkgconfig'
+    elif distro == 'precise':
+        pass
+    else:
+        print("*** WARNING: potentially unsupported distribution! ***")
+
+env = Environment(ENV=os.environ, tools=['default','qt4'])
 
 Import('build_unit_tests', 'run_unit_tests')
 
