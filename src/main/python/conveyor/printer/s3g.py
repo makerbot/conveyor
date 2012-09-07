@@ -203,12 +203,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         with self._condition:
                             if None is not self._currenttask:
                                 self._currenttask.cancel()
-                    except makerbot_driver.Writer.ExternalStopError:
-                        self._log.debug('handled exception', exc_info=True)
-                        self._log.info('print canceled')
-                        with self._condition:
-                            if None is not self._currenttask:
-                                self._currenttask.cancel()
                     except Exception as e:
                         self._log.error('unhandled exception', exc_info=True)
                         with self._condition:
@@ -305,6 +299,11 @@ class S3gDriver(object):
             parser.state.set_build_name(str(buildname))
             parser.s3g = makerbot_driver.s3g()
             parser.s3g.writer = writer
+            def stoppedcallback(task):
+                #Reset the bot
+                parser.s3g.abort_immediately()
+                writer.set_external_stop()
+            task.stoppedevent.attach(stoppedcallback)
             now = time.time()
             polltime = now + pollinterval
             if not polltemperature:
@@ -334,7 +333,14 @@ class S3gDriver(object):
                     self._log.debug('gcode: %r', data)
                     # The s3g module cannot handle unicode strings.
                     data = str(data)
-                    parser.execute_line(data)
+                    try:
+                        parser.execute_line(data)
+                    except makerbot_driver.ExternalStopError:
+                        self._log.debug('handled exception', exc_info=True)
+                        self._log.info('print canceled')
+                        with self._condition:
+                            if None is not self._currenttask:
+                                self._currenttask.cancel()
                     new_progress = {
                         'name': 'print',
                         'progress': int(parser.state.percentage)
