@@ -202,10 +202,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     with self._condition:
                         if 0 < len(self._queue):
                             self._curprintjob = self._queue.pop()
-#                        if 0 == len(self._queue):
-#                            tuple_ = None
-#                        else:
-#                            tuple_ = self._queue.pop()
                     now = time.time()
                     if polltime <= now:
                         polltime = now + 5.0
@@ -259,23 +255,25 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._fp.close()
 
     def readeeprom(self):
+        driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "readingeeprom")
-            driver = S3gDriver()
             eeprommap = driver.readeeprom(self._fp)
             self._statetransition("readingeeprom", "idle")
-            return eeprommap
+        return eeprommap
 
     def writeeeprom(self, eeprommap, task):
         with self._condition:
             self._statetransition("idle", "writingeeprom")
         def stoppedcallback(task):
-            self._statetransition("writingeeprom", "idle")
-            self._currenttask = None
+            with self._condition:
+                self._statetransition("writingeeprom", "idle")
+                self._currenttask = None
             task.end(None)
         def runningcallback(task):
             driver = S3gDriver()
-            driver.writeeeprom(eeprommap, self._fp)
+            with self._condition:
+                driver.writeeeprom(eeprommap, self._fp)
             task.end(None)
         task.stoppedevent.attach(stoppedcallback)
         task.runningevent.attach(runningcallback)
