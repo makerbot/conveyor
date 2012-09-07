@@ -9,6 +9,8 @@
 
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
+#include <conveyor/eeprommap.h>
+
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -255,6 +257,39 @@ namespace conveyor
         return jobById(result["id"].asInt());
     }
 
+    Json::Value
+    ConveyorPrivate::m_getUploadableMachines(void)
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "getuploadablemachines", params)
+            );
+        return result;
+    }
+
+    Json::Value
+    ConveyorPrivate::m_getMachineVersions(QString machineType)
+    {
+        Json::Value params (Json::objectValue);
+        params["machinetype"] = Json::Value (machineType.toStdString());
+        
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "getmachineversions", params)
+            );
+        return result;
+    }
+
+    void
+    ConveyorPrivate::m_uploadFirmware(QString machineType, QString version)
+    {
+        Json::Value params (Json::objectValue);
+        params["machinetype"] = Json::Value (machineType.toStdString());
+        params["version"] = Json::Value (version.toStdString());
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "uploadfirmware", params)
+            );
+    }
+
     Job *
     ConveyorPrivate::slice
         ( Printer * const printer
@@ -279,6 +314,25 @@ namespace conveyor
             );
 
         return jobById(result["id"].asInt());
+    }
+
+    EepromMap
+    ConveyorPrivate::readEeprom(void) const
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
+            );
+        EepromMap map = EepromMap::EepromMap(result);
+        return map;
+    }
+
+    void
+    ConveyorPrivate::writeEeprom(EepromMap map)
+    {
+        Json::Value params (Json::objectValue);
+        params["eeprom_values"] = map.getEepromMap();
+        SynchronousCallback::invoke (this->m_jsonRpc, "write_eeprom", params);
     }
 
     void
