@@ -398,7 +398,7 @@ class JsonRpc(object):
         for k, v in kwargs.items():
             k = str(k)
             kwargs1[k] = v
-        return kwargs
+        return kwargs1
 
     def _invokemethod(self, id, func, args, kwargs):
         self._log.debug(
