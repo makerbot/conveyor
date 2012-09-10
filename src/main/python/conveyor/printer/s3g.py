@@ -22,6 +22,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import collections
 import logging
 import makerbot_driver
+import makerbot_driver.Writer
 import os.path
 import serial
 import threading
@@ -335,7 +336,7 @@ class S3gDriver(object):
                     data = str(data)
                     try:
                         parser.execute_line(data)
-                    except makerbot_driver.ExternalStopError:
+                    except makerbot_driver.Writer.ExternalStopError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
                         with self._condition:
