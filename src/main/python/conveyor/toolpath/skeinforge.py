@@ -237,7 +237,7 @@ class SkeinforgeToolpath(object):
         yield self._option(
             'fill.csv', 'Infill Width over Thickness (ratio):', ratio)
         yield self._option(
-            'carve.csv', 'Layer Thickness (mm):', self._configuration.layerheight)
+            'carve.csv', 'Layer Height (mm):', self._configuration.layerheight)
         yield self._option(
             'fill.csv', 'Extra Shells on Alternating Solid Layer (layers):',
             self._configuration.shells-1)
