@@ -52,7 +52,7 @@ if 'QTDIR' not in env:
     if moc:
         env['QTDIR'] = os.path.dirname(os.path.dirname(moc))
     elif 'darwin' == sys.platform:
-        env['QTDIR'] = os.path.expanduser('~/QtSDK/Desktop/Qt/4.8.1/gcc/')
+        env['QTDIR'] = os.path.expanduser('~/QtSDK/Desktop/Qt/4.8.0/gcc/')
 
 env.Tool('qt4', toolpath=[Dir('src/main/scons/')])
 env.EnableQt4Modules(['QtCore', 'QtTest'])
