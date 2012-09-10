@@ -123,8 +123,8 @@ class SkeinforgeToolpath(object):
                         self._log.debug('%s', log.getvalue())
                         tmp_outputpath = self._outputpath(tmp_inputpath)
                         self._postprocess(
-                            profile, outputpath, tmp_outputpath,
-                            with_start_end)
+                            profile, slicer_settings, material, outputpath,
+                            tmp_outputpath, with_start_end)
                 finally:
                     shutil.rmtree(directory)
             except Exception as e:
@@ -138,15 +138,20 @@ class SkeinforgeToolpath(object):
         gcode = ''.join((root, '.gcode'))
         return gcode
 
-    def _postprocess(self, profile, outputpath, tmp_outputpath, with_start_end):
-        with open(outputpath, 'w') as fp:
-            if with_start_end:
-                for line in profile.values['print_start_sequence']:
-                    print(line, file=fp)
-            self._appendgcode(fp, tmp_outputpath)
-            if with_start_end:
-                for line in profile.values['print_end_sequence']:
-                    print(line, file=fp)
+    def _postprocess(
+        self, profile, slicer_settings, material, outputpath, tmp_outputpath,
+        with_start_end):
+            driver = conveyor.printer.s3g.S3gDriver()
+            startgcode, endgcode, variables = driver._get_start_end_variables(
+                profile, slicer_settings, material)
+            with open(outputpath, 'w') as fp:
+                if with_start_end:
+                    for line in startgcode:
+                        print(line, file=fp)
+                self._appendgcode(fp, tmp_outputpath)
+                if with_start_end:
+                    for line in endgcode:
+                        print(line, file=fp)
 
     def _appendgcode(self, wfp, path):
         with open(path, 'r') as rfp:
