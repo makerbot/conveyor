@@ -22,13 +22,13 @@ import fnmatch
 import re
 import glob
 
-# We require Qt 4.8.1; Oneiric ships with 4.7.4. On Oneiric, use the manually installed SDK.
+# We require Qt 4.8.0; Oneiric ships with 4.7.4. On Oneiric, use the manually installed SDK.
 if sys.platform == 'linux2':
     import subprocess
     distro=subprocess.Popen(['lsb_release','-c','-s'], stdout=subprocess.PIPE).communicate()[0].strip()
     if distro == 'oneiric':
-        os.environ['QTDIR']='/opt/QtSDK/Desktop/Qt/4.8.1/gcc/'
-        os.environ['PKG_CONFIG_PATH']='/opt/QtSDK/Desktop/Qt/4.8.1/gcc/lib/pkgconfig'
+        os.environ['QTDIR']='/opt/QtSDK/Desktop/Qt/4.8.0/gcc/'
+        os.environ['PKG_CONFIG_PATH']='/opt/QtSDK/Desktop/Qt/4.8.0/gcc/lib/pkgconfig'
     elif distro == 'precise':
         pass
     else:
