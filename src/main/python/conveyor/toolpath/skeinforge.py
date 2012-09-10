@@ -240,12 +240,13 @@ class SkeinforgeToolpath(object):
             'carve.csv', 'Layer Height (mm):', self._configuration.layerheight)
         yield self._option(
             'fill.csv', 'Extra Shells on Alternating Solid Layer (layers):',
-            self._configuration.shells)
+            self._configuration.shells-1)
         yield self._option(
-            'fill.csv', 'Extra Shells on Base (layers):', self._configuration.shells)
+            'fill.csv', 'Extra Shells on Base (layers):',
+            self._configuration.shells-1)
         yield self._option(
             'fill.csv', 'Extra Shells on Sparse Layer (layers):',
-            self._configuration.shells)
+            self._configuration.shells-1)
 
     def _getarguments_stl(self, inputpath):
         yield (inputpath,)
