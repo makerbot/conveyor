@@ -73,9 +73,9 @@ namespace conveyor
     }
     
     void
-    Conveyor::uploadFirmware(Printer * const printer, QString machinetype, QString version)
+    Conveyor::uploadFirmware(QString machinetype, QString version)
     {
-        m_private->m_uploadFirmware(printer, machinetype, version);
+        m_private->m_uploadFirmware(machinetype, version);
     }
 
     EepromMap
