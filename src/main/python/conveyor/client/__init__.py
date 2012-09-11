@@ -322,7 +322,7 @@ class ClientMain(conveyor.main.AbstractMain):
         return code
 
     def _run_resettofactory(self):
-        params = {}
+        params = {'printername' : None}
         code = self._run_client('resettofactory', params, False, None)
         return code
 

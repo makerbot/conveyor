@@ -419,10 +419,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         printerthread.uploadfirmware(machinetype, version, task)
 
     @export('resettofactory')
-    def _resettofactory(Self, printername, machinetype, version):
+    def _resettofactory(self, printername):
         printerthread = self._findprinter(printername)
         task = conveyor.task.Task()
-        printerthread.resettofactory()
+        printerthread.resettofactory(task)
 
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")

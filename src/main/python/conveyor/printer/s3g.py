@@ -302,7 +302,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._currenttask = task
             self._currenttask.start()
 
-    def resettofactory(self):
+    def resettofactory(self, task):
         with self._condition:
             self._statetransition("idle", "resettofactory")
         def stoppedcallback(task):
