@@ -20,10 +20,14 @@ namespace conveyor
             EepromMapPrivate (EepromMapPrivate & other);
             EepromMapPrivate & operator= (EepromMapPrivate & other);
             EepromMapPrivate & operator= (EepromMapPrivate other);
-            std::vector<int> * getInt(QString path);
-            std::vector<QString> * getString(QString path) ;
-            void setInt(QString path, std::vector<int> value);
-            void setString(QString path, std::vector<QString> value);
+
+            std::vector<int> * getInts(QString path);
+        	std::vector<float> * getFloats(QString path);
+            std::vector<QString> * getStrings(QString path);
+            void setInts(QString path, std::vector<int> value);
+        	void setFloats(QString path, std::vector<float> value);
+            void setStrings(QString path, std::vector<QString> value);
+
             Json::Value getEepromMap(void) ;
 
         private:
