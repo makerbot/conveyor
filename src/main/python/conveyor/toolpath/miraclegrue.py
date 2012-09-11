@@ -208,6 +208,8 @@ class MiracleGrueToolpath(object):
             }
         }
         json.dump(dct, fp, indent=8)
+        s = json.dumps(dct)
+        self._log.debug('miracle grue configuration: %s', s)
 
     def _getarguments(
         self, configpath, inputpath, outputpath, startpath, endpath):
