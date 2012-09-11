@@ -23,7 +23,7 @@ EepromMapPrivate* EepromMapPrivateTestCase::createEepromMap(void)
   Json::Value root;
   Json::Reader reader; 
   reader.parse(this->eeprom_json, root);
-  EepromMapPrivate* map = new EepromMapPrivate::EepromMapPrivate(root);
+  EepromMapPrivate* map = new EepromMapPrivate(root);
   return map;
 }
 
