@@ -271,7 +271,7 @@ namespace conveyor
     ConveyorPrivate::m_getMachineVersions(QString machineType)
     {
         Json::Value params (Json::objectValue);
-        params["machinetype"] = Json::Value (machineType.toStdString());
+        params["machine_type"] = Json::Value (machineType.toStdString());
         
         Json::Value result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "getmachineversions", params)
@@ -317,11 +317,12 @@ namespace conveyor
     }
 
     EepromMap
-    ConveyorPrivate::readEeprom(void) const
+    ConveyorPrivate::readEeprom(Printer * const printer) const
     {
         Json::Value params (Json::objectValue);
+        params["printername"] = printer->uniqueName().toStdString();
         Json::Value result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "readeeprom", params)
             );
         EepromMap map (result);
         return map;
@@ -332,7 +333,7 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         params["eeprom_values"] = map.getEepromMap();
-        SynchronousCallback::invoke (this->m_jsonRpc, "write_eeprom", params);
+        SynchronousCallback::invoke (this->m_jsonRpc, "writeeeprom", params);
     }
 
     void

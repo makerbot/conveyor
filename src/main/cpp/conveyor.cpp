@@ -79,9 +79,9 @@ namespace conveyor
     }
 
     EepromMap
-    Conveyor::readEeprom (void) const
+    Conveyor::readEeprom (Printer * const printer) const
     {
-        return m_private->readEeprom();
+        return m_private->readEeprom(printer);
     }
 
     void

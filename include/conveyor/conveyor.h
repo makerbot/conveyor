@@ -31,7 +31,7 @@ namespace conveyor
         Json::Value getUploadableMachines();
         Json::Value getMachineVersions(QString machinetype);
         void uploadFirmware(QString machinetype, QString version);
-        EepromMap readEeprom(void) const;
+        EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(EepromMap eepromMap);
 
     signals:
