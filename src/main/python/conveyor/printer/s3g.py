@@ -37,28 +37,35 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._available = {}
         self._blacklist = {}
         self._config = config
-        self._lock = threading.Lock()
-        self._condition = threading.Condition(self._lock)
+        self._condition = threading.Condition()
         self._detector = makerbot_driver.MachineDetector()
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
         self._stop = False
 
-    def _runiteration(self):
-        profiledir = self._config['common']['profiledir']
-        factory = makerbot_driver.BotFactory(profiledir)
+    def _expire_blacklist(self):
         now = time.time()
         for portname, unlisttime in self._blacklist.items():
             if now >= unlisttime:
                 del self._blacklist[portname]
                 self._log.debug('removing port from blacklist: %r', portname)
+
+    def _runiteration(self):
+        self._expire_blacklist()
+        profiledir = self._config['common']['profiledir']
+        factory = makerbot_driver.BotFactory(profiledir)
         available = self._detector.get_available_machines().copy()
+        self._log.debug('self._available = %r', self._available)
         self._log.debug('available = %r', available)
         self._log.debug('blacklist = %r', self._blacklist)
+        for portname in self._blacklist.keys():
+            if portname in available:
+                del available[portname]
+        self._log.debug('available (post blacklist) = %r', available)
         old_keys = set(self._available.keys())
         new_keys = set(available.keys())
         detached = old_keys - new_keys
-        attached = new_keys - old_keys - set(self._blacklist.keys())
+        attached = new_keys - old_keys
         self._log.debug('detached = %r', detached)
         self._log.debug('attached = %r', attached)
         for portname in detached:
@@ -77,19 +84,21 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
                 except:
                     self._log.exception('unhandled exception')
                     self.blacklist(portname)
-        self._available = available
+        self._available = available.copy()
 
     def blacklist(self, portname):
-        if portname in self._available:
-            del self._available[portname]
-        now = time.time()
-        unlisttime = now + self._config['server']['blacklisttime']
-        self._blacklist[portname] = unlisttime
+        with self._condition:
+            if portname in self._available:
+                del self._available[portname]
+            now = time.time()
+            unlisttime = now + self._config['server']['blacklisttime']
+            self._blacklist[portname] = unlisttime
 
     def run(self):
         try:
             while not self._stop:
-                self._runiteration()
+                with self._condition:
+                    self._runiteration()
                 if not self._stop:
                     with self._condition:
                         self._condition.wait(10.0)
