@@ -33,6 +33,7 @@ namespace conveyor
         void uploadFirmware(QString machinetype, QString version);
         EepromMap readEeprom(void) const;
         void writeEeprom(EepromMap eepromMap);
+        void resetToFactory(void) const;
 
     signals:
         void printerAdded (Printer *);

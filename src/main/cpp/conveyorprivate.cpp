@@ -321,7 +321,7 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         Json::Value result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "read_eeprom", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "readeeprom", params)
             );
         EepromMap map (result);
         return map;
@@ -332,7 +332,13 @@ namespace conveyor
     {
         Json::Value params (Json::objectValue);
         params["eeprom_values"] = map.getEepromMap();
-        SynchronousCallback::invoke (this->m_jsonRpc, "write_eeprom", params);
+        SynchronousCallback::invoke (this->m_jsonRpc, "writeeeprom", params);
+    }
+
+    void ConveyorPrivate::resetToFactory(void) const
+    {
+        Json::Value params (Json::objectValue);
+        SynchronousCallback::invoke (this->m_jsonRpc, "resettofactory", params);
     }
 
     void
