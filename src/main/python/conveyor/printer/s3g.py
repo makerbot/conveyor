@@ -487,6 +487,7 @@ class S3gDriver(object):
         self, fp):
             s = self.create_s3g_from_fp(fp)
             s.reset_to_factory()
+            s.reset()
             return True
 
     def writeeeprom(
