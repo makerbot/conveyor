@@ -280,9 +280,13 @@ namespace conveyor
     }
 
     void
-    ConveyorPrivate::m_uploadFirmware(QString machineType, QString version)
+    ConveyorPrivate::m_uploadFirmware
+    	( Printer * const printer
+        , QString machineType
+        , QString version)
     {
         Json::Value params (Json::objectValue);
+        params["printername"] = Json::Value (printer->uniqueName().toStdString());
         params["machinetype"] = Json::Value (machineType.toStdString());
         params["version"] = Json::Value (version.toStdString());
         Json::Value result
