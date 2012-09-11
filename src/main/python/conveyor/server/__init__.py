@@ -418,6 +418,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         task = conveyor.task.Task()
         printerthread.uploadfirmware(machinetype, version, task)
 
+    @export('resettofactory')
+    def _resettofactory(Self, printername, machinetype, version):
+        printerthread = self._findprinter(printername)
+        task = conveyor.task.Task()
+        printerthread.resettofactory()
+
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
@@ -438,6 +444,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('getuploadablemachines', self._getuploadablemachines, "takes no params")
         self._jsonrpc.addmethod('getmachineversions', self._getmachineversions, ": takes (machine_type)")
         self._jsonrpc.addmethod('uploadfirmware', self._uploadfirmware, ": takes (printername, machine_type, version)")
+        self._jsonrpc.addmethod('resettofactory', self._resettofactory, ": takes no params")
 
     def run(self):
         # add our available functions to the json methods list

@@ -148,6 +148,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             "uploadingfirmware"  : False,
             "readingeeprom"  : False,
             "writingeeprom"  : False,
+            "resettofactory" : False,
             }
 
     def _statetransition(self, current, new):
@@ -277,6 +278,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._currenttask = task
             self._currenttask.start()
 
+
     def uploadfirmware(self, machine_type, version, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
@@ -296,6 +298,23 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     self._fp.open()
         task.runningevent.attach(runningcallback)
         task.stoppedevent.attach(stoppedcallback)
+        with self._condition:
+            self._currenttask = task
+            self._currenttask.start()
+
+    def resettofactory(self):
+        with self._condition:
+            self._statetransition("idle", "resettofactory")
+        def stoppedcallback(task):
+            self._statetransition("resettofactory", "idle")
+            self._currenttask = None
+        def runningcallback(task):
+            driver = S3gDriver()
+            with self._condition:
+                driver.resettofactory(self._fp)
+            task.end(None)
+        task.stoppedevent.attach(stoppedcallback)
+        task.runningevent.attach(runningcallback)
         with self._condition:
             self._currenttask = task
             self._currenttask.start()
@@ -463,6 +482,12 @@ class S3gDriver(object):
                     None, None, profile, buildname, writer, False, 5.0,
                     gcodepath, skip_start_end, slicer_settings, material,
                     task)
+
+    def resettofactory(
+        self, fp):
+            s = self.create_s3g_from_fp(fp)
+            s.reset_to_factory()
+            return True
 
     def writeeeprom(
         self, eeprommap, fp):
