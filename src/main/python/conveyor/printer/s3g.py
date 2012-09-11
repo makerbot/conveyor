@@ -231,6 +231,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                             self._profile, buildname, gcodepath,
                             skip_start_end, slicer_settings, material, task)
                     except PrinterThreadNotIdleError:
+                        self._log.debug('handled exception', exc_info=True)
                         pass
                     except makerbot_driver.BuildCancelledError:
                         self._log.debug('handled exception', exc_info=True)
@@ -243,7 +244,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         with self._condition:
                             if None is not self._currenttask:
                                 self._currenttask.fail(e)
-                  
         except:
             self._log.exception('unhandled exception')
             self._server.evictprinter(self._portname, self._fp)
