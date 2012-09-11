@@ -34,7 +34,7 @@ namespace conveyor
       return *this;
     }
     
-    std::vector<int> * EepromMapPrivate::getInts(QString path)
+    std::vector<int> * EepromMapPrivate::getInt(QString path)
     {
         QStringList split_path = this->splitPath(path);
         Json::Value theEntry(*this->getEntry(split_path));
@@ -47,7 +47,7 @@ namespace conveyor
         return return_values;
     }
 
-    std::vector<QString> * EepromMapPrivate::getStrings(QString path) 
+    std::vector<QString> * EepromMapPrivate::getString(QString path) 
     {
         QStringList split_path = this->splitPath(path);
         Json::Value theEntry(*this->getEntry(split_path));
@@ -60,7 +60,7 @@ namespace conveyor
         return return_values;
     }
 
-    void EepromMapPrivate::setInts(QString path, std::vector<int> inValue)
+    void EepromMapPrivate::setInt(QString path, std::vector<int> inValue)
     {
         QStringList split_path = this->splitPath(path);
         Json::Value * theEntry = this->getEntry(split_path);
@@ -71,7 +71,7 @@ namespace conveyor
         }
     }
 
-    void EepromMapPrivate::setStrings(QString path, std::vector<QString> inValue)
+    void EepromMapPrivate::setString(QString path, std::vector<QString> inValue)
     {
         //Get the correct map
         QStringList split_path = this->splitPath(path);

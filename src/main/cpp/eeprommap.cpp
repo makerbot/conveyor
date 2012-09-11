@@ -23,33 +23,23 @@ namespace conveyor
         return this->m_private->getEepromMap();
     }
 
-    std::vector<int> * EepromMap::getInts(QString path) const
+    std::vector<int> * EepromMap::getInt(QString path) const
     {
-        return this->m_private->getInts(path);
+        return this->m_private->getInt(path);
     }
 
-    std::vector<float> * EepromMap::getFloats(QString path) const
+    std::vector<QString> * EepromMap::getString(QString path) const
     {
-        return this->m_private->getFloats(path);
+        return this->m_private->getString(path);
     }
 
-    std::vector<QString> * EepromMap::getStrings(QString path) const
+    void EepromMap::setInt(QString path, std::vector<int> value)
     {
-        return this->m_private->getStrings(path);
+        this->m_private->setInt(path, value);
     }
 
-    void EepromMap::setInts(QString path, std::vector<int> value)
+    void EepromMap::setString(QString path, std::vector<QString> value)
     {
-        this->m_private->setInts(path, value);
-    }
-
-    void EepromMap::setFloats(QString path, std::vector<float> value)
-    {
-        this->m_private->setFloats(path, value);
-    }
-
-    void EepromMap::setStrings(QString path, std::vector<QString> value)
-    {
-        this->m_private->setStrings(path, value);
+        this->m_private->setString(path, value);
     } 
 }
