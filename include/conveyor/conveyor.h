@@ -36,7 +36,7 @@ namespace conveyor
             , QString version
             );
         EepromMap readEeprom(Printer * const printer) const;
-        void writeEeprom(EepromMap eepromMap);
+        void writeEeprom(Printer * const printer, EepromMap eepromMap);
 
     signals:
         void printerAdded (Printer *);

@@ -333,10 +333,11 @@ namespace conveyor
     }
 
     void
-    ConveyorPrivate::writeEeprom(EepromMap map)
+    ConveyorPrivate::writeEeprom(Printer * const printer, EepromMap map)
     {
         Json::Value params (Json::objectValue);
-        params["eeprom_values"] = map.getEepromMap();
+        params["printername"] = printer->uniqueName().toStdString();
+        params["eeprommap"] = map.getEepromMap();
         SynchronousCallback::invoke (this->m_jsonRpc, "writeeeprom", params);
     }
 
