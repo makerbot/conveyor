@@ -77,7 +77,7 @@ namespace conveyor
         void m_uploadFirmware(Printer * const printer, QString machineType, QString version);
 
         EepromMap readEeprom(Printer * const printer) const;
-        void writeEeprom(EepromMap map);
+        void writeEeprom(Printer * const printer, EepromMap map);
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

@@ -85,9 +85,9 @@ namespace conveyor
     }
 
     void
-    Conveyor::writeEeprom(EepromMap map)
+    Conveyor::writeEeprom(Printer * const printer, EepromMap map)
     {
-        m_private->writeEeprom(map);
+        m_private->writeEeprom(printer, map);
     }
 
     void
