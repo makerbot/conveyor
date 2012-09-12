@@ -25,6 +25,7 @@ import logging
 import makerbot_driver
 import os
 import os.path
+import signal
 import sys
 import threading
 
@@ -64,6 +65,9 @@ class ServerMain(conveyor.main.AbstractMain):
         except ImportError:
             self._log.debug('handled exception', exc_info=True)
         if self._parsedargs.nofork or (not has_daemon):
+            def terminate(signum, frame):
+                sys.exit(0)
+            signal.signal(signal.SIGTERM, terminate)
             code = self._run_server()
         else:
             files_preserve = list(conveyor.log.getfiles())
