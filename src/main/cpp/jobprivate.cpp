@@ -49,6 +49,7 @@ namespace conveyor
         , m_job(job)
         , m_printer(0)
         , m_id(id)
+        , m_state(RUNNING)
     {
 
     }

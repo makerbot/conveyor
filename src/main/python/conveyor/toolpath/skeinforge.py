@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import cStringIO as StringIO
 import logging
 import os
 import os.path
@@ -32,6 +33,7 @@ import traceback
 
 import conveyor.enum
 import conveyor.event
+import conveyor.printer.s3g # TODO: aww, more bad coupling
 
 SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 'FULL')
 
@@ -57,11 +59,24 @@ class SkeinforgeToolpath(object):
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
 
+    def _update_progress(self, current_progress, new_progress, task):
+        if None is not new_progress and new_progress != current_progress:
+            current_progress = new_progress
+            task.heartbeat(current_progress)
+        return current_progress
+
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
         slicer_settings, material, task):
             self._log.info('slicing with Skeinforge')
             try:
+                current_progress = None
+                new_progress = {
+                    'name': 'slice',
+                    'progress': 0
+                }
+                current_progress = self._update_progress(
+                    current_progress, new_progress, task)
                 directory = tempfile.mkdtemp()
                 try:
                     tmp_inputpath = os.path.join(
@@ -70,16 +85,21 @@ class SkeinforgeToolpath(object):
                     arguments = list(
                         self._getarguments(tmp_inputpath))
                     self._log.debug('arguments=%r', arguments)
+
+                    quoted_arguments = [''.join(('"', str(a), '"')) for a in arguments]
+                    self._log.info('quoted_arguments=%s', ' '.join(quoted_arguments))
+
                     popen = subprocess.Popen(
                         arguments, executable=sys.executable,
-                        stdout=subprocess.PIPE)
-                    log = ''
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    log = StringIO.StringIO()
                     buffer = ''
                     while True:
                         data = popen.stdout.read(1) # :(
                         if '' == data:
                             break
                         else:
+                            log.write(data)
                             buffer += data
                             match = self._regex.search(buffer)
                             if None is not match:
@@ -90,19 +110,21 @@ class SkeinforgeToolpath(object):
                                     "layer" : layer,
                                     "total" : total,
                                     "name" : "slice",
-                                    "progress" : (layer/float(total))*100,
+                                    "progress" : int((layer/float(total))*100),
                                 }
                                 task.heartbeat(progress)
                     code = popen.wait()
                     self._log.debug(
                         'Skeinforge terminated with status code %d', code)
                     if 0 != code:
+                        self._log.error('%s', log.getvalue())
                         raise Exception(code)
                     else:
+                        self._log.debug('%s', log.getvalue())
                         tmp_outputpath = self._outputpath(tmp_inputpath)
                         self._postprocess(
-                            profile, outputpath, tmp_outputpath,
-                            with_start_end)
+                            profile, slicer_settings, material, outputpath,
+                            tmp_outputpath, with_start_end)
                 finally:
                     shutil.rmtree(directory)
             except Exception as e:
@@ -116,15 +138,20 @@ class SkeinforgeToolpath(object):
         gcode = ''.join((root, '.gcode'))
         return gcode
 
-    def _postprocess(self, profile, outputpath, tmp_outputpath, with_start_end):
-        with open(outputpath, 'w') as fp:
-            if with_start_end:
-                for line in profile.values['print_start_sequence']:
-                    print(line, file=fp)
-            self._appendgcode(fp, tmp_outputpath)
-            if with_start_end:
-                for line in profile.values['print_end_sequence']:
-                    print(line, file=fp)
+    def _postprocess(
+        self, profile, slicer_settings, material, outputpath, tmp_outputpath,
+        with_start_end):
+            driver = conveyor.printer.s3g.S3gDriver()
+            startgcode, endgcode, variables = driver._get_start_end_variables(
+                profile, slicer_settings, material)
+            with open(outputpath, 'w') as fp:
+                if with_start_end:
+                    for line in startgcode:
+                        print(line, file=fp)
+                self._appendgcode(fp, tmp_outputpath)
+                if with_start_end:
+                    for line in endgcode:
+                        print(line, file=fp)
 
     def _appendgcode(self, wfp, path):
         with open(path, 'r') as rfp:
@@ -215,15 +242,16 @@ class SkeinforgeToolpath(object):
         yield self._option(
             'fill.csv', 'Infill Width over Thickness (ratio):', ratio)
         yield self._option(
-            'carve.csv', 'Layer Thickness (mm):', self._configuration.layerheight)
+            'carve.csv', 'Layer Height (mm):', self._configuration.layerheight)
         yield self._option(
             'fill.csv', 'Extra Shells on Alternating Solid Layer (layers):',
-            self._configuration.shells)
+            self._configuration.shells-1)
         yield self._option(
-            'fill.csv', 'Extra Shells on Base (layers):', self._configuration.shells)
+            'fill.csv', 'Extra Shells on Base (layers):',
+            self._configuration.shells-1)
         yield self._option(
             'fill.csv', 'Extra Shells on Sparse Layer (layers):',
-            self._configuration.shells)
+            self._configuration.shells-1)
 
     def _getarguments_stl(self, inputpath):
         yield (inputpath,)

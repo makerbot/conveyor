@@ -9,6 +9,8 @@
 
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
+#include <conveyor/eeprommap.h>
+
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -80,14 +82,12 @@ namespace conveyor
         , m_printerRemovedMethod(this)
         , m_jobAddedMethod(this)
         , m_jobChangedMethod(this)
-        , m_jobRemovedMethod(this)
     {
         this->m_jsonRpc->addMethod("printeradded", & m_printerAddedMethod);
         this->m_jsonRpc->addMethod("printerchanged", & m_printerChangedMethod);
         this->m_jsonRpc->addMethod("printerremoved", & m_printerRemovedMethod);
         this->m_jsonRpc->addMethod("jobadded", & m_jobAddedMethod);
         this->m_jsonRpc->addMethod("jobchanged", & m_jobChangedMethod);
-        this->m_jsonRpc->addMethod("jobremoved", & m_jobRemovedMethod);
     }
 
     ConveyorPrivate::~ConveyorPrivate (void)
@@ -207,14 +207,15 @@ namespace conveyor
         , QString const & inputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
+        , bool const skipStartEnd 
         )
     {
         Json::Value params (Json::objectValue);
         Json::Value null;
         params["printername"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
-        params["preprocessor"] = null;
-        params["skip_start_end"] = Json::Value (false);
+        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
@@ -234,6 +235,7 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
+        , bool const skipStartEnd 
         )
     {
         Json::Value params (Json::objectValue);
@@ -241,8 +243,8 @@ namespace conveyor
         params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["preprocessor"] = null;
-        params["skip_start_end"] = Json::Value (false);
+        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
@@ -253,6 +255,39 @@ namespace conveyor
             );
 
         return jobById(result["id"].asInt());
+    }
+
+    Json::Value
+    ConveyorPrivate::m_getUploadableMachines(void)
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "getuploadablemachines", params)
+            );
+        return result;
+    }
+
+    Json::Value
+    ConveyorPrivate::m_getMachineVersions(QString machineType)
+    {
+        Json::Value params (Json::objectValue);
+        params["machinetype"] = Json::Value (machineType.toStdString());
+        
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "getmachineversions", params)
+            );
+        return result;
+    }
+
+    void
+    ConveyorPrivate::m_uploadFirmware(QString machineType, QString version)
+    {
+        Json::Value params (Json::objectValue);
+        params["machinetype"] = Json::Value (machineType.toStdString());
+        params["version"] = Json::Value (version.toStdString());
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "uploadfirmware", params)
+            );
     }
 
     Job *
@@ -269,7 +304,7 @@ namespace conveyor
         params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["preprocessor"] = null;
+        params["preprocessor"] = Json::Value (Json::arrayValue);
         params["with_start_end"] = Json::Value (false);
         params["slicer_settings"] = slicer_conf.toJSON();
         params["material"] = Json::Value (material.toStdString());
@@ -279,6 +314,31 @@ namespace conveyor
             );
 
         return jobById(result["id"].asInt());
+    }
+
+    EepromMap
+    ConveyorPrivate::readEeprom(void) const
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "readeeprom", params)
+            );
+        EepromMap map (result);
+        return map;
+    }
+
+    void
+    ConveyorPrivate::writeEeprom(EepromMap map)
+    {
+        Json::Value params (Json::objectValue);
+        params["eeprom_values"] = map.getEepromMap();
+        SynchronousCallback::invoke (this->m_jsonRpc, "writeeeprom", params);
+    }
+
+    void ConveyorPrivate::resetToFactory(void) const
+    {
+        Json::Value params (Json::objectValue);
+        SynchronousCallback::invoke (this->m_jsonRpc, "resettofactory", params);
     }
 
     void

@@ -11,6 +11,8 @@ namespace conveyor
     class ConnectionThread;
     class Conveyor;
     class ConveyorPrivate;
+    class EepromMap;
+    class EepromMapPrivate;
     class Job;
     class JobPrivate;
     class PipeAddress;

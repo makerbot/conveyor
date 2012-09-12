@@ -22,8 +22,8 @@ namespace conveyor
 
         int id (void) const;
         QString name (void) const;
-        JobState jobState (void) const;
-        JobConclusion jobConclusion (void) const;
+        JobState state (void) const;
+        JobConclusion conclusion (void) const;
 
         int currentStepProgress (void) const;
         QString currentStepName (void) const;

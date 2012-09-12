@@ -393,10 +393,18 @@ class JsonRpc(object):
                     response = self._invalidparams(id)
         return response
 
+    def _fixkwargs(self, kwargs):
+        kwargs1 = {}
+        for k, v in kwargs.items():
+            k = str(k)
+            kwargs1[k] = v
+        return kwargs1
+
     def _invokemethod(self, id, func, args, kwargs):
         self._log.debug(
             'id=%r, func=%r, args=%r, kwargs=%r', id, func, args, kwargs)
         response = None
+        kwargs = self._fixkwargs(kwargs)
         try:
             result = func(*args, **kwargs)
         except TypeError as e:

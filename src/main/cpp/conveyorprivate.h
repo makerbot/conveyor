@@ -11,6 +11,7 @@
 #include <conveyor.h>
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
+#include <conveyor/eeprommap.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -19,7 +20,6 @@
 #include "printerremovedmethod.h"
 #include "jobaddedmethod.h"
 #include "jobchangedmethod.h"
-#include "jobremovedmethod.h"
 #include "printerprivate.h"
 
 namespace conveyor
@@ -52,6 +52,7 @@ namespace conveyor
             , QString const & inputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const skipStartEnd
             );
         Job * printToFile
             ( Printer * printer
@@ -59,6 +60,7 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const skipStartEnd
             );
         Job * slice
             ( Printer * printer
@@ -69,6 +71,14 @@ namespace conveyor
             );
             
         void cancelJob (int jobId);
+
+        Json::Value m_getUploadableMachines(void);
+        Json::Value m_getMachineVersions(QString machineType);
+        void m_uploadFirmware(QString machineType, QString version);
+
+        EepromMap readEeprom(void) const;
+        void writeEeprom(EepromMap map);
+        void resetToFactory(void) const;
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;
@@ -81,7 +91,6 @@ namespace conveyor
         PrinterRemovedMethod m_printerRemovedMethod;
         JobAddedMethod m_jobAddedMethod;
         JobChangedMethod m_jobChangedMethod;
-        JobRemovedMethod m_jobRemovedMethod;
 
         /** Cached jobs, potentially including defunct jobs */
         QHash<int, Job *> m_jobs;

@@ -97,6 +97,12 @@ Common Types
 
             A material name.
 
+        preprocessors
+
+            [ (preprocessor-name)
+            , ...
+            ]
+
         preprocessor-name :: (string)
 
             A preprocessor name.
@@ -203,7 +209,7 @@ Server
 
                 { "uniquename":      (printer-unique-name)
                 , "inputpath":       (absolute-file-path)
-                , "preprocessor":    (preprocessor-name)
+                , "preprocessor":    (preprocessors)
                 , "skip_start_end":  (bool)
                 , "archive_lvl":     (archive-level)
                 , "archive_dir:"     (absolute-directory-path)
@@ -226,7 +232,7 @@ Server
                 { "profilename":     (profile-name)
                 , "inputpath":       (absolute-file-path)
                 , "outputpath":      (absolute-file-path)
-                , "preprocessor":    (string)
+                , "preprocessor":    (preprocessors)
                 , "skip_start_end":  (bool)
                 , "archive_lvl":     (archive-level)
                 , "archive_dir:"     (absolute-directory-path)
@@ -247,7 +253,7 @@ Server
                 { "profilename":     (profile-name)
                 , "inputpath":       (absolute-file-path)
                 , "outputpath":      (absolute-file-path)
-                , "preprocessor":    (string)
+                , "preprocessor":    (preprocessors)
                 , "skip_start_end":  (bool)
                 , "archive_lvl":     (archive-level)
                 , "archive_dir:"     (absolute-directory-path)
