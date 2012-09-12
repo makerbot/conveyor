@@ -133,7 +133,7 @@ class Printer(DomainObject):
             display_name=profile.values['type'],
             unique_name=printerid,
             printer_type=profile.values['type'],
-            machinename=profile.values['mahcinenames']
+            machinename=profile.values['machineNames']
             can_print=True,
             can_printtofile=True,
             has_heated_platform=len(profile.values['heated_platforms']) != 0,

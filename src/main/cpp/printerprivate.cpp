@@ -64,7 +64,7 @@ namespace conveyor
         QStringList machineNames;
         for(Json::ArrayIndex i = 0; i < json["machineNames"].size(); ++i)
         {
-            machineNames << QString(json["machienNames"][i].asCString());
+            machineNames << QString(json["machineNames"][i].asCString());
         }
         
 
