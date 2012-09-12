@@ -37,28 +37,35 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         self._available = {}
         self._blacklist = {}
         self._config = config
-        self._lock = threading.Lock()
-        self._condition = threading.Condition(self._lock)
+        self._condition = threading.Condition()
         self._detector = makerbot_driver.MachineDetector()
         self._log = logging.getLogger(self.__class__.__name__)
         self._server = server
         self._stop = False
 
-    def _runiteration(self):
-        profiledir = self._config['common']['profiledir']
-        factory = makerbot_driver.BotFactory(profiledir)
+    def _expire_blacklist(self):
         now = time.time()
         for portname, unlisttime in self._blacklist.items():
             if now >= unlisttime:
                 del self._blacklist[portname]
                 self._log.debug('removing port from blacklist: %r', portname)
+
+    def _runiteration(self):
+        self._expire_blacklist()
+        profiledir = self._config['common']['profiledir']
+        factory = makerbot_driver.BotFactory(profiledir)
         available = self._detector.get_available_machines().copy()
+        self._log.debug('self._available = %r', self._available)
         self._log.debug('available = %r', available)
         self._log.debug('blacklist = %r', self._blacklist)
+        for portname in self._blacklist.keys():
+            if portname in available:
+                del available[portname]
+        self._log.debug('available (post blacklist) = %r', available)
         old_keys = set(self._available.keys())
         new_keys = set(available.keys())
         detached = old_keys - new_keys
-        attached = new_keys - old_keys - set(self._blacklist.keys())
+        attached = new_keys - old_keys
         self._log.debug('detached = %r', detached)
         self._log.debug('attached = %r', attached)
         for portname in detached:
@@ -77,19 +84,21 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
                 except:
                     self._log.exception('unhandled exception')
                     self.blacklist(portname)
-        self._available = available
+        self._available = available.copy()
 
     def blacklist(self, portname):
-        if portname in self._available:
-            del self._available[portname]
-        now = time.time()
-        unlisttime = now + self._config['server']['blacklisttime']
-        self._blacklist[portname] = unlisttime
+        with self._condition:
+            if portname in self._available:
+                del self._available[portname]
+            now = time.time()
+            unlisttime = now + self._config['server']['blacklisttime']
+            self._blacklist[portname] = unlisttime
 
     def run(self):
         try:
             while not self._stop:
-                self._runiteration()
+                with self._condition:
+                    self._runiteration()
                 if not self._stop:
                     with self._condition:
                         self._condition.wait(10.0)
@@ -116,6 +125,14 @@ def _gettemperature(profile, s3g):
     }
     return temperature
 
+class PrinterThreadNotIdleError(Exception):
+    def __init__(self):
+        pass
+
+class PrinterThreadBadStateError(Exception):
+    def __init__(self):
+        pass
+
 class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def __init__(self, server, config, portname, printerid, profile, fp):
         conveyor.stoppable.StoppableThread.__init__(self)
@@ -131,6 +148,29 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         self._queue = collections.deque()
         self._server = server
         self._stop = False
+        self._curprintjob = None
+
+        #states
+        self._states = {
+            "idle" : True,
+            "printing"  : False,
+            "uploadingfirmware"  : False,
+            "readingeeprom"  : False,
+            "writingeeprom"  : False,
+            }
+
+    def _statetransition(self, current, new):
+        #The current state should be true
+        if not self._states[current]:
+            self._log.info("error=printer_thread_not_idle, action=%s", new)
+            raise PrinterThreadNotIdleError
+        self._states[current] = False
+        #All states should be false at this point
+        if True in self._states.values():
+            self._log.info("error=bad_printer_thread_state, action=%s", new)
+            raise PrinterThreadBadStateError
+        self._states[new] = True
+        self._log.debug('oldstate=%s, newstate=%s', current, new)
 
     def getportname(self):
         return self._portname
@@ -144,15 +184,21 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def print(
         self, job, buildname, gcodepath, skip_start_end, slicer_settings,
         material, task):
+            def stoppedcallback(task):
+                with self._condition:
+                    self._currenttask = None
+                    self._curprintjob = None
+                    self._statetransition("printing", "idle")
+            task.stoppedevent.attach(stoppedcallback)
             self._log.debug(
                 'job=%r, buildname=%r, gcodepath=%r, skip_start_end=%r, slicer_settings=%r, material=%r, task=%r',
                 job, buildname, gcodepath, skip_start_end, slicer_settings,
                 material, task)
             with self._condition:
-                tuple_ = (
+                printjob = (
                     job, buildname, gcodepath, skip_start_end,
                     slicer_settings, material, task)
-                self._queue.appendleft(tuple_)
+                self._queue.appendleft(printjob)
                 self._condition.notify_all()
 
     def run(self):
@@ -162,12 +208,10 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             now = time.time()
             polltime = now + 5.0
             while not self._stop:
-                with self._condition:
-                    if 0 == len(self._queue):
-                        tuple_ = None
-                    else:
-                        tuple_ = self._queue.pop()
-                if None is tuple_:
+                if self._states['idle'] and self._curprintjob is None:
+                    with self._condition:
+                        if 0 < len(self._queue):
+                            self._curprintjob = self._queue.pop()
                     now = time.time()
                     if polltime <= now:
                         polltime = now + 5.0
@@ -184,20 +228,20 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         self._log.debug('waiting')
                         self._condition.wait(1.0)
                         self._log.debug('resumed')
-                else:
-                    job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = tuple_
-                    with self._condition:
-                        self._currenttask = task
-                    def stoppedcallback(task):
-                        with self._condition:
-                            self._currenttask = None
-                    task.stoppedevent.attach(stoppedcallback)
+                elif self._states['idle'] and self._curprintjob is not None:
+                    job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = self._curprintjob
                     driver = S3gDriver()
                     try:
+                        with self._condition:
+                            self._statetransition("idle", "printing")
+                            self._currenttask = task
                         driver.print(
                             self._server, self._portname, self._fp,
                             self._profile, buildname, gcodepath,
                             skip_start_end, slicer_settings, material, task)
+                    except PrinterThreadNotIdleError:
+                        self._log.debug('handled exception', exc_info=True)
+                        pass
                     except makerbot_driver.BuildCancelledError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
@@ -214,6 +258,56 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._server.evictprinter(self._portname, self._fp)
         finally:
             self._fp.close()
+
+    def readeeprom(self):
+        driver = S3gDriver()
+        with self._condition:
+            self._statetransition("idle", "readingeeprom")
+            eeprommap = driver.readeeprom(self._fp)
+            self._statetransition("readingeeprom", "idle")
+        return eeprommap
+
+    def writeeeprom(self, eeprommap, task):
+        with self._condition:
+            self._statetransition("idle", "writingeeprom")
+        def stoppedcallback(task):
+            with self._condition:
+                self._statetransition("writingeeprom", "idle")
+                self._currenttask = None
+            task.end(None)
+        def runningcallback(task):
+            driver = S3gDriver()
+            with self._condition:
+                driver.writeeeprom(eeprommap, self._fp)
+            task.end(None)
+        task.stoppedevent.attach(stoppedcallback)
+        task.runningevent.attach(runningcallback)
+        with self._condition:
+            self._currenttask = task
+            self._currenttask.start()
+
+    def uploadfirmware(self, machine_type, version, task):
+        with self._condition:
+            self._statetransition("idle", "uploadingfirmware")
+        def stoppedcallback(task):
+            self._statetransition("uploadingfirmware", "idle")
+            self._currenttask = None
+        def runningcallback(task):
+            uploader = makerbot_driver.Firmware.Uploader()
+            with self._condition:
+                self._fp.close()
+                try:
+                    uploader.upload_firmware(self._fp.port, machine_type, version)
+                    task.end(None)
+                except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
+                    task.fail(e) 
+                finally:
+                    self._fp.open()
+        task.runningevent.attach(runningcallback)
+        task.stoppedevent.attach(stoppedcallback)
+        with self._condition:
+            self._currenttask = task
+            self._currenttask.start()
 
     def stop(self):
         with self._condition:
@@ -378,3 +472,26 @@ class S3gDriver(object):
                     None, None, profile, buildname, writer, False, 5.0,
                     gcodepath, skip_start_end, slicer_settings, material,
                     task)
+
+    def writeeeprom(
+        self, eeprommap, fp):
+            s = self.create_s3g_from_fp(fp)
+            version = str(s.get_version())
+            version = version.replace('0', '.')
+            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version)
+            eeprom_writer.write_entire_map(eeprommap)
+            return True
+
+    def readeeprom(
+        self, fp):
+            s = self.create_s3g_from_fp(fp)
+            version = str(s.get_version())
+            version = version.replace('0', '.')
+            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version)
+            the_map = eeprom_reader.read_entire_map()
+            return the_map
+
+    def create_s3g_from_fp(self, fp):
+        s = makerbot_driver.s3g()
+        s.writer = makerbot_driver.Writer.StreamWriter(fp)
+        return s

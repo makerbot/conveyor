@@ -1,0 +1,679 @@
+{
+  "eeprom_map": {
+    "ACCELERATION_SETTINGS": {
+      "eeprom_map": "acceleration_eeprom_offsets", 
+      "offset": "0x016E", 
+      "sub_map": {
+        "ACCELERATION_RATE_OFFSET": {
+          "offset": "0x02", 
+          "type": "H", 
+          "value": [
+            3000
+          ]
+        }, 
+        "ACTIVE_OFFSET": {
+          "offset": "0x00", 
+          "type": "B", 
+          "value": [
+            0
+          ]
+        }, 
+        "AXIS_JERK_OFFSET": {
+          "floating_point": "True", 
+          "offset": "0x0E", 
+          "type": "HHHHH", 
+          "value": [
+            20.0, 
+            20.0, 
+            1.0, 
+            2.0, 
+            2.0
+          ]
+        }, 
+        "AXIS_RATES_OFFSET": {
+          "offset": "0x04", 
+          "type": "HHHHH", 
+          "value": [
+            3000, 
+            3000, 
+            1000, 
+            3000, 
+            3000
+          ]
+        }, 
+        "DEFAULTS_FLAG": {
+          "offset": "0x1A", 
+          "type": "B", 
+          "value": [
+            128
+          ]
+        }, 
+        "MINIMUM_SPEED": {
+          "offset": "0x18", 
+          "type": "H", 
+          "value": [
+            15
+          ]
+        }
+      }
+    }, 
+    "AXIS_HOME_DIRECTION": {
+      "offset": "0x000C", 
+      "type": "B", 
+      "value": [
+        27
+      ]
+    }, 
+    "AXIS_HOME_POSITIONS_STEPS": {
+      "offset": "0x000E", 
+      "type": "iiiii", 
+      "value": [
+        14309, 
+        6778, 
+        0, 
+        0, 
+        0
+      ]
+    }, 
+    "AXIS_INVERSION": {
+      "offset": "0x0002", 
+      "type": "B", 
+      "value": [
+        23
+      ]
+    }, 
+    "AXIS_LENGTHS": {
+      "offset": "0x018C", 
+      "type": "IIIII", 
+      "value": [
+        10685, 
+        6966, 
+        60000, 
+        9627520, 
+        9627520
+      ]
+    }, 
+    "BOT_STATUS_BYTES": {
+      "offset": "0x018A", 
+      "type": "BB", 
+      "value": [
+        255, 
+        255
+      ]
+    }, 
+    "BUZZ_SETTINGS": {
+      "eeprom_map": "buzz_eeprom_offsets", 
+      "offset": "0x014A", 
+      "sub_map": {
+        "BASIC_BUZZ_OFFSET": {
+          "offset": "0x00", 
+          "type": "HH", 
+          "value": [
+            123, 
+            65535
+          ]
+        }, 
+        "DONE_BUZZ_OFFSET": {
+          "offset": "0x08", 
+          "type": "HH", 
+          "value": [
+            65535, 
+            65535
+          ]
+        }, 
+        "ERROR_BUZZ_OFFSET": {
+          "offset": "0x04", 
+          "type": "HH", 
+          "value": [
+            500, 
+            65535
+          ]
+        }
+      }
+    }, 
+    "COMMIT_VERSION": {
+      "offset": "0x004A", 
+      "type": "H", 
+      "value": [
+        65535
+      ]
+    }, 
+    "DIGI_POT_SETTINGS": {
+      "offset": "0x0006", 
+      "type": "BBBBB", 
+      "value": [
+        118, 
+        118, 
+        40, 
+        118, 
+        118
+      ]
+    }, 
+    "ENDSTOP_INVERSION": {
+      "offset": "0x0004", 
+      "type": "B", 
+      "value": [
+        159
+      ]
+    }, 
+    "FILAMENT_HELP_SETTINGS": {
+      "offset": "0x0160", 
+      "type": "B", 
+      "value": [
+        1
+      ]
+    }, 
+    "FIRST_BOOT_FLAG": {
+      "offset": "0x0156", 
+      "type": "B", 
+      "value": [
+        1
+      ]
+    }, 
+    "INTERNAL_VERSION": {
+      "offset": "0x0048", 
+      "type": "H", 
+      "value": [
+        65535
+      ]
+    }, 
+    "LED_STRIP_SETTINGS": {
+      "eeprom_map": "blink_eeprom_offsets", 
+      "offset": "0x0140", 
+      "sub_map": {
+        "BASIC_COLOR_OFFSET": {
+          "offset": "0x00", 
+          "type": "B", 
+          "value": [
+            0
+          ]
+        }, 
+        "CUSTOM_COLOR_OFFSET": {
+          "offset": "0x04", 
+          "type": "BBB", 
+          "value": [
+            255, 
+            0, 
+            0
+          ]
+        }, 
+        "LED_HEAT_OFFSET": {
+          "offset": "0x02", 
+          "type": "B", 
+          "value": [
+            1
+          ]
+        }
+      }
+    }, 
+    "MACHINE_NAME": {
+      "length": "16", 
+      "offset": "0x0022", 
+      "type": "s", 
+      "value": [
+        "The Replicator"
+      ]
+    }, 
+    "PREHEAT_SETTINGS": {
+      "eeprom_map": "preheat_eeprom_offsets", 
+      "offset": "0x0158", 
+      "sub_map": {
+        "PREHEAT_LEFT_OFFSET": {
+          "offset": "0x02", 
+          "type": "H", 
+          "value": [
+            220
+          ]
+        }, 
+        "PREHEAT_ON_OFF_OFFSET": {
+          "offset": "0x06", 
+          "type": "B", 
+          "value": [
+            5
+          ]
+        }, 
+        "PREHEAT_PLATFORM_OFFSET": {
+          "offset": "0x04", 
+          "type": "H", 
+          "value": [
+            110
+          ]
+        }, 
+        "PREHEAT_RIGHT_OFFSET": {
+          "offset": "0x00", 
+          "type": "H", 
+          "value": [
+            220
+          ]
+        }
+      }
+    }, 
+    "T0_DATA_BASE": {
+      "eeprom_map": "toolhead_eeprom_offsets", 
+      "offset": "0x0100", 
+      "sub_map": {
+        "BACKOFF_FORWARD_TIME": {
+          "offset": "0x0006", 
+          "type": "H", 
+          "value": [
+            500
+          ]
+        }, 
+        "BACKOFF_REVERSE_TIME": {
+          "offset": "0x0004", 
+          "type": "H", 
+          "value": [
+            500
+          ]
+        }, 
+        "BACKOFF_STOP_TIME": {
+          "offset": "0x0002", 
+          "type": "H", 
+          "value": [
+            5
+          ]
+        }, 
+        "BACKOFF_TRIGGER_TIME": {
+          "offset": "0x0008", 
+          "type": "H", 
+          "value": [
+            300
+          ]
+        }, 
+        "COOLING_FAN_SETTINGS": {
+          "eeprom_map": "cooler_eeprom_offsets", 
+          "offset": "0x001A", 
+          "sub_map": {
+            "ENABLE_OFFSET": {
+              "offset": "0", 
+              "type": "B", 
+              "value": [
+                1
+              ]
+            }, 
+            "SETPOINT_C_OFFSET": {
+              "offset": "1", 
+              "type": "B", 
+              "value": [
+                50
+              ]
+            }
+          }
+        }, 
+        "EXTRA_FEATURES": {
+          "offset": "0x0016", 
+          "type": "H", 
+          "value": [
+            65535
+          ]
+        }, 
+        "EXTRUDER_PID_BASE": {
+          "eeprom_map": "pid_eeprom_offsets", 
+          "offset": "0x000A", 
+          "sub_map": {
+            "D_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "4", 
+              "type": "H", 
+              "value": [
+                36.0
+              ]
+            }, 
+            "I_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "2", 
+              "type": "H", 
+              "value": [
+                0.33
+              ]
+            }, 
+            "P_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "0", 
+              "type": "H", 
+              "value": [
+                7.0
+              ]
+            }
+          }
+        }, 
+        "FEATURES": {
+          "offset": "0x0000", 
+          "type": "H", 
+          "value": [
+            65287
+          ]
+        }, 
+        "HBP_PID_BASE": {
+          "eeprom_map": "pid_eeprom_offsets", 
+          "offset": "0x0010", 
+          "sub_map": {
+            "D_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "4", 
+              "type": "H", 
+              "value": [
+                36.0
+              ]
+            }, 
+            "I_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "2", 
+              "type": "H", 
+              "value": [
+                0.33
+              ]
+            }, 
+            "P_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "0", 
+              "type": "H", 
+              "value": [
+                7.0
+              ]
+            }
+          }
+        }, 
+        "SLAVE_ID": {
+          "offset": "0x0018", 
+          "type": "B", 
+          "value": [
+            50
+          ]
+        }
+      }, 
+      "tool_index": "0"
+    }, 
+    "T1_DATA_BASE": {
+      "eeprom_map": "toolhead_eeprom_offsets", 
+      "offset": "0x011C", 
+      "sub_map": {
+        "BACKOFF_FORWARD_TIME": {
+          "offset": "0x0006", 
+          "type": "H", 
+          "value": [
+            500
+          ]
+        }, 
+        "BACKOFF_REVERSE_TIME": {
+          "offset": "0x0004", 
+          "type": "H", 
+          "value": [
+            500
+          ]
+        }, 
+        "BACKOFF_STOP_TIME": {
+          "offset": "0x0002", 
+          "type": "H", 
+          "value": [
+            5
+          ]
+        }, 
+        "BACKOFF_TRIGGER_TIME": {
+          "offset": "0x0008", 
+          "type": "H", 
+          "value": [
+            300
+          ]
+        }, 
+        "COOLING_FAN_SETTINGS": {
+          "eeprom_map": "cooler_eeprom_offsets", 
+          "offset": "0x001A", 
+          "sub_map": {
+            "ENABLE_OFFSET": {
+              "offset": "0", 
+              "type": "B", 
+              "value": [
+                1
+              ]
+            }, 
+            "SETPOINT_C_OFFSET": {
+              "offset": "1", 
+              "type": "B", 
+              "value": [
+                50
+              ]
+            }
+          }
+        }, 
+        "EXTRA_FEATURES": {
+          "offset": "0x0016", 
+          "type": "H", 
+          "value": [
+            65535
+          ]
+        }, 
+        "EXTRUDER_PID_BASE": {
+          "eeprom_map": "pid_eeprom_offsets", 
+          "offset": "0x000A", 
+          "sub_map": {
+            "D_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "4", 
+              "type": "H", 
+              "value": [
+                36.0
+              ]
+            }, 
+            "I_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "2", 
+              "type": "H", 
+              "value": [
+                0.33
+              ]
+            }, 
+            "P_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "0", 
+              "type": "H", 
+              "value": [
+                7.0
+              ]
+            }
+          }
+        }, 
+        "FEATURES": {
+          "offset": "0x0000", 
+          "type": "H", 
+          "value": [
+            65336
+          ]
+        }, 
+        "HBP_PID_BASE": {
+          "eeprom_map": "pid_eeprom_offsets", 
+          "offset": "0x0010", 
+          "sub_map": {
+            "D_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "4", 
+              "type": "H", 
+              "value": [
+                36.0
+              ]
+            }, 
+            "I_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "2", 
+              "type": "H", 
+              "value": [
+                0.33
+              ]
+            }, 
+            "P_TERM_OFFSET": {
+              "floating_point": "True", 
+              "offset": "0", 
+              "type": "H", 
+              "value": [
+                7.0
+              ]
+            }
+          }
+        }, 
+        "SLAVE_ID": {
+          "offset": "0x0018", 
+          "type": "B", 
+          "value": [
+            50
+          ]
+        }
+      }, 
+      "tool_index": "1"
+    }, 
+    "THERM_TABLE": {
+      "eeprom_map": "therm_eeprom_offsets", 
+      "offset": "0x0074", 
+      "sub_map": {
+        "THERM_BETA_OFFSET": {
+          "offset": "0x08", 
+          "type": "i", 
+          "value": [
+            4067
+          ]
+        }, 
+        "THERM_DATA_OFFSET": {
+          "mult": "40", 
+          "offset": "0x10", 
+          "type": "H", 
+          "value": [
+            13862, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878, 
+            13878
+          ]
+        }, 
+        "THERM_R0_OFFSET": {
+          "offset": "0x00", 
+          "type": "i", 
+          "value": [
+            100000
+          ]
+        }, 
+        "THERM_T0_OFFSET": {
+          "offset": "0x04", 
+          "type": "i", 
+          "value": [
+            25
+          ]
+        }
+      }
+    }, 
+    "TOOLHEAD_OFFSET_SETTINGS": {
+      "offset": "0x0162", 
+      "type": "iii", 
+      "value": [
+        31066, 
+        0, 
+        0
+      ]
+    }, 
+    "TOOL_COUNT": {
+      "offset": "0x0042", 
+      "type": "B", 
+      "value": [
+        1
+      ]
+    }, 
+    "TOTAL_BUILD_TIME": {
+      "eeprom_map": "build_time_offsets", 
+      "offset": "0x01A0", 
+      "sub_map": {
+        "HOURS_OFFSET": {
+          "offset": "0x00", 
+          "type": "H", 
+          "value": [
+            0
+          ]
+        }, 
+        "MINUTES_OFFSET": {
+          "offset": "0x02", 
+          "type": "B", 
+          "value": [
+            1
+          ]
+        }
+      }
+    }, 
+    "UUID": {
+      "mult": "16", 
+      "offset": "0x01A4", 
+      "type": "B", 
+      "value": [
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255, 
+        255
+      ]
+    }, 
+    "VERSION_HIGH": {
+      "offset": "0x0001", 
+      "type": "B", 
+      "value": [
+        5
+      ]
+    }, 
+    "VERSION_LOW": {
+      "offset": "0x0000", 
+      "type": "B", 
+      "value": [
+        5
+      ]
+    }, 
+    "VID_PID_INFO": {
+      "offset": "0x0044", 
+      "type": "HH", 
+      "value": [
+        9153, 
+        46084
+      ]
+    }
+  }
+}

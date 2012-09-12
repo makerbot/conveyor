@@ -11,6 +11,7 @@
 #include <conveyor.h>
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
+#include <conveyor/eeprommap.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -70,6 +71,13 @@ namespace conveyor
             );
             
         void cancelJob (int jobId);
+
+        Json::Value m_getUploadableMachines(void);
+        Json::Value m_getMachineVersions(QString machineType);
+        void m_uploadFirmware(Printer * const printer, QString machineType, QString version);
+
+        EepromMap readEeprom(Printer * const printer) const;
+        void writeEeprom(EepromMap map);
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

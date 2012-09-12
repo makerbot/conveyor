@@ -82,7 +82,8 @@ libconveyor = cppenv.StaticLibrary(
         cppenv.Moc4('include/conveyor/conveyor.h'),
         cppenv.Moc4('include/conveyor/job.h'),
         cppenv.Moc4('include/conveyor/printer.h'),
-        cppenv.Moc4('include/conveyor/slicers.h')
+        cppenv.Moc4('include/conveyor/slicers.h'),
+        cppenv.Moc4('include/conveyor/eeprommap.h')
     ])
 
 inst = []

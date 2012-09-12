@@ -387,6 +387,37 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         result = job.todict()
         return result
 
+    @export('writeeeprom')
+    def _writeeeprom(self, printername, eeprommap):
+        printerthread = self._findprinter(printername)
+        task = conveyor.task.Task()
+        printerthread.writeeeprom(eeprommap, task)
+        return None
+
+    @export('readeeprom')
+    def _readeeprom(self, printername):
+        printerthread = self._findprinter(printername)
+        eeprommap = printerthread.readeeprom()
+        return eeprommap
+
+    @export('getuploadablemachines')
+    def _getuploadablemachines(self):
+        uploader = makerbot_driver.Firmware.Uploader()        
+        machines = uploader.list_machines()
+        return machines
+
+    @export('getmachineversions')
+    def _getmachineversions(self, machine_type):
+        uploader = makerbot_driver.Firmware.Uploader()
+        versions = uploader.list_firmware_versions(machine_type)
+        return versions
+
+    @export('uploadfirmware')
+    def _uploadfirmware(self, printername, machinetype, version):
+        printerthread = self._findprinter(printername)
+        task = conveyor.task.Task()
+        printerthread.uploadfirmware(machinetype, version, task)
+
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
@@ -402,6 +433,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('getprinters', self._getprinters)
         self._jsonrpc.addmethod('getjob', self._getjob)
         self._jsonrpc.addmethod('getjobs', self._getjobs)
+        self._jsonrpc.addmethod('writeeeprom', self._writeeeprom, "takes (eeprom_values)")
+        self._jsonrpc.addmethod('readeeprom', self._readeeprom, "takes no params")
+        self._jsonrpc.addmethod('getuploadablemachines', self._getuploadablemachines, "takes no params")
+        self._jsonrpc.addmethod('getmachineversions', self._getmachineversions, ": takes (machine_type)")
+        self._jsonrpc.addmethod('uploadfirmware', self._uploadfirmware, ": takes (printername, machine_type, version)")
 
     def run(self):
         # add our available functions to the json methods list

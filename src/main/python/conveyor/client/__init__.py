@@ -57,6 +57,11 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_printers,
             self._initsubparser_printtofile,
             self._initsubparser_slice,
+            self._initsubparser_readeeprom,
+            self._initsubparser_writeeeprom,
+            self._initsubparser_getuploadablemachines,
+            self._initsubparser_getmachineversions,
+            self._initsubparser_uploadfirmware,
         ):
                 method(subparsers)
 
@@ -232,6 +237,64 @@ class ClientMain(conveyor.main.AbstractMain):
             help='set the slicer',
             dest='slicer')
 
+    def _initsubparser_getuploadablemachines(self, subparsers):
+        parser = subparsers.add_parser(
+            'getuploadablemachines',
+            help='get list of machines we can upload to')
+        parser.set_defaults(func=self._run_getuploadablemachines)
+        self._initparser_common(parser)
+
+    def _initsubparser_getmachineversions(self, subparsers):
+        parser = subparsers.add_parser(
+            'getmachineversions',
+            help='get versions associated with this machine')
+        parser.set_defaults(func=self._run_getmachineversions)
+        self._initparser_common(parser)
+        parser.add_argument(
+            '--machinetype',
+            default='TheReplicator',
+            help='get version numbers associated with this machine',
+            dest='machinetype')
+
+    def _initsubparser_uploadfirmware(self, subparsers):
+        parser = subparsers.add_parser(
+            'uploadfirmware',
+            help='upload firmware to the bot')
+        parser.set_defaults(func=self._run_uploadfirmware)
+        self._initparser_common(parser)
+        parser.add_argument(
+            '--machinetype',
+            default='TheReplicator',
+            help='machine to upload to',
+            dest='machinetype')
+        parser.add_argument(
+            '--machineversion',
+            default='5.5',
+            help='version to upload',
+            dest='version')
+
+    def _initsubparser_readeeprom(self, subparsers):
+        parser = subparsers.add_parser(
+            'readeeprom',
+            help="read a machine's eeprom")
+        parser.set_defaults(func=self._run_readeeprom)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'outputpath',
+            help='the output path for the read eeprom map',
+            metavar='OUTPUTPATH')
+
+    def _initsubparser_writeeeprom(self, subparsers):
+        parser = subparsers.add_parser(
+            'writeeeprom',
+            help="write a json map to a machine's eeprom")
+        parser.set_defaults(func=self._run_writeeeprom)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'inputpath',
+            help="the path to the json eeprom map",
+            metavar="INPUTPATH")
+
     def _run(self):
         self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
@@ -247,6 +310,52 @@ class ClientMain(conveyor.main.AbstractMain):
                 'Unable to connect to conveyor server. Please verify that it is running.')
         else:
             code = self._parsedargs.func()
+        return code
+
+    def _run_getuploadablemachines(self):
+        def display(result):
+            print(result)
+        params = {}
+        code = self._run_client('getuploadablemachines', params, False, display)
+        return code
+
+    def _run_getmachineversions(self):
+        def display(result):
+            print(result)
+        params = {'machine_type': self._parsedargs.machinetype}
+        code = self._run_client('getmachineversions', params, False, display)
+        return code
+
+    def _run_uploadfirmware(self):
+        params = {
+            'printername' : None,
+            'machinetype' : self._parsedargs.machinetype,
+            'version' : self._parsedargs.version,
+            }
+        code = self._run_client('uploadfirmware', params, False, None)
+        return code
+
+    def _run_readeeprom(self):
+        outputpath = os.path.abspath(self._parsedargs.outputpath)
+        def writeout(result):
+            dumps = json.dumps(result, sort_keys=True, indent=2)
+            with open(outputpath, 'w') as f:
+                f.write(dumps)
+        params = {
+            'printername' : None,
+            }
+        code = self._run_client('readeeprom', params, False, writeout)
+        return code
+
+    def _run_writeeeprom(self):
+        inputpath = os.path.abspath(self._parsedargs.inputpath)
+        with open(inputpath) as f:
+            eeprommap = json.load(f)
+        params = {
+            'printername' : None,
+            'eeprommap' : eeprommap,
+            }
+        code = self._run_client('writeeeprom', params, False, None)
         return code
 
     def _run_cancel(self):
