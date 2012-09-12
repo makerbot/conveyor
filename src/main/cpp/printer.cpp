@@ -82,6 +82,12 @@ namespace conveyor
     }
 
     QString const &
+    Printer::machineName () const
+    {
+        return m_private->m_machineName;
+    }
+
+    QString const &
     Printer::printerType () const
     {
         return m_private->m_printerType;

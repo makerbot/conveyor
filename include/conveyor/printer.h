@@ -53,6 +53,9 @@ namespace conveyor
             printer names */
         QString const & uniqueName () const;
 
+        /** A name for the machine (i.e. TheReplicator)*/
+        QString const & machineName() const;
+
         /** A string represenetation of the type of printer this is */
         QString const & printerType () const;
 

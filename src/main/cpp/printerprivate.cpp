@@ -39,6 +39,7 @@ namespace conveyor
         this->m_connectionStatus = NOT_CONNECTED;
         this->m_displayName = "Dummy Printer";
         this->m_printerType = "Replicator";
+        this->m_machineName = "TheReplicator";
         this->m_numberOfToolheads = 2;
         this->m_hasHeatedPlatform = true;
     }
@@ -48,6 +49,7 @@ namespace conveyor
     {
         QString const uniqueName(json["uniqueName"].asCString());
         QString const displayName(json["displayName"].asCString());
+        QString const machineName(json["machineName"].asCString());
         bool const canPrint(json["canPrint"].asBool());
         bool const canPrintToFile(json["canPrintToFile"].asBool());
         ConnectionStatus const connectionStatus
@@ -59,6 +61,7 @@ namespace conveyor
 
         m_uniqueName = uniqueName;
         m_displayName = displayName;
+        m_machineName = machineName;
         m_canPrint = canPrint;
         m_canPrintToFile = canPrintToFile;
         m_connectionStatus = connectionStatus;
