@@ -88,8 +88,11 @@ class RecipeManager(object):
 
     def _getrecipe_thing_zip(self, job):
         directory = tempfile.mkdtemp()
-        with zipfile.ZipFile(job.path, 'r') as zip:
+        zip = zipfile.ZipFile(job.path, 'r')
+        try:
             zip.extractall(directory)
+        finally:
+            zip.close()
         recipe = self._getrecipe_thing_dir(job, directory)
         return recipe
 
