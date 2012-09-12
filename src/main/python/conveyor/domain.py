@@ -89,13 +89,13 @@ class Job(DomainObject):
 
 class Printer(DomainObject):
     def __init__(
-        self, display_name, unique_name, printer_type, machine_name, can_print,
+        self, display_name, unique_name, printer_type, machine_names, can_print,
         can_printtofile, has_heated_platform, number_of_toolheads,
         connection_status, temperature):
             self.display_name = display_name
             self.unique_name = unique_name
             self.printer_type = printer_type
-            self.machine_name = machine_name
+            self.machine_names = machine_names
             self.can_print = can_print
             self.can_printtofile = can_printtofile
             self.has_heated_platform = has_heated_platform
@@ -108,7 +108,7 @@ class Printer(DomainObject):
             'displayName': self.display_name,
             'uniqueName': self.unique_name,
             'printerType': self.printer_type,
-            'machineName' : self.machine_name,
+            'machineNames' : self.machine_name,
             'canPrint': self.can_print,
             'canPrintToFile': self.can_printtofile,
             'hasHeatedPlatform': self.has_heated_platform,
@@ -122,7 +122,7 @@ class Printer(DomainObject):
     def fromdict(dct):
         printer = Printer(
             dct['displayName'], dct['uniqueName'], dct['printerType'],
-            dct['machineName'], dct['canPrint'], dct['canPrintToFile'], 
+            dct['machineNames'], dct['canPrint'], dct['canPrintToFile'], 
             dct['hasHeatedPlatform'], dct['numberOfToolheads'], 
             dct['connectionStatus'], dct['temperature'])
         return printer
@@ -133,7 +133,7 @@ class Printer(DomainObject):
             display_name=profile.values['type'],
             unique_name=printerid,
             printer_type=profile.values['type'],
-            machinename=profile.values['mahcinename']
+            machinename=profile.values['mahcinenames']
             can_print=True,
             can_printtofile=True,
             has_heated_platform=len(profile.values['heated_platforms']) != 0,

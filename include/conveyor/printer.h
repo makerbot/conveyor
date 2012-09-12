@@ -7,6 +7,7 @@
 #include <QMap>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QScopedPointer>
 
 #include <conveyor/fwd.h>
@@ -53,8 +54,8 @@ namespace conveyor
             printer names */
         QString const & uniqueName () const;
 
-        /** A name for the machine (i.e. TheReplicator)*/
-        QString const & machineName() const;
+        /** Names a type of machine can be known by*/
+        QStringList const & machineNames() const;
 
         /** A string represenetation of the type of printer this is */
         QString const & printerType () const;

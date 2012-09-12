@@ -2,6 +2,7 @@
 
 #include <QUuid>
 #include <QDebug>
+#include <QStringList>
 
 #include <conveyor.h>
 #include <conveyor/exceptions.h>
@@ -81,10 +82,10 @@ namespace conveyor
         return m_private->m_uniqueName;
     }
 
-    QString const &
-    Printer::machineName () const
+    QStringList const &
+    Printer::machineNames () const
     {
-        return m_private->m_machineName;
+        return m_private->m_machineNames;
     }
 
     QString const &
