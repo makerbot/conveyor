@@ -52,7 +52,6 @@ namespace conveyor
     {
         QString const uniqueName(json["uniqueName"].asCString());
         QString const displayName(json["displayName"].asCString());
-        QString const machineName(json["machineName"].asCString());
         bool const canPrint(json["canPrint"].asBool());
         bool const canPrintToFile(json["canPrintToFile"].asBool());
         ConnectionStatus const connectionStatus
