@@ -392,8 +392,9 @@ class S3gDriver(object):
             parser.s3g.writer = writer
             def cancelcallback(task):
                 try:
-                    parser.s3g.abort_immediately()
                     writer.set_external_stop()
+                    if polltemperature:
+                        parser.s3g.abort_immediately()
                 except makerbot_driver.Writer.ExternalStopError:
                     self._log.debug('handled exception', exc_info=True)
             task.cancelevent.attach(cancelcallback)
@@ -447,15 +448,16 @@ class S3gDriver(object):
                     current_progress = self._update_progress(
                         current_progress, new_progress, task)
 
-            while conveyor.task.TaskState.STOPPED != task.state:
-                build_stats = parser.s3g.get_build_stats()
-                build_state = build_stats['BuildState']
-                self._log.debug('build_stats=%r', build_stats)
-                self._log.debug('build_state=%r', build_state)
-                if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
-                    break
-                else:
-                    time.sleep(0.2) # TODO: wait on a condition
+            if polltemperature:
+                while conveyor.task.TaskState.STOPPED != task.state:
+                    build_stats = parser.s3g.get_build_stats()
+                    build_state = build_stats['BuildState']
+                    self._log.debug('build_stats=%r', build_stats)
+                    self._log.debug('build_state=%r', build_state)
+                    if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
+                        break
+                    else:
+                        time.sleep(0.2) # TODO: wait on a condition
 
             if conveyor.task.TaskState.STOPPED != task.state:
                 new_progress = {
