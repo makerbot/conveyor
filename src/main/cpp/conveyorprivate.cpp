@@ -341,6 +341,12 @@ namespace conveyor
         SynchronousCallback::invoke (this->m_jsonRpc, "writeeeprom", params);
     }
 
+    void ConveyorPrivate::resetToFactory(void) const
+    {
+        Json::Value params (Json::objectValue);
+        SynchronousCallback::invoke (this->m_jsonRpc, "resettofactory", params);
+    }
+
     void
     ConveyorPrivate::cancelJob (int jobId)
     {

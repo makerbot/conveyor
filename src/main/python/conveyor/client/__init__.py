@@ -62,6 +62,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_getuploadablemachines,
             self._initsubparser_getmachineversions,
             self._initsubparser_uploadfirmware,
+            self._initsubparser_resettofactory,
         ):
                 method(subparsers)
 
@@ -295,6 +296,14 @@ class ClientMain(conveyor.main.AbstractMain):
             help="the path to the json eeprom map",
             metavar="INPUTPATH")
 
+    def _initsubparser_resettofactory(self, subparsers):
+        parser = subparsers.add_parser(
+            'resettofactory',
+            help="reset the machine's eeprom to factory settings",
+            )
+        parser.set_defaults(func=self._run_resettofactory)
+        self._initparser_common(parser)
+
     def _run(self):
         self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
@@ -312,10 +321,15 @@ class ClientMain(conveyor.main.AbstractMain):
             code = self._parsedargs.func()
         return code
 
+    def _run_resettofactory(self):
+        params = {'printername' : None}
+        code = self._run_client('resettofactory', params, False, None)
+        return code
+
     def _run_getuploadablemachines(self):
         def display(result):
             print(result)
-        params = {}
+        params = {'printername' : None}
         code = self._run_client('getuploadablemachines', params, False, display)
         return code
 

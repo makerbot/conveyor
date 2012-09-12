@@ -91,6 +91,12 @@ namespace conveyor
     }
 
     void
+    Conveyor::resetToFactory(void) const
+    {
+        m_private->resetToFactory();
+    }
+
+    void
     Conveyor::emitPrinterAdded (Printer * const p)
     {
         emit printerAdded(p);

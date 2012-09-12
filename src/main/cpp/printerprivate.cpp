@@ -8,6 +8,9 @@
 
 #include <stdexcept>
 
+#include <QString>
+#include <QStringList>
+
 namespace
 {
     static
@@ -39,6 +42,7 @@ namespace conveyor
         this->m_connectionStatus = NOT_CONNECTED;
         this->m_displayName = "Dummy Printer";
         this->m_printerType = "Replicator";
+        this->m_machineNames = QStringList("TheReplicator");
         this->m_numberOfToolheads = 2;
         this->m_hasHeatedPlatform = true;
     }
@@ -48,6 +52,7 @@ namespace conveyor
     {
         QString const uniqueName(json["uniqueName"].asCString());
         QString const displayName(json["displayName"].asCString());
+        QString const machineName(json["machineName"].asCString());
         bool const canPrint(json["canPrint"].asBool());
         bool const canPrintToFile(json["canPrintToFile"].asBool());
         ConnectionStatus const connectionStatus
@@ -56,9 +61,16 @@ namespace conveyor
         QString const printerType(QString(json["printerType"].asCString()));
         int const numberOfToolheads(json["numberOfToolheads"].asInt());
         bool const hasHeatedPlatform(json["hasHeatedPlatform"].asBool());
+        QStringList machineNames;
+        for(Json::ArrayIndex i = 0; i < json["machineNames"].size(); ++i)
+        {
+            machineNames << QString(json["machineNames"][i].asCString());
+        }
+        
 
         m_uniqueName = uniqueName;
         m_displayName = displayName;
+        m_machineNames = machineNames;
         m_canPrint = canPrint;
         m_canPrintToFile = canPrintToFile;
         m_connectionStatus = connectionStatus;
