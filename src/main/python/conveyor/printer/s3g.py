@@ -241,7 +241,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                             skip_start_end, slicer_settings, material, task)
                     except PrinterThreadNotIdleError:
                         self._log.debug('handled exception', exc_info=True)
-                        pass
                     except makerbot_driver.BuildCancelledError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
@@ -386,19 +385,20 @@ class S3gDriver(object):
             }
             current_progress = self._update_progress(
                 current_progress, new_progress, task)
-            def stoppedcallback(task):
-                writer.set_external_stop()
-            task.stoppedevent.attach(stoppedcallback)
             parser = makerbot_driver.Gcode.GcodeParser()
             parser.state.profile = profile
             parser.state.set_build_name(str(buildname))
             parser.s3g = makerbot_driver.s3g()
             parser.s3g.writer = writer
-            def stoppedcallback(task):
-                #Reset the bot
-                parser.s3g.abort_immediately()
-                writer.set_external_stop()
-            task.stoppedevent.attach(stoppedcallback)
+            def cancelcallback(task):
+                try:
+                    parser.s3g.abort_immediately()
+                    writer.set_external_stop()
+                except makerbot_driver.Writer.ExternalStopError:
+                    self._log.debug('handled exception', exc_info=True)
+            task.cancelevent.attach(cancelcallback)
+            self._log.debug('resetting machine %s', portname)
+            parser.s3g.reset()
             now = time.time()
             polltime = now + pollinterval
             if not polltemperature:
@@ -446,6 +446,17 @@ class S3gDriver(object):
                             server.changeprinter(portname, temperature)
                     current_progress = self._update_progress(
                         current_progress, new_progress, task)
+
+            while conveyor.task.TaskState.STOPPED != task.state:
+                build_stats = parser.s3g.get_build_stats()
+                build_state = build_stats['BuildState']
+                self._log.debug('build_stats=%r', build_stats)
+                self._log.debug('build_state=%r', build_state)
+                if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
+                    break
+                else:
+                    time.sleep(0.2) # TODO: wait on a condition
+
             if conveyor.task.TaskState.STOPPED != task.state:
                 new_progress = {
                     'name': 'print',
