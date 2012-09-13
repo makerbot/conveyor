@@ -341,9 +341,10 @@ namespace conveyor
         SynchronousCallback::invoke (this->m_jsonRpc, "writeeeprom", params);
     }
 
-    void ConveyorPrivate::resetToFactory(void) const
+    void ConveyorPrivate::resetToFactory(Printer * const printer) const
     {
         Json::Value params (Json::objectValue);
+        params["printername"] = printer->uniqueName().toStdString();
         SynchronousCallback::invoke (this->m_jsonRpc, "resettofactory", params);
     }
 

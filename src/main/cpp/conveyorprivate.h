@@ -78,7 +78,7 @@ namespace conveyor
 
         EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(Printer * const printer, EepromMap map);
-        void resetToFactory(void) const;
+        void resetToFactory(Printer * const printer) const;
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

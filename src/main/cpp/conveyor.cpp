@@ -91,9 +91,9 @@ namespace conveyor
     }
 
     void
-    Conveyor::resetToFactory(void) const
+    Conveyor::resetToFactory(Printer * const printer) const
     {
-        m_private->resetToFactory();
+        m_private->resetToFactory(printer);
     }
 
     void
