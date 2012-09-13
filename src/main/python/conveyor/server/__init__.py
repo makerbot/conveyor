@@ -64,10 +64,11 @@ class ServerMain(conveyor.main.AbstractMain):
             has_daemon = True
         except ImportError:
             self._log.debug('handled exception', exc_info=True)
+        def handle_sigterm(signum, frame):
+            self._log.info('received signal %d', signum)
+            sys.exit(0)
         if self._parsedargs.nofork or (not has_daemon):
-            def terminate(signum, frame):
-                sys.exit(0)
-            signal.signal(signal.SIGTERM, terminate)
+            signal.signal(signal.SIGTERM, handle_sigterm)
             code = self._run_server()
         else:
             files_preserve = list(conveyor.log.getfiles())
@@ -79,12 +80,10 @@ class ServerMain(conveyor.main.AbstractMain):
             if not self._config['server']['chdir']:
                 dct['working_directory'] = os.getcwd()
             context = daemon.DaemonContext(**dct)
-            def terminate(signal_number, stack_frame):
-                # The daemon module's implementation of terminate()
-                # raises a SystemExit with a string message instead of
-                # an exit code. This monkey patch fixes it.
-                sys.exit(0)
-            context.terminate = terminate # monkey patch!
+            # The daemon module's implementation of terminate() raises a
+            # SystemExit with a string message instead of an exit code. This
+            # monkey patch fixes it.
+            context.terminate = handle_sigterm # monkey patch!
             try:
                 with context:
                     code = self._run_server()
