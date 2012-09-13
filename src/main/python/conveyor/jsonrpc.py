@@ -175,6 +175,12 @@ class JsonRpcException(Exception):
         self.message = message
         self.data = data
 
+# TODO: This TaskFactory nonsense is a pretty terrible hack. Ugh.
+
+class TaskFactory(object):
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError
+
 class JsonRpc(object):
     def __init__(self, infp, outfp):
         self._idcounter = 0
@@ -377,20 +383,27 @@ class JsonRpc(object):
     def _handlerequest(self, request, id):
         self._log.debug('request=%r, id=%r', request, id)
         method = request['method']
-        if method not in self._methods:
-            response = self._methodnotfound(id)
-        else:
+        if method in self._methods:
             func = self._methods[method]
             if 'params' not in request:
-                response = self._invokemethod(id, func, (), {})
+                response = self._invokesomething(id, func, (), {})
             else:
                 params = request['params']
                 if isinstance(params, dict):
-                    response = self._invokemethod(id, func, (), params)
+                    response = self._invokesomething(id, func, (), params)
                 elif isinstance(params, list):
-                    response = self._invokemethod(id, func, params, {})
+                    response = self._invokesomething(id, func, params, {})
                 else:
                     response = self._invalidparams(id)
+        else:
+            response = self._methodnotfound(id)
+        return response
+
+    def _invokesomething(self, id, func, args, kwargs):
+        if not isinstance(func, TaskFactory):
+            response = self._invokemethod(id, func, args, kwargs)
+        else:
+            response = self._invoketask(id, func, args, kwargs)
         return response
 
     def _fixkwargs(self, kwargs):
@@ -426,6 +439,45 @@ class JsonRpc(object):
             if None is not id:
                 response = self._successresponse(id, result)
         self._log.debug('response=%r', response)
+        return response
+
+    def _invoketask(self, id, func, args, kwargs):
+        self._log.debug(
+            'id=%r, func=%r, args=%r, kwargs=%r', id, func, args, kwargs)
+        response = None
+        kwargs = self._fixkwargs(kwargs)
+        try:
+            task = func(*args, **kwargs)
+        except TypeError as e:
+            self._log.debug('exception', exc_info=True)
+            if None is not id:
+                response = self._invalidparams(id)
+        except JsonRpcException as e:
+            self._log.debug('exception', exc_info=True)
+            if None is not id:
+                response = self._errorresponse(id, e.code, e.message, e.data)
+        except:
+            self._log.exception('uncaught exception')
+            if None is not id:
+                e = sys.exc_info()[1]
+                data = {'name': e.__class__.__name__, 'args': e.args}
+                response = self._errorresponse(
+                    id, -32000, 'uncaught exception', data)
+        else:
+            def stoppedcallback(task):
+                if conveyor.task.TaskConclusion.ENDED == task.conclusion:
+                    response = self._successresponse(id, task.result)
+                elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+                    response = self._errorresponse(id, -32001, 'task failed', task.failure)
+                elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+                    response = self._errorresponse(id, -32002, 'task canceled', None)
+                else:
+                    raise ValueError(task.conclusion)
+                outdata = json.dumps(response)
+                self._send(outdata)
+            task.stoppedevent.attach(stoppedcallback)
+            task.start()
+            response = None
         return response
 
     def addmethod(self, method, func, info=None):

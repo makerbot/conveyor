@@ -122,6 +122,18 @@ def export(name):
         return func
     return decorator
 
+class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self, clientthread):
+        self._clientthread = clientthread
+
+    def __call__(self, printername, machinetype, version):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            printerthread = self._clientthread._findprinter(printername)
+            printerthread.uploadfirmware(machinetype, version, task)
+        task.runningevent.attach(runningcallback)
+        return task
+
 class _ClientThread(conveyor.stoppable.StoppableThread):
     @classmethod
     def create(cls, config, server, fp, id):
@@ -415,12 +427,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         versions = uploader.list_firmware_versions(machine_type)
         return versions
 
-    @export('uploadfirmware')
-    def _uploadfirmware(self, printername, machinetype, version):
-        printerthread = self._findprinter(printername)
-        task = conveyor.task.Task()
-        printerthread.uploadfirmware(machinetype, version, task)
-
     @export('resettofactory')
     def _resettofactory(self, printername):
         printerthread = self._findprinter(printername)
@@ -446,7 +452,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('readeeprom', self._readeeprom, "takes no params")
         self._jsonrpc.addmethod('getuploadablemachines', self._getuploadablemachines, "takes no params")
         self._jsonrpc.addmethod('getmachineversions', self._getmachineversions, ": takes (machine_type)")
-        self._jsonrpc.addmethod('uploadfirmware', self._uploadfirmware, ": takes (printername, machine_type, version)")
+        uploadfirmwaretaskfactory = _UploadFirmwareTaskFactory(self)
+        self._jsonrpc.addmethod('uploadfirmware', uploadfirmwaretaskfactory, ": takes (printername, machine_type, version)")
         self._jsonrpc.addmethod('resettofactory', self._resettofactory, ": takes no params")
 
     def run(self):

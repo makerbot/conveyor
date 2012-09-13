@@ -285,28 +285,21 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._currenttask = task
             self._currenttask.start()
 
-
     def uploadfirmware(self, machine_type, version, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
-            def stoppedcallback(task):
+            uploader = makerbot_driver.Firmware.Uploader()
+            self._fp.close()
+            try:
+                uploader.upload_firmware(self._portname, machine_type, version)
+                task.end(None)
+            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
+                self._log.debug('handled exception', exc_info=True)
+                task.fail(None) # TODO: the exception is not JSON-serializable
+            finally:
+                self._fp.open()
                 self._statetransition("uploadingfirmware", "idle")
                 self._currenttask = None
-            def runningcallback(task):
-                uploader = makerbot_driver.Firmware.Uploader()
-                with self._condition:
-                    self._fp.close()
-                    try:
-                        uploader.upload_firmware(self._fp.port, machine_type, version)
-                        task.end(None)
-                    except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                        task.fail(e) 
-                    finally:
-                        self._fp.open()
-            task.runningevent.attach(runningcallback)
-            task.stoppedevent.attach(stoppedcallback)
-            self._currenttask = task
-            self._currenttask.start()
 
     def resettofactory(self, task):
         with self._condition:
