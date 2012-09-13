@@ -25,18 +25,19 @@ namespace conveyor
 
         QList<Job *> jobs (void);
         QList<Printer *> printers (void);
-        
+
         void cancelJob (int jobId);
 
         Json::Value getUploadableMachines();
         Json::Value getMachineVersions(QString machinetype);
         void uploadFirmware
-        	( Printer * const printer
+            ( Printer * const printer
             , QString machinetype
             , QString version
             );
         EepromMap readEeprom(Printer * const printer) const;
-        void writeEeprom(EepromMap eepromMap);
+        void writeEeprom(Printer * const printer, EepromMap eepromMap);
+        void resetToFactory(Printer * const printer) const;
 
     signals:
         void printerAdded (Printer *);

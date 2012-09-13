@@ -25,6 +25,7 @@ import logging
 import makerbot_driver
 import os
 import os.path
+import signal
 import sys
 import threading
 
@@ -63,7 +64,11 @@ class ServerMain(conveyor.main.AbstractMain):
             has_daemon = True
         except ImportError:
             self._log.debug('handled exception', exc_info=True)
+        def handle_sigterm(signum, frame):
+            self._log.info('received signal %d', signum)
+            sys.exit(0)
         if self._parsedargs.nofork or (not has_daemon):
+            signal.signal(signal.SIGTERM, handle_sigterm)
             code = self._run_server()
         else:
             files_preserve = list(conveyor.log.getfiles())
@@ -75,12 +80,10 @@ class ServerMain(conveyor.main.AbstractMain):
             if not self._config['server']['chdir']:
                 dct['working_directory'] = os.getcwd()
             context = daemon.DaemonContext(**dct)
-            def terminate(signal_number, stack_frame):
-                # The daemon module's implementation of terminate()
-                # raises a SystemExit with a string message instead of
-                # an exit code. This monkey patch fixes it.
-                sys.exit(0)
-            context.terminate = terminate # monkey patch!
+            # The daemon module's implementation of terminate() raises a
+            # SystemExit with a string message instead of an exit code. This
+            # monkey patch fixes it.
+            context.terminate = handle_sigterm # monkey patch!
             try:
                 with context:
                     code = self._run_server()
@@ -118,6 +121,18 @@ def export(name):
     def decorator(func):
         return func
     return decorator
+
+class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self, clientthread):
+        self._clientthread = clientthread
+
+    def __call__(self, printername, machinetype, version):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            printerthread = self._clientthread._findprinter(printername)
+            printerthread.uploadfirmware(machinetype, version, task)
+        task.runningevent.attach(runningcallback)
+        return task
 
 class _ClientThread(conveyor.stoppable.StoppableThread):
     @classmethod
@@ -412,11 +427,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         versions = uploader.list_firmware_versions(machine_type)
         return versions
 
-    @export('uploadfirmware')
-    def _uploadfirmware(self, printername, machinetype, version):
+    @export('resettofactory')
+    def _resettofactory(self, printername):
         printerthread = self._findprinter(printername)
         task = conveyor.task.Task()
-        printerthread.uploadfirmware(machinetype, version, task)
+        printerthread.resettofactory(task)
 
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
@@ -437,7 +452,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('readeeprom', self._readeeprom, "takes no params")
         self._jsonrpc.addmethod('getuploadablemachines', self._getuploadablemachines, "takes no params")
         self._jsonrpc.addmethod('getmachineversions', self._getmachineversions, ": takes (machine_type)")
-        self._jsonrpc.addmethod('uploadfirmware', self._uploadfirmware, ": takes (printername, machine_type, version)")
+        uploadfirmwaretaskfactory = _UploadFirmwareTaskFactory(self)
+        self._jsonrpc.addmethod('uploadfirmware', uploadfirmwaretaskfactory, ": takes (printername, machine_type, version)")
+        self._jsonrpc.addmethod('resettofactory', self._resettofactory, ": takes no params")
 
     def run(self):
         # add our available functions to the json methods list

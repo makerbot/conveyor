@@ -157,6 +157,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             "uploadingfirmware"  : False,
             "readingeeprom"  : False,
             "writingeeprom"  : False,
+            "resettofactory" : False,
             }
 
     def _statetransition(self, current, new):
@@ -241,7 +242,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                             skip_start_end, slicer_settings, material, task)
                     except PrinterThreadNotIdleError:
                         self._log.debug('handled exception', exc_info=True)
-                        pass
                     except makerbot_driver.BuildCancelledError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
@@ -270,42 +270,50 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def writeeeprom(self, eeprommap, task):
         with self._condition:
             self._statetransition("idle", "writingeeprom")
-        def stoppedcallback(task):
-            with self._condition:
-                self._statetransition("writingeeprom", "idle")
-                self._currenttask = None
-            task.end(None)
-        def runningcallback(task):
-            driver = S3gDriver()
-            with self._condition:
-                driver.writeeeprom(eeprommap, self._fp)
-            task.end(None)
-        task.stoppedevent.attach(stoppedcallback)
-        task.runningevent.attach(runningcallback)
-        with self._condition:
+            def stoppedcallback(task):
+                with self._condition:
+                    self._statetransition("writingeeprom", "idle")
+                    self._currenttask = None
+                task.end(None)
+            def runningcallback(task):
+                driver = S3gDriver()
+                with self._condition:
+                    driver.writeeeprom(eeprommap, self._fp)
+                task.end(None)
+            task.stoppedevent.attach(stoppedcallback)
+            task.runningevent.attach(runningcallback)
             self._currenttask = task
             self._currenttask.start()
 
     def uploadfirmware(self, machine_type, version, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
-        def stoppedcallback(task):
-            self._statetransition("uploadingfirmware", "idle")
-            self._currenttask = None
-        def runningcallback(task):
             uploader = makerbot_driver.Firmware.Uploader()
-            with self._condition:
-                self._fp.close()
-                try:
-                    uploader.upload_firmware(self._fp.port, machine_type, version)
-                    task.end(None)
-                except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                    task.fail(e) 
-                finally:
-                    self._fp.open()
-        task.runningevent.attach(runningcallback)
-        task.stoppedevent.attach(stoppedcallback)
+            self._fp.close()
+            try:
+                uploader.upload_firmware(self._portname, machine_type, version)
+                task.end(None)
+            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
+                self._log.debug('handled exception', exc_info=True)
+                task.fail(None) # TODO: the exception is not JSON-serializable
+            finally:
+                self._fp.open()
+                self._statetransition("uploadingfirmware", "idle")
+                self._currenttask = None
+
+    def resettofactory(self, task):
         with self._condition:
+            self._statetransition("idle", "resettofactory")
+            def stoppedcallback(task):
+                self._statetransition("resettofactory", "idle")
+                self._currenttask = None
+            def runningcallback(task):
+                driver = S3gDriver()
+                with self._condition:
+                    driver.resettofactory(self._fp)
+                task.end(None)
+            task.stoppedevent.attach(stoppedcallback)
+            task.runningevent.attach(runningcallback)
             self._currenttask = task
             self._currenttask.start()
 
@@ -386,19 +394,21 @@ class S3gDriver(object):
             }
             current_progress = self._update_progress(
                 current_progress, new_progress, task)
-            def stoppedcallback(task):
-                writer.set_external_stop()
-            task.stoppedevent.attach(stoppedcallback)
             parser = makerbot_driver.Gcode.GcodeParser()
             parser.state.profile = profile
             parser.state.set_build_name(str(buildname))
             parser.s3g = makerbot_driver.s3g()
             parser.s3g.writer = writer
-            def stoppedcallback(task):
-                #Reset the bot
-                parser.s3g.abort_immediately()
-                writer.set_external_stop()
-            task.stoppedevent.attach(stoppedcallback)
+            def cancelcallback(task):
+                try:
+                    writer.set_external_stop()
+                    if polltemperature:
+                        parser.s3g.abort_immediately()
+                except makerbot_driver.Writer.ExternalStopError:
+                    self._log.debug('handled exception', exc_info=True)
+            task.cancelevent.attach(cancelcallback)
+            self._log.debug('resetting machine %s', portname)
+            parser.s3g.reset()
             now = time.time()
             polltime = now + pollinterval
             if not polltemperature:
@@ -446,6 +456,18 @@ class S3gDriver(object):
                             server.changeprinter(portname, temperature)
                     current_progress = self._update_progress(
                         current_progress, new_progress, task)
+
+            if polltemperature:
+                while conveyor.task.TaskState.STOPPED != task.state:
+                    build_stats = parser.s3g.get_build_stats()
+                    build_state = build_stats['BuildState']
+                    self._log.debug('build_stats=%r', build_stats)
+                    self._log.debug('build_state=%r', build_state)
+                    if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
+                        break
+                    else:
+                        time.sleep(0.2) # TODO: wait on a condition
+
             if conveyor.task.TaskState.STOPPED != task.state:
                 new_progress = {
                     'name': 'print',
@@ -472,6 +494,13 @@ class S3gDriver(object):
                     None, None, profile, buildname, writer, False, 5.0,
                     gcodepath, skip_start_end, slicer_settings, material,
                     task)
+
+    def resettofactory(
+        self, fp):
+            s = self.create_s3g_from_fp(fp)
+            s.reset_to_factory()
+            s.reset()
+            return True
 
     def writeeeprom(
         self, eeprommap, fp):

@@ -69,7 +69,7 @@ namespace conveyor
             , const SlicerConfiguration & slicer_conf
             , QString const & material
             );
-            
+
         void cancelJob (int jobId);
 
         Json::Value m_getUploadableMachines(void);
@@ -77,7 +77,8 @@ namespace conveyor
         void m_uploadFirmware(Printer * const printer, QString machineType, QString version);
 
         EepromMap readEeprom(Printer * const printer) const;
-        void writeEeprom(EepromMap map);
+        void writeEeprom(Printer * const printer, EepromMap map);
+        void resetToFactory(Printer * const printer) const;
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;
