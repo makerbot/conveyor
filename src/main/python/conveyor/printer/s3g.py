@@ -424,8 +424,9 @@ class S3gDriver(object):
                     s3g.writer = makerbot_driver.Writer.StreamWriter(parser.s3g.writer.file)
                     s3g.abort_immediately()
             task.cancelevent.attach(cancelcallback)
-            self._log.debug('resetting machine %s', portname)
-            parser.s3g.reset()
+            if polltemperature:
+                self._log.debug('resetting machine %s', portname)
+                parser.s3g.reset()
             now = time.time()
             polltime = now + pollinterval
             if not polltemperature:
