@@ -36,6 +36,8 @@ if sys.platform == 'linux2':
 
 env = Environment(ENV=os.environ, tools=['default','qt4'])
 
+utilenv = env.Clone()
+
 Import('build_unit_tests', 'run_unit_tests')
 
 if 'win32' == sys.platform:
@@ -102,9 +104,15 @@ for root,dirnames,filenames in os.walk(pysrc_root):
 
 env.Alias('install',inst)
 
-
 tests = {}
 testenv = cppenv.Clone()
+
+if "darwin" == sys.platform:
+    utilenv.Program('bin/start_conveyor_service',
+                    'src/util/cpp/mac_start_conveyor_service.c')
+    utilenv.Program('bin/stop_conveyor_service',
+                    'src/util/cpp/mac_stop_conveyor_service.c')
+
 
 if build_unit_tests:
     testenv.Append(LIBS='cppunit')
