@@ -261,6 +261,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         with self._condition:
                             if None is not self._currenttask:
                                 self._currenttask.fail(e)
+                    now = time.time()
+                    polltime = now + 5.0
         except:
             self._log.exception('unhandled exception')
             self._server.evictprinter(self._portname, self._fp)
