@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 int main(int argc, int argv) {
     if (setuid(geteuid()) < 0) {
