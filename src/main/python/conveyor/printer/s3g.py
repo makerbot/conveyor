@@ -245,14 +245,24 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     except makerbot_driver.BuildCancelledError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
-                        with self._condition:
-                            if None is not self._currenttask:
-                                self._currenttask.cancel()
+                        if (None is not self._currenttask
+                            and conveyor.task.TaskState.STOPPED != self._currenttask.state):
+                                with self._condition:
+                                    self._currenttask.cancel()
+                    except makerbot_driver.Writer.ExternalStopError:
+                        self._log.debug('handled exception', exc_info=True)
+                        self._log.info('print canceled')
+                        if (None is not self._currenttask
+                            and conveyor.task.TaskState.STOPPED != self._currenttask.state):
+                                with self._condition:
+                                    self._currenttask.cancel()
                     except Exception as e:
                         self._log.error('unhandled exception', exc_info=True)
                         with self._condition:
                             if None is not self._currenttask:
                                 self._currenttask.fail(e)
+                    now = time.time()
+                    polltime = now + 5.0
         except:
             self._log.exception('unhandled exception')
             self._server.evictprinter(self._portname, self._fp)
@@ -401,11 +411,18 @@ class S3gDriver(object):
             parser.s3g.writer = writer
             def cancelcallback(task):
                 try:
+                    self._log.debug('setting external stop')
                     writer.set_external_stop()
-                    if polltemperature:
-                        parser.s3g.abort_immediately()
                 except makerbot_driver.Writer.ExternalStopError:
                     self._log.debug('handled exception', exc_info=True)
+                if polltemperature:
+                    self._log.debug('aborting printer')
+                    # NOTE: need a new s3g object because the old one has
+                    # external stop set.
+                    # TODO: this is a horrible hack.
+                    s3g = makerbot_driver.s3g()
+                    s3g.writer = makerbot_driver.Writer.StreamWriter(parser.s3g.writer.file)
+                    s3g.abort_immediately()
             task.cancelevent.attach(cancelcallback)
             self._log.debug('resetting machine %s', portname)
             parser.s3g.reset()
@@ -438,14 +455,7 @@ class S3gDriver(object):
                     self._log.debug('gcode: %r', data)
                     # The s3g module cannot handle unicode strings.
                     data = str(data)
-                    try:
-                        parser.execute_line(data)
-                    except makerbot_driver.Writer.ExternalStopError:
-                        self._log.debug('handled exception', exc_info=True)
-                        self._log.info('print canceled')
-                        with self._condition:
-                            if None is not self._currenttask:
-                                self._currenttask.cancel()
+                    parser.execute_line(data)
                     new_progress = {
                         'name': 'print',
                         'progress': int(parser.state.percentage)
