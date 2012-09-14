@@ -438,14 +438,7 @@ class S3gDriver(object):
                     self._log.debug('gcode: %r', data)
                     # The s3g module cannot handle unicode strings.
                     data = str(data)
-                    try:
-                        parser.execute_line(data)
-                    except makerbot_driver.Writer.ExternalStopError:
-                        self._log.debug('handled exception', exc_info=True)
-                        self._log.info('print canceled')
-                        with self._condition:
-                            if None is not self._currenttask:
-                                self._currenttask.cancel()
+                    parser.execute_line(data)
                     new_progress = {
                         'name': 'print',
                         'progress': int(parser.state.percentage)
