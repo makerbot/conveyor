@@ -8,7 +8,12 @@ int main(int argc, int argv) {
 	exit(EXIT_FAILURE);
     }
 
-    system("launchctl unload /Library/LaunchDaemons/com.makerbot.conveyor.plist");
+    int ret = system("launchctl unload /Library/LaunchDaemons/com.makerbot.conveyor.plist");
 
-    exit(EXIT_SUCCESS);
+    if (ret < 0) {
+	perror("Error in system call");
+	exit(EXIT_FAILURE);
+    }
+
+    exit(ret);
 }
