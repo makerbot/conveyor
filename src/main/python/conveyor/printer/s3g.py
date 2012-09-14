@@ -468,12 +468,22 @@ class S3gDriver(object):
                         current_progress, new_progress, task)
 
             if polltemperature:
+                '''
+                # This is the code that should be, but it requires new
+                # firmware.
                 while conveyor.task.TaskState.STOPPED != task.state:
                     build_stats = parser.s3g.get_build_stats()
                     build_state = build_stats['BuildState']
                     self._log.debug('build_stats=%r', build_stats)
                     self._log.debug('build_state=%r', build_state)
                     if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
+                        break
+                    else:
+                        time.sleep(0.2) # TODO: wait on a condition
+                '''
+                while conveyor.task.TaskState.STOPPED != task.state:
+                    available = parser.s3g.get_available_buffer_size()
+                    if 512 == available:
                         break
                     else:
                         time.sleep(0.2) # TODO: wait on a condition
