@@ -279,16 +279,31 @@ namespace conveyor
         return result;
     }
 
+    QString
+    ConveyorPrivate::m_downloadFirmware
+            ( const QString &machinetype
+            , const QString &version
+            )
+    {
+        Json::Value params (Json::objectValue);
+        params["machinetype"] = Json::Value (machinetype.toStdString());
+        params["version"] = Json::Value (version.toStdString());
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "downloadfirmware", params)
+            );
+        return result.asCString();
+    }
+
     void
     ConveyorPrivate::m_uploadFirmware
     	( Printer * const printer
         , QString machineType
-        , QString version)
+        , QString hexPath)
     {
         Json::Value params (Json::objectValue);
         params["printername"] = Json::Value (printer->uniqueName().toStdString());
         params["machinetype"] = Json::Value (machineType.toStdString());
-        params["version"] = Json::Value (version.toStdString());
+        params["filename"] = Json::Value (hexPath.toStdString());
         Json::Value result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "uploadfirmware", params)
             );

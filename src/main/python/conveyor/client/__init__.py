@@ -61,6 +61,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_writeeeprom,
             self._initsubparser_getuploadablemachines,
             self._initsubparser_getmachineversions,
+            self._initsubparser_downloadfirmware,
             self._initsubparser_uploadfirmware,
             self._initsubparser_resettofactory,
         ):
@@ -257,6 +258,23 @@ class ClientMain(conveyor.main.AbstractMain):
             help='get version numbers associated with this machine',
             dest='machinetype')
 
+    def _initsubparser_downloadfirmware(self, subparsers):
+        parser = subparsers.add_parser(
+            'downloadfirmware',
+            help='download firmware')
+        parser.set_defaults(func=self._run_downloadfirmware)
+        self._initparser_common(parser)
+        parser.add_argument(
+            '--machinetype',
+            default='TheReplicator',
+            help='machine to upload to',
+            dest='machinetype')
+        parser.add_argument(
+            '--machineversion',
+            default='5.5',
+            help='version to download',
+            dest='version')
+
     def _initsubparser_uploadfirmware(self, subparsers):
         parser = subparsers.add_parser(
             'uploadfirmware',
@@ -269,10 +287,8 @@ class ClientMain(conveyor.main.AbstractMain):
             help='machine to upload to',
             dest='machinetype')
         parser.add_argument(
-            '--machineversion',
-            default='5.5',
-            help='version to upload',
-            dest='version')
+            'filename',
+            help='firmware file to upload')
 
     def _initsubparser_readeeprom(self, subparsers):
         parser = subparsers.add_parser(
@@ -340,12 +356,22 @@ class ClientMain(conveyor.main.AbstractMain):
         code = self._run_client('getmachineversions', params, False, display)
         return code
 
+    def _run_downloadfirmware(self):
+        params = {
+            'machinetype': self._parsedargs.machinetype,
+            'version': self._parsedargs.version
+        }
+        def display(result):
+            self._log.info('downloaded firmware to: %s', result)
+        code = self._run_client('downloadfirmware', params, False, display)
+        return code
+
     def _run_uploadfirmware(self):
         params = {
-            'printername' : None,
-            'machinetype' : self._parsedargs.machinetype,
-            'version' : self._parsedargs.version,
-            }
+            'printername': None,
+            'machinetype': self._parsedargs.machinetype,
+            'filename': self._parsedargs.filename,
+        }
         code = self._run_client('uploadfirmware', params, False, None)
         return code
 
