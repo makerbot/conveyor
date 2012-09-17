@@ -295,13 +295,13 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._currenttask = task
             self._currenttask.start()
 
-    def uploadfirmware(self, machine_type, version, task):
+    def uploadfirmware(self, machine_type, filename, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
             uploader = makerbot_driver.Firmware.Uploader()
             self._fp.close()
             try:
-                uploader.upload_firmware(self._portname, machine_type, version)
+                uploader.upload_firmware(self._portname, machine_type, filename)
                 task.end(None)
             except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
                 self._log.debug('handled exception', exc_info=True)
