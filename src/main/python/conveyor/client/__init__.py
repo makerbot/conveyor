@@ -417,7 +417,7 @@ class ClientMain(conveyor.main.AbstractMain):
             support=False,
             infill=0.1,
             layer_height=0.27,
-            shells=3,
+            shells=2,
             extruder_temperature=230.0,
             platform_temperature=110.0,
             print_speed=80.0,
