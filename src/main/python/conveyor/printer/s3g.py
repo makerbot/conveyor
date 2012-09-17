@@ -217,7 +217,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                     if polltime <= now:
                         polltime = now + 5.0
                         try:
-                            temperature = _gettemperature(self._profile, s3g)
+                            with self._condition: # TODO: this is a hack
+                                temperature = _gettemperature(self._profile, s3g)
                         except makerbot_driver.BuildCancelledError:
                             self._log.debug('handled exception', exc_info=True)
                             # This happens when print from SD and cancel it on
@@ -305,7 +306,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                 task.end(None)
             except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
                 self._log.debug('handled exception', exc_info=True)
-                task.fail(None) # TODO: the exception is not JSON-serializable
+                message = str(e)
+                task.fail(message)
             finally:
                 self._fp.open()
                 self._statetransition("uploadingfirmware", "idle")

@@ -129,8 +129,12 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __call__(self, printername, machinetype, filename):
         task = conveyor.task.Task()
         def runningcallback(task):
-            printerthread = self._clientthread._findprinter(printername)
-            printerthread.uploadfirmware(machinetype, filename, task)
+            try:
+                printerthread = self._clientthread._findprinter(printername)
+                printerthread.uploadfirmware(machinetype, filename, task)
+            except Exception as e:
+                message = str(e)
+                task.fail(message)
         task.runningevent.attach(runningcallback)
         return task
 
