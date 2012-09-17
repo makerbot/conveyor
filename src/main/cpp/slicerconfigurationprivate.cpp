@@ -13,10 +13,21 @@ namespace conveyor
         {
         case SlicerConfiguration::LowQuality:
             config->setSlicer(SlicerConfiguration::MiracleGrue);
-            config->setLayerHeight(.3);
+            config->setLayerHeight(.34);
             break;
         case SlicerConfiguration::MediumQuality:
             config->setSlicer(SlicerConfiguration::MiracleGrue);
+            config->setRaft(false);
+            config->setSupports(false);
+
+            config->setInfill(0.1);
+            config->setLayerHeight(.27);
+            config->setShells(2);
+
+            config->setExtruderTemperature(230);
+
+            config->setPrintSpeed(80);
+            config->setTravelSpeed(100);
             break;
         case SlicerConfiguration::HighQuality:
             config->setSlicer(SlicerConfiguration::Skeinforge);
@@ -27,7 +38,7 @@ namespace conveyor
 
     SlicerConfigurationPrivate::SlicerConfigurationPrivate(Json::Value &) :
         m_slicer(SlicerConfiguration::MiracleGrue),
-        m_extruder(SlicerConfiguration::Left),
+        m_extruder(SlicerConfiguration::Right),
         m_raft(true),
         m_supports(false),
         m_infill(0.10),
