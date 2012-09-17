@@ -71,11 +71,20 @@ namespace conveyor
     {
         return m_private->m_getMachineVersions(machinetype);
     }
+
+    QString
+    Conveyor::downloadFirmware
+            ( const QString &machinetype
+            , const QString &version
+            )
+    {
+        return m_private->m_downloadFirmware(machinetype, version);
+    }
     
     void
-    Conveyor::uploadFirmware(Printer * const printer, QString machinetype, QString version)
+    Conveyor::uploadFirmware(Printer * const printer, QString machinetype, QString hexPath)
     {
-        m_private->m_uploadFirmware(printer, machinetype, version);
+        m_private->m_uploadFirmware(printer, machinetype, hexPath);
     }
 
     EepromMap

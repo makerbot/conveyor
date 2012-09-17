@@ -28,13 +28,36 @@ namespace conveyor
 
         void cancelJob (int jobId);
 
+        /** Get connected machines that can be uploaded to
+
+            Returns a JSON list of machine-types, which can be matched
+            against Printer::machineNames()
+          */
         Json::Value getUploadableMachines();
+
+        /** Download available firmware versions for a particular machine type
+
+            Returns a JSON list of versions. Each version is a number
+            followed by a description of what's new in that version.
+         */
         Json::Value getMachineVersions(QString machinetype);
+
+        /** Download .hex file for a particular machine-type/version combo
+
+            Returns the path of the .hex file
+        */
+        QString downloadFirmware
+            ( const QString &machinetype
+            , const QString &version
+            );
+        
+        /** Upload a .hex file to the specified bot */
         void uploadFirmware
             ( Printer * const printer
             , QString machinetype
-            , QString version
+            , QString hexPath
             );
+
         EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(Printer * const printer, EepromMap eepromMap);
         void resetToFactory(Printer * const printer) const;
