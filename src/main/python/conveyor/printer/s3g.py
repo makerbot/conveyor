@@ -285,7 +285,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                 with self._condition:
                     self._statetransition("writingeeprom", "idle")
                     self._currenttask = None
-                task.end(None)
             def runningcallback(task):
                 driver = S3gDriver()
                 with self._condition:
@@ -525,11 +524,34 @@ class S3gDriver(object):
             s.reset()
             return True
 
+    def get_version_with_dot(self, version):
+        # Log original version string
+        self._log.debug('get_version: %r', version)
+
+        # This assumes that the version string is always in 'XYY'
+        # format, where X is the major version and YY is the minor
+        # version. The EepromReader assumes that this will be
+        # converted into an X.Y format. This is a bit ill-defined,
+        # should clean this up (TODO)
+        if len(version) == 3:
+            if version[1] == '0':
+                version = version[0] + '.' + version[2]
+            else:
+                version = version[0] + '.' + version[1:2]
+        else:
+            self._log.error('unexpected version length: %r', version)
+        return version
+
+        # Log modified version string
+        self._log.debug('get_version: %r', version)
+
     def writeeeprom(
         self, eeprommap, fp):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
-            version = version.replace('0', '.')
+
+            version = self.get_version_with_dot(version)
+
             eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version)
             eeprom_writer.write_entire_map(eeprommap)
             return True
@@ -539,24 +561,7 @@ class S3gDriver(object):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
 
-            # Log original version string
-            self._log.debug('get_version: %r', version)
-
-            # This assumes that the version string is always in 'XYY'
-            # format, where X is the major version and YY is the minor
-            # version. The EepromReader assumes that this will be
-            # converted into an X.Y format. This is a bit ill-defined,
-            # should clean this up (TODO)
-            if len(version) == 3:
-                if version[1] == '0':
-                    version = version[0] + '.' + version[2]
-                else:
-                    version = version[0] + '.' + version[1:2]
-            else:
-                self._log.error('unexpected version length: %r', version)
-
-            # Log modified version string
-            self._log.debug('get_version: %r', version)
+            version = self.get_version_with_dot(version)
 
             eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version)
             the_map = eeprom_reader.read_entire_map()
