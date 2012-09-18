@@ -24,7 +24,8 @@ if [ "$1" = configure ]; then
 		chgrp conveyor /var/run/conveyor
 		# Set proper permissions for any existing lock files
 		chgrp conveyor /var/run/conveyor/* >/dev/null 2>&1 || true
-		chmod 0640 /var/run/conveyor/* >/dev/null 2>&1 || true
+		chown conveyor /var/run/conveyor/* >/dev/null 2>&1 || true
+		chmod 0644 /var/run/conveyor/* >/dev/null 2>&1 || true
 
 		# Create and set permissions for /var/log/conveyor
 		mkdir -p -m 3777 /var/log/conveyor
@@ -32,7 +33,8 @@ if [ "$1" = configure ]; then
 		chgrp conveyor /var/log/conveyor
 		# Set proper permissions for any existing log files
 		chgrp conveyor /var/log/conveyor/* >/dev/null 2>&1 || true
-		chmod 0660 /var/log/conveyor/* >/dev/null 2>&1 || true
+		chown conveyor /var/log/conveyor/* >/dev/null 2>&1 || true
+		chmod 0664 /var/log/conveyor/* >/dev/null 2>&1 || true
 
 		# Here's the part where actual, experienced package maintainers will squirm
 		# and call me names. We're putting all our python in a virtualenv.
