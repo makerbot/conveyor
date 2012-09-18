@@ -91,7 +91,7 @@ class MiracleGrueToolpath(object):
                             print(line, file=endfp)
                 with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
                     configpath = configfp.name
-                    self._generateconfig(slicer_settings, configfp)
+                    self._generateconfig(slicer_settings, material, configfp)
                 arguments = list(
                     self._getarguments(
                         configpath, inputpath, outputpath, startpath,
@@ -135,14 +135,14 @@ class MiracleGrueToolpath(object):
                     current_progress, new_progress, task)
                 task.end(None)
 
-    def _generateconfig(self, slicer_settings, fp):
+    def _generateconfig(self, slicer_settings, material, fp):
         dct = {
             'infillDensity'           : slicer_settings.infill,
             'numberOfShells'          : slicer_settings.shells,
             'insetDistanceMultiplier' : 0.9,
-            'roofLayerCount'          : 5,
-            'floorLayerCount'         : 5,
-            'layerWidthRatio'         : 1.6,
+            'roofLayerCount'          : 4,
+            'floorLayerCount'         : 4,
+            'layerWidthRatio'         : 1.45,
             'coarseness'              : 0.05,
             'doGraphOptimization'     : True,
             'rapidMoveFeedRateXY'     : slicer_settings.travel_speed,
@@ -157,6 +157,8 @@ class MiracleGrueToolpath(object):
             'doSupport'               : slicer_settings.support,
             'supportMargin'           : 1.5,
             'supportDensity'          : 0.2,
+            'doFanCommand'            : 'PLA' == material,
+            'fanLayer'                : 2,
             'bedZOffset'              : 0.0,
             'layerHeight'             : slicer_settings.layer_height,
             'startX'                  : -110.4,
@@ -190,20 +192,16 @@ class MiracleGrueToolpath(object):
             ],
             'extrusionProfiles': {
                 'insets': {
-                    'temperature': slicer_settings.extruder_temperature, # TODO: Miracle Grue current requires these but it does not actually use them.
                     'feedrate': slicer_settings.print_speed
                 },
                 'infill': {
-                    'temperature': slicer_settings.extruder_temperature,
                     'feedrate': slicer_settings.print_speed
                 },
                 'firstlayer': {
-                    'temperature': slicer_settings.extruder_temperature,
-                    'feedrate': 20.0
+                    'feedrate': 40.0
                 },
                 'outlines': {
-                    'temperature': slicer_settings.extruder_temperature,
-                    'feedrate': 35.0
+                    'feedrate': 40.0
                 }
             }
         }
