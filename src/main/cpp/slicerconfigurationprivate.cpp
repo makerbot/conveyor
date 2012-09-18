@@ -31,6 +31,7 @@ namespace conveyor
             break;
         case SlicerConfiguration::HighQuality:
             config->setSlicer(SlicerConfiguration::Skeinforge);
+            config->setLayerHeight(.1);
             break;
         }
         return config;
@@ -39,12 +40,12 @@ namespace conveyor
     SlicerConfigurationPrivate::SlicerConfigurationPrivate(Json::Value &) :
         m_slicer(SlicerConfiguration::MiracleGrue),
         m_extruder(SlicerConfiguration::Right),
-        m_raft(true),
+        m_raft(false),
         m_supports(false),
         m_infill(0.10),
         m_layerHeight(0.2),
         m_shells(3),
-        m_extruderTemperature(220),
+        m_extruderTemperature(230),
         m_platformTemperature(110),
         m_printSpeed(80),
         m_travelSpeed(150)
