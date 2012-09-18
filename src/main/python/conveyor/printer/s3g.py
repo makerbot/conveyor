@@ -285,7 +285,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                 with self._condition:
                     self._statetransition("writingeeprom", "idle")
                     self._currenttask = None
-                task.end(None)
             def runningcallback(task):
                 driver = S3gDriver()
                 with self._condition:
