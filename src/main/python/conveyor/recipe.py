@@ -161,6 +161,7 @@ class Recipe(object):
                     else:
                         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
                             out_name = f.name 
+                    self._log.info('preprocessing %s -> %s', in_name, out_name)
                     preprocessor.process_file(in_name, out_name)
                     in_name = out_name
             except Exception as e:
