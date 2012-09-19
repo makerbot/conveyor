@@ -10,4 +10,6 @@ Short-term TODO list:
 
   * Split event and task into separate projects.
 
+  * Win32 named pipe to replace TCP socket (mws has code for this).
+
   * Create the longer-term TODO list.
