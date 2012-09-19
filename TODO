@@ -1,0 +1,13 @@
+Short-term TODO list:
+
+  * Replace .bat/.sh files with .py scripts.
+
+  * Activity diagrams of the print process we have and the print process we want.
+
+  * Fix naming chaos in the JSON-RPC API.
+
+  * Delete old branches.
+
+  * Split event and task into separate projects.
+
+  * Create the longer-term TODO list.
