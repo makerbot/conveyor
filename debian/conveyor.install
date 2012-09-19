@@ -1,4 +1,5 @@
 obj/include/*			usr/include/makerbot
+src/main/skeinforge/*		usr/share/skeinforge
 obj/libconveyor.a				usr/lib/makerbot
 obj/etc/conveyor.conf			etc
 obj/module						usr/share/conveyor/lib
