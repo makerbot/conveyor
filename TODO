@@ -12,4 +12,6 @@ Short-term TODO list:
 
   * Win32 named pipe to replace TCP socket (mws has code for this).
 
+  * Add an option to the slicer configuration to let people specify a custom profile.
+
   * Create the longer-term TODO list.
