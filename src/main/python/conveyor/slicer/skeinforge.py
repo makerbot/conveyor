@@ -1,5 +1,5 @@
 # vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
-# conveyor/src/main/python/conveyor/toolpath/skeinforge.py
+# conveyor/src/main/python/conveyor/slicer/skeinforge.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.
 # Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
@@ -52,7 +52,7 @@ class SkeinforgeConfiguration(object):
         self.layerheight = 0.27
         self.shells = 1
 
-class SkeinforgeToolpath(object):
+class SkeinforgeToolpath(conveyor.slicer.Slicer):
     def __init__(self, configuration):
         self._configuration = configuration
         self._log = logging.getLogger(self.__class__.__name__)

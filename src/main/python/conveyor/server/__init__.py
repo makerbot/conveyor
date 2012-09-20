@@ -39,6 +39,8 @@ import conveyor.jsonrpc
 import conveyor.main
 import conveyor.printer.s3g
 import conveyor.recipe
+import conveyor.slicer.miraclegrue
+import conveyor.slicer.skeinforge
 import conveyor.stoppable
 
 class ServerMain(conveyor.main.AbstractMain):
@@ -690,21 +692,21 @@ class Server(object):
 
     def _getslicer(self, slicer_settings):
         if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
-            configuration = conveyor.toolpath.miraclegrue.MiracleGrueConfiguration()
+            configuration = conveyor.slicer.miraclegrue.MiracleGrueConfiguration()
             configuration.miraclegruepath = self._config['miraclegrue']['path']
             configuration.miracleconfigpath = self._config['miraclegrue']['config']
-            slicer = conveyor.toolpath.miraclegrue.MiracleGrueToolpath(configuration)
+            slicer = conveyor.slicer.miraclegrue.MiracleGrueToolpath(configuration)
         elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
             configuration = self._createskeinforgeconfiguration(slicer_settings)
             configuration.skeinforgepath = self._config['skeinforge']['path']
             configuration.profile = self._config['skeinforge']['profile']
-            slicer = conveyor.toolpath.skeinforge.SkeinforgeToolpath(configuration)
+            slicer = conveyor.slicer.skeinforge.SkeinforgeToolpath(configuration)
         else:
             raise ValueError(slicer_settings.slicer)
         return slicer
 
     def _createskeinforgeconfiguration(self, slicer_settings):
-        configuration = conveyor.toolpath.skeinforge.SkeinforgeConfiguration()
+        configuration = conveyor.slicer.skeinforge.SkeinforgeConfiguration()
         configuration.raft = slicer_settings.raft
         configuration.support = slicer_settings.support
         configuration.infillratio = slicer_settings.infill

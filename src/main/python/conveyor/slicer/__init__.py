@@ -1,5 +1,5 @@
 # vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
-# conveyor/src/main/python/conveyor/toolpath/__init__.py
+# conveyor/src/main/python/conveyor/slicer/__init__.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.
 # Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
@@ -18,3 +18,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import (absolute_import, print_function, unicode_literals)
+
+class Slicer(object):
+    pass
