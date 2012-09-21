@@ -54,16 +54,9 @@ class SkeinforgeConfiguration(object):
 
 class SkeinforgeToolpath(conveyor.slicer.Slicer):
     def __init__(self, configuration):
-        self._configuration = configuration
-        self._log = logging.getLogger(self.__class__.__name__)
+        conveyor.slicer.Slicer.__init__(self, configuration)
         self._regex = re.compile(
             'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
-
-    def _update_progress(self, current_progress, new_progress, task):
-        if None is not new_progress and new_progress != current_progress:
-            current_progress = new_progress
-            task.heartbeat(current_progress)
-        return current_progress
 
     def slice(
         self, profile, inputpath, outputpath, with_start_end,

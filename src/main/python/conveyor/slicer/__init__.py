@@ -19,5 +19,20 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import logging
+
 class Slicer(object):
-    pass
+    def __init__(self, configuration):
+        self._configuration = configuration
+        self._log = logging.getLogger(self.__class__.__name__)
+
+    def _update_progress(self, current_progress, new_progress, task):
+        if None is not new_progress and new_progress != current_progress:
+            current_progress = new_progress
+            task.heartbeat(current_progress)
+        return current_progress
+
+    def slice(
+        self, profile, inputpath, outputpath, with_start_end,
+        slicer_settings, material, task):
+            raise NotImplementedError

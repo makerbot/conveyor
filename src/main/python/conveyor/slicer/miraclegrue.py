@@ -38,10 +38,6 @@ class MiracleGrueConfiguration(object):
         self.miracleconfigpath = None
 
 class MiracleGrueToolpath(conveyor.slicer.Slicer):
-    def __init__(self, configuration):
-        self._configuration = configuration
-        self._log = logging.getLogger(self.__class__.__name__)
-
     def _parse_progress(self, line):
         progress = None
         try:
@@ -56,12 +52,6 @@ class MiracleGrueToolpath(conveyor.slicer.Slicer):
                         'progress': int(dct['totalPercentComplete'])
                     }
         return progress
-
-    def _update_progress(self, current_progress, new_progress, task):
-        if None is not new_progress and new_progress != current_progress:
-            current_progress = new_progress
-            task.heartbeat(current_progress)
-        return current_progress
 
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
