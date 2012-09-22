@@ -19,139 +19,75 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-import logging
-import os
-import subprocess
-import sys
-import threading
-import tempfile
-import traceback
 import json
+import os
+import tempfile
 
 import conveyor.event
 import conveyor.printer.s3g # TODO: aww, bad coupling
 import conveyor.slicer
 
-class MiracleGrueConfiguration(object):
-    def __init__(self):
-        self.miraclegruepath = None
-        self.miracleconfigpath = None
+class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
+    def __init__(
+        self, profile, inputpath, outputpath, with_start_end, slicer_settings,
+        material, task, slicerpath):
+            conveyor.slicer.SubprocessSlicer.__init__(
+                self, profile, inputpath, outputpath, with_start_end,
+                slicer_settings, material, task, slicerpath)
 
-class MiracleGrueToolpath(conveyor.slicer.Slicer):
-    def _parse_progress(self, line):
-        progress = None
-        try:
-            dct = json.loads(line)
-        except ValueError:
-            pass
-        else:
-            if (isinstance(dct, dict) and 'progress' == dct.get('type')
-                and 'totalPercentComplete' in dct):
-                    progress = {
-                        'name': 'slice',
-                        'progress': int(dct['totalPercentComplete'])
-                    }
-        return progress
+            self._startpath = None
+            self._endpath = None
+            self._configpath = None
 
-    def slice(
-        self, profile, inputpath, outputpath, with_start_end,
-        slicer_settings, material, task):
-            self._log.info('slicing with Miracle Grue')
-            try:
-                current_progress = None
-                new_progress = {
-                    'name': 'slice',
-                    'progress': 0
-                }
-                current_progress = self._update_progress(
-                    current_progress, new_progress, task)
-                driver = conveyor.printer.s3g.S3gDriver()
-                if not with_start_end:
-                    startpath = None
-                    endpath = None
-                else:
-                    startgcode, endgcode, variables = driver._get_start_end_variables(
-                        profile, slicer_settings, material)
-                    with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
-                        startpath = startfp.name
-                        for line in startgcode:
-                            print(line, file=startfp)
-                    with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
-                        endpath = endfp.name
-                        for line in endgcode:
-                            print(line, file=endfp)
-                with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
-                    configpath = configfp.name
-                    self._generateconfig(slicer_settings, material, configfp)
-                arguments = list(
-                    self._getarguments(
-                        configpath, inputpath, outputpath, startpath,
-                        endpath))
-                self._log.debug('arguments=%r', arguments)
-                popen = subprocess.Popen(
-                    arguments, stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT)
-                self._log.debug('popen=%r, popen.pid=%r, popen.returncode=%r', popen, popen.pid, popen.returncode) # TODO: remove this silly temporary debugging output
-                def cancelcallback(task):
-                    popen.terminate()
-                task.cancelevent.attach(cancelcallback)
-                self._log.debug('reading from miracle grue')
-                while True:
-                    line = popen.stdout.readline()
-                    if '' == line:
-                        break
-                    else:
-                        self._log.debug('miracle-grue: %s', line)
-                        new_progress = self._parse_progress(line)
-                        current_progress = self._update_progress(
-                            current_progress, new_progress, task)
-                code = popen.wait()
-                self._log.debug('miracle-grue terminated with code %s', code)
-                if None is not startpath:
-                    os.unlink(startpath)
-                if None is not endpath:
-                    os.unlink(endpath)
-                if 0 != code:
-                    raise Exception(code)
-            except Exception as e:
-                self._log.exception('unhandled exception')
-                task.fail(e)
-                raise
-            else:
-                new_progress = {
-                    'name': 'slice',
-                    'progress': 100
-                }
-                current_progress = self._update_progress(
-                    current_progress, new_progress, task)
-                task.end(None)
+    def _getname(self):
+        return 'Miracle Grue'
 
-    def _generateconfig(self, slicer_settings, material, fp):
-        dct = {
-            'infillDensity'           : slicer_settings.infill,
-            'numberOfShells'          : slicer_settings.shells,
+    def _prologue(self):
+        if self._with_start_end:
+            startgcode, endgcode, variables = driver._get_start_end_variables(
+                profile, slicer_settings, material)
+            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
+                self._startpath = startfp.name
+                for line in startgcode:
+                    print(line, file=startfp)
+            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
+                self._endpath = endfp.name
+                for line in endgcode:
+                    print(line, file=endfp)
+        config = self._getconfig()
+        s = json.dumps(config)
+        self._log.debug('miracle grue configuration: %s', s)
+        with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
+            self._configpath = configfp.name
+            json.dump(config, configfp, indent=8)
+
+    def _getconfig(self):
+        # TODO: yes, yes, load a file and override its values..
+        config = {
+            'infillDensity'           : self._slicer_settings.infill,
+            'numberOfShells'          : self._slicer_settings.shells,
             'insetDistanceMultiplier' : 0.9,
             'roofLayerCount'          : 4,
             'floorLayerCount'         : 4,
             'layerWidthRatio'         : 1.45,
             'coarseness'              : 0.05,
             'doGraphOptimization'     : True,
-            'rapidMoveFeedRateXY'     : slicer_settings.travel_speed,
+            'rapidMoveFeedRateXY'     : self._slicer_settings.travel_speed,
             'rapidMoveFeedRateZ'      : 23.0,
-            'doRaft'                  : slicer_settings.raft,
+            'doRaft'                  : self._slicer_settings.raft,
             'raftLayers'              : 2,
             'raftBaseThickness'       : 0.6,
             'raftInterfaceThickness'  : 0.3,
             'raftOutset'              : 6.0,
             'raftModelSpacing'        : 0.0,
             'raftDensity'             : 0.2,
-            'doSupport'               : slicer_settings.support,
+            'doSupport'               : self._slicer_settings.support,
             'supportMargin'           : 1.5,
             'supportDensity'          : 0.2,
-            'doFanCommand'            : 'PLA' == material,
+            'doFanCommand'            : 'PLA' == self._material,
             'fanLayer'                : 2,
             'bedZOffset'              : 0.0,
-            'layerHeight'             : slicer_settings.layer_height,
+            'layerHeight'             : self._slicer_settings.layer_height,
             'startX'                  : -110.4,
             'startY'                  : -74.0,
             'startZ'                  : 0.2,
@@ -183,10 +119,10 @@ class MiracleGrueToolpath(conveyor.slicer.Slicer):
             ],
             'extrusionProfiles': {
                 'insets': {
-                    'feedrate': slicer_settings.print_speed
+                    'feedrate': self._slicer_settings.print_speed
                 },
                 'infill': {
-                    'feedrate': slicer_settings.print_speed
+                    'feedrate': self._slicer_settings.print_speed
                 },
                 'firstlayer': {
                     'feedrate': 40.0
@@ -196,33 +132,48 @@ class MiracleGrueToolpath(conveyor.slicer.Slicer):
                 }
             }
         }
-        json.dump(dct, fp, indent=8)
-        s = json.dumps(dct)
-        self._log.debug('miracle grue configuration: %s', s)
+        return config
 
-    def _getarguments(
-        self, configpath, inputpath, outputpath, startpath, endpath):
-            for method in (
-                self._getarguments_executable,
-                self._getarguments_miraclegrue,
-                ):
-                    for iterable in method(
-                        configpath, inputpath, outputpath, startpath,
-                        endpath):
-                            for value in iterable:
-                                yield value
+    def _getexecutable(self):
+        return self._slicerpath
 
-    def _getarguments_executable(
-        self, configpath, inputpath, outputpath, startpath, endpath):
-            yield (self._configuration.miraclegruepath,)
+    def _getarguments(self):
+        for iterable in self._getarguments_miraclegrue():
+            for value in iterable:
+                yield value
 
-    def _getarguments_miraclegrue(
-        self, configpath, inputpath, outputpath, startpath, endpath):
-            yield ('-c', configpath,)
-            yield ('-o', outputpath,)
-            if None is not startpath:
-                yield ('-s', startpath,)
-            if None is not endpath:
-                yield ('-e', endpath,)
-            yield ('-j',)
-            yield (inputpath,)
+    def _getarguments_miraclegrue(self):
+        yield (self._getexecutable(),)
+        yield ('-c', self._configpath,)
+        yield ('-o', self._outputpath,)
+        if None is not self._startpath:
+            yield ('-s', self._startpath,)
+        if None is not self._endpath:
+            yield ('-e', self._endpath,)
+        yield ('-j',)
+        yield (self._inputpath,)
+
+    def _readpopen(self):
+        while True:
+            line = self._popen.stdout.readline()
+            if '' == line:
+                break
+            else:
+                self._slicerlog.write(line)
+                try:
+                    dct = json.loads(line)
+                except ValueError:
+                    pass
+                else:
+                    if (isinstance(dct, dict) and 'progress' == dct.get('type')
+                        and 'totalPercentComplete' in dct):
+                            percent = int(dct['totalPercentComplete'])
+                            self._setprogress_ratio(percent, 100)
+
+    def _epilogue(self):
+        if None is not self._startpath:
+            os.unlink(self._startpath)
+        if None is not self._endpath:
+            os.unlink(self._endpath)
+        if None is not self._configpath:
+            os.unlink(self._configpath)

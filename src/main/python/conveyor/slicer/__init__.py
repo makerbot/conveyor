@@ -19,20 +19,138 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import cStringIO as StringIO
 import logging
+import subprocess
 
 class Slicer(object):
-    def __init__(self, configuration):
-        self._configuration = configuration
-        self._log = logging.getLogger(self.__class__.__name__)
+    def __init__(
+        self, profile, inputpath, outputpath, with_start_end, slicer_settings,
+        material, task):
+            self._log = logging.getLogger(self.__class__.__name__)
+            self._progress = None
+            self._slicerlog = None
 
-    def _update_progress(self, current_progress, new_progress, task):
-        if None is not new_progress and new_progress != current_progress:
-            current_progress = new_progress
-            task.heartbeat(current_progress)
-        return current_progress
+            self._profile = profile
+            self._inputpath = inputpath
+            self._outputpath = outputpath
+            self._with_start_end = with_start_end
+            self._slicer_settings = slicer_settings
+            self._material = material
+            self._task = task
 
-    def slice(
-        self, profile, inputpath, outputpath, with_start_end,
-        slicer_settings, material, task):
-            raise NotImplementedError
+    def _getname(self):
+        raise NotImplementedError
+
+    def _setprogress(self, new_progress):
+        if None is not new_progress and new_progress != self._progress:
+            self._progress = new_progress
+            self._task.heartbeat(self._progress)
+
+    def _setprogress_ratio(self, current, total):
+        ratio = int((98 * current / total) + 1)
+        progress = {
+            'name': 'slice',
+            'progress': ratio
+        }
+        self._setprogress(progress)
+
+    def slice(self):
+        raise NotImplementedError
+
+class SubprocessSlicerException(Exception):
+    pass
+
+class SubprocessSlicer(Slicer):
+    def __init__(
+        self, profile, inputpath, outputpath, with_start_end, slicer_settings,
+        material, task, slicerpath):
+            Slicer.__init__(
+                self, profile, inputpath, outputpath, with_start_end,
+                slicer_settings, material, task)
+
+            self._popen = None
+            self._slicerlog = None
+            self._code = None
+
+            self._slicerpath = slicerpath
+
+    def slice(self):
+        self._log.info(
+            'slicing with %s: %s -> %s', self._getname(), self._inputpath,
+            self._outputpath)
+        try:
+            progress = {'name': 'slice', 'progress': 0}
+            self._setprogress(progress)
+            self._prologue()
+            executable = self._getexecutable()
+            quoted_executable = self._quote(executable)
+            arguments = list(self._getarguments())
+            quoted_arguments = ' '.join(self._quote(a) for a in arguments)
+            self._log.info('command: %s %s', quoted_executable, quoted_arguments)
+            self._popen = subprocess.Popen(
+                arguments, executable=executable, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            def cancelcallback(task):
+                popen.terminate()
+            self._task.cancelevent.attach(cancelcallback)
+            self._slicerlog = StringIO.StringIO()
+            self._readpopen()
+            slicerlog = self._slicerlog.getvalue()
+            self._code = self._popen.wait()
+            if 0 == self._code:
+                level = logging.DEBUG
+            else:
+                level = logging.ERROR
+            self._log.log(level, '%s terminated with code %s', self._code)
+            if 0 != self._code:
+                raise SubprocessSlicerException
+            else:
+                self._epilogue()
+        except SubprocessSlicerException as e:
+            self._log.debug('handled exception', exc_info=True)
+            failure = self._getfailure(e)
+            self._task.fail(failure)
+        except Exception as e:
+            self._log.error('unhandled exception', exc_info=True)
+            failure = self._getfailure(e)
+            self._task.fail(failure)
+        else:
+            progress = {'name': 'slice', 'progress': 100}
+            self._setprogress(progress)
+            self._task.end(None)
+
+    def _prologue(self):
+        raise NotImplementedError
+
+    def _getexecutable(self):
+        raise NotImplementedError
+
+    def _getarguments(self):
+        raise NotImplementedError
+
+    def _quote(self, s):
+        quoted = ''.join(('"', unicode(s), '"'))
+        return quoted
+
+    def _readpopen(self):
+        raise NotImplementedError
+
+    def _epilogue(self):
+        raise NotImplementedError
+
+    def _getfailure(self, exception):
+        if None is not exception:
+            exception = {
+                'name': exception.__class__.__name__,
+                'args': exception.args
+            }
+        slicerlog = None
+        if None is not self._slicerlog:
+            slicerlog = self._slicerlog.getvalue()
+        failure = {
+            'exception': exception,
+            'slicerlog': slicerlog,
+            'code': self._code
+        }
+        return failure

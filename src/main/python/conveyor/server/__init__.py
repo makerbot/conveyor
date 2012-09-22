@@ -690,41 +690,25 @@ class Server(object):
                     slicer_settings, material, task)
             self._queue.appendfunc(func)
 
-    def _getslicer(self, slicer_settings):
-        if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
-            configuration = conveyor.slicer.miraclegrue.MiracleGrueConfiguration()
-            configuration.miraclegruepath = self._config['miraclegrue']['path']
-            configuration.miracleconfigpath = self._config['miraclegrue']['config']
-            slicer = conveyor.slicer.miraclegrue.MiracleGrueToolpath(configuration)
-        elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
-            configuration = self._createskeinforgeconfiguration(slicer_settings)
-            configuration.skeinforgepath = self._config['skeinforge']['path']
-            configuration.profile = self._config['skeinforge']['profile']
-            slicer = conveyor.slicer.skeinforge.SkeinforgeToolpath(configuration)
-        else:
-            raise ValueError(slicer_settings.slicer)
-        return slicer
-
-    def _createskeinforgeconfiguration(self, slicer_settings):
-        configuration = conveyor.slicer.skeinforge.SkeinforgeConfiguration()
-        configuration.raft = slicer_settings.raft
-        configuration.support = slicer_settings.support
-        configuration.infillratio = slicer_settings.infill
-        configuration.feedrate = slicer_settings.print_speed
-        configuration.travelrate = slicer_settings.travel_speed
-        configuration.layerheight = slicer_settings.layer_height
-        configuration.shells = slicer_settings.shells
-        return configuration
-
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
         slicer_settings, material, task):
             def func():
-                slicername = self._config['common']['slicer']
-                slicer = self._getslicer(slicer_settings)
-                slicer.slice(
-                    profile, inputpath, outputpath, with_start_end,
-                    slicer_settings, material, task)
+                if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
+                    slicerpath = self._config['miraclegrue']['path']
+                    slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer(
+                        profile, inputpath, outputpath, with_start_end,
+                        slicer_settings, material, task, slicerpath)
+                elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
+                    slicerpath = self._config['skeinforge']['path']
+                    profilepath = self._config['skeinforge']['profile']
+                    slicer = conveyor.slicer.skeinforge.SkeinforgeSlicer(
+                        profile, inputpath, outputpath, with_start_end,
+                        slicer_settings, material, task, slicerpath,
+                        profilepath)
+                else:
+                    raise ValueError(slicer_settings.slicer)
+                slicer.slice()
             self._queue.appendfunc(func)
 
     def run(self):
