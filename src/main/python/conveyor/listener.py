@@ -68,12 +68,12 @@ class _AbstractSocketListener(Listener):
                     # self._log.debug('handled exception', exc_info=True)
                     continue
                 except IOError as e:
-                    if errno.EINTR != e.args[0] and not self._stopped:
-                        raise
-                    else:
+                    if errno.EINTR == e.args[0]:
                         # NOTE: too spammy
                         # self._log.debug('handled exception', exc_info=True)
                         continue
+                    else:
+                        raise
                 else:
                     connection = conveyor.connection.SocketConnection(sock, addr)
                     return connection
@@ -84,8 +84,8 @@ class TcpListener(_AbstractSocketListener):
 
 if 'nt' != os.name:
     class _PosixPipeListener(_AbstractSocketListener):
-        def __init__(self, socket, path):
-            SocketListener.__init__(self, socket)
+        def __init__(self, path, socket):
+            _AbstractSocketListener.__init__(self, socket)
             self._path = path
 
         def cleanup(self):

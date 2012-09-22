@@ -21,6 +21,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import collections
 import errno
+import lockfile
 import logging
 import makerbot_driver
 import os
@@ -35,6 +36,7 @@ except ImportError:
     import unittest
 
 import conveyor.address
+import conveyor.connection
 import conveyor.domain
 import conveyor.jsonrpc
 import conveyor.main
@@ -63,7 +65,6 @@ class ServerMain(conveyor.main.AbstractMain):
         try:
             import daemon
             import daemon.pidfile
-            import lockfile
             has_daemon = True
         except ImportError:
             self._log.debug('handled exception', exc_info=True)
@@ -99,14 +100,15 @@ class ServerMain(conveyor.main.AbstractMain):
         self._initeventqueue()
         listener = self._address.listen()
         with listener:
-            lockfile = self._config['common']['lockfile']
-            open(lockfile, 'w')
+            lockfile_path = self._config['common']['lockfile']
+            with open(lockfile_path, 'w'):
+                pass
             try:
                 server = Server(self._config, listener)
                 code = server.run()
                 return code
             finally:
-                os.unlink(lockfile)
+                os.unlink(lockfile_path)
 
 def export(name):
     def decorator(func):
@@ -559,6 +561,9 @@ class Server(object):
             try:
                 method = getattr(clientthread, methodname)
                 method(*args, **kwargs)
+            except conveyor.connection.ConnectionWriteException:
+                self._log.debug('handled exception', exc_info=True)
+                clientthread.stop()
             except:
                 self._log.exception('unhandled exception')
 

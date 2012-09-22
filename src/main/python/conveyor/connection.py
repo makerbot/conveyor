@@ -40,6 +40,9 @@ class Connection(conveyor.stoppable.Stoppable):
     def write(self, data):
         raise NotImplementedError
 
+class ConnectionWriteException(Exception):
+    pass
+
 class _AbstractSocketConnection(Connection):
     def __init__(self, socket, address):
         Connection.__init__(self)
@@ -53,12 +56,19 @@ class _AbstractSocketConnection(Connection):
 
     def write(self, data):
         with self._condition:
-            self._socket.sendall(data)
+            try:
+                self._socket.sendall(data)
+            except IOError as e:
+                if e.args[0] in (errno.EBADF, errno.EPIPE):
+                    self._log.debug('handled exception', exc_info=True)
+                    raise ConnectionWriteException
+                else:
+                    raise
 
 if 'nt' != os.name:
     class _PosixSocketConnection(_AbstractSocketConnection):
         def stop(self):
-            AbstractSocketConnection.stop(self)
+            _AbstractSocketConnection.stop(self)
             # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
             # 'Connection reset by peer' errors.
             try:
@@ -80,12 +90,15 @@ if 'nt' != os.name:
                     try:
                         data = self._socket.recv(4096)
                     except IOError as e:
-                        if errno.EINTR != e.args[0] and not self._stopped:
-                            raise
-                        else:
+                        if errno.EINTR == e.args[0]:
                             # NOTE: too spammy
                             # self._log.debug('handled exception', exc_info=True)
                             continue
+                        elif errno.ECONNRESET == e.args[0]:
+                            self._log.debug('handled exception', exc_info=True)
+                            return ''
+                        else:
+                            raise
                     else:
                         return data
 

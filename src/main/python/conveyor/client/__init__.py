@@ -329,8 +329,8 @@ class ClientMain(conveyor.main.AbstractMain):
             code = 1
             self._log.critical(
                 'failed to open socket: %s: %s',
-                self._config['common']['socket'], e.strerror, exc_info=True)
-            if not self._has_daemon_lock():
+                self._config['common']['address'], e.strerror, exc_info=True)
+            if not self._lockfile_exists():
                 self._log.critical(
                     'Unable to connect to conveyor server. Please verify that it is running.')
         else:
@@ -529,8 +529,8 @@ class ClientMain(conveyor.main.AbstractMain):
         code = client.run()
         return code
 
-    def _has_daemon_lock(self):
-        result = os.path.isfile(self._config['common']['daemon_lockfile'])
+    def _lockfile_exists(self):
+        result = os.path.isfile(self._config['common']['lockfile'])
         return result
 
 class Client(object):
