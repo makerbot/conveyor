@@ -177,19 +177,20 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
                     self._setprogress_ratio(layer, total)
 
     def _epilogue(self):
-        driver = conveyor.printer.s3g.S3gDriver()
-        startgcode, endgcode, variables = driver._get_start_end_variables(
-            self._profile, self._slicer_settings, self._material)
-        with open(self._outputpath, 'w') as wfp:
-            if self._with_start_end:
-                for line in startgcode:
-                    print(line, file=wfp)
-            root, ext = os.path.splitext(self._tmp_inputpath)
-            tmp_outputpath = ''.join((root, '.gcode'))
-            with open(tmp_outputpath, 'r') as rfp:
-                for line in rfp:
-                    wfp.write(line)
-            if self._with_start_end:
-                for line in endgcode:
-                    print(line, file=wfp)
+        if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
+            driver = conveyor.printer.s3g.S3gDriver()
+            startgcode, endgcode, variables = driver._get_start_end_variables(
+                self._profile, self._slicer_settings, self._material)
+            with open(self._outputpath, 'w') as wfp:
+                if self._with_start_end:
+                    for line in startgcode:
+                        print(line, file=wfp)
+                root, ext = os.path.splitext(self._tmp_inputpath)
+                tmp_outputpath = ''.join((root, '.gcode'))
+                with open(tmp_outputpath, 'r') as rfp:
+                    for line in rfp:
+                        wfp.write(line)
+                if self._with_start_end:
+                    for line in endgcode:
+                        print(line, file=wfp)
         shutil.rmtree(self._tmp_directory)

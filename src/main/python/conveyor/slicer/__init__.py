@@ -23,6 +23,8 @@ import cStringIO as StringIO
 import logging
 import subprocess
 
+import conveyor.task
+
 class Slicer(object):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
@@ -76,8 +78,9 @@ class SubprocessSlicer(Slicer):
             self._slicerpath = slicerpath
 
     def slice(self):
+        name = self._getname()
         self._log.info(
-            'slicing with %s: %s -> %s', self._getname(), self._inputpath,
+            'slicing with %s: %s -> %s', name, self._inputpath,
             self._outputpath)
         try:
             progress = {'name': 'slice', 'progress': 0}
@@ -92,33 +95,39 @@ class SubprocessSlicer(Slicer):
                 arguments, executable=executable, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
             def cancelcallback(task):
-                popen.terminate()
+                self._popen.terminate()
             self._task.cancelevent.attach(cancelcallback)
             self._slicerlog = StringIO.StringIO()
             self._readpopen()
             slicerlog = self._slicerlog.getvalue()
             self._code = self._popen.wait()
-            if 0 == self._code:
-                level = logging.DEBUG
+            if (0 != self._code
+                and conveyor.task.TaskConclusion.CANCELED != self._task.conclusion):
+                    self._log.error('%s terminated with code %s', name, self._code)
+                    failure = self._getfailure(None)
+                    self._task.fail(failure)
             else:
-                level = logging.ERROR
-            self._log.log(level, '%s terminated with code %s', self._code)
-            if 0 != self._code:
-                raise SubprocessSlicerException
-            else:
-                self._epilogue()
+                    self._log.debug('%s terminated with code %s', name, self._code)
+                    self._epilogue()
+                    if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
+                        progress = {'name': 'slice', 'progress': 100}
+                        self._setprogress(progress)
+                        self._task.end(None)
         except SubprocessSlicerException as e:
             self._log.debug('handled exception', exc_info=True)
-            failure = self._getfailure(e)
-            self._task.fail(failure)
+            if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
+                failure = self._getfailure(e)
+                self._task.fail(failure)
+        except OSError as e:
+            self._log.error('operating system error', exc_info=True)
+            if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
+                failure = self._getfailure(e)
+                self._task.fail(failure)
         except Exception as e:
             self._log.error('unhandled exception', exc_info=True)
-            failure = self._getfailure(e)
-            self._task.fail(failure)
-        else:
-            progress = {'name': 'slice', 'progress': 100}
-            self._setprogress(progress)
-            self._task.end(None)
+            if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
+                failure = self._getfailure(e)
+                self._task.fail(failure)
 
     def _prologue(self):
         raise NotImplementedError
@@ -143,7 +152,10 @@ class SubprocessSlicer(Slicer):
         if None is not exception:
             exception = {
                 'name': exception.__class__.__name__,
-                'args': exception.args
+                'args': exception.args,
+                'errno': getattr(exception, 'errno', None),
+                'strerror': getattr(exception, 'strerror', None),
+                'filename': getattr(exception, 'filename', None)
             }
         slicerlog = None
         if None is not self._slicerlog:
