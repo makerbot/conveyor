@@ -8,8 +8,6 @@ Short-term TODO list:
 
   * Delete old branches.
 
-  * Split event and task into separate projects.
-
   * Win32 named pipe to replace TCP socket (mws has code for this).
 
   * Add an option to the slicer configuration to let people specify a custom profile.
