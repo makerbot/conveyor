@@ -34,7 +34,7 @@ class Connection(conveyor.stoppable.Stoppable):
         conveyor.stoppable.Stoppable.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def read(self, size):
+    def read(self):
         raise NotImplementedError
 
     def write(self, data):
@@ -70,7 +70,7 @@ class _PosixSocketConnection(AbstractSocketConnection):
             else:
                 self._log.debug('handled exception', exc_info=True)
 
-    def read(self, size):
+    def read(self):
         while True:
             with self._condition:
                 stopped = self._stopped
@@ -78,7 +78,7 @@ class _PosixSocketConnection(AbstractSocketConnection):
                 return ''
             else:
                 try:
-                    data = self._socket.recv(size)
+                    data = self._socket.recv(4096)
                 except IOError as e:
                     with self._condition:
                         stopped = self._stopped
@@ -92,7 +92,7 @@ class _PosixSocketConnection(AbstractSocketConnection):
                     return data
 
 class _Win32SocketConnection(AbstractSocketConnection):
-    def read(self, size):
+    def read(self):
         while True:
             with self._condition:
                 stopped = self._stopped
@@ -102,7 +102,7 @@ class _Win32SocketConnection(AbstractSocketConnection):
                 rlist, wlist, xlist = select.select([self._socket], [], [], 1.0)
                 if 0 != len(rlist):
                     try:
-                        data = self._socket.recv(size)
+                        data = self._socket.recv(4096)
                     except IOError as e:
                         with self._condition:
                             stopped = self._stopped

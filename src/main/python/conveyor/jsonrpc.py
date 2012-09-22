@@ -131,7 +131,7 @@ class JsonRpc(conveyor.stoppable.Stoppable):
     def __init__(self, infp, outfp):
         self._condition = threading.Condition()
         self._idcounter = 0
-        self._infp = infp # contract: .read(int), .stop()
+        self._infp = infp # contract: .read(), .stop()
         self._jsonreader = _JsonReader()
         self._jsonreader.event.attach(self._jsonreadercallback)
         self._log = logging.getLogger(self.__class__.__name__)
@@ -254,7 +254,7 @@ class JsonRpc(conveyor.stoppable.Stoppable):
             if self._stopped:
                 break
             else:
-                data = self._infp.read(4096)
+                data = self._infp.read()
                 if 0 == len(data):
                     break
                 else:
