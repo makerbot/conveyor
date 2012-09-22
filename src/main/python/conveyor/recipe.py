@@ -33,7 +33,6 @@ except ImportError:
 
 import conveyor.domain
 import conveyor.enum
-import conveyor.printer.s3g
 import conveyor.process
 import conveyor.task
 import conveyor.thing

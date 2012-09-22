@@ -331,8 +331,8 @@ class ClientMain(conveyor.main.AbstractMain):
                 'failed to open socket: %s: %s',
                 self._config['common']['socket'], e.strerror, exc_info=True)
             if not self._has_daemon_lock():
-              self._log.critical(
-                'Unable to connect to conveyor server. Please verify that it is running.')
+                self._log.critical(
+                    'Unable to connect to conveyor server. Please verify that it is running.')
         else:
             code = self._parsedargs.func()
         return code
@@ -536,9 +536,8 @@ class ClientMain(conveyor.main.AbstractMain):
 class Client(object):
     @classmethod
     def clientFactory(cls, sock, method, params, wait, display):
-        fp = conveyor.jsonrpc.socketadapter(sock)
-        jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
-        client = Client(sock, fp, jsonrpc, method, params, wait, display)
+        jsonrpc = conveyor.jsonrpc.JsonRpc(sock, sock)
+        client = Client(sock, sock, jsonrpc, method, params, wait, display)
         return client
 
     def __init__(self, sock, fp, jsonrpc, method, params, wait, display):

@@ -24,7 +24,7 @@ import os
 import tempfile
 
 import conveyor.event
-import conveyor.printer.s3g # TODO: aww, bad coupling
+import conveyor.machine.s3g # TODO: aww, bad coupling
 import conveyor.slicer
 
 class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
@@ -46,6 +46,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
 
     def _prologue(self):
         if self._with_start_end:
+            driver = conveyor.machine.s3g.S3gDriver()
             startgcode, endgcode, variables = driver._get_start_end_variables(
                 profile, slicer_settings, material)
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:

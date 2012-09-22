@@ -34,10 +34,11 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.address
 import conveyor.domain
 import conveyor.jsonrpc
 import conveyor.main
-import conveyor.printer.s3g
+import conveyor.machine.s3g
 import conveyor.recipe
 import conveyor.slicer.miraclegrue
 import conveyor.slicer.skeinforge
@@ -90,34 +91,22 @@ class ServerMain(conveyor.main.AbstractMain):
                 with context:
                     code = self._run_server()
             except lockfile.NotLocked as e:
-                self._log.critical('deamon file is not locked: %r',e);
-                code = 0 #assume we closed the thread ...
+                self._log.critical('deamon file is not locked', exc_info=True)
+                code = 0
         return code
 
     def _run_server(self):
         self._initeventqueue()
-        with self._address:
-            self._socket = self._address.listen()
-            with self._advertise_deamon() as lockfile:
-                try:
-                    server = conveyor.server.Server(self._config, self._socket)
-                    code = server.run()
-                    return code
-                finally:
-                    os.unlink(lockfile.name) 
-        return 0
-
-    def _advertise_deamon(self):
-        """
-        Advertise that the deamon is available
-        by writing a conveyord.lock file to advertise that conveyord is available
-        Existance of that file indicates that the conveyor service is up and running
-        @return a file object pointing to the lockfile
-        """
-        if not self._config['common']['daemon_lockfile']:
-            return None
-        lock_filename = self._config['common']['daemon_lockfile']
-        return open(lock_filename, 'w+')
+        listener = self._address.listen()
+        with listener:
+            lockfile = self._config['common']['lockfile']
+            open(lockfile, 'w')
+            try:
+                server = Server(self._config, listener)
+                code = server.run()
+                return code
+            finally:
+                os.unlink(lockfile)
 
 def export(name):
     def decorator(func):
@@ -140,10 +129,13 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
         task.runningevent.attach(runningcallback)
         return task
 
+class _Method(object):
+    pass
+
 class _ClientThread(conveyor.stoppable.StoppableThread):
     @classmethod
-    def create(cls, config, server, fp, id):
-        jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
+    def create(cls, config, server, connection, id):
+        jsonrpc = conveyor.jsonrpc.JsonRpc(connection, connection)
         clientthread = _ClientThread(config, server, jsonrpc, id)
         return clientthread
 
@@ -190,16 +182,20 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         return callback
 
     @export('hello')
-    def _hello(self, *args, **kwargs):
-        self._log.debug('args=%r, kwargs=%r', args, kwargs)
+    def _hello(self):
+        self._log.debug('')
         return 'world'
 
     @export('dir')
-    def _dir(self, *args, **kwargs):
+    def _dir(self):
+        self._log.debug('')
         result = {}
-        self._log.debug("doing a services dir conveyor service")
-        if self._jsonrpc:
-            result = self._jsonrpc.dict_all_methods()
+        methods = self._jsonrpc.getmethods()
+        result = {}
+        for k, f in methods.items():
+            doc = getattr(f, '__doc__', None)
+            if None is not doc:
+                result[k] = f.__doc__
         result['__version__'] = conveyor.__version__
         return result
 
@@ -423,7 +419,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('getuploadablemachines')
     def _getuploadablemachines(self):
-        uploader = makerbot_driver.Firmware.Uploader()        
+        uploader = makerbot_driver.Firmware.Uploader()
         machines = uploader.list_machines()
         return machines
 
@@ -543,7 +539,7 @@ class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
         self._queue.stop()
 
 class Server(object):
-    def __init__(self, config, sock):
+    def __init__(self, config, listener):
         self._clientthreads = []
         self._config = config
         self._detectorthread = None
@@ -551,9 +547,9 @@ class Server(object):
         self._jobcounter = 0
         self._jobs = {}
         self._lock = threading.Lock()
+        self._listener = listener
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = Queue()
-        self._sock = sock
         self._printerthreads = {}
 
     def _invokeclients(self, methodname, *args, **kwargs):
@@ -684,7 +680,7 @@ class Server(object):
         self, profile, buildname, inputpath, outputpath, skip_start_end,
         slicer_settings, material, task):
             def func():
-                driver = conveyor.printer.s3g.S3gDriver()
+                driver = conveyor.machine.s3g.S3gDriver()
                 driver.printtofile(
                     outputpath, profile, buildname, inputpath, skip_start_end,
                     slicer_settings, material, task)
@@ -714,28 +710,20 @@ class Server(object):
             self._queue.appendfunc(func)
 
     def run(self):
-        self._detectorthread = conveyor.printer.s3g.S3gDetectorThread(
+        self._detectorthread = conveyor.machine.s3g.S3gDetectorThread(
             self._config, self)
         self._detectorthread.start()
         taskqueuethread = _TaskQueueThread(self._queue)
         taskqueuethread.start()
         try:
             while True:
-                try:
-                    conn, addr = self._sock.accept()
-                except IOError as e:
-                    if errno.EINTR == e.args[0]:
-                        continue
-                    else:
-                        raise
-                else:
-                    fp = conveyor.jsonrpc.socketadapter(conn)
-                    with self._lock:
-                        id = self._idcounter
-                        self._idcounter += 1
-                    clientthread = _ClientThread.create(
-                        self._config, self, fp, id)
-                    clientthread.start()
+                connection = self._listener.accept()
+                with self._lock:
+                    id = self._idcounter
+                    self._idcounter += 1
+                clientthread = _ClientThread.create(
+                    self._config, self, connection, id)
+                clientthread.start()
         finally:
             self._queue.stop()
             taskqueuethread.join(1)
