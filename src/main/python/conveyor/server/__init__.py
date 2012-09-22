@@ -696,9 +696,11 @@ class Server(object):
             def func():
                 if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
                     slicerpath = self._config['miraclegrue']['path']
+                    configpath = self._config['miraclegrue']['config']
                     slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer(
                         profile, inputpath, outputpath, with_start_end,
-                        slicer_settings, material, task, slicerpath)
+                        slicer_settings, material, task, slicerpath,
+                        configpath)
                 elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
                     slicerpath = self._config['skeinforge']['path']
                     profilepath = self._config['skeinforge']['profile']

@@ -30,14 +30,16 @@ import conveyor.slicer
 class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task, slicerpath):
+        material, task, slicerpath, configpath):
             conveyor.slicer.SubprocessSlicer.__init__(
                 self, profile, inputpath, outputpath, with_start_end,
                 slicer_settings, material, task, slicerpath)
 
-            self._startpath = None
-            self._endpath = None
-            self._configpath = None
+            self._tmp_startpath = None
+            self._tmp_endpath = None
+            self._tmp_configpath = None
+
+            self._configpath = configpath
 
     def _getname(self):
         return 'Miracle Grue'
@@ -47,91 +49,33 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
             startgcode, endgcode, variables = driver._get_start_end_variables(
                 profile, slicer_settings, material)
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
-                self._startpath = startfp.name
+                self._tmp_startpath = startfp.name
                 for line in startgcode:
                     print(line, file=startfp)
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
-                self._endpath = endfp.name
+                self._tmp_endpath = endfp.name
                 for line in endgcode:
                     print(line, file=endfp)
         config = self._getconfig()
         s = json.dumps(config)
         self._log.debug('miracle grue configuration: %s', s)
         with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
-            self._configpath = configfp.name
+            self._tmp_configpath = configfp.name
             json.dump(config, configfp, indent=8)
 
     def _getconfig(self):
-        # TODO: yes, yes, load a file and override its values..
-        config = {
-            'infillDensity'           : self._slicer_settings.infill,
-            'numberOfShells'          : self._slicer_settings.shells,
-            'insetDistanceMultiplier' : 0.9,
-            'roofLayerCount'          : 4,
-            'floorLayerCount'         : 4,
-            'layerWidthRatio'         : 1.45,
-            'coarseness'              : 0.05,
-            'doGraphOptimization'     : True,
-            'rapidMoveFeedRateXY'     : self._slicer_settings.travel_speed,
-            'rapidMoveFeedRateZ'      : 23.0,
-            'doRaft'                  : self._slicer_settings.raft,
-            'raftLayers'              : 2,
-            'raftBaseThickness'       : 0.6,
-            'raftInterfaceThickness'  : 0.3,
-            'raftOutset'              : 6.0,
-            'raftModelSpacing'        : 0.0,
-            'raftDensity'             : 0.2,
-            'doSupport'               : self._slicer_settings.support,
-            'supportMargin'           : 1.5,
-            'supportDensity'          : 0.2,
-            'doFanCommand'            : 'PLA' == self._material,
-            'fanLayer'                : 2,
-            'bedZOffset'              : 0.0,
-            'layerHeight'             : self._slicer_settings.layer_height,
-            'startX'                  : -110.4,
-            'startY'                  : -74.0,
-            'startZ'                  : 0.2,
-            'doPrintProgress'         : True,
-            'defaultExtruder'         : 0, # TODO: there's a field in SlicerConfiguration for this, but... so many other things need to be changed for it to work
-            'extruderProfiles'        : [
-                {
-                    'firstLayerExtrusionProfile' : 'firstlayer',
-                    'insetsExtrusionProfile'     : 'insets',
-                    'infillsExtrusionProfile'    : 'infill',
-                    'outlinesExtrusionProfile'   : 'outlines',
-                    'feedDiameter'               : 1.82,
-                    'nozzleDiameter'             : 0.4,
-                    'retractDistance'            : 1.0,
-                    'retractRate'                : 20.0,
-                    'restartExtraDistance'       : 0.0
-                },
-                {
-                    'firstLayerExtrusionProfile' : 'firstlayer',
-                    'insetsExtrusionProfile'     : 'insets',
-                    'infillsExtrusionProfile'    : 'infill',
-                    'outlinesExtrusionProfile'   : 'outlines',
-                    'feedDiameter'               : 1.82,
-                    'nozzleDiameter'             : 0.4,
-                    'retractDistance'            : 1.0,
-                    'retractRate'                : 20.0,
-                    'restartExtraDistance'       : 0.0
-                }
-            ],
-            'extrusionProfiles': {
-                'insets': {
-                    'feedrate': self._slicer_settings.print_speed
-                },
-                'infill': {
-                    'feedrate': self._slicer_settings.print_speed
-                },
-                'firstlayer': {
-                    'feedrate': 40.0
-                },
-                'outlines': {
-                    'feedrate': 40.0
-                }
-            }
-        }
+        with open(self._configpath, 'r') as fp:
+            config = json.load(fp)
+        config['infillDensity'] = self._slicer_settings.infill
+        config['numberOfShells'] = self._slicer_settings.shells
+        config['rapidMoveFeedRateXY'] = self._slicer_settings.travel_speed
+        config['doRaft'] = self._slicer_settings.raft
+        config['doSupport'] = self._slicer_settings.support
+        config['doFanCommand'] = 'PLA' == self._material
+        config['layerHeight'] = self._slicer_settings.layer_height
+        config['defaultExtruder'] = self._slicer_settings.extruder
+        config['extrusionProfiles']['insets']['feedrate'] = self._slicer_settings.print_speed
+        config['extrusionProfiles']['infill']['feedrate'] = self._slicer_settings.print_speed
         return config
 
     def _getexecutable(self):
@@ -144,12 +88,12 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
 
     def _getarguments_miraclegrue(self):
         yield (self._getexecutable(),)
-        yield ('-c', self._configpath,)
+        yield ('-c', self._tmp_configpath,)
         yield ('-o', self._outputpath,)
-        if None is not self._startpath:
-            yield ('-s', self._startpath,)
-        if None is not self._endpath:
-            yield ('-e', self._endpath,)
+        if None is not self._tmp_startpath:
+            yield ('-s', self._tmp_startpath,)
+        if None is not self._tmp_endpath:
+            yield ('-e', self._tmp_endpath,)
         yield ('-j',)
         yield (self._inputpath,)
 
@@ -171,9 +115,9 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
                             self._setprogress_ratio(percent, 100)
 
     def _epilogue(self):
-        if None is not self._startpath:
-            os.unlink(self._startpath)
-        if None is not self._endpath:
-            os.unlink(self._endpath)
-        if None is not self._configpath:
-            os.unlink(self._configpath)
+        if None is not self._tmp_startpath:
+            os.unlink(self._tmp_startpath)
+        if None is not self._tmp_endpath:
+            os.unlink(self._tmp_endpath)
+        if None is not self._tmp_configpath:
+            os.unlink(self._tmp_configpath)

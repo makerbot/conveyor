@@ -156,14 +156,11 @@ class AbstractMain(object):
     # we're going to leave that aside for now and get it done.
     def _setconfigdefaults_common(self):
         if sys.platform == 'darwin':
-            defsock = 'unix:/var/run/conveyord.socket'
+            socket = 'unix:/var/run/conveyord.socket'
         else:
-            defsock = 'unix:/var/run/conveyor/conveyord.socket'
+            socket = 'unix:/var/run/conveyor/conveyord.socket'
         self._config.setdefault('common', {})
-        self._config['common'].setdefault(
-            'socket', defsock)
-        self._config['common'].setdefault('slicer', 'miraclegrue')
-        self._config['common'].setdefault('serialport', '/dev/ttyACM0')
+        self._config['common'].setdefault('socket', socket)
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
         self._config['common'].setdefault('profiledir', '../s3g/makerbot_driver/profiles')
         self._config['common'].setdefault('daemon_lockfile', 'conveyord.avail.lock')
@@ -174,11 +171,11 @@ class AbstractMain(object):
         conveyordir = self._getconveyordir()
         path = os.path.abspath(
             os.path.join(
-                conveyordir, 'submodule/Miracle-Grue/bin/miracle_grue'))
+                conveyordir, '../Miracle-Grue/bin/miracle_grue'))
         self._config['miraclegrue'].setdefault('path', path)
         config = os.path.abspath(
             os.path.join(
-                conveyordir, 'submodule/Miracle-Grue/miracle-pla.config'))
+                conveyordir, 'src/main/miraclegrue/miracle.json'))
         self._config['miraclegrue'].setdefault('config', config)
 
     def _setconfigdefaults_skeinforge(self):
@@ -187,7 +184,7 @@ class AbstractMain(object):
         path = os.path.abspath(
             os.path.join(
                 conveyordir,
-                'submodule/skeinforge/skeinforge_application/skeinforge.py'))
+                '../skeinforge/skeinforge_application/skeinforge.py'))
         self._config['skeinforge'].setdefault('path', path)
         profile = os.path.abspath(
             os.path.join(
@@ -229,7 +226,6 @@ class AbstractMain(object):
         code = self._sequence(
             self._checkconfig_common_profile,
             self._checkconfig_common_profiledir,
-            self._checkconfig_common_slicer,
             self._checkconfig_common_socket,
             self._checkconfig_common_daemonfile)
         return code
@@ -244,16 +240,6 @@ class AbstractMain(object):
 
     def _checkconfig_common_profiledir(self):
         code = self._require_string('common', 'profiledir')
-        return code
-
-    def _checkconfig_common_slicer(self):
-        code = self._require_string('common', 'slicer')
-        if None is code:
-            value = self._config['common']['slicer']
-            if value not in ('miraclegrue', 'skeinforge'):
-                code = 1
-                self._log.critical(
-                    "unsupported value for 'common/slicer': %s", value)
         return code
 
     def _checkconfig_common_socket(self):
