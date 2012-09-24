@@ -129,7 +129,7 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
                 printerthread = self._clientthread._findprinter(printername)
                 printerthread.uploadfirmware(machinetype, filename, task)
             except Exception as e:
-                message = str(e)
+                message = unicode(e)
                 task.fail(message)
         task.runningevent.attach(runningcallback)
         return task
@@ -174,7 +174,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job.conclusion = task.conclusion
             job.failure = None
             if None is not task.failure:
-                job.failure = str(task.failure.failure)
+                job.failure = unicode(task.failure.failure)
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
                 self._log.info('job %d ended', job.id)
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
