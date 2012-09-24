@@ -44,7 +44,7 @@ if 'QTDIR' not in env:
     elif 'darwin' == sys.platform:
         env['QTDIR'] = os.path.expanduser('~/QtSDK/Desktop/Qt/4.8.0/gcc/')
 
-env.Tool('qt4', toolpath=[Dir('src/main/scons/')])
+env.Tool('qt4', toolpath=[Dir('submodule/mw-scons-tools')])
 env.EnableQt4Modules(['QtCore', 'QtTest'])
 env.Append(CCFLAGS='-g')
 env.Append(CCFLAGS='-pedantic')
