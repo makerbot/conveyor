@@ -36,6 +36,8 @@ For forward/backward compatibility the meanings of JSON names (names of `.json` 
 * A `.thing` MAY contain other files (unspecified).
 * Any name in `.thing` which MAY point to a JSON file of settings or details, MUST be interpreted as a text string if the file name does not resolve.
 
+NB: Because of time constraints on supporting the .thing format there is currently a UNIFIED_MESH_HACK entry in some .thing files. This allows toolpathing engines that don't support the full layout capabilities of the .thing format to print the pre-laid-out UNIFIED_MESH_HACK.stl.
+
 ### 4.1 Example `manifest.json`
     { "namespace": "http://spec.makerbot.com/ns/thing.0.1.1.1"
     , "objects":
