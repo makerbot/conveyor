@@ -1,3 +1,6 @@
 [submodule "submodule/conveyor_bins"]
 	path = submodule/conveyor_bins
 	url = git@github.com:makerbot/conveyor_bins.git
+[submodule "submodule/mw-scons-tools"]
+	path = submodule/mw-scons-tools
+	url = git@github.com:makerbot/mw-scons-tools.git

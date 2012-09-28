@@ -19,4 +19,4 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-__version__ = "0.0.8.0"
+__version__ = "1.1.0.0"

@@ -1,0 +1,15 @@
+Short-term TODO list:
+
+  * Replace .bat/.sh files with .py scripts.
+
+  * Activity diagrams of the print process we have and the print process we want.
+
+  * Fix naming chaos in the JSON-RPC API.
+
+  * Delete old branches.
+
+  * Win32 named pipe to replace TCP socket (Python implementation is in the 'next' branch; need C++ still)
+
+  * Add an option to the slicer configuration to let people specify a custom profile.
+
+  * Create the longer-term TODO list.

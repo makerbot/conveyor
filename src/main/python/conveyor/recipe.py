@@ -33,12 +33,9 @@ except ImportError:
 
 import conveyor.domain
 import conveyor.enum
-import conveyor.printer.s3g
 import conveyor.process
 import conveyor.task
 import conveyor.thing
-import conveyor.toolpath.miraclegrue
-import conveyor.toolpath.skeinforge
 
 class RecipeManager(object):
     def __init__(self, server, config):
@@ -137,14 +134,14 @@ class Recipe(object):
                 preprocessors.insert(0, 'Skeinforge50Preprocessor')
         return preprocessors
 
-    def _slicetask(self, profile, inputpath, outputpath, with_start_end):
+    def _slicertask(self, profile, inputpath, outputpath, with_start_end):
         def runningcallback(task):
             self._server.slice(
                 profile, inputpath, outputpath, with_start_end,
                 self._job.slicer_settings, self._job.material, task)
-        toolpathtask = conveyor.task.Task()
-        toolpathtask.runningevent.attach(runningcallback)
-        return toolpathtask
+        slicertask = conveyor.task.Task()
+        slicertask.runningevent.attach(runningcallback)
+        return slicertask
 
     def _preprocessortask(self, inputpath, outputpath):
         factory = makerbot_driver.Preprocessors.PreprocessorFactory()
@@ -266,7 +263,7 @@ class _StlRecipe(Recipe):
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
         profile = printerthread.getprofile()
-        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
+        slicetask = self._slicertask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Preprocess
@@ -298,7 +295,7 @@ class _StlRecipe(Recipe):
         # Slice
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
-        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
+        slicetask = self._slicertask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Preprocess
@@ -335,7 +332,7 @@ class _StlRecipe(Recipe):
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
                 gcodepath = gcodefp.name
-        slicetask = self._slicetask(
+        slicetask = self._slicertask(
             profile, self._stlpath, gcodepath, self._job.with_start_end)
         tasks.append(slicetask)
 

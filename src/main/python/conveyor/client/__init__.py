@@ -568,9 +568,8 @@ class ClientMain(conveyor.main.AbstractMain):
 class Client(object):
     @classmethod
     def clientFactory(cls, sock, method, params, wait, display):
-        fp = conveyor.jsonrpc.socketadapter(sock)
-        jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
-        client = Client(sock, fp, jsonrpc, method, params, wait, display)
+        jsonrpc = conveyor.jsonrpc.JsonRpc(sock, sock)
+        client = Client(sock, sock, jsonrpc, method, params, wait, display)
         return client
 
     def __init__(self, sock, fp, jsonrpc, method, params, wait, display):
