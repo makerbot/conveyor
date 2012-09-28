@@ -561,8 +561,8 @@ class ClientMain(conveyor.main.AbstractMain):
         code = client.run()
         return code
 
-    def _has_daemon_lock(self):
-        result = os.path.isfile(self._config['common']['daemon_lockfile'])
+    def _pidfile_exists(self):
+        result = os.path.isfile(self._config['common']['pidfile'])
         return result
 
 class Client(object):

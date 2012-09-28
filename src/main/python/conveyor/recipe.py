@@ -57,25 +57,25 @@ class RecipeManager(object):
 
     def _getrecipe_gcode(self, job):
         if not os.path.exists(job.path):
-            raise Exception
+            raise MissingFileException(job.path)
         elif not os.path.isfile(job.path):
-            raise Exception
+            raise NotFileException(job.path)
         else:
             recipe = _GcodeRecipe(self._server, self._config, job)
         return recipe
 
     def _getrecipe_stl(self, job):
         if not os.path.exists(job.path):
-            raise Exception
+            raise MissingPathExceptoin(job.path)
         elif not os.path.isfile(job.path):
-            raise Exception
+            raise NotFileException(job.path)
         else:
             recipe = _StlRecipe(self._server, self._config, job, job.path)
             return recipe
 
     def _getrecipe_thing(self, job):
         if not os.path.exists(job.path):
-            raise Exception
+            raise MissingFileException(job.path)
         else:
             if not os.path.isdir(job.path):
                 recipe = self._getrecipe_thing_zip(job)
@@ -95,11 +95,11 @@ class RecipeManager(object):
 
     def _getrecipe_thing_dir(self, job, directory):
         if not os.path.isdir(directory):
-            raise Exception
+            raise NotDirectoryException(directory)
         else:
             manifestpath = os.path.join(directory, 'manifest.json')
             if not os.path.exists(manifestpath):
-                raise Exception
+                raise MissingFileException(manifestpath)
             else:
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
@@ -115,7 +115,7 @@ class RecipeManager(object):
                     recipe = _DualThingRecipe(
                         self._server, self._config, job, manifest)
                 else:
-                    raise Exception
+                    raise InvalidThingException # TODO: revisit with more detail
                 return recipe
 
 class Recipe(object):
@@ -357,7 +357,7 @@ class _ThingRecipe(Recipe):
         for instance in self._manifest.instances.itervalues():
             if name == instance.construction.name:
                 return instance
-        raise Exception
+        raise InvalidThingException # TODO: revisit with more detail
 
     def _getinstance_a(self):
         instance = self._getinstance('plastic A')
@@ -393,4 +393,22 @@ class _SingleThingRecipe(_ThingRecipe):
         return process
 
 class _DualThingRecipe(_ThingRecipe):
+    pass
+
+class MissingFileException(Exception):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
+
+class NotFileException(Exception):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
+
+class NotDirectoryException(Exception):
+    def __init__(self, path):
+        Exception.__init__(self, path):
+        self.path = path
+
+class InvalidThingException(Exception):
     pass

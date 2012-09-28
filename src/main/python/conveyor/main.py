@@ -159,17 +159,17 @@ class AbstractMain(object):
         self._config.setdefault('common', {})
         if 'darwin' == sys.platform:
             address = 'pipe:/var/run/conveyord.socket'
-            lockfile = '/var/run/conveyord.lock'
+            pidfile = '/var/run/conveyord.pid'
         elif 'nt' != sys.platform:
             address = 'pipe:/var/run/conveyor/conveyord.socket'
-            lockfile = '/var/run/conveyord/conveyord.lock'
+            pidfile = '/var/run/conveyor/conveyord.pid'
         else:
-            address = 'tcp:localhost:9999'
-            lockfile = 'conveyord.lock'
+            address = 'pipe:\\\\.\\pipe\\conveyord'
+            pidfile = 'conveyord.pid'
         self._config['common'].setdefault('address', address)
+        self._config['common'].setdefault('pidfile', pidfile)
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
         self._config['common'].setdefault('profiledir', '../s3g/makerbot_driver/profiles')
-        self._config['common'].setdefault('lockfile', lockfile)
         return None
 
     def _setconfigdefaults_miraclegrue(self):
@@ -198,15 +198,8 @@ class AbstractMain(object):
                 'src/main/skeinforge/Replicator slicing defaults'))
         self._config['skeinforge'].setdefault('profile', profile)
 
-    # See above comments for why we do an explicit check for Mac OS X.
     def _setconfigdefaults_server(self):
-        if sys.platform == 'darwin':
-            defpid = '/var/run/conveyord.pid'
-        else:
-            defpid = '/var/run/conveyor/conveyord.pid'
         self._config.setdefault('server', {})
-        self._config['server'].setdefault(
-            'pidfile', defpid)
         self._config['server'].setdefault('chdir', True)
         self._config['server'].setdefault('eventthreads', 2)
         self._config['server'].setdefault('blacklisttime', 10.0)
@@ -231,17 +224,17 @@ class AbstractMain(object):
     def _checkconfig_common(self):
         code = self._sequence(
             self._checkconfig_common_address,
+            self._checkconfig_common_pidfile,
             self._checkconfig_common_profile,
-            self._checkconfig_common_profiledir,
-            self._checkconfig_common_lockfile)
+            self._checkconfig_common_profiledir)
         return code
 
     def _checkconfig_common_address(self):
         code = self._require_string('common', 'address')
         return code
 
-    def _checkconfig_common_lockfile(self):
-        code = self._require_string('common', 'lockfile')
+    def _checkconfig_common_pidfile(self):
+        code = self._require_string('common', 'pidfile')
         return code
 
     def _checkconfig_common_profile(self):
@@ -282,14 +275,9 @@ class AbstractMain(object):
 
     def _checkconfig_server(self):
         code = self._sequence(
-            self._checkconfig_server_pidfile,
             self._checkconfig_server_chdir,
             self._checkconfig_server_blacklisttime,
             self._checkconfig_server_eventthreads)
-        return code
-
-    def _checkconfig_server_pidfile(self):
-        code = self._require_string('server', 'pidfile')
         return code
 
     def _checkconfig_server_chdir(self):

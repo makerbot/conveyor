@@ -305,7 +305,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                 task.end(None)
             except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
                 self._log.debug('handled exception', exc_info=True)
-                message = str(e)
+                message = unicode(e)
                 task.fail(message)
             finally:
                 self._fp.open()

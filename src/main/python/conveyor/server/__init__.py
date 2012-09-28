@@ -21,6 +21,8 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import collections
 import errno
+import lockfile
+import lockfile.pidlockfile
 import logging
 import makerbot_driver
 import os
@@ -35,6 +37,7 @@ except ImportError:
     import unittest
 
 import conveyor.address
+import conveyor.connection
 import conveyor.domain
 import conveyor.jsonrpc
 import conveyor.main
@@ -63,50 +66,52 @@ class ServerMain(conveyor.main.AbstractMain):
         try:
             import daemon
             import daemon.pidfile
-            import lockfile
             has_daemon = True
         except ImportError:
             self._log.debug('handled exception', exc_info=True)
         def handle_sigterm(signum, frame):
             self._log.info('received signal %d', signum)
             sys.exit(0)
-        if self._parsedargs.nofork or (not has_daemon):
-            signal.signal(signal.SIGTERM, handle_sigterm)
-            code = self._run_server()
-        else:
-            files_preserve = list(conveyor.log.getfiles())
-            pidfile = self._config['server']['pidfile']
-            dct = {
-                'files_preserve': files_preserve,
-                'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
-            }
-            if not self._config['server']['chdir']:
-                dct['working_directory'] = os.getcwd()
-            context = daemon.DaemonContext(**dct)
-            # The daemon module's implementation of terminate() raises a
-            # SystemExit with a string message instead of an exit code. This
-            # monkey patch fixes it.
-            context.terminate = handle_sigterm # monkey patch!
-            try:
+        pidfile = self._config['common']['pidfile']
+        try:
+            if self._parsedargs.nofork or not has_daemon:
+                signal.signal(signal.SIGTERM, handle_sigterm)
+                lock = lockfile.pidlockfile.PIDLockFile(pidfile)
+                lock.acquire(0)
+                try:
+                    code = self._run_server()
+                finally:
+                    lock.release()
+            else:
+                files_preserve = list(conveyor.log.getfiles())
+                dct = {
+                    'files_preserve': files_preserve,
+                    'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
+                }
+                if not self._config['server']['chdir']:
+                    dct['working_directory'] = os.getcwd()
+                context = daemon.DaemonContext(**dct)
+                # The daemon module's implementation of terminate() raises a
+                # SystemExit with a string message instead of an exit code. This
+                # monkey patch fixes it.
+                context.terminate = handle_sigterm # monkey patch!
                 with context:
                     code = self._run_server()
-            except lockfile.NotLocked as e:
-                self._log.critical('deamon file is not locked', exc_info=True)
-                code = 0
+        except lockfile.AlreadyLocked:
+            self._log.debug('handled exception', exc_info=True)
+            self._log.error('pid file exists: %s', pidfile)
+            code = 1
+        except lockfile.UnlockError:
+            self._log.warning('error while removing pidfile', exc_info=True)
         return code
 
     def _run_server(self):
         self._initeventqueue()
         listener = self._address.listen()
         with listener:
-            lockfile = self._config['common']['lockfile']
-            open(lockfile, 'w')
-            try:
-                server = Server(self._config, listener)
-                code = server.run()
-                return code
-            finally:
-                os.unlink(lockfile)
+            server = Server(self._config, listener)
+            code = server.run()
+            return code
 
 def export(name):
     def decorator(func):
@@ -124,7 +129,7 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
                 printerthread = self._clientthread._findprinter(printername)
                 printerthread.uploadfirmware(machinetype, filename, task)
             except Exception as e:
-                message = str(e)
+                message = unicode(e)
                 task.fail(message)
         task.runningevent.attach(runningcallback)
         return task
@@ -169,7 +174,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job.conclusion = task.conclusion
             job.failure = None
             if None is not task.failure:
-                job.failure = str(task.failure.failure)
+                job.failure = unicode(task.failure.failure)
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
                 self._log.info('job %d ended', job.id)
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
@@ -559,6 +564,9 @@ class Server(object):
             try:
                 method = getattr(clientthread, methodname)
                 method(*args, **kwargs)
+            except conveyor.connection.ConnectionWriteException:
+                self._log.debug('handled exception', exc_info=True)
+                clientthread.stop()
             except:
                 self._log.exception('unhandled exception')
 

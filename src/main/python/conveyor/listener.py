@@ -24,7 +24,6 @@ import logging
 import os
 import os.path
 import socket
-import threading
 
 import conveyor.connection
 import conveyor.stoppable
@@ -47,23 +46,19 @@ class Listener(conveyor.stoppable.Stoppable):
         self.cleanup()
         return False
 
-class SocketListener(Listener):
+class _AbstractSocketListener(Listener):
     def __init__(self, socket):
         Listener.__init__(self)
-        self._condition = threading.Condition()
         self._stopped = False
         self._socket = socket
 
     def stop(self):
-        with self._condition:
-            self._stopped = True
+        self._stopped = True
 
     def accept(self):
         self._socket.settimeout(1.0)
         while True:
-            with self._condition:
-                stopped = self._stopped
-            if stopped:
+            if self._stopped:
                 return None
             else:
                 try:
@@ -73,27 +68,77 @@ class SocketListener(Listener):
                     # self._log.debug('handled exception', exc_info=True)
                     continue
                 except IOError as e:
-                    with self._condition:
-                        stopped = self._stopped
-                    if errno.EINTR != e.args[0] and not stopped:
-                        raise
-                    else:
+                    if errno.EINTR == e.args[0]:
                         # NOTE: too spammy
                         # self._log.debug('handled exception', exc_info=True)
                         continue
+                    else:
+                        raise
                 else:
                     connection = conveyor.connection.SocketConnection(sock, addr)
                     return connection
 
-class PipeListener(SocketListener):
-    def __init__(self, socket, path):
-        SocketListener.__init__(self, socket)
-        self._path = path
-
-    def cleanup(self):
-        if os.path.exists(self._path):
-            os.unlink(self._path)
-
-class TcpListener(SocketListener):
+class TcpListener(_AbstractSocketListener):
     def cleanup(self):
         pass
+
+if 'nt' != os.name:
+    class _PosixPipeListener(_AbstractSocketListener):
+        def __init__(self, path, socket):
+            _AbstractSocketListener.__init__(self, socket)
+            self._path = path
+
+        def cleanup(self):
+            if os.path.exists(self._path):
+                os.unlink(self._path)
+
+    PipeListener = _PosixPipeListener
+
+else:
+    import win32event
+    import win32file
+    import win32pipe
+    import winerror
+
+    class _Win32PipeListener(Listener):
+        def __init__(self, path):
+            Listener.__init__(self)
+            self._stopped = False
+            self._path = path
+
+        def stop(self):
+            self._stopped = True
+
+        def accept(self):
+            handle = win32pipe.CreateNamedPipe(
+                self._path,
+                win32pipe.PIPE_ACCESS_DUPLEX | win32file.FILE_FLAG_OVERLAPPED,
+                win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_READMODE_MESSAGE | win32pipe.PIPE_WAIT,
+                win32pipe.PIPE_UNLIMITED_INSTANCES,
+                4096,
+                4096,
+                0,
+                None)
+            overlapped = conveyor.connection.PipeConnection.createoverlapped()
+            error = win32pipe.ConnectNamedPipe(handle, overlapped)
+            if winerror.ERROR_IO_PENDING == error:
+                while True:
+                    if self._stopped:
+                        return None
+                    else:
+                        value = win32event.WaitForSingleObject(overlapped.hEvent, 1000)
+                        if win32event.WAIT_OBJECT_0 == value:
+                            break
+                        elif win32event.WAIT_TIMEOUT == value:
+                            continue
+                        else:
+                            raise ValueError(value)
+            elif winerror.ERROR_PIPE_CONNECTED != error:
+                raise ValueError
+            connection = conveyor.connection.PipeConnection.create(handle)
+            return connection
+
+        def cleanup(self):
+            pass
+
+    PipeListener = _Win32PipeListener
