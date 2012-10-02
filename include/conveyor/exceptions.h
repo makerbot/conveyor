@@ -92,6 +92,15 @@ namespace conveyor
         {
         }
     };
+
+    class InitializationError : public std::runtime_error
+    {
+    public:
+        InitializationError (std::string const & message)
+            : std::runtime_error ("Initialization failed: " + message)
+        {
+        }
+    };
 }
 
 #endif

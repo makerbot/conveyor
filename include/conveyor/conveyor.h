@@ -19,6 +19,9 @@ namespace conveyor
     {
         Q_OBJECT
     public:
+        /** This must be called before any Conveyor object is created */
+        static void initialize();
+
         static Conveyor * connectToDaemon (Address const * address);
 
         ~Conveyor (void);

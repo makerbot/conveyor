@@ -1,8 +1,13 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include <QDebug>
+#include <QString>
 
 #include <string>
+
+#ifdef _WIN32
+# include <winsock2.h>
+# include <ws2tcpip.h>
+#endif
 
 #include <json/value.h>
 #include <jsonrpc.h>
@@ -10,7 +15,7 @@
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
 #include <conveyor/eeprommap.h>
-
+#include <conveyor/exceptions.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -20,6 +25,29 @@
 
 namespace conveyor
 {
+
+    void
+    ConveyorPrivate::initialize()
+    {
+#ifdef _WIN32
+        WORD wVersionRequested;
+        WSADATA wsaData;
+        int err;
+
+        /* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
+        wVersionRequested = MAKEWORD(2, 2);
+
+        err = WSAStartup(wVersionRequested, &wsaData);
+        if (err != 0) {
+            /* Tell the user that we could not find a usable */
+            /* Winsock DLL.                                  */
+            QString message("WSAStartup failed with error: %1");
+            message.arg(err);
+            throw InitializationError(message.toStdString());
+        }
+#endif
+    }
+
     Conveyor *
     ConveyorPrivate::connect (Address const * const address)
     {
