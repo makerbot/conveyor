@@ -27,6 +27,8 @@ namespace conveyor
     class ConveyorPrivate
     {
     public:
+        static void initialize();
+
         static Conveyor * connect (Address const * address);
 
         ConveyorPrivate
