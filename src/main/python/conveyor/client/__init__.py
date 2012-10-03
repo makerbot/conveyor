@@ -128,10 +128,10 @@ class ClientMain(conveyor.main.AbstractMain):
             default=False,
             help='use start/end gcode provided by file')
         parser.add_argument(
-            '--preprocessor',
+            '--gcodeprocessor',
             action='append',
-            help='preprocessor to run on the gcode file',
-            dest='preprocessor')
+            help='gcodeprocessor to run on the gcode file',
+            dest='gcodeprocessor')
         parser.add_argument(
             '-m',
             '--material',
@@ -181,10 +181,10 @@ class ClientMain(conveyor.main.AbstractMain):
             default=False,
             help='use start/end gcode provided by file')
         parser.add_argument(
-            '--preprocessor',
+            '--gcodeprocessor',
             action='append',
-            help='preprocessor to run on the gcode file',
-            dest='preprocessor')
+            help='gcodeprocessor to run on the gcode file',
+            dest='gcodeprocessor')
         parser.add_argument(
             '-m',
             '--material',
@@ -220,10 +220,10 @@ class ClientMain(conveyor.main.AbstractMain):
             default=False,
             help='include start and end gcode in .gcode file')
         parser.add_argument(
-            '--preprocessor',
+            '--gcodeprocessor',
             action='append',
-            help='preprocessor to run on the gcode file',
-            dest='preprocessor')
+            help='gcodeprocessor to run on the gcode file',
+            dest='gcodeprocessor')
         parser.add_argument(
             '-m',
             '--material',
@@ -455,7 +455,7 @@ class ClientMain(conveyor.main.AbstractMain):
         params = {
             'printername': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
-            'preprocessor': self._parsedargs.preprocessor,
+            'gcodeprocessor': self._parsedargs.gcodeprocessor,
             'material': self._parsedargs.material,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
@@ -493,7 +493,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
             'outputpath': os.path.abspath(self._parsedargs.outputpath),
-            'preprocessor': self._parsedargs.preprocessor,
+            'gcodeprocessor': self._parsedargs.gcodeprocessor,
             'material':self._parsedargs.material,
             'skip_start_end': self._parsedargs.skip_start_end,
             'archive_lvl': 'all',
@@ -512,7 +512,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
             'outputpath': os.path.abspath(self._parsedargs.outputpath),
-            'preprocessor': self._parsedargs.preprocessor,
+            'gcodeprocessor': self._parsedargs.gcodeprocessor,
             'material':self._parsedargs.material,
             'with_start_end': self._parsedargs.with_start_end,
             'slicer_settings': slicer_settings.todict(),
