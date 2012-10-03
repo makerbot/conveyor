@@ -95,10 +95,15 @@ if 'nt' != os.name:
     PipeListener = _PosixPipeListener
 
 else:
-    import win32event
-    import win32file
-    import win32pipe
-    import winerror
+    import ctypes
+    import ctypes.wintypes
+    import conveyor.platform.win32 as win32
+
+    # The size of the pipe read and write buffers.
+    _SIZE = 4096
+
+    # The accept polling timeout.
+    _TIMEOUT = 1000
 
     class _Win32PipeListener(Listener):
         def __init__(self, path):
@@ -110,33 +115,46 @@ else:
             self._stopped = True
 
         def accept(self):
-            handle = win32pipe.CreateNamedPipe(
+            handle = win32.CreateNamedPipe(
                 self._path,
-                win32pipe.PIPE_ACCESS_DUPLEX | win32file.FILE_FLAG_OVERLAPPED,
-                win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_READMODE_MESSAGE | win32pipe.PIPE_WAIT,
-                win32pipe.PIPE_UNLIMITED_INSTANCES,
-                4096,
-                4096,
+                win32.PIPE_ACCESS_DUPLEX | win32.FILE_FLAG_OVERLAPPED,
+                win32.PIPE_TYPE_MESSAGE | win32.PIPE_READMODE_MESSAGE | win32.PIPE_WAIT,
+                win32.PIPE_UNLIMITED_INSTANCES,
+                _SIZE,
+                _SIZE,
                 0,
                 None)
-            overlapped = conveyor.connection.PipeConnection.createoverlapped()
-            error = win32pipe.ConnectNamedPipe(handle, overlapped)
-            if winerror.ERROR_IO_PENDING == error:
-                while True:
-                    if self._stopped:
-                        return None
+            if win32.INVALID_HANDLE_VALUE == handle:
+                error = win32.GetLastError()
+                raise win32.create_WindowsError(error)
+            else:
+                overlapped = conveyor.connection.PipeConnection.createoverlapped()
+                result = win32.ConnectNamedPipe(handle, overlapped)
+                if not result:
+                    error = win32.GetLastError()
+                    if win32.ERROR_IO_PENDING == error:
+                        pass
+                    elif win32.ERROR_PIPE_CONNECTED == error:
+                        connection = conveyor.connection.PipeConnection.create(handle)
+                        return connection
                     else:
-                        value = win32event.WaitForSingleObject(overlapped.hEvent, 1000)
-                        if win32event.WAIT_OBJECT_0 == value:
-                            break
-                        elif win32event.WAIT_TIMEOUT == value:
-                            continue
-                        else:
-                            raise ValueError(value)
-            elif winerror.ERROR_PIPE_CONNECTED != error:
-                raise ValueError
-            connection = conveyor.connection.PipeConnection.create(handle)
-            return connection
+                        raise win32.create_WindowsError(error)
+                connection = self._accept_pending(overlapped)
+                return connection
+
+        def _accept_pending(self, overlapped):
+            while True:
+                if self._stopped:
+                    return None
+                else:
+                    result = win32.WaitForSingleObject(overlapped.hEvent, _TIMEOUT)
+                    if win32.WAIT_TIMEOUT == result:
+                        connection = conveyor.connection.PipeConnection.create(handle)
+                        return connection
+                    elif win32.WAIT_OBJECT_0 == result:
+                        pass
+                    else:
+                        raise ValueError(result)
 
         def cleanup(self):
             pass

@@ -106,25 +106,30 @@ if 'nt' != os.name:
     SocketConnection = _PosixSocketConnection
 
 else:
-    import pywintypes
-    import win32event
-    import win32file
-    import winerror
+    import ctypes
+    import ctypes.wintypes
+    import conveyor.platform.win32 as win32
+
+    # The size of the read buffer.
+    _SIZE = 4096
+
+    # The read polling timeout.
+    _TIMEOUT = 1000
 
     class _Win32PipeConnection(Connection):
         @staticmethod
         def create(handle):
-            buffer = win32file.AllocateReadBuffer(4096)
+            buffer = ctypes.create_string_buffer(_SIZE)
             overlapped_read = _Win32PipeConnection.createoverlapped()
-            overlapped_write = _Win32PipeConnection.createoverlapped(0)
+            overlapped_write = _Win32PipeConnection.createoverlapped()
             connection = conveyor.connection.PipeConnection(
                 handle, buffer, overlapped_read, overlapped_write)
             return connection
 
         @staticmethod
-        def createoverlapped(flag=1):
+        def createoverlapped():
             overlapped = pywintypes.OVERLAPPED()
-            overlapped.hEvent = win32event.CreateEvent(None, flag, 0, None)
+            overlapped.hEvent = win32.CreateEventW(None, False, False, None)
             return overlapped
 
         def __init__(self, handle, buffer, overlapped_read, overlapped_write):
@@ -140,57 +145,76 @@ else:
             self._stopped = True
 
         def read(self):
-            try:
-                hr, buffer = win32file.ReadFile(
-                    self._handle, self._buffer, self._overlapped_read)
-            except pywintypes.error as e:
-                if winerror.ERROR_BROKEN_PIPE != e.winerror:
-                    raise e
-                else:
-                    self._log.debug(
-                        'handled exception', exc_info=True)
-                    return ''
+            count = ctypes.wintypes.DWORD()
+            result = win32.ReadFile(
+                self._handle, self._buffer, _SIZE, ctypes.byref(count),
+                ctypes.byref(self._overlapped_read))
+            if result:
+                s = str(self._buffer[:count])
+                return s
             else:
-                if 0 == hr or winerror.ERROR_MORE_DATA == hr:
-                    result = win32file.GetOverlappedResult(
-                        self._handle, self._overlapped_read, True)
-                    s = str(self._buffer[:result])
+                error = win32.GetLastError()
+                if win32.ERROR_BROKEN_PIPE == error:
+                    return ''
+                elif win32.ERROR_MORE_DATA == error:
+                    s = str(self._buffer[:count])
                     return s
-                elif winerror.ERROR_IO_PENDING:
-                    while True:
-                        if self._stopped:
-                            return ''
+                elif win32.ERROR_IO_PENDING == error:
+                    s = self._read_pending(count)
+                    return s
+                else:
+                    raise win32.create_WindowsError(error)
+
+        def _read_pending(self, count):
+            while True:
+                if self._stopped:
+                    return ''
+                else:
+                    result = win23.WaitForSingleObject(
+                        self._overlapped_read.hEvent, _TIMEOUT)
+                    if win32.WAIT_TIMEOUT == result:
+                        continue
+                    elif win32.WAIT_OBJECT_0 == result:
+                        result = win32.GetOverlappedResult(
+                            self._handle, ctypes.byref(self._overlapped_read),
+                            ctypes.byref(count), True)
+                        if result:
+                            s = str(self._buffer[:count])
+                            return s
                         else:
-                            value = win32event.WaitForSingleObject(
-                                self._overlapped_read.hEvent, 1000)
-                            if win32event.WAIT_OBJECT_0 == value:
-                                try:
-                                    result = win32file.GetOverlappedResult(
-                                        self._handle, self._overlapped_read,
-                                        True)
-                                except pywintypes.error as e:
-                                    if winerror.ERROR_BROKEN_PIPE != e.winerror:
-                                        raise e
-                                    else:
-                                        self._log.debug(
-                                            'handled exception', exc_info=True)
-                                        return ''
-                                else:
-                                    s = str(self._buffer[:result])
-                                    return s
-                            elif win32event.WAIT_TIMEOUT == value:
-                                continue
+                            error = win32.GetLastError()
+                            if win32.ERROR_BROKEN_PIPE == error:
+                                return ''
+                            elif win32.ERROR_MORE_DATA == error:
+                                s = str(self._buffer[:count])
+                                return s
                             else:
-                                raise ValueError(value)
+                                raise win32.create_WindowsError(error)
+                    else:
+                        raise ValueError(result)
 
         def write(self, data):
             with self._condition:
                 s = str(data)
-                win32file.WriteFile(self._handle, s, self._overlapped_write)
-                win32event.WaitForSingleObject(
-                    self._overlapped_write.hEvent, win32event.INFINITE)
-                result = win32file.GetOverlappedResult(
-                    self._handle, self._overlapped_write, True)
+                result = win32.WriteFile(
+                    self._handle, s, len(s), None, self._overlapped_write)
+                if not result:
+                    error = win32.GetLastError()
+                    if win32.ERROR_BROKEN_PIPE == error:
+                        raise ConnectionWriteException
+                    elif win32.ERROR_IO_PENDING == error:
+                        count = ctypes.wintypes.DWORD()
+                        result = win32.GetOverlappedResult(
+                            self._handle, ctypes.byref(self._overlapped_write),
+                            ctypes.byref(count), True)
+                        if not result:
+                            error = win32.GetLastError()
+                            if win32.ERROR_BROKEN_PIPE == error:
+                                raise ConnectionWriteException
+                            else:
+                                raise win32.create_WindowsError(error)
+                    else:
+                        raise win32.create_WindowsError(error)
 
     class _Win32SocketConnection(_AbstractSocketConnection):
         def read(self):
