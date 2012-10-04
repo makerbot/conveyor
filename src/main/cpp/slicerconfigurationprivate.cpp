@@ -102,18 +102,6 @@ namespace conveyor
         return m_extruder;
     }
 
-    QString SlicerConfigurationPrivate::extruderName() const
-    {
-        switch (m_extruder) {
-        case SlicerConfiguration::Left:
-            return "Left";
-        case SlicerConfiguration::Right:
-            return "Right";
-        default:
-            return QString();
-        }
-    }
-
     bool SlicerConfigurationPrivate::raft() const
     {
         return m_raft;
