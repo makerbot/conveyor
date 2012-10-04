@@ -31,8 +31,8 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.address
 import conveyor.debug
-import conveyor.ipc
 
 class AbstractMain(object):
     def __init__(self, program, configsection):
@@ -150,23 +150,26 @@ class AbstractMain(object):
             os.path.abspath(os.path.dirname(__file__)), '../../../../')
         return conveyordir
 
-    # Mac OS X treats /var/run differently than other unices and
-    # launchd has no reliable way to create a /var/run/conveyor on launch.
-    # Ideally conveyord should create this directory itself on OS X. However
-    # we're going to leave that aside for now and get it done.
+    # Mac OS X treats /var/run differently than other unices and launchd has no
+    # reliable way to create a /var/run/conveyor on launch. Ideally conveyord
+    # should create this directory itself on OS X. However we're going to leave
+    # that aside for now and get it done.
+
     def _setconfigdefaults_common(self):
-        if sys.platform == 'darwin':
-            defsock = 'unix:/var/run/conveyord.socket'
-        else:
-            defsock = 'unix:/var/run/conveyor/conveyord.socket'
         self._config.setdefault('common', {})
-        self._config['common'].setdefault(
-            'socket', defsock)
-        self._config['common'].setdefault('slicer', 'miraclegrue')
-        self._config['common'].setdefault('serialport', '/dev/ttyACM0')
+        if 'darwin' == sys.platform:
+            address = 'pipe:/var/run/conveyord.socket'
+            pidfile = '/var/run/conveyord.pid'
+        elif 'nt' != sys.platform:
+            address = 'pipe:/var/run/conveyor/conveyord.socket'
+            pidfile = '/var/run/conveyor/conveyord.pid'
+        else:
+            address = 'pipe:\\\\.\\pipe\\conveyord'
+            pidfile = 'conveyord.pid'
+        self._config['common'].setdefault('address', address)
+        self._config['common'].setdefault('pidfile', pidfile)
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
         self._config['common'].setdefault('profiledir', '../s3g/makerbot_driver/profiles')
-        self._config['common'].setdefault('daemon_lockfile', 'conveyord.avail.lock')
         return None
 
     def _setconfigdefaults_miraclegrue(self):
@@ -174,11 +177,11 @@ class AbstractMain(object):
         conveyordir = self._getconveyordir()
         path = os.path.abspath(
             os.path.join(
-                conveyordir, 'submodule/Miracle-Grue/bin/miracle_grue'))
+                conveyordir, '../Miracle-Grue/bin/miracle_grue'))
         self._config['miraclegrue'].setdefault('path', path)
         config = os.path.abspath(
             os.path.join(
-                conveyordir, 'submodule/Miracle-Grue/miracle-pla.config'))
+                conveyordir, 'src/main/miraclegrue/miracle.json'))
         self._config['miraclegrue'].setdefault('config', config)
 
     def _setconfigdefaults_skeinforge(self):
@@ -187,7 +190,7 @@ class AbstractMain(object):
         path = os.path.abspath(
             os.path.join(
                 conveyordir,
-                'submodule/skeinforge/skeinforge_application/skeinforge.py'))
+                '../skeinforge/skeinforge_application/skeinforge.py'))
         self._config['skeinforge'].setdefault('path', path)
         profile = os.path.abspath(
             os.path.join(
@@ -195,15 +198,8 @@ class AbstractMain(object):
                 'src/main/skeinforge/Replicator slicing defaults'))
         self._config['skeinforge'].setdefault('profile', profile)
 
-    # See above comments for why we do an explicit check for Mac OS X.
     def _setconfigdefaults_server(self):
-        if sys.platform == 'darwin':
-            defpid = '/var/run/conveyord.pid'
-        else:
-            defpid = '/var/run/conveyor/conveyord.pid'
         self._config.setdefault('server', {})
-        self._config['server'].setdefault(
-            'pidfile', defpid)
         self._config['server'].setdefault('chdir', True)
         self._config['server'].setdefault('eventthreads', 2)
         self._config['server'].setdefault('blacklisttime', 10.0)
@@ -227,15 +223,18 @@ class AbstractMain(object):
 
     def _checkconfig_common(self):
         code = self._sequence(
+            self._checkconfig_common_address,
+            self._checkconfig_common_pidfile,
             self._checkconfig_common_profile,
-            self._checkconfig_common_profiledir,
-            self._checkconfig_common_slicer,
-            self._checkconfig_common_socket,
-            self._checkconfig_common_daemonfile)
+            self._checkconfig_common_profiledir)
         return code
 
-    def _checkconfig_common_daemonfile(self):
-        code = self._require_string('common', 'daemon_lockfile')
+    def _checkconfig_common_address(self):
+        code = self._require_string('common', 'address')
+        return code
+
+    def _checkconfig_common_pidfile(self):
+        code = self._require_string('common', 'pidfile')
         return code
 
     def _checkconfig_common_profile(self):
@@ -244,20 +243,6 @@ class AbstractMain(object):
 
     def _checkconfig_common_profiledir(self):
         code = self._require_string('common', 'profiledir')
-        return code
-
-    def _checkconfig_common_slicer(self):
-        code = self._require_string('common', 'slicer')
-        if None is code:
-            value = self._config['common']['slicer']
-            if value not in ('miraclegrue', 'skeinforge'):
-                code = 1
-                self._log.critical(
-                    "unsupported value for 'common/slicer': %s", value)
-        return code
-
-    def _checkconfig_common_socket(self):
-        code = self._require_string('common', 'socket')
         return code
 
     def _checkconfig_miraclegrue(self):
@@ -290,14 +275,9 @@ class AbstractMain(object):
 
     def _checkconfig_server(self):
         code = self._sequence(
-            self._checkconfig_server_pidfile,
             self._checkconfig_server_chdir,
             self._checkconfig_server_blacklisttime,
             self._checkconfig_server_eventthreads)
-        return code
-
-    def _checkconfig_server_pidfile(self):
-        code = self._require_string('server', 'pidfile')
         return code
 
     def _checkconfig_server_chdir(self):
@@ -368,22 +348,22 @@ class AbstractMain(object):
         return code
 
     def _parseaddress(self):
-        value = self._config['common']['socket']
+        value = self._config['common']['address']
         try:
-            self._address = conveyor.ipc.getaddress(value)
-        except conveyor.ipc.UnknownProtocolException as e:
+            self._address = conveyor.address.Address.parse(value)
+        except conveyor.address.UnknownProtocolException as e:
             code = 1
             self._log.error('unknown socket protocol: %s', e.protocol)
-        except conveyor.ipc.MissingHostException as e:
+        except conveyor.address.MissingHostException as e:
             code = 1
             self._log.error('missing socket host: %s', e.value)
-        except conveyor.ipc.MissingPortException as e:
+        except conveyor.address.MissingPortException as e:
             code = 1
             self._log.error('missing socket port: %s', e.value)
-        except conveyor.ipc.InvalidPortException as e:
+        except conveyor.address.InvalidPortException as e:
             code = 1
             self._log.error('invalid socket port: %s', e.port)
-        except conveyor.ipc.MissingPathException as e:
+        except conveyor.address.MissingPathException as e:
             code = 1
             self._log.error('missing socket path: %s', e.value)
         else:

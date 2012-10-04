@@ -122,6 +122,30 @@ class Task(object):
     def cancel(self):
         self._transition(TaskEvent.CANCEL, None)
 
+    def ispending(self):
+        pending = TaskState.PENDING == self.state
+        return pending
+
+    def isrunning(self):
+        running = TaskState.RUNNING == self.state
+        return running
+
+    def isstopped(self):
+        stopped = TaskState.STOPPED == self.state
+        return stopped
+
+    def isended(self):
+        ended = TaskConclusion.ENDED == self.conclusion
+        return ended
+
+    def isfailed(self):
+        failed = TaskConclusion.FAILED == self.conclusion
+        return failed
+
+    def iscanceled(self):
+        canceled = TaskConclusion.CANCELED == self.conclusion
+        return canceled
+
 class TaskTestCase(unittest.TestCase):
     def _reset(self, callbacks):
         for callback in callbacks:

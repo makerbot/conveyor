@@ -35,63 +35,9 @@ except ImportError:
     import unittest
 
 import conveyor.event
+import conveyor.stoppable
 import conveyor.test
 import conveyor.task
-
-class socketadapter(object):
-    '''A file-like wrapper for sockets.
-
-    This differs from socket.makefile() in that the read() method doesn't
-    buffer until the end of time and it only implements the methods required by
-    the _JsonReader and JsonRpc class contracts.
-
-    '''
-
-    def flush(self):
-        pass
-
-    def write(self, data):
-        self._fp.sendall(data)
-
-    if 'nt' == os.name:
-        def __init__(self, fp):
-            self._fp = fp
-            self._stop = False
-
-        def read(self, size=-1):
-            while True:
-                if self._stop:
-                    return ''
-                else:
-                    import select
-                    rlist, wlist, xlist = select.select([self._fp], [], [], 1)
-                    if 0 != len(rlist):
-                        try:
-                            data = self._fp.recv(size)
-                        except IOError as e:
-                            if errno.EBADF == e.errno:
-                                data = ''
-                            else:
-                                raise
-                        return data
-
-        def stop(self):
-            self._stop = True
-            self._fp.close()
-    else:
-        def __init__(self, fp):
-            self._fp = fp
-
-        def read(self, size=-1):
-            data = self._fp.recv(size)
-            return data
-
-        def stop(self):
-            # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
-            # 'Connection reset by peer' errors.
-            import socket
-            self._fp.shutdown(socket.SHUT_RD)
-            self._fp.close()
 
 # See conveyor/doc/jsonreader.{dot,png}.
 #
@@ -181,19 +127,18 @@ class TaskFactory(object):
     def __call__(self, *args, **kwargs):
         raise NotImplementedError
 
-class JsonRpc(object):
+class JsonRpc(conveyor.stoppable.Stoppable):
     def __init__(self, infp, outfp):
+        self._condition = threading.Condition()
         self._idcounter = 0
-        self._idcounterlock = threading.Lock()
-        self._infp = infp # contract: .read(int)
+        self._infp = infp # contract: .read(), .stop()
         self._jsonreader = _JsonReader()
         self._jsonreader.event.attach(self._jsonreadercallback)
         self._log = logging.getLogger(self.__class__.__name__)
         self._methods = {}
         self._methodsinfo={}
-        self._outfp = outfp # contract: .write(str), .flush()
-        self._outfplock = threading.Lock()
-        self._stop = False
+        self._outfp = outfp # contract: .write(str)
+        self._stopped = False
         self._tasks = {}
 
     #
@@ -299,21 +244,17 @@ class JsonRpc(object):
 
     def _send(self, data):
         self._log.debug('data=%r', data)
-        with self._outfplock:
-            self._outfp.write(data)
-            self._outfp.flush()
+        self._outfp.write(data)
 
     def run(self):
         self._log.debug('starting')
-        while not self._stop:
-            try:
-                data = self._infp.read(4096)
-            except IOError as e:
-                if errno.EINTR == e.errno:
-                    continue
-                else:
-                    raise
+        while True:
+            with self._condition:
+                stopped = self._stopped
+            if self._stopped:
+                break
             else:
+                data = self._infp.read()
                 if 0 == len(data):
                     break
                 else:
@@ -322,9 +263,9 @@ class JsonRpc(object):
         self._log.debug('ending')
 
     def stop(self):
-        self._stop = True
-        if hasattr(self._infp, 'stop'): # TODO: this check is silly
-            self._infp.stop()
+        with self._condition:
+            self._stopped = True
+        self._infp.stop()
 
     #
     # Client part
@@ -356,7 +297,7 @@ class JsonRpc(object):
         @param params: params for method
         @return a Task object with methods setup properly
         """
-        with self._idcounterlock:
+        with self._condition:
             id = self._idcounter
             self._idcounter += 1
         self._log.debug('method=%r, params=%r, id=%r', method, params, id)
@@ -481,24 +422,11 @@ class JsonRpc(object):
         return response
 
     def addmethod(self, method, func, info=None):
-        """ add a RPC callback method to a RPC client or server. If no
-         usage info is defined, a generic message is added.
-        """
         self._log.debug('method=%r, func=%r', method, func)
         self._methods[method] = func
-        self._methodsinfo[func] = info if info else "no param info '" + str(method) + "' Guess?!"
 
-    def dict_all_methods(self):
-        """ @returns a dict of all RPC method names:info pairs """
-        result = {}
-        if self._methods:
-            for key in self._methods:
-                if self._methods[key] in self._methodsinfo:
-                     result[key] = self._methodsinfo[self._methods[key]] #
-                else:
-                     results[key] = repr(self._methods[key])
-        return result
-
+    def getmethods(self):
+        return self._methods
 
 class _SocketadapterStubFile(object):
     def __init__(self):

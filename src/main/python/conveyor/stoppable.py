@@ -28,8 +28,6 @@ try:
 except ImportError: # pragma: no cover
     import unittest
 
-import conveyor.event
-
 class Stoppable(object):
     def __init__(self):
         stoppablemanager = StoppableManager.getinstance()
@@ -93,9 +91,11 @@ class StoppableManager(object):
             if None is not stoppable:
                 stoppable.stop()
 
+
 class _StoppableTestObject(Stoppable):
     def __init__(self):
         Stoppable.__init__(self)
+        import conveyor.event
         self.callback = conveyor.event.Callback()
 
     def stop(self):
@@ -103,6 +103,7 @@ class _StoppableTestObject(Stoppable):
 
 class _NotInitializedStoppableTestObject(Stoppable):
     def __init__(self):
+        import conveyor.event
         self.callback = conveyor.event.Callback()
 
 class _NotStoppableTestObject(object):

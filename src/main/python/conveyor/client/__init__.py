@@ -25,6 +25,7 @@ import os.path
 import socket
 import sys
 import tempfile
+import time
 
 try:
     import unittest2 as unittest
@@ -64,6 +65,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_downloadfirmware,
             self._initsubparser_uploadfirmware,
             self._initsubparser_resettofactory,
+            self._initsubparser_waitforservice,
         ):
                 method(subparsers)
 
@@ -320,21 +322,31 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.set_defaults(func=self._run_resettofactory)
         self._initparser_common(parser)
 
+    def _initsubparser_waitforservice(self, subparsers):
+        parser = subparsers.add_parser(
+            'waitforservice',
+            help='wait for the service to start')
+        parser.set_defaults(func=self._run_waitforservice)
+        self._initparser_common(parser)
+
     def _run(self):
         self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
-        try:
-            self._socket = self._address.connect()
-        except EnvironmentError as e:
-            code = 1
-            self._log.critical(
-                'failed to open socket: %s: %s',
-                self._config['common']['socket'], e.strerror, exc_info=True)
-            if not self._has_daemon_lock():
-              self._log.critical(
-                'Unable to connect to conveyor server. Please verify that it is running.')
-        else:
+        if self._run_waitforservice == self._parsedargs.func: # TODO: this is awful
             code = self._parsedargs.func()
+        else:
+            try:
+                self._socket = self._address.connect()
+            except EnvironmentError as e:
+                code = 1
+                self._log.critical(
+                    'failed to open socket: %s: %s',
+                    self._config['common']['socket'], e.strerror, exc_info=True)
+                if not self._has_daemon_lock():
+                  self._log.critical(
+                    'Unable to connect to conveyor server. Please verify that it is running.')
+            else:
+                code = self._parsedargs.func()
         return code
 
     def _run_resettofactory(self):
@@ -427,6 +439,26 @@ class ClientMain(conveyor.main.AbstractMain):
         def display(result):
             self._log.info('%s', result)
         code = self._run_client('getjobs', params, False, display)
+        return code
+
+    def _run_waitforservice(self):
+        now = time.time()
+        failtime = now + 30.0
+        while True:
+            try:
+                self._address.connect()
+            except:
+                now = time.time()
+                if now < failtime:
+                    time.sleep(1.0)
+                else:
+                    self._log.error('failed to connect to conveyor service')
+                    code = 1
+                    break
+            else:
+                self._log.info('connected')
+                code = 0
+                break
         return code
 
     def _createslicerconfiguration(self):
@@ -529,16 +561,15 @@ class ClientMain(conveyor.main.AbstractMain):
         code = client.run()
         return code
 
-    def _has_daemon_lock(self):
-        result = os.path.isfile(self._config['common']['daemon_lockfile'])
+    def _pidfile_exists(self):
+        result = os.path.isfile(self._config['common']['pidfile'])
         return result
 
 class Client(object):
     @classmethod
     def clientFactory(cls, sock, method, params, wait, display):
-        fp = conveyor.jsonrpc.socketadapter(sock)
-        jsonrpc = conveyor.jsonrpc.JsonRpc(fp, fp)
-        client = Client(sock, fp, jsonrpc, method, params, wait, display)
+        jsonrpc = conveyor.jsonrpc.JsonRpc(sock, sock)
+        client = Client(sock, sock, jsonrpc, method, params, wait, display)
         return client
 
     def __init__(self, sock, fp, jsonrpc, method, params, wait, display):

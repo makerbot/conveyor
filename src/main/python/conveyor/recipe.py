@@ -33,12 +33,9 @@ except ImportError:
 
 import conveyor.domain
 import conveyor.enum
-import conveyor.printer.s3g
 import conveyor.process
 import conveyor.task
 import conveyor.thing
-import conveyor.toolpath.miraclegrue
-import conveyor.toolpath.skeinforge
 
 class RecipeManager(object):
     def __init__(self, server, config):
@@ -60,25 +57,25 @@ class RecipeManager(object):
 
     def _getrecipe_gcode(self, job):
         if not os.path.exists(job.path):
-            raise Exception
+            raise MissingFileException(job.path)
         elif not os.path.isfile(job.path):
-            raise Exception
+            raise NotFileException(job.path)
         else:
             recipe = _GcodeRecipe(self._server, self._config, job)
         return recipe
 
     def _getrecipe_stl(self, job):
         if not os.path.exists(job.path):
-            raise Exception
+            raise MissingPathExceptoin(job.path)
         elif not os.path.isfile(job.path):
-            raise Exception
+            raise NotFileException(job.path)
         else:
             recipe = _StlRecipe(self._server, self._config, job, job.path)
             return recipe
 
     def _getrecipe_thing(self, job):
         if not os.path.exists(job.path):
-            raise Exception
+            raise MissingFileException(job.path)
         else:
             if not os.path.isdir(job.path):
                 recipe = self._getrecipe_thing_zip(job)
@@ -98,11 +95,11 @@ class RecipeManager(object):
 
     def _getrecipe_thing_dir(self, job, directory):
         if not os.path.isdir(directory):
-            raise Exception
+            raise NotDirectoryException(directory)
         else:
             manifestpath = os.path.join(directory, 'manifest.json')
             if not os.path.exists(manifestpath):
-                raise Exception
+                raise MissingFileException(manifestpath)
             else:
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
@@ -118,7 +115,7 @@ class RecipeManager(object):
                     recipe = _DualThingRecipe(
                         self._server, self._config, job, manifest)
                 else:
-                    raise Exception
+                    raise InvalidThingException # TODO: revisit with more detail
                 return recipe
 
 class Recipe(object):
@@ -137,14 +134,14 @@ class Recipe(object):
                 gcodeprocessors.insert(0, 'Skeinforge50Processor')
         return gcodeprocessors
 
-    def _slicetask(self, profile, inputpath, outputpath, with_start_end):
+    def _slicertask(self, profile, inputpath, outputpath, with_start_end):
         def runningcallback(task):
             self._server.slice(
                 profile, inputpath, outputpath, with_start_end,
                 self._job.slicer_settings, self._job.material, task)
-        toolpathtask = conveyor.task.Task()
-        toolpathtask.runningevent.attach(runningcallback)
-        return toolpathtask
+        slicertask = conveyor.task.Task()
+        slicertask.runningevent.attach(runningcallback)
+        return slicertask
 
     def _gcodeprocessortask(self, inputpath, outputpath):
         factory = makerbot_driver.GcodeProcessors.ProcessorFactory()
@@ -262,7 +259,7 @@ class _StlRecipe(Recipe):
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
         profile = printerthread.getprofile()
-        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
+        slicetask = self._slicertask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Process Gcode
@@ -294,7 +291,7 @@ class _StlRecipe(Recipe):
         # Slice
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
-        slicetask = self._slicetask(profile, self._stlpath, gcodepath, False)
+        slicetask = self._slicertask(profile, self._stlpath, gcodepath, False)
         tasks.append(slicetask)
 
         # Process Gcode
@@ -331,7 +328,7 @@ class _StlRecipe(Recipe):
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
                 gcodepath = gcodefp.name
-        slicetask = self._slicetask(
+        slicetask = self._slicertask(
             profile, self._stlpath, gcodepath, self._job.with_start_end)
         tasks.append(slicetask)
 
@@ -356,7 +353,7 @@ class _ThingRecipe(Recipe):
         for instance in self._manifest.instances.itervalues():
             if name == instance.construction.name:
                 return instance
-        raise Exception
+        raise InvalidThingException # TODO: revisit with more detail
 
     def _getinstance_a(self):
         instance = self._getinstance('plastic A')
@@ -392,4 +389,22 @@ class _SingleThingRecipe(_ThingRecipe):
         return process
 
 class _DualThingRecipe(_ThingRecipe):
+    pass
+
+class MissingFileException(Exception):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
+
+class NotFileException(Exception):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
+
+class NotDirectoryException(Exception):
+    def __init__(self, path):
+        Exception.__init__(self, path):
+        self.path = path
+
+class InvalidThingException(Exception):
     pass
