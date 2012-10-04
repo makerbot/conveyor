@@ -407,7 +407,7 @@ class NotFileException(Exception):
 
 class NotDirectoryException(Exception):
     def __init__(self, path):
-        Exception.__init__(self, path):
+        Exception.__init__(self, path)
         self.path = path
 
 class InvalidThingException(Exception):
