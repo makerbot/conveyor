@@ -60,9 +60,8 @@ namespace conveyor
         // Slicer name and min/max versions
         root["slicer"] = slicerName().toStdString();
 
-        // TODO: rewrite the software stack, using strings
-        // instead of integers to represent toolheads
-        root["extruder"] = 0;
+        root["extruder"] = (m_extruder == SlicerConfiguration::Left ?
+                            "1" : "0");
 
         root["raft"] = m_raft;
         root["support"] = m_supports;
