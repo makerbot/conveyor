@@ -136,6 +136,10 @@ class MiracleGrueToolpath(object):
                 task.end(None)
 
     def _generateconfig(self, slicer_settings, material, fp):
+        raftLayers = 2
+        fanLayer = 2
+        if slicer_settings.raft:
+            fanLayer += raftLayers
         dct = {
             'infillDensity'           : slicer_settings.infill,
             'numberOfShells'          : slicer_settings.shells,
@@ -148,7 +152,7 @@ class MiracleGrueToolpath(object):
             'rapidMoveFeedRateXY'     : slicer_settings.travel_speed,
             'rapidMoveFeedRateZ'      : 23.0,
             'doRaft'                  : slicer_settings.raft,
-            'raftLayers'              : 2,
+            'raftLayers'              : raftLayers,
             'raftBaseThickness'       : 0.6,
             'raftInterfaceThickness'  : 0.3,
             'raftOutset'              : 6.0,
@@ -158,7 +162,7 @@ class MiracleGrueToolpath(object):
             'supportMargin'           : 1.5,
             'supportDensity'          : 0.2,
             'doFanCommand'            : 'PLA' == material,
-            'fanLayer'                : 2,
+            'fanLayer'                : fanLayer,
             'bedZOffset'              : 0.0,
             'layerHeight'             : slicer_settings.layer_height,
             'startX'                  : -110.4,
