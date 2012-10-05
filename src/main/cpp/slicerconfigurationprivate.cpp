@@ -60,9 +60,8 @@ namespace conveyor
         // Slicer name and min/max versions
         root["slicer"] = slicerName().toStdString();
 
-        // TODO: rewrite the software stack, using strings
-        // instead of integers to represent toolheads
-        root["extruder"] = 0;
+        root["extruder"] = (m_extruder == SlicerConfiguration::Left ?
+                            "1" : "0");
 
         root["raft"] = m_raft;
         root["support"] = m_supports;
@@ -100,18 +99,6 @@ namespace conveyor
     SlicerConfiguration::Extruder SlicerConfigurationPrivate::extruder() const
     {
         return m_extruder;
-    }
-
-    QString SlicerConfigurationPrivate::extruderName() const
-    {
-        switch (m_extruder) {
-        case SlicerConfiguration::Left:
-            return "Left";
-        case SlicerConfiguration::Right:
-            return "Right";
-        default:
-            return QString();
-        }
     }
 
     bool SlicerConfigurationPrivate::raft() const

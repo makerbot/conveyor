@@ -129,9 +129,12 @@ class Recipe(object):
         preprocessors = self._job.preprocessor
         if None is preprocessors:
             preprocessors = []
-        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer
-            and 'Skeinforge50Preprocessor' not in preprocessors):
+        left_extruder = 1
+        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
+            if 'Skeinforge50Preprocessor' not in preprocessors:
                 preprocessors.insert(0, 'Skeinforge50Preprocessor')
+            if self._job.slicer_settings.extruder == left_extruder:
+                preprocessors.append('ToolSwapPreprocessor')
         return preprocessors
 
     def _slicertask(self, profile, inputpath, outputpath, with_start_end):
