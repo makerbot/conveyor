@@ -14,6 +14,12 @@
 
 namespace conveyor
 {
+    void
+    Conveyor::initialize ()
+    {
+        ConveyorPrivate::initialize ();
+    }
+
     Conveyor *
     Conveyor::connectToDaemon (Address const * address)
     {
