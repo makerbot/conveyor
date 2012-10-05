@@ -146,6 +146,13 @@ class ClientMain(conveyor.main.AbstractMain):
             choices=('miraclegrue', 'skeinforge'),
             help='set the slicer (miraclegrue or skeinforge)',
             dest='slicer')
+        parser.add_argument(
+            '-e',
+            '--extruder',
+            default='right',
+            choices=('left', 'right'),
+            help='set the extruder',
+            dest='extruder')
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser(
@@ -199,6 +206,13 @@ class ClientMain(conveyor.main.AbstractMain):
             choices=('miraclegrue', 'skeinforge'),
             help='set the slicer',
             dest='slicer')
+        parser.add_argument(
+            '-e',
+            '--extruder',
+            default='right',
+            choices=('left', 'right'),
+            help='set the extruder',
+            dest='extruder')
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser(
@@ -436,9 +450,15 @@ class ClientMain(conveyor.main.AbstractMain):
             slicer = conveyor.domain.Slicer.SKEINFORGE
         else:
             raise ValueError(self._parsedargs.slicer)
+        if 'right' == self._parsedargs.extruder:
+            extruder = 0
+        elif 'left' == self._parsedargs.extruder:
+            extruder = 1
+        else:
+            raise ValueError(self._parsedargs.extruder)
         slicer_settings = conveyor.domain.SlicerConfiguration(
             slicer=slicer,
-            extruder=0,
+            extruder=extruder,
             raft=False,
             support=False,
             infill=0.1,
