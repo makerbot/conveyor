@@ -352,10 +352,10 @@ class S3gDriver(object):
     def _get_start_end_variables(self, profile, slicer_settings, material):
         if None is material:
             material = 'PLA'
-        if 0 == slicer_settings.extruder:
+        if '0' == slicer_settings.extruder:
             tool_0 = True
             tool_1 = False
-        elif 1 == slicer_settings.extruder:
+        elif '1' == slicer_settings.extruder:
             tool_0 = False
             tool_1 = True
         else:

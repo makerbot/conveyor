@@ -458,9 +458,9 @@ class ClientMain(conveyor.main.AbstractMain):
         else:
             raise ValueError(self._parsedargs.slicer)
         if 'right' == self._parsedargs.extruder:
-            extruder = 0
+            extruder = '0'
         elif 'left' == self._parsedargs.extruder:
-            extruder = 1
+            extruder = '1'
         else:
             raise ValueError(self._parsedargs.extruder)
         slicer_settings = conveyor.domain.SlicerConfiguration(
