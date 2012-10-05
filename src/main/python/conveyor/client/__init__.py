@@ -252,6 +252,13 @@ class ClientMain(conveyor.main.AbstractMain):
             choices=('miraclegrue', 'skeinforge'),
             help='set the slicer',
             dest='slicer')
+        parser.add_argument(
+            '-e',
+            '--extruder',
+            default='right',
+            choices=('left', 'right'),
+            help='set the extruder',
+            dest='extruder')
 
     def _initsubparser_getuploadablemachines(self, subparsers):
         parser = subparsers.add_parser(
