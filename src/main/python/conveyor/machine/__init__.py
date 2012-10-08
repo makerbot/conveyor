@@ -27,7 +27,8 @@ import conveyor.stoppable
 
 class MachineDriver(object):
     def __init__(self):
-        pass
+        self.portadded = conveyor.event.Event('portadded')
+        self.portremoved = conveyor.event.Event('portremoved')
 
     def initialize(self):
         raise NotImplementedError
@@ -110,8 +111,6 @@ class SerialMachineDriver(MachineDriver):
         self._detectorthread = None
         self._log = logging.getLogger(self.__class__.__name__)
         self._ports = {}
-        self.portadded = conveyor.event.Event('portadded')
-        self.portremoved = conveyor.event.Event('portremoved')
 
     def initialize(self):
         if None is self._detectorthread:
