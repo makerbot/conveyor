@@ -8,6 +8,14 @@ class DualstrusionWeaver(object):
         self.tool_0_codes = tool_0_codes
         self.tool_1_codes = tool_1_codes
         self.last_used_codes = self.tool_0_codes
+        tool_0_length = len(self.tool_0_codes.gcodes)
+        tool_1_length = len(self.tool_1_codes.gcodes)
+        if tool_0_length > tool_1_length:
+            self.longest_list = self.tool_0_codes
+            self.total_length = tool_0_length
+        else:
+            self.longtest_list = self.tool_1_codes
+            self.total_length = tool_1_length
         self.new_codes = []
 
     def get_toolchange_commands(self, tool_codes):
@@ -20,13 +28,16 @@ class DualstrusionWeaver(object):
         commands.append(toolchange)
         return commands
 
-    def combine_codes(self):
+    def combine_codes(self, callback=None):
         while len(self.tool_0_codes.gcodes) is not 0 or len(self.tool_1_codes.gcodes) is not 0:
             next_gcode_obj = self.get_next_code_list()
             toolchange_codes = self.get_toolchange_commands(next_gcode_obj)
             next_layer = self.get_next_layer(next_gcode_obj)
             self.new_codes.extend(toolchange_codes)
             self.new_codes.extend(next_layer)
+        if callback:
+            percent = len(self.longest_list) / float(self.total_length)
+            callback(percent)
         return self.new_codes
 
     def get_next_code_list(self):
