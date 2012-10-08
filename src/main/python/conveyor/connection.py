@@ -128,7 +128,7 @@ else:
 
         @staticmethod
         def createoverlapped():
-            overlapped = pywintypes.OVERLAPPED()
+            overlapped = win32.OVERLAPPED()
             overlapped.hEvent = win32.CreateEventW(None, False, False, None)
             return overlapped
 
@@ -150,14 +150,14 @@ else:
                 self._handle, self._buffer, _SIZE, ctypes.byref(count),
                 ctypes.byref(self._overlapped_read))
             if result:
-                s = str(self._buffer[:count])
+                s = str(self._buffer[:count.value])
                 return s
             else:
                 error = win32.GetLastError()
                 if win32.ERROR_BROKEN_PIPE == error:
                     return ''
                 elif win32.ERROR_MORE_DATA == error:
-                    s = str(self._buffer[:count])
+                    s = str(self._buffer[:count.value])
                     return s
                 elif win32.ERROR_IO_PENDING == error:
                     s = self._read_pending(count)
@@ -170,7 +170,7 @@ else:
                 if self._stopped:
                     return ''
                 else:
-                    result = win23.WaitForSingleObject(
+                    result = win32.WaitForSingleObject(
                         self._overlapped_read.hEvent, _TIMEOUT)
                     if win32.WAIT_TIMEOUT == result:
                         continue
@@ -179,14 +179,14 @@ else:
                             self._handle, ctypes.byref(self._overlapped_read),
                             ctypes.byref(count), True)
                         if result:
-                            s = str(self._buffer[:count])
+                            s = str(self._buffer[:count.value])
                             return s
                         else:
                             error = win32.GetLastError()
                             if win32.ERROR_BROKEN_PIPE == error:
                                 return ''
                             elif win32.ERROR_MORE_DATA == error:
-                                s = str(self._buffer[:count])
+                                s = str(self._buffer[:count.value])
                                 return s
                             else:
                                 raise win32.create_WindowsError(error)

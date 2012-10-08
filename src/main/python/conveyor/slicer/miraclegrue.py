@@ -74,9 +74,14 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         config['doSupport'] = self._slicer_settings.support
         config['doFanCommand'] = 'PLA' == self._material
         config['layerHeight'] = self._slicer_settings.layer_height
-        config['defaultExtruder'] = self._slicer_settings.extruder
+        config['defaultExtruder'] = int(self._slicer_settings.extruder)
         config['extrusionProfiles']['insets']['feedrate'] = self._slicer_settings.print_speed
         config['extrusionProfiles']['infill']['feedrate'] = self._slicer_settings.print_speed
+        if self._slicer_settings.raft:
+            raftLayers = config['raftLayers']
+            fanLayer = config['fanLayer']
+            fanLayer += raftLayers
+            config['fanLayer'] = fanLayer
         return config
 
     def _getexecutable(self):
