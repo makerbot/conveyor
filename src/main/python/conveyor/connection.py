@@ -90,7 +90,7 @@ if 'nt' != os.name:
                     try:
                         data = self._socket.recv(4096)
                     except IOError as e:
-                        if errno.EINTR == e.args[0]:
+                        if e.args[0] in (errno.EINTR, errno.EAGAIN, errno.EWOULDBLOCK):
                             # NOTE: too spammy
                             # self._log.debug('handled exception', exc_info=True)
                             continue
