@@ -24,7 +24,7 @@ import ctypes.wintypes
 
 def create_WindowsError(error):
     message = ctypes.wintypes.WinError(error)
-    e = WindowError(error, message)
+    e = WindowsError(error, message)
     return e
 
 _kernel32 = ctypes.WinDLL('kernel32')

@@ -125,6 +125,8 @@ if 'nt' != os.name:
     PipeAddress = _PosixPipeAddress
 
 else:
+    import ctypes
+    import ctypes.wintypes
     import conveyor.platform.win32 as win32
 
     class _Win32PipeAddress(_AbstractPipeAddress):
@@ -133,7 +135,7 @@ else:
             return listener
 
         def connect(self):
-            handle = win32.CreateFile(
+            handle = win32.CreateFileW(
                 self._path,
                 win32.GENERIC_READ | win32.GENERIC_WRITE,
                 0,
@@ -141,11 +143,8 @@ else:
                 win32.OPEN_EXISTING,
                 win32.FILE_FLAG_OVERLAPPED,
                 None)
-            win32.SetNamedPipeHandleState(
-                handle,
-                win32.PIPE_READMODE_MESSAGE,
-                None,
-                None)
+            lpMode = ctypes.wintypes.DWORD(win32.PIPE_READMODE_MESSAGE)
+            win32.SetNamedPipeHandleState(handle, ctypes.byref(lpMode), None, None)
             connection = conveyor.connection.PipeConnection.create(handle)
             return connection
 

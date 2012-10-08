@@ -115,7 +115,7 @@ else:
             self._stopped = True
 
         def accept(self):
-            handle = win32.CreateNamedPipe(
+            handle = win32.CreateNamedPipeW(
                 self._path,
                 win32.PIPE_ACCESS_DUPLEX | win32.FILE_FLAG_OVERLAPPED,
                 win32.PIPE_TYPE_MESSAGE | win32.PIPE_READMODE_MESSAGE | win32.PIPE_WAIT,
@@ -139,20 +139,20 @@ else:
                         return connection
                     else:
                         raise win32.create_WindowsError(error)
-                connection = self._accept_pending(overlapped)
+                connection = self._accept_pending(handle, overlapped)
                 return connection
 
-        def _accept_pending(self, overlapped):
+        def _accept_pending(self, handle, overlapped):
             while True:
                 if self._stopped:
                     return None
                 else:
                     result = win32.WaitForSingleObject(overlapped.hEvent, _TIMEOUT)
                     if win32.WAIT_TIMEOUT == result:
+                        pass
+                    elif win32.WAIT_OBJECT_0 == result:
                         connection = conveyor.connection.PipeConnection.create(handle)
                         return connection
-                    elif win32.WAIT_OBJECT_0 == result:
-                        pass
                     else:
                         raise ValueError(result)
 
