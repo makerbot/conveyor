@@ -36,6 +36,7 @@ import conveyor.enum
 import conveyor.process
 import conveyor.task
 import conveyor.thing
+import conveyor.dualstrusion
 
 class RecipeManager(object):
     def __init__(self, server, config):
@@ -170,6 +171,20 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
+    def _dualstrusiontask(self, tool_0_path, tool_1_path, outputpath):
+        def runningcallback(task):
+            with contextlib.nested(open(tool_0_path), open(tool_1_path)) as (t0, t1):
+                t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
+                t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
+            weaver = conveyor.dualstrusion.GcodeObject(t0_codes, t1_codes)
+            output = weaver.combine_codes()
+            with open(outputpath, 'w') as f:
+                for line in output:
+                    f.write(line)
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningcallbac)
+        return task
+
     def _printtask(self, printerthread, inputpath):
         def runningcallback(task):
             printerthread.print(
@@ -200,18 +215,22 @@ class Recipe(object):
         raise NotImplementedError
 
 class _GcodeRecipe(Recipe):
+    def __init__(self, server, config, job, gcodepath):
+        Recipe.__init__(self, server, config, job)
+        self._gcodepath = gcodepath
+
     def print(self, printerthread):
         tasks = []
 
         # Preprocess
         preprocessors = self._getpreprocessors()
         if 0 == len(preprocessors):
-            processed_gcodepath = self._job.path
+            processed_gcodepath = self._gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             preprocessortask = self._preprocessortask(
-                self._job.path, processed_gcodepath)
+                self._gcodepath, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
@@ -219,7 +238,7 @@ class _GcodeRecipe(Recipe):
         tasks.append(printtask)
 
         def process_endcallback(task):
-            if processed_gcodepath != self._job.path:
+            if processed_gcodepath != self._gcodepath:
                 os.unlink(processed_gcodepath)
         process = conveyor.process.tasksequence(self._job, tasks)
         process.endevent.attach(process_endcallback)
@@ -231,12 +250,12 @@ class _GcodeRecipe(Recipe):
         # Preprocess
         preprocessors = self._getpreprocessors()
         if 0 == len(preprocessors):
-            processed_gcodepath = self._job.path
+            processed_gcodepath = self._gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             preprocessortask = self._preprocessortask(
-                self._job.path, processed_gcodepath)
+                self._gcodepath, processed_gcodepath)
             tasks.append(preprocessortask)
 
         # Print
@@ -245,7 +264,7 @@ class _GcodeRecipe(Recipe):
         tasks.append(printtofiletask)
 
         def process_endcallback(task):
-            if processed_gcodepath != self._job.path:
+            if processed_gcodepath != self._gcoepath:
                 os.unlink(processed_gcodepath)
         process = conveyor.process.tasksequence(self._job, tasks)
         process.endevent.attach(process_endcallback)
@@ -393,8 +412,33 @@ class _SingleThingRecipe(_ThingRecipe):
         return process
 
 class _DualThingRecipe(_ThingRecipe):
-    pass
+    def print(self, printerthread):
+        tasks = []
+        instance_a = self._getinstance_a()
+        instance_b = self._getinstance_b()
+        objectpath_a = os.path.join(self._manifest.base, instance_a.object.name)
+        objectpath_b = os.path.join(self._manifest.base, instance_b.object.name)
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            gcodepath_a = f.name
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            gcodepath_b = f.name
 
+        #Slice the objects
+        stlrecipe_b = _StlRecipe(
+            self._server, self._config, self._job, objectpath_a)
+        tasks.extend(stlrecipe.slice(printerthread.profile, gcodepath_a))
+        tasks.extend(stlrecipe.slice(printerthread.profile, gcodepath_b))
+
+        #Combine for dualstrusion
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            dualstrusion_path = f.name
+        tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
+
+        #print
+        gcoderecipe = _GcodeRecipe(self._server, self._config, self._job, dualstrusion_path)
+        tasks.append(gcoderecipe.print(printerthread))
+        return tasks
+        
 class MissingFileException(Exception):
     def __init__(self, path):
         Exception.__init__(self, path)
