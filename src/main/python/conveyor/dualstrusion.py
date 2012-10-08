@@ -16,7 +16,7 @@ class DualstrusionWeaver(object):
             tool = 0
         else:
             tool = 1
-        toolchange = "M135 T%i" % (tool)
+        toolchange = "M135 T%i\n" % (tool)
         commands.append(toolchange)
         return commands
 
@@ -47,7 +47,7 @@ class GcodeObject(object):
         self.gcodes = gcodes
         self.skeinforge_tag = re.compile("</layer>")
         self.miraclegrue_tag = re.compile("\(Slice (\d+), (\d+) Extruder\)")
-        self.layer_height_regex = re.compile("[gG]1.*?[zZ](0?\.?[\d]+)")
+        self.layer_height_regex = re.compile("[gG]1.*?[zZ]([\d]*\.?[\d]+)")
         self.last_layer_height = 0
 
     def peek_next_layer_height(self):
@@ -86,12 +86,12 @@ class TestGcodeObject(unittest.TestCase):
             "M134 T0",
             "G92 X0 Y0 Z0 A0 B0",
             "G92 Z500",
-            "G1 X0 Y0 Z0.5",
+            "G1 X0 Y0 Z1.05",
             "G1 X0 Y0 Z1",
             "G1 X0 Y0 Z20",
         ]
         self.gcode_obj.gcodes = gcodes
-        expected_next = .5
+        expected_next = 1.05
         self.assertEqual(expected_next, self.gcode_obj.peek_next_layer_height())
 
     def test_peek_next_layer_height_int(self):
@@ -229,7 +229,7 @@ class TestDualstrusionWeaver(unittest.TestCase):
             "<layer>",
             "M132",
             "G92 X0 Y0 Z0 A0 B0",
-            "G1 X50 Y50 Z0.5",
+            "G1 X50 Y50 Z1.05",
             "</layer>",
             "<layer>",
             "M132",
@@ -238,7 +238,7 @@ class TestDualstrusionWeaver(unittest.TestCase):
             "</layer>",
         ]
         t1_codes = [
-            "G1 X1 Y2 Z0.5",
+            "G1 X1 Y2 Z1.05",
             "G1 X59 Y58",
             "M132",
             "G92",
@@ -250,25 +250,25 @@ class TestDualstrusionWeaver(unittest.TestCase):
             "(Slice 55, 3 Extruder)",
         ]
         expected_gcodes = [
-            "M135 T0",
+            "M135 T0\n",
             "<layer>",
             "M132",
             "G92 X0 Y0 Z0 A0 B0",
-            "G1 X50 Y50 Z0.5",
+            "G1 X50 Y50 Z1.05",
             "</layer>",
-            "M135 T1",
-            "G1 X1 Y2 Z0.5",
+            "M135 T1\n",
+            "G1 X1 Y2 Z1.05",
             "G1 X59 Y58",
             "M132",
             "G92",
             "(Slice 54, 3 Extruder)",
-            "M135 T1",
+            "M135 T1\n",
             "G1 X1 Y2 Z1.5",
             "G99",
             "M101",
             "M105",
             "(Slice 55, 3 Extruder)",
-            "M135 T0",
+            "M135 T0\n",
             "<layer>",
             "M132",
             "G1 X0 Y0 Z1.5",
@@ -305,13 +305,13 @@ class TestDualstrusionWeaver(unittest.TestCase):
     def test_get_next_code_list_equal_height(self):
         codes = [
             "<layer>",
-            "G1 Z.5",
+            "G1 Z1.05",
             "</layer>",
             "<layer>",
             "G1 Z1.5",
             "</layer>",
             "<layer>",
-            "G1 Z2.5",
+            "G1 Z2.05",
             "</layer>",
         ]
             
@@ -332,7 +332,7 @@ class TestDualstrusionWeaver(unittest.TestCase):
         t1_codes = GcodeObject([])
         weaver = DualstrusionWeaver(t0_codes, t1_codes)
         expected_toolchange_command = [
-            "M135 T0"
+            "M135 T0\n"
         ]
         self.assertEqual(expected_toolchange_command, weaver.get_toolchange_commands(t0_codes))
         
