@@ -53,7 +53,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
     def _runiteration(self):
         self._expire_blacklist()
         profiledir = self._config['common']['profiledir']
-        factory = makerbot_driver.BotFactory(profiledir)
+        factory = makerbot_driver.MachineFactory(profiledir)
         available = self._detector.get_available_machines().copy()
         self._log.debug('self._available = %r', self._available)
         self._log.debug('available = %r', available)
@@ -73,7 +73,9 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
         if len(attached) > 0:
             for portname in attached:
                 try:
-                    s3g, profile = factory.build_from_port(portname, True)
+                    returnobj = factory.build_from_port(portname, True)
+                    s3g = getattr(returnobj, 's3g')
+                    profile = getattr(returnobj, 'profile')
                     printerid = available[portname]['iSerial']
                     fp = s3g.writer.file
                     s3gprinterthread = S3gPrinterThread(

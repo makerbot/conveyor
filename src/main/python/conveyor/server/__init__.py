@@ -241,11 +241,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('print')
     def _print(
-        self, printername, inputpath, preprocessor, skip_start_end, archive_lvl,
+        self, printername, inputpath, gcodeprocessor, skip_start_end, archive_lvl,
         archive_dir, slicer_settings, material):
             self._log.debug(
-                'printername=%r, inputpath=%r, preprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
-                printername, inputpath, preprocessor, skip_start_end,
+                'printername=%r, inputpath=%r, gcodeprocessor=%r, skip_start_end=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
+                printername, inputpath, gcodeprocessor, skip_start_end,
                 archive_lvl, archive_dir, slicer_settings, material)
             slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
@@ -256,7 +256,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = printerthread.getprofile()
             job = self._server.createjob(
                 build_name, inputpath, self._config, printerid, profile,
-                preprocessor, skip_start_end, False, slicer_settings,
+                gcodeprocessor, skip_start_end, False, slicer_settings,
                 material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.print(printerthread)
@@ -284,11 +284,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('printtofile')
     def _printtofile(
-        self, profilename, inputpath, outputpath, preprocessor, skip_start_end,
+        self, profilename, inputpath, outputpath, gcodeprocessor, skip_start_end,
         archive_lvl, archive_dir, slicer_settings, material):
             self._log.debug(
-                'profilename=%r, inputpath=%r, outputpath=%r, preprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
-                profilename, inputpath, outputpath, preprocessor,
+                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
+                profilename, inputpath, outputpath, gcodeprocessor,
                 skip_start_end, archive_lvl, archive_dir, slicer_settings,
                 material)
             slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
@@ -298,7 +298,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = self._findprofile(profilename)
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
-                preprocessor, skip_start_end, False, slicer_settings,
+                gcodeprocessor, skip_start_end, False, slicer_settings,
                 material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.printtofile(profile, outputpath)
@@ -327,11 +327,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('slice')
     def _slice(
-        self, profilename, inputpath, outputpath, preprocessor,
+        self, profilename, inputpath, outputpath, gcodeprocessor,
         with_start_end, slicer_settings, material):
             self._log.debug(
-                'profilename=%r, inputpath=%r, outputpath=%r, preprocessor=%r, with_start_end=%r, slicer_settings=%r, material=%r',
-                profilename, inputpath, outputpath, preprocessor,
+                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, with_start_end=%r, slicer_settings=%r, material=%r',
+                profilename, inputpath, outputpath, gcodeprocessor,
                 with_start_end, slicer_settings, material)
             slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
@@ -340,7 +340,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = self._findprofile(profilename)
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
-                preprocessor, False, with_start_end, slicer_settings,
+                gcodeprocessor, False, with_start_end, slicer_settings,
                 material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.slice(profile, outputpath)
@@ -449,7 +449,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
-            ": takes (thing-filename, preprocessor, skip_start_end_bool, [endpoint)" )
+            ": takes (thing-filename, gcodeprocessor, skip_start_end_bool, [endpoint)" )
         self._jsonrpc.addmethod('printtofile', self._printtofile,
             ": takes (inputfile, outputfile) pair" )
         self._jsonrpc.addmethod('slice', self._slice,
@@ -597,7 +597,7 @@ class Server(object):
     # passed to addjob must have a valid process.
 
     def createjob(
-        self, build_name, path, config, printerid, profile, preprocessor,
+        self, build_name, path, config, printerid, profile, gcodeprocessor,
         skip_start_end, with_start_end, slicer_settings, material):
             # NOTE: The profile is not currently included in the actual job
             # because it can't be converted to or from JSON.
@@ -605,7 +605,7 @@ class Server(object):
                 id = self._jobcounter
                 self._jobcounter += 1
                 job = conveyor.domain.Job(
-                    id, build_name, path, config, printerid, preprocessor,
+                    id, build_name, path, config, printerid, gcodeprocessor,
                     skip_start_end, with_start_end, slicer_settings, material)
                 return job
 
