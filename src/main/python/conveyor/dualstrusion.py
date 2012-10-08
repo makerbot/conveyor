@@ -10,15 +10,23 @@ class DualstrusionWeaver(object):
         self.last_used_codes = self.tool_0_codes
         self.new_codes = []
 
+    def get_toolchange_commands(self, tool_codes):
+        commands = []
+        if tool_codes == self.tool_0_codes:
+            tool = 0
+        else:
+            tool = 1
+        toolchange = "M135 T%i" % (tool)
+        commands.append(toolchange)
+        return commands
+
     def combine_codes(self):
-        while len(self.tool_0_codes.gcodes) is not 0 and len(self.tool_1_codes.gcodes) is not 0:
+        while len(self.tool_0_codes.gcodes) is not 0 or len(self.tool_1_codes.gcodes) is not 0:
             next_gcode_obj = self.get_next_code_list()
+            toolchange_codes = self.get_toolchange_commands(next_gcode_obj)
             next_layer = self.get_next_layer(next_gcode_obj)
+            self.new_codes.extend(toolchange_codes)
             self.new_codes.extend(next_layer)
-        if len(self.tool_0_codes.gcodes) is not 0:
-            self.new_codes.extend(self.tool_0_codes.gcodes)
-        elif len(self.tool_1_codes.gcodes) is not 0:
-            self.new_codes.extend(self.tool_1_codes.gcodes)
         return self.new_codes
 
     def get_next_code_list(self):
@@ -32,107 +40,6 @@ class DualstrusionWeaver(object):
 
     def get_next_layer(self, gcode_obj):
         return gcode_obj.get_next_layer()
-
-class TestDualstrusionWeaver(unittest.TestCase):
-
-    def test_combine_codes(self):
-        t0_codes = [
-            "<layer>",
-            "M132",
-            "G92 X0 Y0 Z0 A0 B0",
-            "G1 X50 Y50 Z0.5",
-            "</layer>",
-            "<layer>",
-            "M132",
-            "G1 X0 Y0 Z1.5",
-            "G92 X99 Y99:",
-            "</layer>",
-        ]
-        t1_codes = [
-            "G1 X1 Y2 Z0.5",
-            "G1 X59 Y58",
-            "M132",
-            "G92",
-            "(Slice 54, 3 Extruder)",
-            "G1 X1 Y2 Z1.5",
-            "G99",
-            "M101",
-            "M105",
-            "(Slice 55, 3 Extruder)",
-        ]
-        expected_gcodes = [
-            "<layer>",
-            "M132",
-            "G92 X0 Y0 Z0 A0 B0",
-            "G1 X50 Y50 Z0.5",
-            "</layer>",
-            "G1 X1 Y2 Z0.5",
-            "G1 X59 Y58",
-            "M132",
-            "G92",
-            "(Slice 54, 3 Extruder)",
-            "G1 X1 Y2 Z1.5",
-            "G99",
-            "M101",
-            "M105",
-            "(Slice 55, 3 Extruder)",
-            "<layer>",
-            "M132",
-            "G1 X0 Y0 Z1.5",
-            "G92 X99 Y99:",
-            "</layer>",
-        ]
-        tool_0_codes = GcodeObject(gcodes=t0_codes)
-        tool_1_codes = GcodeObject(gcodes=t1_codes)
-        weaver = DualstrusionWeaver(tool_0_codes, tool_1_codes)
-        result = weaver.combine_codes()
-        self.assertEqual(expected_gcodes, result)
-
-    def test_get_next_layer(self):
-        t0_codes = [
-            "<layer>",
-            "M132",
-            "G92 X0 Y0 Z0 A0 B0",
-            "G1 X50 Y50 Z50",
-            "</layer>",
-            "<layer>",
-            "M132",
-            "G1 X0 Y0 Z0",
-            "G92 X99 Y99:",
-            "</layer>",
-            ]
-        expected_t0_codes = t0_codes[:5]
-        expected_leftovers = t0_codes[5:]
-        tool_0_codes = GcodeObject(gcodes=t0_codes[:])
-        tool_1_codes = GcodeObject(gcodes=[])
-        weaver = DualstrusionWeaver(tool_0_codes, tool_1_codes)
-        self.assertEqual(expected_t0_codes, weaver.get_next_layer(tool_0_codes))
-        self.assertEqual(expected_leftovers, tool_0_codes.gcodes)
-
-    def test_get_next_code_list_equal_height(self):
-        codes = [
-            "<layer>",
-            "G1 Z.5",
-            "</layer>",
-            "<layer>",
-            "G1 Z1.5",
-            "</layer>",
-            "<layer>",
-            "G1 Z2.5",
-            "</layer>",
-        ]
-            
-        t0_codes = GcodeObject(codes[:])
-        t1_codes = GcodeObject(codes[:])
-        weaver = DualstrusionWeaver(t0_codes, t1_codes)
-
-        expected_results = [t0_codes, t1_codes, t1_codes, t0_codes, t0_codes, t1_codes]
-
-        for expected in expected_results:
-            got_next = weaver.get_next_code_list()
-            self.assertEqual(got_next, expected)
-            self.assertEqual(weaver.last_used_codes, expected)
-            got_next.get_next_layer()
 
 class GcodeObject(object):
 
@@ -314,6 +221,122 @@ class TestGcodeObject(unittest.TestCase):
         self.assertEqual(expected_layer, self.gcode_obj.get_next_layer())
         self.assertEqual(len(self.gcode_obj.gcodes), len(expected_layer) - len(gcodes))
         self.assertEqual(expected_leftovers, self.gcode_obj.gcodes)
+
+class TestDualstrusionWeaver(unittest.TestCase):
+
+    def test_combine_codes(self):
+        t0_codes = [
+            "<layer>",
+            "M132",
+            "G92 X0 Y0 Z0 A0 B0",
+            "G1 X50 Y50 Z0.5",
+            "</layer>",
+            "<layer>",
+            "M132",
+            "G1 X0 Y0 Z1.5",
+            "G92 X99 Y99:",
+            "</layer>",
+        ]
+        t1_codes = [
+            "G1 X1 Y2 Z0.5",
+            "G1 X59 Y58",
+            "M132",
+            "G92",
+            "(Slice 54, 3 Extruder)",
+            "G1 X1 Y2 Z1.5",
+            "G99",
+            "M101",
+            "M105",
+            "(Slice 55, 3 Extruder)",
+        ]
+        expected_gcodes = [
+            "M135 T0",
+            "<layer>",
+            "M132",
+            "G92 X0 Y0 Z0 A0 B0",
+            "G1 X50 Y50 Z0.5",
+            "</layer>",
+            "M135 T1",
+            "G1 X1 Y2 Z0.5",
+            "G1 X59 Y58",
+            "M132",
+            "G92",
+            "(Slice 54, 3 Extruder)",
+            "M135 T1",
+            "G1 X1 Y2 Z1.5",
+            "G99",
+            "M101",
+            "M105",
+            "(Slice 55, 3 Extruder)",
+            "M135 T0",
+            "<layer>",
+            "M132",
+            "G1 X0 Y0 Z1.5",
+            "G92 X99 Y99:",
+            "</layer>",
+        ]
+        tool_0_codes = GcodeObject(gcodes=t0_codes)
+        tool_1_codes = GcodeObject(gcodes=t1_codes)
+        weaver = DualstrusionWeaver(tool_0_codes, tool_1_codes)
+        result = weaver.combine_codes()
+        self.assertEqual(expected_gcodes, result)
+
+    def test_get_next_layer(self):
+        t0_codes = [
+            "<layer>",
+            "M132",
+            "G92 X0 Y0 Z0 A0 B0",
+            "G1 X50 Y50 Z50",
+            "</layer>",
+            "<layer>",
+            "M132",
+            "G1 X0 Y0 Z0",
+            "G92 X99 Y99:",
+            "</layer>",
+            ]
+        expected_t0_codes = t0_codes[:5]
+        expected_leftovers = t0_codes[5:]
+        tool_0_codes = GcodeObject(gcodes=t0_codes[:])
+        tool_1_codes = GcodeObject(gcodes=[])
+        weaver = DualstrusionWeaver(tool_0_codes, tool_1_codes)
+        self.assertEqual(expected_t0_codes, weaver.get_next_layer(tool_0_codes))
+        self.assertEqual(expected_leftovers, tool_0_codes.gcodes)
+
+    def test_get_next_code_list_equal_height(self):
+        codes = [
+            "<layer>",
+            "G1 Z.5",
+            "</layer>",
+            "<layer>",
+            "G1 Z1.5",
+            "</layer>",
+            "<layer>",
+            "G1 Z2.5",
+            "</layer>",
+        ]
+            
+        t0_codes = GcodeObject(codes[:])
+        t1_codes = GcodeObject(codes[:])
+        weaver = DualstrusionWeaver(t0_codes, t1_codes)
+
+        expected_results = [t0_codes, t1_codes, t1_codes, t0_codes, t0_codes, t1_codes]
+
+        for expected in expected_results:
+            got_next = weaver.get_next_code_list()
+            self.assertEqual(got_next, expected)
+            self.assertEqual(weaver.last_used_codes, expected)
+            got_next.get_next_layer()
+
+    def test_get_toolchange_commands(self):
+        t0_codes = GcodeObject([])
+        t1_codes = GcodeObject([])
+        weaver = DualstrusionWeaver(t0_codes, t1_codes)
+        expected_toolchange_command = [
+            "M135 T0"
+        ]
+        self.assertEqual(expected_toolchange_command, weaver.get_toolchange_commands(t0_codes))
+        
+
 
 if __name__ == "__main__":
     unittest.main()
