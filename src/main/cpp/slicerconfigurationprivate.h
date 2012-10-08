@@ -32,7 +32,6 @@ namespace conveyor
         QString slicerName() const;
 
         SlicerConfiguration::Extruder extruder() const;
-        QString extruderName() const;
 
         bool raft() const;
         bool supports() const;
