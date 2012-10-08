@@ -416,6 +416,7 @@ class _SingleThingRecipe(_ThingRecipe):
 
 class _DualThingRecipe(_ThingRecipe):
     def print(self, printerthread):
+        printerthread.dualstrusion = True
         tasks = []
         instance_a = self._getinstance_a()
         instance_b = self._getinstance_b()

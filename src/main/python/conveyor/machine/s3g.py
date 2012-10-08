@@ -149,6 +149,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         self._server = server
         self._stop = False
         self._curprintjob = None
+        self.dualstrusion = False
 
         #states
         self._states = {
@@ -240,7 +241,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         driver.print(
                             self._server, self._portname, self._fp,
                             self._profile, buildname, gcodepath,
-                            skip_start_end, slicer_settings, material, task)
+                            skip_start_end, slicer_settings, material, task,
+                            self.dualstrusion)
                     except PrinterThreadNotIdleError:
                         self._log.debug('handled exception', exc_info=True)
                     except makerbot_driver.BuildCancelledError:
@@ -349,10 +351,13 @@ class S3gDriver(object):
     # object that has the extruder and platform temperatures. Domain modeling
     # error.
 
-    def _get_start_end_variables(self, profile, slicer_settings, material):
+    def _get_start_end_variables(self, profile, slicer_settings, material, dualstrusion):
         if None is material:
             material = 'PLA'
-        if '0' == slicer_settings.extruder:
+        if dualstrusion:
+            tool_0 = True
+            tool_1 = True
+        elif '0' == slicer_settings.extruder:
             tool_0 = True
             tool_1 = False
         elif '1' == slicer_settings.extruder:
@@ -371,9 +376,9 @@ class S3gDriver(object):
         return start_gcode, end_gcode, variables
 
     def _gcodelines(
-        self, profile, gcodepath, skip_start_end, slicer_settings, material):
+        self, profile, gcodepath, skip_start_end, slicer_settings, material, dualstrusion):
             startgcode, endgcode, variables = self._get_start_end_variables(
-                profile, slicer_settings, material)
+                profile, slicer_settings, material, dualstrusion)
             def generator():
                 if not skip_start_end:
                     if None is not startgcode:
@@ -406,7 +411,7 @@ class S3gDriver(object):
     def _genericprint(
         self, server, portname, profile, buildname, writer, polltemperature,
         pollinterval, gcodepath, skip_start_end, slicer_settings, material,
-        task):
+        task, dualstrusion):
             current_progress = None
             new_progress = {
                 'name': 'print',
@@ -445,7 +450,7 @@ class S3gDriver(object):
                 temperature = _gettemperature(profile, parser.s3g)
                 server.changeprinter(portname, temperature)
             gcodelines, variables = self._gcodelines(
-                profile, gcodepath, skip_start_end, slicer_settings, material)
+                profile, gcodepath, skip_start_end, slicer_settings, material, dualstrusion)
             parser.environment.update(variables)
             # TODO: remove this {current,total}{byte,line} stuff; we have
             # proper progress from the slicer now.
@@ -510,21 +515,22 @@ class S3gDriver(object):
 
     def print(
         self, server, portname, fp, profile, buildname, gcodepath,
-        skip_start_end, slicer_settings, material, task):
+        skip_start_end, slicer_settings, material, task, dualstrusion=False):
             writer = makerbot_driver.Writer.StreamWriter(fp)
             self._genericprint(
                 server, portname, profile, buildname, writer, True, 5.0,
-                gcodepath, skip_start_end, slicer_settings, material, task)
+                gcodepath, skip_start_end, slicer_settings, material, task,
+                dualstrusion)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,
-        slicer_settings, material, task):
+        slicer_settings, material, task, dualstrusion=False):
             with open(outputpath, 'wb') as fp:
                 writer = makerbot_driver.Writer.FileWriter(fp)
                 self._genericprint(
                     None, None, profile, buildname, writer, False, 5.0,
                     gcodepath, skip_start_end, slicer_settings, material,
-                    task)
+                    task, dualstrusion)
 
     def resettofactory(
         self, fp):
