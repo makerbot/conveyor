@@ -25,6 +25,7 @@ import os
 import os.path
 import tempfile
 import zipfile
+import contextlib
 
 try:
     import unittest2 as unittest
@@ -104,12 +105,14 @@ class RecipeManager(object):
             else:
                 manifest = conveyor.thing.Manifest.frompath(manifestpath)
                 manifest.validate()
-                if None is not manifest.unified_mesh_hack:
-                    stlpath = os.path.join(
-                        manifest.base, manifest.unified_mesh_hack)
-                    recipe = _StlRecipe(
-                        self._server, self._config, job, stlpath)
-                elif 1 == len(manifest.instances):
+                # This currently procludes us from doing any dualstrusion, since
+                # we will always be printing with the unified_mesh_hack
+#                if None is not manifest.unified_mesh_hack:
+#                    stlpath = os.path.join(
+#                        manifest.base, manifest.unified_mesh_hack)
+#                    recipe = _StlRecipe(
+#                        self._server, self._config, job, stlpath)
+                if 1 == len(manifest.instances):
                     recipe = _SingleThingRecipe(
                         self._server, self._config, job, manifest)
                 elif 2 == len(manifest.instances):
@@ -172,13 +175,13 @@ class Recipe(object):
             with contextlib.nested(open(tool_0_path), open(tool_1_path)) as (t0, t1):
                 t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
                 t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
-            weaver = conveyor.dualstrusion.GcodeObject(t0_codes, t1_codes)
+            weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes)
             output = weaver.combine_codes()
             with open(outputpath, 'w') as f:
                 for line in output:
                     f.write(line)
         task = conveyor.task.Task()
-        task.runningevent.attach(runningcallbac)
+        task.runningevent.attach(runningcallback)
         return task
 
     def _printtask(self, printerthread, inputpath):
@@ -421,20 +424,26 @@ class _DualThingRecipe(_ThingRecipe):
             gcodepath_b = f.name
 
         #Slice the objects
-        stlrecipe_b = _StlRecipe(
+        stlrecipe_a = _StlRecipe(
             self._server, self._config, self._job, objectpath_a)
-        tasks.extend(stlrecipe.slice(printerthread.profile, gcodepath_a))
-        tasks.extend(stlrecipe.slice(printerthread.profile, gcodepath_b))
+        tasks.append(stlrecipe_a.slice(printerthread._profile, gcodepath_a))
+        stlrecipe_b = _StlRecipe(
+            self._server, self._config, self._job, objectpath_b)
+        tasks.append(stlrecipe_b.slice(printerthread._profile, gcodepath_b))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
             dualstrusion_path = f.name
         tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
-
         #print
         gcoderecipe = _GcodeRecipe(self._server, self._config, self._job, dualstrusion_path)
         tasks.append(gcoderecipe.print(printerthread))
-        return tasks
+        process = conveyor.process.tasksequence(self._job, tasks)
+        def process_endcallback(task):
+            for path in [gcodepath_a, gcodepath_b, dualstrusion_path]:
+                os.unlink(path)
+        process.endevent.attach(process_endcallback)
+        return process
         
 class MissingFileException(Exception):
     def __init__(self, path):

@@ -73,8 +73,10 @@ class Manifest(object):
     @staticmethod
     def _read_constructions(data, manifest):
         if 'constructions' not in data:
-            manifest_construction = ManifestConstruction(manifest, 'plastic A')
-            manifest.constructions[manifest_construction.name] = manifest_construction
+            manifest_construction_a = ManifestConstruction(manifest, 'plastic A')
+            manifest.constructions[manifest_construction_a.name] = manifest_construction_a
+            manifest_construction_b = ManifestConstruction(manifest, 'plastic B')
+            manifest.constructions[manifest_construction_b.name] = manifest_construction_b
         else:
             for json_name, json_value in data['constructions'].iteritems():
                 manifest_construction = ManifestConstruction._from_json(
