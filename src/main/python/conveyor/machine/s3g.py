@@ -305,7 +305,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                 task.end(None)
             except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
                 self._log.debug('handled exception', exc_info=True)
-                message = str(e)
+                message = unicode(e)
                 task.fail(message)
             finally:
                 self._fp.open()
@@ -352,8 +352,17 @@ class S3gDriver(object):
     def _get_start_end_variables(self, profile, slicer_settings, material):
         if None is material:
             material = 'PLA'
+        if '0' == slicer_settings.extruder:
+            tool_0 = True
+            tool_1 = False
+        elif '1' == slicer_settings.extruder:
+            tool_0 = False
+            tool_1 = True
+        else:
+            raise ValueError(slicer_settings.extruder)
         ga = makerbot_driver.GcodeAssembler(profile, profile.path)
-        start_template, end_template, variables = ga.assemble_recipe(material=material)
+        start_template, end_template, variables = ga.assemble_recipe(
+            tool_0=tool_0, tool_1=tool_1, material=material)
         start_gcode = ga.assemble_start_sequence(start_template)
         end_gcode = ga.assemble_end_sequence(end_template)
         variables['TOOL_0_TEMP'] = slicer_settings.extruder_temperature

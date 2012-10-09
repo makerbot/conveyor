@@ -66,12 +66,11 @@ Log files are kept in /usr/log/conveyor, a directory owned by the conveyor user.
 * /var/log/conveyor
 ** Created and chowned by postinst script, cleaned up by postrm script
 
-## Init.d files
+## Upstart files
 
-//TODO//
-This file begins like as debian/conveyor.init
-* /etc/init.d/conveyor
-This file is installed by dh_installinit.
+The Upstart script is located in data/conveyor.conf.
+* /etc/init/conveyor.conf
+This file is installed by conveyor.install.
 
 ## Lock files
 

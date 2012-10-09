@@ -155,7 +155,8 @@ class SubprocessSlicer(Slicer):
                 'args': exception.args,
                 'errno': getattr(exception, 'errno', None),
                 'strerror': getattr(exception, 'strerror', None),
-                'filename': getattr(exception, 'filename', None)
+                'filename': getattr(exception, 'filename', None),
+                'winerror': getattr(exception, 'winerror', None)
             }
         slicerlog = None
         if None is not self._slicerlog:

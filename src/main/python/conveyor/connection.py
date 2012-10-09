@@ -34,13 +34,16 @@ class Connection(conveyor.stoppable.Stoppable):
         conveyor.stoppable.Stoppable.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def read(self, size):
+    def read(self):
         raise NotImplementedError
 
     def write(self, data):
         raise NotImplementedError
 
-class AbstractSocketConnection(Connection):
+class ConnectionWriteException(Exception):
+    pass
+
+class _AbstractSocketConnection(Connection):
     def __init__(self, socket, address):
         Connection.__init__(self)
         self._condition = threading.Condition()
@@ -49,73 +52,189 @@ class AbstractSocketConnection(Connection):
         self._address = address
 
     def stop(self):
-        with self._condition:
-            self._stopped = True
+        self._stopped = True
 
     def write(self, data):
         with self._condition:
-            self._socket.sendall(data)
-
-class _PosixSocketConnection(AbstractSocketConnection):
-    def stop(self):
-        AbstractSocketConnection.stop(self)
-        # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
-        # 'Connection reset by peer' errors.
-        try:
-            self._socket.shutdown(socket.SHUT_RD)
-            self._socket.close()
-        except IOError as e:
-            if errno.EBADF != e.args[0]:
-                raise
-            else:
-                self._log.debug('handled exception', exc_info=True)
-
-    def read(self, size):
-        while True:
-            with self._condition:
-                stopped = self._stopped
-            if stopped:
-                return ''
-            else:
-                try:
-                    data = self._socket.recv(size)
-                except IOError as e:
-                    with self._condition:
-                        stopped = self._stopped
-                    if errno.EINTR != e.args[0] and not stopped:
-                        raise
-                    else:
-                        # NOTE: too spammy
-                        # self._log.debug('handled exception', exc_info=True)
-                        continue
+            try:
+                self._socket.sendall(data)
+            except IOError as e:
+                if e.args[0] in (errno.EBADF, errno.EPIPE):
+                    self._log.debug('handled exception', exc_info=True)
+                    raise ConnectionWriteException
                 else:
-                    return data
+                    raise
 
-class _Win32SocketConnection(AbstractSocketConnection):
-    def read(self, size):
-        while True:
-            with self._condition:
-                stopped = self._stopped
-            if stopped:
-                return ''
-            else:
-                rlist, wlist, xlist = select.select([self._socket], [], [], 1.0)
-                if 0 != len(rlist):
+if 'nt' != os.name:
+    class _PosixSocketConnection(_AbstractSocketConnection):
+        def stop(self):
+            _AbstractSocketConnection.stop(self)
+            # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
+            # 'Connection reset by peer' errors.
+            try:
+                self._socket.shutdown(socket.SHUT_RD)
+                self._socket.close()
+            except IOError as e:
+                # NOTE: the Python socket implementation throws EBADF when you
+                # invoke methods on a closed socket.
+                if errno.EBADF != e.args[0]:
+                    raise
+                else:
+                    self._log.debug('handled exception', exc_info=True)
+
+        def read(self):
+            while True:
+                if self._stopped:
+                    return ''
+                else:
                     try:
-                        data = self._socket.recv(size)
+                        data = self._socket.recv(4096)
                     except IOError as e:
-                        with self._condition:
-                            stopped = self._stopped
-                        if errno.EINTR != e.args[0] and not stopped:
-                            raise
-                        else:
+                        if e.args[0] in (errno.EINTR, errno.EAGAIN, errno.EWOULDBLOCK):
                             # NOTE: too spammy
                             # self._log.debug('handled exception', exc_info=True)
                             continue
+                        elif errno.ECONNRESET == e.args[0]:
+                            self._log.debug('handled exception', exc_info=True)
+                            return ''
+                        else:
+                            raise
                     else:
                         return data
 
-if 'nt' != os.name:
+    PipeConnection = _PosixSocketConnection
     SocketConnection = _PosixSocketConnection
+
 else:
+    import ctypes
+    import ctypes.wintypes
+    import conveyor.platform.win32 as win32
+
+    # The size of the read buffer.
+    _SIZE = 4096
+
+    # The read polling timeout.
+    _TIMEOUT = 1000
+
+    class _Win32PipeConnection(Connection):
+        @staticmethod
+        def create(handle):
+            buffer = ctypes.create_string_buffer(_SIZE)
+            overlapped_read = _Win32PipeConnection.createoverlapped()
+            overlapped_write = _Win32PipeConnection.createoverlapped()
+            connection = conveyor.connection.PipeConnection(
+                handle, buffer, overlapped_read, overlapped_write)
+            return connection
+
+        @staticmethod
+        def createoverlapped():
+            overlapped = win32.OVERLAPPED()
+            overlapped.hEvent = win32.CreateEventW(None, False, False, None)
+            return overlapped
+
+        def __init__(self, handle, buffer, overlapped_read, overlapped_write):
+            Connection.__init__(self)
+            self._condition = threading.Condition()
+            self._stopped = False
+            self._handle = handle
+            self._buffer = buffer
+            self._overlapped_read = overlapped_read
+            self._overlapped_write = overlapped_write
+
+        def stop(self):
+            self._stopped = True
+
+        def read(self):
+            count = ctypes.wintypes.DWORD()
+            result = win32.ReadFile(
+                self._handle, self._buffer, _SIZE, ctypes.byref(count),
+                ctypes.byref(self._overlapped_read))
+            if result:
+                s = str(self._buffer[:count.value])
+                return s
+            else:
+                error = win32.GetLastError()
+                if win32.ERROR_BROKEN_PIPE == error:
+                    return ''
+                elif win32.ERROR_MORE_DATA == error:
+                    s = str(self._buffer[:count.value])
+                    return s
+                elif win32.ERROR_IO_PENDING == error:
+                    s = self._read_pending(count)
+                    return s
+                else:
+                    raise win32.create_WindowsError(error)
+
+        def _read_pending(self, count):
+            while True:
+                if self._stopped:
+                    return ''
+                else:
+                    result = win32.WaitForSingleObject(
+                        self._overlapped_read.hEvent, _TIMEOUT)
+                    if win32.WAIT_TIMEOUT == result:
+                        continue
+                    elif win32.WAIT_OBJECT_0 == result:
+                        result = win32.GetOverlappedResult(
+                            self._handle, ctypes.byref(self._overlapped_read),
+                            ctypes.byref(count), True)
+                        if result:
+                            s = str(self._buffer[:count.value])
+                            return s
+                        else:
+                            error = win32.GetLastError()
+                            if win32.ERROR_BROKEN_PIPE == error:
+                                return ''
+                            elif win32.ERROR_MORE_DATA == error:
+                                s = str(self._buffer[:count.value])
+                                return s
+                            else:
+                                raise win32.create_WindowsError(error)
+                    else:
+                        raise ValueError(result)
+
+        def write(self, data):
+            with self._condition:
+                s = str(data)
+                result = win32.WriteFile(
+                    self._handle, s, len(s), None, self._overlapped_write)
+                if not result:
+                    error = win32.GetLastError()
+                    if win32.ERROR_BROKEN_PIPE == error:
+                        raise ConnectionWriteException
+                    elif win32.ERROR_IO_PENDING == error:
+                        count = ctypes.wintypes.DWORD()
+                        result = win32.GetOverlappedResult(
+                            self._handle, ctypes.byref(self._overlapped_write),
+                            ctypes.byref(count), True)
+                        if not result:
+                            error = win32.GetLastError()
+                            if win32.ERROR_BROKEN_PIPE == error:
+                                raise ConnectionWriteException
+                            else:
+                                raise win32.create_WindowsError(error)
+                    else:
+                        raise win32.create_WindowsError(error)
+
+    class _Win32SocketConnection(_AbstractSocketConnection):
+        def read(self):
+            while True:
+                if self._stopped:
+                    return ''
+                else:
+                    rlist, wlist, xlist = select.select([self._socket], [], [], 1.0)
+                    if 0 != len(rlist):
+                        try:
+                            data = self._socket.recv(4096)
+                        except IOError as e:
+                            if errno.EINTR != e.args[0] and not self._stopped:
+                                raise
+                            else:
+                                # NOTE: too spammy
+                                # self._log.debug('handled exception', exc_info=True)
+                                continue
+                        else:
+                            return data
+
+    PipeConnection = _Win32PipeConnection
     SocketConnection = _Win32SocketConnection

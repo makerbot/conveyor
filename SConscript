@@ -22,7 +22,19 @@ import fnmatch
 import re
 import glob
 
-env = Environment(ENV=os.environ)
+# We require Qt 4.8.0; Oneiric ships with 4.7.4. On Oneiric, use the manually installed SDK.
+if sys.platform == 'linux2':
+    import subprocess
+    distro=subprocess.Popen(['lsb_release','-c','-s'], stdout=subprocess.PIPE).communicate()[0].strip()
+    if distro == 'oneiric':
+        os.environ['QTDIR']='/opt/QtSDK/Desktop/Qt/4.8.0/gcc/'
+        os.environ['PKG_CONFIG_PATH']='/opt/QtSDK/Desktop/Qt/4.8.0/gcc/lib/pkgconfig'
+    elif distro == 'precise':
+        pass
+    else:
+        print("*** WARNING: potentially unsupported distribution! ***")
+
+env = Environment(ENV=os.environ, tools=['default','qt4'])
 
 utilenv = env.Clone()
 
@@ -56,8 +68,11 @@ env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
 cppenv.Append(CPPPATH=Dir('include/'))
-cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
-cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
+if ARGUMENTS.get('debian_build',0):
+    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/'))
+else:
+    cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
+    cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
 libconveyor_cpp = [Glob('src/main/cpp/*.cpp')]
 if 'win32' != sys.platform:
     libconveyor_cpp.append(Glob('src/main/cpp/posix/*.cpp'))
@@ -102,10 +117,16 @@ if "darwin" == sys.platform:
 if build_unit_tests:
     testenv.Append(LIBS='cppunit')
 
-    testenv.Append(LIBPATH=[Dir('#/../json-cpp/obj/')])
-    testenv.Append(LIBPATH=[Dir('#/../jsonrpc/obj/')])
-    testenv.Append(LIBS=['jsonrpc'])
-    testenv.Append(LIBS=['json'])
+    if ARGUMENTS.get('debian_build',0):
+        testenv.Append(LIBPATH=[Dir('/usr/lib/makerbot')])
+    	testenv.Append(LIBS=['jsonrpc'])
+    	testenv.Append(LIBS=['json'])
+    else:
+        testenv.Append(LIBPATH=[Dir('#/../json-cpp/obj/')])
+    	testenv.Append(LIBPATH=[Dir('#/../jsonrpc/obj/')])
+    	testenv.Append(LIBS=['jsonrpc'])
+    	testenv.Append(LIBS=['json'])
+
     if 'win32' == sys.platform:
         testenv.Append(LIBS=['ws2_32'])
 

@@ -19,6 +19,51 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+# Class Hierarchy of Addresses, Listeners, and Connections
+# object
+#   + Address
+#   |   + _AbstractPipeAddress
+#   |   |   - _PosixPipeAddress
+#   |   |   - _Win32PipeAddress
+#   |   - TcpAddress
+#   + Listener
+#   |   + _AbstractSocketListener
+#   |   |   - _PosixPipeListener
+#   |   |   + TcpListener
+#   |   - _Win32PipeListener
+#   + Connection
+#       + _AbstractSocketConnection
+#       |   - _PosixSocketConnection
+#       |   - _Win32SocketConnection
+#       - _Win32PipeConnection
+#
+# Table of Platform-specific Class Aliases
+# +------------------+----------+------------------------+
+# | Alias            | Platform | Class                  |
+# +------------------+----------+------------------------+
+# | PipeAddress      | posix    | _PosixPipeAddress      |
+# | PipeAddress      | win32    | _Win32PipeAddress      |
+# +------------------+----------+------------------------+
+# | PipeListener     | posix    | _PosixPipeListener     |
+# | PipeListener     | win32    | _Win32PipeListener     |
+# +------------------+----------+------------------------+
+# | PipeConnection   | posix    | _PosixSocketConnection |
+# | PipeConnection   | win32    | _Win32PipeConnection   |
+# +------------------+----------+------------------------+
+# | SocketConnection | posix    | _PosixSocketConnection |
+# | SocketConnection | win32    | _Win32SocketConnection |
+# +------------------+----------+------------------------+
+#
+# Table of Addresses, Listeners, and Connections by Platform
+# +------+----------+-------------------+---------------------+------------------------+
+# | Kind | Platform | Address           | Listener            | Connection             |
+# +------+----------+-------------------+---------------------+------------------------+
+# | pipe | posix    | _PosixPipeAddress | _PosixPipeListener  | _PosixSocketConnection |
+# | tcp  | posix    | TcpAddress        | TcpListener         | _PosixSocketConnection |
+# | pipe | win32    | _Win32PipeAddress | _Win32PipeListener  | _Win32PipeConnection   |
+# | tcp  | win32    | TcpAddress        | TcpListener         | _Win32SocketConnection |
+# +------+----------+-------------------+---------------------+------------------------+
+
 import os
 import socket
 
@@ -29,8 +74,8 @@ class Address(object):
     @staticmethod
     def parse(s):
         split = s.split(':', 1)
-        if 'pipe' == split[0] or 'unix' == split[0]:
-            address = PipeAddress._parse(s, split)
+        if 'pipe' == split[0]:
+            address = _AbstractPipeAddress._parse(s, split)
         elif 'tcp' == split[0]:
             address = TcpAddress._parse(s, split)
         else:
@@ -43,11 +88,11 @@ class Address(object):
     def connect(self):
         raise NotImplementedError
 
-class PipeAddress(Address):
+class _AbstractPipeAddress(Address):
     @staticmethod
     def _parse(s, split):
         protocol = split[0]
-        assert 'pipe' == protocol or 'unix' == protocol
+        assert 'pipe' == protocol
         if 2 != len(split):
             raise MissingPathException(s)
         else:
@@ -61,19 +106,49 @@ class PipeAddress(Address):
     def __init__(self, path):
         self._path = path
 
-    def listen(self):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.bind(self._path)
-        os.chmod(self._path, 0666)
-        s.listen(socket.SOMAXCONN)
-        listener = conveyor.listener.PipeListener(s, self._path)
-        return listener
+if 'nt' != os.name:
+    class _PosixPipeAddress(_AbstractPipeAddress):
+        def listen(self):
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.bind(self._path)
+            os.chmod(self._path, 0666)
+            s.listen(socket.SOMAXCONN)
+            listener = conveyor.listener.PipeListener(self._path, s)
+            return listener
 
-    def connect(self):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(self._path)
-        connection = conveyor.connection.SocketConnection(s, None)
-        return connection
+        def connect(self):
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(self._path)
+            connection = conveyor.connection.SocketConnection(s, None)
+            return connection
+
+    PipeAddress = _PosixPipeAddress
+
+else:
+    import ctypes
+    import ctypes.wintypes
+    import conveyor.platform.win32 as win32
+
+    class _Win32PipeAddress(_AbstractPipeAddress):
+        def listen(self):
+            listener = conveyor.listener.PipeListener(self._path)
+            return listener
+
+        def connect(self):
+            handle = win32.CreateFileW(
+                self._path,
+                win32.GENERIC_READ | win32.GENERIC_WRITE,
+                0,
+                None,
+                win32.OPEN_EXISTING,
+                win32.FILE_FLAG_OVERLAPPED,
+                None)
+            lpMode = ctypes.wintypes.DWORD(win32.PIPE_READMODE_MESSAGE)
+            win32.SetNamedPipeHandleState(handle, ctypes.byref(lpMode), None, None)
+            connection = conveyor.connection.PipeConnection.create(handle)
+            return connection
+
+    PipeAddress = _Win32PipeAddress
 
 class TcpAddress(Address):
     @staticmethod

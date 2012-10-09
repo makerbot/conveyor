@@ -31,6 +31,7 @@ then
 fi
 
 . virtualenv/bin/activate
+
 echo "Upgrading setuptools"
 pip install -q --upgrade setuptools
 echo "Installing modules"
