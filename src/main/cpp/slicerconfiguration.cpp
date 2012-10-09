@@ -42,12 +42,6 @@ namespace conveyor
         return m_private->extruder();
     }
 
-    QString
-    SlicerConfiguration::extruderName() const
-    {
-        return m_private->extruderName();
-    }
-
     bool
     SlicerConfiguration::raft() const
     {
