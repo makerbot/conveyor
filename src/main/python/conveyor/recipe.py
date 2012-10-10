@@ -138,11 +138,14 @@ class Recipe(object):
                 gcodeprocessors.insert(0, 'Skeinforge50Processor')
         return gcodeprocessors
 
-    def _slicertask(self, profile, inputpath, outputpath, with_start_end):
+    def _slicertask(self, profile, inputpath, outputpath, with_start_end, slicer_config=None):
+        if slicer_config is None:
+            slicer_config = self._job.slicer_settings
         def runningcallback(task):
+            self._log.info("slicing %s to %s" % (inputpath, outputpath))
             self._server.slice(
                 profile, inputpath, outputpath, with_start_end,
-                self._job.slicer_settings, self._job.material, task)
+                slicer_config, self._job.material, task)
         slicertask = conveyor.task.Task()
         slicertask.runningevent.attach(runningcallback)
         return slicertask
@@ -172,6 +175,7 @@ class Recipe(object):
 
     def _dualstrusiontask(self, tool_0_path, tool_1_path, outputpath):
         def runningcallback(task):
+            self._log.info("weaving together %s and %s to %s for dualstrusion" % (tool_0_path, tool_1_path, outputpath))
             with contextlib.nested(open(tool_0_path), open(tool_1_path)) as (t0, t1):
                 t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
                 t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
@@ -413,6 +417,7 @@ class _SingleThingRecipe(_ThingRecipe):
 class _DualThingRecipe(_ThingRecipe):
     def print(self, printerthread):
         printerthread.dualstrusion = True
+        profile = printerthread.getprofile()
         tasks = []
         instance_a = self._getinstance_a()
         instance_b = self._getinstance_b()
@@ -423,26 +428,36 @@ class _DualThingRecipe(_ThingRecipe):
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
             gcodepath_b = f.name
 
-        #Slice the objects
-        stlrecipe_a = _StlRecipe(
-            self._server, self._config, self._job, objectpath_a)
-        tasks.append(stlrecipe_a.slice(printerthread._profile, gcodepath_a))
-        stlrecipe_b = _StlRecipe(
-            self._server, self._config, self._job, objectpath_b)
-        tasks.append(stlrecipe_b.slice(printerthread._profile, gcodepath_b))
+        with_start_end = False
+        tasks.append(self._slicertask(profile, objectpath_a, gcodepath_a, with_start_end))
+        new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        new_settings.extruder = 1
+        tasks.append(self._slicertask(profile, objectpath_b, gcodepath_b, with_start_end, slicer_config=new_settings))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
             dualstrusion_path = f.name
         tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
+
+        # Process Gcode
+        gcodeprocessors = self.getgcodeprocessors()
+        if 0 == len(gcodeprocessors):
+            processed_gcodepath = dualstrusion_path
+        else:
+            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as processed_gcodefp:
+                processed_gcodepath = processed_gcodefp.name
+            gcodeprocessortask = self._gcodeprocessortask(
+                dualstrusion_path, processed_gcodepath)
+            tasks.append(gcodeprocessortask)
+
         #print
-        gcoderecipe = _GcodeRecipe(self._server, self._config, self._job, dualstrusion_path)
-        tasks.append(gcoderecipe.print(printerthread))
+        tasks.append(self._printtask(printerthread, processed_gcodepath))
+
         process = conveyor.process.tasksequence(self._job, tasks)
-        def process_endcallback(task):
-            for path in [gcodepath_a, gcodepath_b, dualstrusion_path]:
-                os.unlink(path)
-        process.endevent.attach(process_endcallback)
+#        def process_endcallback(task):
+#            for path in [gcodepath_a, gcodepath_b, dualstrusion_path, processed_gcodefp]:
+#                os.unlink(path)
+#        process.endevent.attach(process_endcallback)
         return process
         
 class MissingFileException(Exception):
