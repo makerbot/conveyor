@@ -1,0 +1,15 @@
+digraph
+{
+	rankdir=LR;
+
+	// States
+
+	"clear-build-plate" [label="clear build plate"];
+	"preheat";
+	"making";
+
+	// Transitions
+
+	"clear-build-plate" -> "preheat";
+	"preheat" -> "making";
+}

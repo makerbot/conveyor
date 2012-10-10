@@ -29,7 +29,7 @@ class DomainObject(object):
 
 class Job(DomainObject):
     def __init__(
-        self, id, build_name, path, config, printerid, preprocessor,
+        self, id, build_name, path, config, printerid, gcodeprocessor,
         skip_start_end, with_start_end, slicer_settings, material):
             self.build_name = build_name
             self.conclusion = None
@@ -39,7 +39,7 @@ class Job(DomainObject):
             self.id = id
             self.material = material
             self.path = path
-            self.preprocessor = preprocessor
+            self.gcodeprocessor = gcodeprocessor
             self.printerid = printerid
             self.process = None
             self.skip_start_end = skip_start_end
@@ -63,7 +63,7 @@ class Job(DomainObject):
             'material': self.material,
             'name': self.build_name, # TODO: arrgh purge this
             'path': self.path,
-            'preprocessor': self.preprocessor,
+            'gcodeprocessor': self.gcodeprocessor,
             'printerid': self.printerid,
             # TODO: process
             'skip_start_end': self.skip_start_end,
@@ -80,7 +80,7 @@ class Job(DomainObject):
         slicer_settings = SlicerConfiguration.fromdict(dct['slicer_settings'])
         job = Job(
             dct['id'], dct['build_name'], dct['path'], dct['config'],
-            dct['printerid'], dct['preprocessor'], dct['skip_start_end'],
+            dct['printerid'], dct['gcodeprocessor'], dct['skip_start_end'],
             dct['with_start_end'], slicer_settings, dct['material'])
         job.state = dct['state'] # TODO: :(
         job.conclusion = dct['conclusion'] # TODO: :'(
