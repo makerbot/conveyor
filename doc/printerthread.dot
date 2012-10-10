@@ -1,0 +1,40 @@
+digraph
+{
+	rankdir=LR;
+
+	// States
+
+	"idle";
+	"busy";
+	"making";
+	"paused";
+	"task";
+	"canceling";
+
+	// Transitions
+	//
+	// The codes "M" and "C" indicate the origin of events.
+	//
+	// 'M' ("machine") events are issued by the machine.
+	//
+	// 'C' ("command") events are issued in response to conveyor commands.
+	// They are made in response to user interaction.
+
+	"idle"      -> "busy"      [label="M:went-busy"];
+	"idle"      -> "making"    [label="C:start-making"];
+	"idle"      -> "task"      [label="C:start-task"];
+
+	"busy"      -> "idle"      [label="M:went-idle"];
+
+	"making"    -> "idle"      [label="M:went-idle"];
+	"making"    -> "paused"    [label="C:pause"];
+	"making"    -> "canceling" [label="C:cancel"];
+
+	"paused"    -> "making"    [label="C:unpause"];
+	"paused"    -> "canceling" [label="C:cancel"];
+
+	"task"      -> "idle"      [label="M:went-idle"];
+	"task"      -> "canceling" [label="C:cancel"];
+
+	"canceling" -> "idle"      [label="M:went-idle"];
+}
