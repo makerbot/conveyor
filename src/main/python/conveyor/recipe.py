@@ -205,12 +205,12 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def _printtofiletask(self, profile, inputpath, outputpath):
+    def _printtofiletask(self, profile, inputpath, outputpath, dualstrusion=False):
             def runningcallback(task):
                 self._server.printtofile(
                     profile, self._job.build_name, inputpath, outputpath,
                     self._job.skip_start_end, self._job.slicer_settings,
-                    self._job.material, task)
+                    self._job.material, task, dualstrusion)
             task = conveyor.task.Task()
             task.runningevent.attach(runningcallback)
             return task
@@ -422,6 +422,88 @@ class _SingleThingRecipe(_ThingRecipe):
         return process
 
 class _DualThingRecipe(_ThingRecipe):
+
+    def printtofile(self, profile, outputpath):
+        tasks = []
+        instance_a = self._getinstance_a()
+        instance_b = self._getinstance_b()
+        objectpath_a = os.path.join(self._manifest.base, instance_a.object.name)
+        objectpath_b = os.path.join(self._manifest.base, instance_b.object.name)
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            gcodepath_a = f.name
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            gcodepath_b = f.name
+
+        with_start_end = False
+        tasks.append(self._slicertask(profile, objectpath_a, gcodepath_a, with_start_end))
+        new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        new_settings.extruder = 1
+        tasks.append(self._slicertask(profile, objectpath_b, gcodepath_b, with_start_end, slicer_config=new_settings))
+
+        #Combine for dualstrusion
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            dualstrusion_path = f.name
+        tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
+
+        # Process Gcode
+        gcodeprocessors = self.getgcodeprocessors()
+        if 0 == len(gcodeprocessors):
+            processed_gcodepath = dualstrusion_path
+        else:
+            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as processed_gcodefp:
+                processed_gcodepath = processed_gcodefp.name
+            gcodeprocessortask = self._gcodeprocessortask(
+                dualstrusion_path, processed_gcodepath)
+            tasks.append(gcodeprocessortask)
+
+        # Print To File
+        printtofiletask = self._printtofiletask(
+            profile, processed_gcodepath, outputpath, dualstrusion=True)
+        tasks.append(printtofiletask)
+
+        process = conveyor.process.tasksequence(self._job, tasks)
+        def process_endcallback(task):
+            for path in [gcodepath_a, gcodepath_b, processed_gcodepath]:
+                os.unlink(path)
+        process.endevent.attach(process_endcallback)
+        return process
+
+    def slice(self, profile, outputpath):
+        tasks = []
+        instance_a = self._getinstance_a()
+        instance_b = self._getinstance_b()
+        objectpath_a = os.path.join(self._manifest.base, instance_a.object.name)
+        objectpath_b = os.path.join(self._manifest.base, instance_b.object.name)
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            gcodepath_a = f.name
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            gcodepath_b = f.name
+
+        with_start_end = False
+        tasks.append(self._slicertask(profile, objectpath_a, gcodepath_a, with_start_end))
+        new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        new_settings.extruder = 1
+        tasks.append(self._slicertask(profile, objectpath_b, gcodepath_b, with_start_end, slicer_config=new_settings))
+
+        #Combine for dualstrusion
+        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+            dualstrusion_path = f.name
+        tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
+
+        # Process Gcode
+        gcodeprocessors = self.getgcodeprocessors()
+        gcodeprocessortask = self._gcodeprocessortask(
+            dualstrusion_path, outputpath)
+        tasks.append(gcodeprocessortask)
+
+        process = conveyor.process.tasksequence(self._job, tasks)
+        def process_endcallback(task):
+            for path in [gcodepath_a, gcodepath_b, dualstrusion_path]:
+                os.unlink(path)
+        process.endevent.attach(process_endcallback)
+        return process
+
+
     def print(self, printerthread):
         printerthread.dualstrusion = True
         profile = printerthread.getprofile()

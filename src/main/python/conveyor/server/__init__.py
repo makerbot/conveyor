@@ -686,12 +686,12 @@ class Server(object):
 
     def printtofile(
         self, profile, buildname, inputpath, outputpath, skip_start_end,
-        slicer_settings, material, task):
+        slicer_settings, material, task, dualstrusion=False):
             def func():
                 driver = conveyor.machine.s3g.S3gDriver()
                 driver.printtofile(
                     outputpath, profile, buildname, inputpath, skip_start_end,
-                    slicer_settings, material, task)
+                    slicer_settings, material, task, dualstrusion)
             self._queue.appendfunc(func)
 
     def slice(
