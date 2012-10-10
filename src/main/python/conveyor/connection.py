@@ -62,7 +62,7 @@ class _AbstractSocketConnection(Connection):
                 if e.args[0] in (errno.EINTR, errno.EAGAIN, errno.EWOULDBLOCK):
                     # NOTE: too spammy
                     # self._log.debug('handled exception', exc_info=True)
-                    continue
+                    pass
                 elif e.args[0] in (errno.EBADF, errno.EPIPE):
                     self._log.debug('handled exception', exc_info=True)
                     raise ConnectionWriteException

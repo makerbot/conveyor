@@ -176,20 +176,27 @@ class Recipe(object):
     def _dualstrusiontask(self, tool_0_path, tool_1_path, outputpath):
         def runningcallback(task):
             self._log.info("weaving together %s and %s to %s for dualstrusion" % (tool_0_path, tool_1_path, outputpath))
-            with contextlib.nested(open(tool_0_path), open(tool_1_path)) as (t0, t1):
-                t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
-                t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
-            weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes)
-            output = weaver.combine_codes()
-            with open(outputpath, 'w') as f:
-                for line in output:
-                    f.write(line)
+            try:
+                with contextlib.nested(open(tool_0_path), open(tool_1_path)) as (t0, t1):
+                    t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
+                    t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
+                weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes)
+                output = weaver.combine_codes()
+                with open(outputpath, 'w') as f:
+                    for line in output:
+                        f.write(line)
+            except Exception as e:
+                self._log.debug("unhandled exception", exec_info=true)
+                task.fail(e)
+            else:
+                task.end(None)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
 
     def _printtask(self, printerthread, inputpath):
         def runningcallback(task):
+            self._log.info("printing %s" % (inputpath))
             printerthread.print(
                 self._job, self._job.build_name, inputpath,
                 self._job.skip_start_end, self._job.slicer_settings,
@@ -454,10 +461,10 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(self._printtask(printerthread, processed_gcodepath))
 
         process = conveyor.process.tasksequence(self._job, tasks)
-#        def process_endcallback(task):
-#            for path in [gcodepath_a, gcodepath_b, dualstrusion_path, processed_gcodefp]:
-#                os.unlink(path)
-#        process.endevent.attach(process_endcallback)
+        def process_endcallback(task):
+            for path in [gcodepath_a, gcodepath_b, dualstrusion_path, processed_gcodefp]:
+                os.unlink(path)
+        process.endevent.attach(process_endcallback)
         return process
         
 class MissingFileException(Exception):
