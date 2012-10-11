@@ -54,7 +54,7 @@ namespace conveyor
             printer names */
         QString const & uniqueName () const;
 
-        /** Names a type of machine can be known by*/
+        /** Names a type of machine can be known by */
         QStringList const & machineNames() const;
 
         /** A string represenetation of the type of printer this is */
@@ -82,6 +82,14 @@ namespace conveyor
         bool hasHeatedPlatform () const;
 
         const ToolTemperature &toolTemperature () const;
+
+        /** The available build volume */
+        float buildVolumeXmin() const;
+        float buildVolumeYmin() const;
+        float buildVolumeZmin() const;
+        float buildVolumeXmax() const;
+        float buildVolumeYmax() const;
+        float buildVolumeZmax() const;
 
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);

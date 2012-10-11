@@ -51,6 +51,12 @@ namespace conveyor
         int m_numberOfToolheads;
         ToolTemperature m_toolTemperature;
         ConnectionStatus m_connectionStatus;
+        float m_buildVolumeXmin;
+        float m_buildVolumeYmin;
+        float m_buildVolumeZmin;
+        float m_buildVolumeXmax;
+        float m_buildVolumeYmax;
+        float m_buildVolumeZmax;
     };
 }
 
