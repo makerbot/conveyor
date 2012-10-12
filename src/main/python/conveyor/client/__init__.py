@@ -155,6 +155,12 @@ class ClientMain(conveyor.main.AbstractMain):
             choices=('left', 'right'),
             help='set the extruder',
             dest='extruder')
+        parser.add_argument(
+            '--slicer_settings',
+            default=None,
+            help='A slicer profile to use',
+            dest='slicer_settings',
+        )
 
     def _initsubparser_printers(self, subparsers):
         parser = subparsers.add_parser(
@@ -215,6 +221,12 @@ class ClientMain(conveyor.main.AbstractMain):
             choices=('left', 'right'),
             help='set the extruder',
             dest='extruder')
+        parser.add_argument(
+            '--slicer_settings',
+            default=None,
+            help='A slicer profile to use',
+            dest='slicer_settings',
+        )
 
     def _initsubparser_slice(self, subparsers):
         parser = subparsers.add_parser(
@@ -261,6 +273,12 @@ class ClientMain(conveyor.main.AbstractMain):
             choices=('left', 'right'),
             help='set the extruder',
             dest='extruder')
+        parser.add_argument(
+            '--slicer_settings',
+            default=None,
+            help='A slicer profile to use',
+            dest='slicer_settings',
+        )
 
     def _initsubparser_getuploadablemachines(self, subparsers):
         parser = subparsers.add_parser(
@@ -511,6 +529,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_print(self):
         slicer_settings = self._createslicerconfiguration()
+        slicer_settings.path = self._parsedargs.slicer_settings
         params = {
             'printername': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
@@ -548,6 +567,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_printtofile(self):
         slicer_settings = self._createslicerconfiguration()
+        slicer_settings.path = self._parsedargs.slicer_settings
         params = {
             'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
@@ -567,6 +587,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
     def _run_slice(self):
         slicer_settings = self._createslicerconfiguration()
+        slicer_settings.path = self._parsedargs.slicer_settings
         params = {
             'profilename': None,
             'inputpath': os.path.abspath(self._parsedargs.inputpath),
