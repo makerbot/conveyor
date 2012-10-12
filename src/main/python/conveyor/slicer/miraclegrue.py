@@ -59,7 +59,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
                     print(line, file=endfp)
         with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
             self._tmp_configpath = configfp.name
-        if self._slicer_settings is None:
+        if self._slicer_settings.path is None:
             config = self._getconfig()
             s = json.dumps(config)
             self._log.debug('miracle grue configuration: %s', s)
@@ -67,7 +67,8 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
                 json.dump(config, configfp, indent=8)
         else:
             import shutil
-            shutil.copy2(self.slicer_settings.path, self._tmp_configpath)
+            shutil.copy2(self._slicer_settings.path, self._tmp_configpath)
+            self._log.debug('using miracle grue configuration at %s', self._slicer_settings.path)
 
     def _getconfig(self):
         with open(self._configpath, 'r') as fp:

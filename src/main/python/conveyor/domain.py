@@ -148,7 +148,7 @@ class SlicerConfiguration(DomainObject):
     def __init__(
         self, slicer, extruder, raft, support, infill, layer_height, shells,
         extruder_temperature, platform_temperature, print_speed,
-        travel_speed):
+        travel_speed, path=None):
             self.slicer = slicer
             self.extruder = extruder
             self.raft = raft
@@ -160,6 +160,7 @@ class SlicerConfiguration(DomainObject):
             self.platform_temperature = platform_temperature
             self.print_speed = print_speed
             self.travel_speed = travel_speed
+            self.path = path
 
     def todict(self):
         dct = {
@@ -173,7 +174,8 @@ class SlicerConfiguration(DomainObject):
             'extruder_temperature': self.extruder_temperature,
             'platform_temperature': self.platform_temperature,
             'print_speed': self.print_speed,
-            'travel_speed': self.travel_speed
+            'travel_speed': self.travel_speed,
+            'path': self.path
         }
         return dct
 
@@ -183,5 +185,5 @@ class SlicerConfiguration(DomainObject):
             dct['slicer'], dct['extruder'], dct['raft'], dct['support'],
             dct['infill'], dct['layer_height'], dct['shells'],
             dct['extruder_temperature'], dct['platform_temperature'],
-            dct['print_speed'], dct['travel_speed'])
+            dct['print_speed'], dct['travel_speed'], dct['path'])
         return slicerconfiguration
