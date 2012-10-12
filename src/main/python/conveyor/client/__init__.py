@@ -156,7 +156,7 @@ class ClientMain(conveyor.main.AbstractMain):
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
-            '--slicer_settings',
+            '--slicer-settings',
             default=None,
             help='A slicer profile to use',
             dest='slicer_settings',
@@ -222,7 +222,7 @@ class ClientMain(conveyor.main.AbstractMain):
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
-            '--slicer_settings',
+            '--slicer-settings',
             default=None,
             help='A slicer profile to use',
             dest='slicer_settings',
@@ -274,7 +274,7 @@ class ClientMain(conveyor.main.AbstractMain):
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
-            '--slicer_settings',
+            '--slicer-settings',
             default=None,
             help='A slicer profile to use',
             dest='slicer_settings',
