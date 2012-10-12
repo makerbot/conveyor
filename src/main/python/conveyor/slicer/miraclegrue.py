@@ -57,12 +57,18 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
                 self._tmp_endpath = endfp.name
                 for line in endgcode:
                     print(line, file=endfp)
-        config = self._getconfig()
-        s = json.dumps(config)
-        self._log.debug('miracle grue configuration: %s', s)
         with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
             self._tmp_configpath = configfp.name
-            json.dump(config, configfp, indent=8)
+        if self._slicer_settings.path is None:
+            config = self._getconfig()
+            s = json.dumps(config)
+            self._log.debug('miracle grue configuration: %s', s)
+            with open(self._tmp_configpath, 'w') as configfp:
+                json.dump(config, configfp, indent=8)
+        else:
+            import shutil
+            shutil.copy2(self._slicer_settings.path, self._tmp_configpath)
+            self._log.debug('using miracle grue configuration at %s', self._slicer_settings.path)
 
     def _getconfig(self):
         with open(self._configpath, 'r') as fp:
