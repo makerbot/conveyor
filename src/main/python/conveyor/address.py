@@ -70,17 +70,28 @@ import socket
 import conveyor.connection
 import conveyor.listener
 
+
 class Address(object):
+    """
+    Base class for a addressable endpoint. This class can create the
+    underlying sockets as needed based on the communication endpoint type.
+    """
+    
     @staticmethod
-    def parse(s):
-        split = s.split(':', 1)
+    def address_factory(addr):
+        """ Constructs an Address object based on the passed string
+        @param s Address string in the form pipe:$NAME or tcp:$URL:$PORT  
+        @returns A proper Address-based object, based on type address type
+        """
+        split = addr.split(':', 1)
         if 'pipe' == split[0]:
-            address = _AbstractPipeAddress._parse(s, split)
+            addressObj = _AbstractPipeAddress._factory(addr, split)
         elif 'tcp' == split[0]:
-            address = TcpAddress._parse(s, split)
+            addressObj = TcpAddress._factory(addr, split)
         else:
-            raise UnknownProtocolException(s, split[0])
-        return address
+            raise UnknownProtocolException(addr, split[0])
+        return addressObj
+
 
     def listen(self):
         raise NotImplementedError
@@ -89,10 +100,12 @@ class Address(object):
         raise NotImplementedError
 
 class _AbstractPipeAddress(Address):
+
     @staticmethod
-    def _parse(s, split):
+    def _factory(s, split):
         protocol = split[0]
-        assert 'pipe' == protocol
+        if 'pipe' != protocol:
+            raise UnknownProtocolException(protocol,'pipe')
         if 2 != len(split):
             raise MissingPathException(s)
         else:
@@ -151,16 +164,18 @@ else:
     PipeAddress = _Win32PipeAddress
 
 class TcpAddress(Address):
+    
     @staticmethod
-    def _parse(s, split):
+    def _factory(s, split):
         protocol = split[0]
-        assert 'tcp' == protocol
+        if 'tcp' != protocol:
+            raise UnknownProtocolException(protocol, 'tcp')
         if 2 != len(split):
             raise MissingHostException(s)
         else:
             hostport = split[1].split(':', 1)
             if 2 != len(hostport):
-                raise MissingPortException(s)
+                raise MailformedUrlException(s)
             else:
                 host = hostport[0]
                 if 0 == len(host):
@@ -175,10 +190,15 @@ class TcpAddress(Address):
                         return address
 
     def __init__(self, host, port):
+        """
+        @param host: name of computer we are connecting to
+        @param port: number-id of port we are connecting to
+        """
         self._host = host
         self._port = port
 
     def listen(self):
+        """ creates a listener object connected to the specified port """
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self._host, self._port))
@@ -203,7 +223,8 @@ class MissingHostException(Exception):
         Exception.__init__(self, value)
         self.value = value
 
-class MissingPortException(Exception):
+class MailformedUrlException(Exception):
+    """ Error when a tcp port specificion or url specification is invalid."""
     def __init__(self, value):
         Exception.__init__(self, value)
         self.value = value
