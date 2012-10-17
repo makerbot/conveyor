@@ -34,6 +34,7 @@ except ImportError:
 import conveyor.address
 import conveyor.debug
 
+
 class AbstractMain(object):
     def __init__(self, program, configsection):
         self._address = None
@@ -73,10 +74,11 @@ class AbstractMain(object):
         '''Initialize the command-line argument parser.'''
 
         self._parser = argparse.ArgumentParser(prog=self._program)
+
         def error(message):
             self._log.error(message)
             sys.exit(2)
-        self._parser.error = error # monkey patch!
+        self._parser.error = error  # monkey patch!
         self._initparser_common(self._parser)
         return None
 
@@ -94,7 +96,7 @@ class AbstractMain(object):
             default=None,
             type=str,
             choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG',
-                'NOTSET',),
+                     'NOTSET',),
             required=False,
             help='set the log level',
             metavar='LEVEL')
@@ -169,7 +171,8 @@ class AbstractMain(object):
         self._config['common'].setdefault('address', address)
         self._config['common'].setdefault('pidfile', pidfile)
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
-        self._config['common'].setdefault('profiledir', '../s3g/makerbot_driver/profiles')
+        self._config['common'].setdefault(
+            'profiledir', '../s3g/makerbot_driver/profiles')
         return None
 
     def _setconfigdefaults_miraclegrue(self):
@@ -350,7 +353,7 @@ class AbstractMain(object):
     def _parseaddress(self):
         value = self._config['common']['address']
         try:
-            self._address = conveyor.address.Address.parse(value)
+            self._address = conveyor.address.Address.address_factory(value)
         except conveyor.address.UnknownProtocolException as e:
             code = 1
             self._log.error('unknown socket protocol: %s', e.protocol)
@@ -420,6 +423,7 @@ class AbstractMain(object):
         #uncomment this to debug threads
         #conveyor.debug.logthreads(logging.DEBUG)
         return code
+
 
 class _AbstractMainTestCase(unittest.TestCase):
     pass

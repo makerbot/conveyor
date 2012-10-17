@@ -146,6 +146,42 @@ namespace conveyor
         return m_private->m_toolTemperature;
     }
 
+    float
+    Printer::buildVolumeXmin() const
+    {
+        return m_private->m_buildVolumeXmin;
+    }
+
+    float
+    Printer::buildVolumeYmin() const
+    {
+        return m_private->m_buildVolumeYmin;
+    }
+
+    float
+    Printer::buildVolumeZmin() const
+    {
+        return m_private->m_buildVolumeZmin;
+    }
+
+    float
+    Printer::buildVolumeXmax() const
+    {
+        return m_private->m_buildVolumeXmax;
+    }
+
+    float
+    Printer::buildVolumeYmax() const
+    {
+        return m_private->m_buildVolumeYmax;
+    }
+
+    float
+    Printer::buildVolumeZmax() const
+    {
+        return m_private->m_buildVolumeZmax;
+    }
+
     Conveyor * 
     Printer::conveyor()
     {

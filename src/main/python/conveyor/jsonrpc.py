@@ -433,7 +433,10 @@ class _SocketadapterStubFile(object):
         self.recv = conveyor.event.Callback()
         self.sendall = conveyor.event.Callback()
 
+
 class _SocketadapterTestCase(unittest.TestCase):
+
+	
     def test_flush(self):
         adapter = socketadapter(None)
         adapter.flush()

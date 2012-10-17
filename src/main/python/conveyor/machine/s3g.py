@@ -252,7 +252,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                             and conveyor.task.TaskState.STOPPED != self._currenttask.state):
                                 with self._condition:
                                     self._currenttask.cancel()
-                    except makerbot_driver.Writer.ExternalStopError:
+                    except makerbot_driver.ExternalStopError:
                         self._log.debug('handled exception', exc_info=True)
                         self._log.info('print canceled')
                         if (None is not self._currenttask
@@ -425,7 +425,7 @@ class S3gDriver(object):
                 try:
                     self._log.debug('setting external stop')
                     writer.set_external_stop()
-                except makerbot_driver.Writer.ExternalStopError:
+                except makerbot_driver.ExternalStopError:
                     self._log.debug('handled exception', exc_info=True)
                 if polltemperature:
                     self._log.debug('aborting printer')

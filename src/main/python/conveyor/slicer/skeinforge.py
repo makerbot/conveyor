@@ -73,16 +73,21 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         yield (self._slicerpath,)
 
     def _getarguments_skeinforge(self):
-        yield ('-p', self._profilepath,)
-        for method in (
-            self._getarguments_raft,
-            self._getarguments_support,
-            self._getarguments_bookend,
-            self._getarguments_printomatic,
-            self._getarguments_stl,
-            ):
-                for iterable in method():
-                    yield iterable
+        if self._slicer_settings.path is None:
+            yield ('-p', self._profilepath,)
+            for method in (
+                self._getarguments_raft,
+                self._getarguments_support,
+                self._getarguments_bookend,
+                self._getarguments_printomatic,
+                self._getarguments_stl,
+                ):
+                    for iterable in method():
+                        yield iterable
+        else:
+            yield ('-p', self._slicer_settings.path)
+            for iterable in self._getarguments_stl():
+                yield iterable
 
     def _getarguments_raft(self):
         yield self._option(

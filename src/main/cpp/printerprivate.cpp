@@ -65,7 +65,30 @@ namespace conveyor
         {
             machineNames << QString(json["machineNames"][i].asCString());
         }
-        
+        float buildVolumeXmin, buildVolumeYmin, buildVolumeZmin,
+              buildVolumeXmax, buildVolumeYmax, buildVolumeZmax;
+        if ("The Replicator Single" == printerType) {
+            buildVolumeXmin = -113.5;
+            buildVolumeYmin = -74;
+            buildVolumeZmin = 0;
+            buildVolumeXmax = 113.5;
+            buildVolumeYmax = 74;
+            buildVolumeZmax = 150;
+        } else if ("The Replicator Dual" == printerType) {
+            buildVolumeXmin = -113.5;
+            buildVolumeYmin = -74;
+            buildVolumeZmin = 0;
+            buildVolumeXmax = 113.5;
+            buildVolumeYmax = 74;
+            buildVolumeZmax = 150;
+        } else if ("The Replicator 2" == printerType) {
+            buildVolumeXmin = -142.5;
+            buildVolumeYmin = -75;
+            buildVolumeZmin = 0;
+            buildVolumeXmax = 142.5;
+            buildVolumeYmax = 75;
+            buildVolumeZmax = 150;
+        } // else, BuildVolume is 0 for now
 
         m_uniqueName = uniqueName;
         m_displayName = displayName;
@@ -76,6 +99,12 @@ namespace conveyor
         m_printerType = printerType;
         m_numberOfToolheads = numberOfToolheads;
         m_hasHeatedPlatform = hasHeatedPlatform;
+        m_buildVolumeXmin = buildVolumeXmin;
+        m_buildVolumeYmin = buildVolumeYmin;
+        m_buildVolumeZmin = buildVolumeZmin;
+        m_buildVolumeXmax = buildVolumeXmax;
+        m_buildVolumeYmax = buildVolumeYmax;
+        m_buildVolumeZmax = buildVolumeZmax;
 
         // Temperature of extruder(s) and platform(s)
         if (json.isMember("temperature")) {

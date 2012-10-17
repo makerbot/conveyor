@@ -28,6 +28,7 @@ import socket
 import conveyor.connection
 import conveyor.stoppable
 
+
 class Listener(conveyor.stoppable.Stoppable):
     def __init__(self):
         conveyor.stoppable.Stoppable.__init__(self)
@@ -39,15 +40,19 @@ class Listener(conveyor.stoppable.Stoppable):
     def cleanup(self):
         raise NotImplementedError
 
-    def __enter__(self):
+    def __enter__(self):  # for 'with' statement support
         pass
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):  # for 'with' statement support
         self.cleanup()
         return False
 
+
 class _AbstractSocketListener(Listener):
     def __init__(self, socket):
+        """
+        @param socket a socket.socket object
+        """
         Listener.__init__(self)
         self._stopped = False
         self._socket = socket
