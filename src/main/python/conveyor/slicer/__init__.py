@@ -50,6 +50,13 @@ class Slicer(object):
 		"""
         self._task.lazy_heartbeat(new_progress, self._progress)
 
+    def _create_progress_report(self, progress):
+        progress = {
+            'name': 'slice',
+            'progress': progress,
+        }
+        return progress
+
     def _setprogress_ratio(self, current, total):
 		""" sets progress based on current(int) and total(int)
 		@param current: current integer index
@@ -57,10 +64,7 @@ class Slicer(object):
 		TRICKY: This will not report 0% or 100%, those are special edge cases
 		"""
         ratio = int((98 * current / total) + 1)
-        progress = {
-            'name': 'slice',
-            'progress': ratio
-        }
+        progress = self._create_progress_report(ratio)
         self._setprogress(progress)
 
     def slice(self):

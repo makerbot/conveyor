@@ -25,6 +25,8 @@ import re
 import shutil
 import sys
 import tempfile
+import datetime
+import unittest
 
 import conveyor.enum
 import conveyor.machine.s3g # TODO: aww, more bad coupling
@@ -166,8 +168,26 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         yield ''.join((module, ':', preference, '=', unicode(value)))
 
     def _readpopen(self):
+        """
+        Read the output of Skeinforge and turn them into progress updates.
+        SF does a poor job emitting progress updates, so we need to inject
+        artificial updates for it.  We have 3 stages of updates, and asymptotically 
+        increase them.  The first set goes up to 33, the second (natural) set goes from
+        33 to 66, and the final (artifical) set goes from 66 to 99.
+        """
         buffer = ''
+        first_third_done = False
+        second_third_done = False
+        last_natural_progress = datetime.datetime.now()
+        natural_tolerance = 15
+        first_third_runner = 0.0
+        third_third_runner = 66.6
+        progress_increment_hack = .5
+        progress_time_interval = 1
+        last_report = datetime.datetime.now()
+        current_time = datetime.datetime.now()
         while True:
+            current_time = datetime.datetime.now()
             data = self._popen.stdout.read(1) # :.(
             if '' == data:
                 break
@@ -175,11 +195,33 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
                 self._slicerlog.write(data)
                 buffer += data
                 match = self._regex.search(buffer)
-                if None is not match:
+                if None is not match and second_third_done is False:
+                    last_natural_progress = datetime.datetime.now()
+                    first_third_done = True
                     buffer = buffer[match.end():]
                     layer = int(match.group('layer'))
                     total = int(match.group('total'))
-                    self._setprogress_ratio(layer, total)
+                    progress = 100*layer/total
+                    progress_report = self._get_clamped_progress_report(int(progress), 33, 66)
+                    self._setprogress(progress_report)
+                # SF doesnt always emit updates for all its layers, so we need to take a diff of past and current timestamps
+                # to determine if we should begin artificial outputs
+                elif (current_time - last_natural_progress).total_seconds() > natural_tolerance and first_third_done is True and second_third_done is False:
+                    second_third_done = True
+                elif (current_time - last_report).total_seconds() > progress_time_interval:
+                    last_report = current_time
+                    if first_third_done is False:
+                        first_third_runner = min(33, first_third_runner + progress_increment_hack)
+                        progress_report = self._create_progress_report(int(first_third_runner))
+                    elif second_third_done:
+                        third_third_runner = min(99, third_third_runner + progress_increment_hack)
+                        progress_report = self._create_progress_report(int(third_third_runner))
+                    self._setprogress(progress_report)
+
+    def _get_clamped_progress_report(self, progress, _min, _max):
+        clamped_progress = min(_max, max(progress, _min))
+        report = self._create_progress_report(int(clamped_progress))
+        return report
 
     def _epilogue(self):
         if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
@@ -199,3 +241,21 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
                     for line in endgcode:
                         print(line, file=wfp)
         shutil.rmtree(self._tmp_directory)
+
+class TestHackyProgress(unittest.TestCase):
+    def setUp(self):
+        self.sf = SkeinforgeSlicer(None, None, None, None, None, None, None, None, None)
+
+    def tearDown(self):
+        self.sf = None
+    
+    def test_get_clamped_progress_report(self):
+        cases = [
+            [0, 0, 100, 0],
+            [50, 0, 100, 50],
+            [-50, 0, 100, 0],
+            [150, 0, 100, 100],
+            ]
+        for case in cases:
+            report = self.sf._create_progress_report(case[-1])
+            self.assertEqual(report, self.sf._get_clamped_progress_report(case[0], case[1], case[2]))
