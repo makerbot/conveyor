@@ -407,7 +407,7 @@ class S3gDriver(object):
 
     def _genericprint(
         self, server, portname, profile, buildname, writer, polltemperature,
-        pollinterval, gcodepath, skip_start_end, slicer_settings, material,
+        pollinterval, gcodepath, skip_start_end, print_to_file_type, slicer_settings, material,
         task):
             current_progress = None
             new_progress = {
@@ -520,12 +520,12 @@ class S3gDriver(object):
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,
-        slicer_settings, material, task):
+        slicer_settings, print_to_file_type, material, task):
             with open(outputpath, 'wb') as fp:
                 writer = makerbot_driver.Writer.FileWriter(fp)
                 self._genericprint(
                     None, None, profile, buildname, writer, False, 5.0,
-                    gcodepath, skip_start_end, slicer_settings, material,
+                    gcodepath, skip_start_end, print_to_file_type, slicer_settings, material,
                     task)
 
     def resettofactory(
@@ -578,7 +578,7 @@ class S3gDriver(object):
             the_map = eeprom_reader.read_entire_map()
             return the_map
 
-    def create_s3g_from_fp(self, fp):
+    def create_xs3g_from_fp(self, fp):
         s = makerbot_driver.s3g()
         s.writer = makerbot_driver.Writer.StreamWriter(fp)
         return s

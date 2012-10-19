@@ -284,12 +284,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('printtofile')
     def _printtofile(
-        self, profilename, inputpath, outputpath, gcodeprocessor, skip_start_end,
+        self, profilename, inputpath, outputpath, gcodeprocessor, skip_start_end, print_to_file_type
         archive_lvl, archive_dir, slicer_settings, material):
             self._log.debug(
-                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
+                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, skip_start_end=%r, print_to_file_type=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
                 profilename, inputpath, outputpath, gcodeprocessor,
-                skip_start_end, archive_lvl, archive_dir, slicer_settings,
+                skip_start_end, print_to_file_type, archive_lvl, archive_dir, slicer_settings,
                 material)
             slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
@@ -298,7 +298,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             profile = self._findprofile(profilename)
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
-                gcodeprocessor, skip_start_end, False, slicer_settings,
+                gcodeprocessor, skip_start_end, print_to_file_tyep, False, slicer_settings,
                 material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.printtofile(profile, outputpath)
@@ -691,7 +691,7 @@ class Server(object):
                 driver = conveyor.machine.s3g.S3gDriver()
                 driver.printtofile(
                     outputpath, profile, buildname, inputpath, skip_start_end,
-                    slicer_settings, material, task)
+                    slicer_settings, print_to_file_type, material, task)
             self._queue.appendfunc(func)
 
     def slice(

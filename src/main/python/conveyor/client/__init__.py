@@ -179,7 +179,7 @@ class ClientMain(conveyor.main.AbstractMain):
     def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser(
             'printtofile',
-            help='print an object to an .s3g file')
+            help='print an object to an .s3g  or .x3g file')
         parser.set_defaults(func=self._run_printtofile)
         self._initparser_common(parser)
         parser.add_argument(
@@ -188,7 +188,7 @@ class ClientMain(conveyor.main.AbstractMain):
             metavar='INPUTPATH')
         parser.add_argument(
             'outputpath',
-            help='the output path for the .s3g file',
+            help='the output path for the .s3g or .x3g file',
             metavar='OUTPUTPATH')
         parser.add_argument(
             '--skip-start-end',
@@ -225,7 +225,12 @@ class ClientMain(conveyor.main.AbstractMain):
             '--slicer-settings',
             default=None,
             help='A slicer profile to use',
-            dest='slicer_settings',
+            dest='slicer_settings')
+        parser.add_argument(
+            '--print-to-file-type',
+            default='x3g',
+            choices=('s3g', 'x3g'),
+            help='set the filetype for print to file',
         )
 
     def _initsubparser_slice(self, subparsers):
@@ -578,6 +583,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'archive_lvl': 'all',
             'archive_dir': None,
             'slicer_settings': slicer_settings.todict(),
+            'print-to-file-type':self._parsedargs.print_to_file_type,
         }
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.inputpath,

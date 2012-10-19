@@ -1,4 +1,4 @@
-# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
+# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4
 # conveyor/src/main/python/conveyor/recipe.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.
@@ -180,7 +180,7 @@ class Recipe(object):
             def runningcallback(task):
                 self._server.printtofile(
                     profile, self._job.build_name, inputpath, outputpath,
-                    self._job.skip_start_end, self._job.slicer_settings,
+                    self._job.skip_start_end, self._job.print_to_file_type, self._job.slicer_settings,
                     self._job.material, task)
             task = conveyor.task.Task()
             task.runningevent.attach(runningcallback)
