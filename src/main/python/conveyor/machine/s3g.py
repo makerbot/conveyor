@@ -421,6 +421,7 @@ class S3gDriver(object):
             parser.state.set_build_name(str(buildname))
             parser.s3g = makerbot_driver.s3g()
             parser.s3g.writer = writer
+            parser.s3g.set_print_to_file_type(print_to_file_type);
             def cancelcallback(task):
                 try:
                     self._log.debug('setting external stop')
@@ -512,11 +513,11 @@ class S3gDriver(object):
 
     def print(
         self, server, portname, fp, profile, buildname, gcodepath,
-        skip_start_end, slicer_settings, material, task):
+        skip_start_end, print_to_file_type, slicer_settings, material, task):
             writer = makerbot_driver.Writer.StreamWriter(fp)
             self._genericprint(
                 server, portname, profile, buildname, writer, True, 5.0,
-                gcodepath, skip_start_end, slicer_settings, material, task)
+                gcodepath, skip_start_end, print_to_file_type, slicer_settings, material, task)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,
