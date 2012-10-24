@@ -41,35 +41,40 @@ import conveyor.task
 
 # See conveyor/doc/jsonreader.{dot,png}.
 #
-#   S0 - handles whitespace before the top-level JSON object or array
-#   S1 - handles JSON text that is not a string
-#   S2 - handles JSON strings
-#   S3 - handles JSON string escape sequences
+#   State 0 - handles whitespace before the top-level JSON object or array
+#   State 1 - handles JSON text that is not a string
+#   State 2 - handles JSON strings
+#   State 3 - handles JSON string escape sequences
 #
 # The _JsonReader state machine invokes the event handler whenever it makes an
 # invalid transition. This resets the machine to S0 and sends the invalid JSON
 # to the event handler. The event handler is expected to try to parse the
 # invalid JSON and issue an error.
 
+
 class _JsonReader(object):
+    """ Basic class to handle reading a JSON stream, and ??? """
     def __init__(self):
         self.event = conveyor.event.Event('_JsonReader.event')
         self._log = logging.getLogger(self.__class__.__name__)
         self._reset()
 
     def _reset(self):
+        """ Resets our json stream. """
         self._log.debug('')
         self._state = 0
         self._stack = []
         self._buffer = StringIO.StringIO()
 
     def _transition(self, ch):
+		# handle white -> non-text-char
         if 0 == self._state:
             if ch in ('{', '['):
                 self._state = 1
                 self._stack.append(ch)
             elif ch not in (' ', '\t', '\n', '\r'):
                 self._send()
+		# handle non-text-char -> 
         elif 1 == self._state:
             if '"' == ch:
                 self._state = 2
@@ -99,6 +104,7 @@ class _JsonReader(object):
             raise ValueError(self._state)
 
     def _send(self):
+        """sends data """
         data = self._buffer.getvalue()
         self._log.debug('data=%r', data)
         self._reset()
@@ -106,13 +112,16 @@ class _JsonReader(object):
             self.event(data)
 
     def feed(self, data):
+        """ write each char in data to our buffer """
         self._log.debug('data=%r', data)
         for ch in data:
             self._buffer.write(ch)
             self._transition(ch)
 
     def feedeof(self):
+        """ send EOF """
         self._send()
+
 
 class JsonRpcException(Exception):
     def __init__(self, code, message, data):
@@ -427,234 +436,6 @@ class JsonRpc(conveyor.stoppable.Stoppable):
 
     def getmethods(self):
         return self._methods
-
-class _SocketadapterStubFile(object):
-    def __init__(self):
-        self.recv = conveyor.event.Callback()
-        self.sendall = conveyor.event.Callback()
-
-
-class _SocketadapterTestCase(unittest.TestCase):
-
-	
-    def test_flush(self):
-        adapter = socketadapter(None)
-        adapter.flush()
-
-    def test_read(self):
-        '''Test that the socketadapter calls the recv method on the underlying
-        socket.
-
-        '''
-
-        fp = _SocketadapterStubFile()
-        adapter = socketadapter(fp)
-        self.assertFalse(fp.recv.delivered)
-        self.assertFalse(fp.sendall.delivered)
-        adapter.read()
-        self.assertTrue(fp.recv.delivered)
-        self.assertEqual((-1,), fp.recv.args)
-        self.assertEqual({}, fp.recv.kwargs)
-        self.assertFalse(fp.sendall.delivered)
-        fp.recv.reset()
-        self.assertFalse(fp.recv.delivered)
-        self.assertFalse(fp.sendall.delivered)
-        adapter.read(8192)
-        self.assertEqual((8192,), fp.recv.args)
-        self.assertEqual({}, fp.recv.kwargs)
-        self.assertFalse(fp.sendall.delivered)
-
-    def test_write(self):
-        '''Test that the socketadapter calls the sendall method on the
-        underlying socket.
-
-        '''
-
-        fp = _SocketadapterStubFile()
-        adapter = socketadapter(fp)
-        self.assertFalse(fp.recv.delivered)
-        self.assertFalse(fp.sendall.delivered)
-        adapter.write('data')
-        self.assertFalse(fp.recv.delivered)
-        self.assertTrue(fp.sendall.delivered)
-        self.assertEqual(('data',), fp.sendall.args)
-        self.assertEqual({}, fp.sendall.kwargs)
-
-class _JsonReaderStubFile(object):
-    def __init__(self):
-        self.exception = None
-        self.data = None
-
-    def read(self, size):
-        if None is not self.exception:
-            exception = self.exception
-            self.exception = None
-            raise exception
-        else:
-            data = self.data
-            self.data = ''
-            return data
-
-class _JsonReaderTestCase(unittest.TestCase):
-    def test_object(self):
-        '''Test handline an object.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-
-        jsonreader = _JsonReader()
-        callback = conveyor.event.Callback()
-        jsonreader.event.attach(callback)
-
-        jsonreader.feed('{"key":"value"')
-        eventqueue.runiteration(False)
-        self.assertFalse(callback.delivered)
-
-        jsonreader.feed('}')
-        eventqueue.runiteration(False)
-        self.assertTrue(callback.delivered)
-        self.assertEqual(('{"key":"value"}',), callback.args)
-
-    def test_nestedobject(self):
-        '''Test handling a nested object.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-
-        jsonreader = _JsonReader()
-        callback = conveyor.event.Callback()
-        jsonreader.event.attach(callback)
-
-        jsonreader.feed('{"key0":{"key1":"value"')
-        eventqueue.runiteration(False)
-        self.assertFalse(callback.delivered)
-
-        jsonreader.feed('}')
-        eventqueue.runiteration(False)
-        self.assertFalse(callback.delivered)
-
-        jsonreader.feed('}')
-        eventqueue.runiteration(False)
-        self.assertTrue(callback.delivered)
-        self.assertEqual(('{"key0":{"key1":"value"}}',), callback.args)
-
-    def test_escape(self):
-        '''Test handling a string escape sequence.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-
-        jsonreader = _JsonReader()
-        callback = conveyor.event.Callback()
-        jsonreader.event.attach(callback)
-
-        jsonreader.feed('{"key":"value\\"')
-        eventqueue.runiteration(False)
-        self.assertFalse(callback.delivered)
-
-        jsonreader.feed('"')
-        eventqueue.runiteration(False)
-        self.assertFalse(callback.delivered)
-
-        jsonreader.feed('}')
-        eventqueue.runiteration(False)
-        self.assertTrue(callback.delivered)
-        self.assertEqual(('{"key":"value\\""}',), callback.args)
-
-    def test__transition_ValueError(self):
-        '''Test that the _transition method throws a ValueError when _state is
-        an unknown value.
-
-        '''
-
-        jsonreader = _JsonReader()
-        jsonreader._state = None
-        with self.assertRaises(ValueError):
-            jsonreader._transition('')
-
-# removed for shipping, python 2.6 on osx 10.6 has problems with unittest.skip
-# TECHNICAL DEBT : ^^
-#    @unittest.skip('being moved')
-#    def test_feedfile(self):
-#        '''Test that feedfile handles JSON data that is split across multiple
-#        calls to feedfile.
-#
-#        '''
-#
-#        eventqueue = conveyor.event.geteventqueue()
-#
-#        jsonreader = _JsonReader()
-#        callback = conveyor.event.Callback()
-#        jsonreader.event.attach(callback)
-#
-#        data0 = '{"key":"value"'
-#        stream0 = StringIO.StringIO(data0.encode())
-#        jsonreader.feedfile(stream0)
-#        eventqueue.runiteration(False)
-#        self.assertFalse(callback.delivered)
-#
-#        data1 = '}'
-#        stream1 = StringIO.StringIO(data1.encode())
-#        jsonreader.feedfile(stream1)
-#        eventqueue.runiteration(False)
-#        self.assertTrue(callback.delivered)
-#        self.assertEqual(('{"key":"value"}',), callback.args)
-#
-#    @unittest.skip('being moved')
-#    def test_feedfile_eintr(self):
-#        '''Test that feedfile handles EINTR.'''
-#
-#        eventqueue = conveyor.event.geteventqueue()
-#
-#        jsonreader = _JsonReader()
-#        callback = conveyor.event.Callback()
-#        jsonreader.event.attach(callback)
-#
-#        stub = _JsonReaderStubFile()
-#        stub.exception = IOError(errno.EINTR, 'interrupted')
-#        stub.data = '{"key":"value"}'
-#        jsonreader.feedfile(stub)
-#        eventqueue.runiteration(False)
-#        self.assertTrue(callback.delivered)
-#        self.assertEqual(('{"key":"value"}',), callback.args)
-#
-#    @unittest.skip('being moved')
-#    def test_feedfile_exception(self):
-#        '''Test that feedfile propagates exceptions.'''
-#
-#        jsonreader = _JsonReader()
-#        stub = _JsonReaderStubFile()
-#        stub.exception = IOError(errno.EPERM, 'permission')
-#        with self.assertRaises(IOError) as cm:
-#            jsonreader.feedfile(stub)
-#        self.assertEqual(errno.EPERM, cm.exception.errno)
-#        self.assertEqual('permission', cm.exception.strerror)
-#
-    def test_invalid(self):
-        '''Test the receipt of invalid JSON text.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-
-        jsonreader = _JsonReader()
-        callback = conveyor.event.Callback()
-        jsonreader.event.attach(callback)
-
-        jsonreader.feed(']')
-        eventqueue.runiteration(False)
-        self.assertTrue(callback.delivered)
-        self.assertEqual((']',), callback.args)
-
-    def test_emptystack(self):
-        '''Test the receipt of a ']' when the stack is empty.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-
-        jsonreader = _JsonReader()
-        callback = conveyor.event.Callback()
-        jsonreader.event.attach(callback)
-
-        jsonreader._state = 1
-        jsonreader.feed(']')
-        eventqueue.runiteration(False)
-        self.assertTrue(callback.delivered)
-        self.assertEqual((']',), callback.args)
 
 class _JsonRpcTest(unittest.TestCase):
     def setUp(self):
