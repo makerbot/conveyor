@@ -583,7 +583,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'archive_lvl': 'all',
             'archive_dir': None,
             'slicer_settings': slicer_settings.todict(),
-            'print-to-file-type':self._parsedargs.print_to_file_type,
+            'print_to_file_type': self._parsedargs.print_to_file_type,
         }
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.inputpath,

@@ -180,8 +180,8 @@ class Recipe(object):
             def runningcallback(task):
                 self._server.printtofile(
                     profile, self._job.build_name, inputpath, outputpath,
-                    self._job.skip_start_end, self._job.print_to_file_type, self._job.slicer_settings,
-                    self._job.material, task)
+                    self._job.skip_start_end,  self._job.slicer_settings,
+                    self._job.print_to_file_type, self._job.material, task)
             task = conveyor.task.Task()
             task.runningevent.attach(runningcallback)
             return task

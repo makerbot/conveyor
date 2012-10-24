@@ -30,7 +30,7 @@ class DomainObject(object):
 class Job(DomainObject):
     def __init__(
         self, id, build_name, path, config, printerid, gcodeprocessor,
-        skip_start_end, with_start_end, print_to_file_type, slicer_settings, material):
+        skip_start_end, with_start_end, slicer_settings, print_to_file_type, material):
             self.build_name = build_name
             self.conclusion = None
             self.config = config
@@ -83,7 +83,7 @@ class Job(DomainObject):
         job = Job(
             dct['id'], dct['build_name'], dct['path'], dct['config'],
             dct['printerid'], dct['gcodeprocessor'], dct['skip_start_end'],
-            dct['with_start_end'], dct['print_to_file_type'], slicer_settings, dct['material'])
+            dct['with_start_end'],  slicer_settings, dct['print_to_file_type'], dct['material'])
         job.state = dct['state'] # TODO: :(
         job.conclusion = dct['conclusion'] # TODO: :'(
         job.failure = dct['failure'] # TODO: :''(
