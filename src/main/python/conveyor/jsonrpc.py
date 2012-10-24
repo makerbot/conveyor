@@ -55,9 +55,9 @@ class _JsonReader(object):
     """
     def __init__(self, inEvent=None):
         """ 
-		@param conveyor event object, if None a new event object is created
-		"""	
-		# v Event to consume data
+        @param conveyor event object, if None a new event object is created
+        """ 
+        # v Event to consume data
         self.event = inEvent if inEvent is not None else Event('_JsonReader.event')
         self._log = logging.getLogger(self.__class__.__name__)
         self._reset()
@@ -71,20 +71,20 @@ class _JsonReader(object):
 
     def _consume(self, ch):
         """ consume a single charachter, storing it and updating JSON stream 
-		state. If char is mid-block, it is stored and state is updated. If
-		the charachter completes a JSON block, the complete block is sent to 
-		the associated Event, and the buffer is cleared. 
-		@param ch is assumed to be a unicode char, in a JSON stream
+        state. If char is mid-block, it is stored and state is updated. If
+        the charachter completes a JSON block, the complete block is sent to 
+        the associated Event, and the buffer is cleared. 
+        @param ch is assumed to be a unicode char, in a JSON stream
         """
         self._buffer.write(ch) # buffer our new char
-		# handle 'before top lvl json object' setup.
+        # handle 'before top lvl json object' setup.
         if 0 == self._state:
             if ch in ('{', '['):
                 self._state = 1
                 self._stack.append(ch)
             elif ch not in (' ', '\t', '\n', '\r'):
                 self._send()
-		# handle during JSON object  
+        # handle during JSON object  
         elif 1 == self._state:
             if '"' == ch:
                 self._state = 2
@@ -103,13 +103,13 @@ class _JsonReader(object):
                         send = (0 == len(self._stack))
                 if send:
                     self._send()
-		# handle json strings
+        # handle json strings
         elif 2 == self._state:
             if '"' == ch:
                 self._state = 1
             elif '\\' == ch:
                 self._state = 3
-		# handle json string escapes 
+        # handle json string escapes 
         elif 3 == self._state:
             self._state = 2
         else:
@@ -124,11 +124,11 @@ class _JsonReader(object):
             self.event(data)
 
     def feed(self, data):
-        """	
-		Feed a chunk of data to the reader. If this chunk completes a JSON  dict, 
-		that full be automatically be passed to the attached Event as part of 
-		transition. 
-		@param data, assumed to be unicode JSON data
+        """ 
+        Feed a chunk of data to the reader. If this chunk completes a JSON  dict, 
+        that full be automatically be passed to the attached Event as part of 
+        transition. 
+        @param data, assumed to be unicode JSON data
         """
         self._log.debug('data=%r', data)
         for ch in data:
@@ -153,15 +153,15 @@ class TaskFactory(object):
         raise NotImplementedError
 
 class JsonRpc(conveyor.stoppable.Stoppable):
-	""" JsonRpc handles a json stream, to gaurentee the output file pointer 
-	gets entire valid JSON blocks of data to process, by buffering up data 
-	into complete blocks and only passing on entirer JSON blocks 
-	"""
+    """ JsonRpc handles a json stream, to gaurentee the output file pointer 
+    gets entire valid JSON blocks of data to process, by buffering up data 
+    into complete blocks and only passing on entirer JSON blocks 
+    """
     def __init__(self, infp, outfp):
-		"""
-		@param infp input file pointer must have .read() and .stop()
-		@param outfp output file pointer. must have .write()
-		"""
+        """
+        @param infp input file pointer must have .read() and .stop()
+        @param outfp output file pointer. must have .write()
+        """
         self._condition = threading.Condition()
         self._idcounter = 0
         self._infp = infp # contract: .read(), .stop()
