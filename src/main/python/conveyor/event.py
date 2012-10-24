@@ -106,7 +106,15 @@ class EventQueue(object):
             self._condition.notify_all()
 
 class Event(object):
+    """ This represents some kind of event in the conveyor system, mostly 
+    updates of data, heartbeat events, or other state-change information about
+    a subproject or subsystem. 
+    """
+    
     def __init__(self, name, eventqueue=None):
+        """ Creates an event object.
+        @param eventqueue if a specifi eventqueue is desired.
+        """
         self._name = name
         self._eventqueue = eventqueue
         self._handles = {}
@@ -124,6 +132,7 @@ class Event(object):
         del self._handles[handle]
 
     def __call__(self, *args, **kwargs):
+        """allows calls as Event(foo) to work  """
         self._log.debug(
             'name=%r, args=%r, kwargs=%r', self._name, args, kwargs)
         eventqueue = self._eventqueue
