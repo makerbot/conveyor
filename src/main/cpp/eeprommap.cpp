@@ -43,6 +43,11 @@ namespace conveyor
         this->m_private->setInt(path, value);
     }
 
+    void EepromMap::setFloat(QString path, std::vector<float> value)
+    {
+        this->m_private->setFloat(path, value);
+    }
+
     void EepromMap::setString(QString path, std::vector<QString> value)
     {
         this->m_private->setString(path, value);
