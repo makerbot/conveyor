@@ -148,7 +148,7 @@ class _JsonRpcTest(unittest.TestCase):
     def _raise_JsonRpcException(self):
         raise JsonRpcException(1, 'message', 'data')
 
-    def _raise_Exception(selfF):
+    def _raise_Exception(self):
         raise Exception('message')
 
     def _test_stringresponse(self, data, addmethods):
@@ -216,6 +216,9 @@ class _JsonRpcTest(unittest.TestCase):
         '''Test a request that throws an unexpected exception.'''
 
         data = '{"jsonrpc": "2.0", "method": "raise_Exception", "id": "1"}'
+        
+        logging.error('TRICKY: test %s expects to log a server exception', self._testMethodName)
+        #with self.assertRaises(Exception):P
         response = self._test_jsonresponse(data, True)
         self._asserterror(
             -32000, 'uncaught exception', '1', response,

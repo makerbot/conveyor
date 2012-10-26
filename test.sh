@@ -28,12 +28,11 @@ if [ ! -d obj/ ]
 then
 	mkdir obj/
 fi
-
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ coverage erase
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ coverage run --branch test.py -- -v ${_modules}
 _code=$?
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ coverage annotate -d obj/ --include 'src/main/python/*'
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ coverage html -d obj/ --include 'src/main/python/*'
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ coverage xml -o obj/coverage.xml --include 'src/main/python/*'
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ coverage report --include 'src/main/python/*'
-env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/main/python/:submodule/s3g/ coverage report --include 'src/test/python/*'
 exit ${_code}
