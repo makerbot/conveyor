@@ -29,11 +29,11 @@ import sys
 import threading
 
 
-#import conveyor.event
-#from conveyor.event import Event
+import conveyor.event
+from conveyor.event import Event
 import conveyor.stoppable
-#import conveyor.test
-#import conveyor.task
+import conveyor.test
+import conveyor.task
 
 # See conveyor/doc/jsonreader.{dot,png}.
 #
