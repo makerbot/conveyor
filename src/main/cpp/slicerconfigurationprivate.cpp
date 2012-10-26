@@ -76,6 +76,8 @@ namespace conveyor
         root["travel_speed"] = m_travelSpeed;
         root["print_speed"] = m_printSpeed;
 
+        root["path"] = Json::Value::null;
+
         return root;
     }
 
