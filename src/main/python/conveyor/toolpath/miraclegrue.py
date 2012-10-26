@@ -169,8 +169,7 @@ class MiracleGrueToolpath(object):
             'startY'                  : -74.0,
             'startZ'                  : 0.2,
             'doPrintProgress'         : True,
-            #This is being passed to us as a string
-            'defaultExtruder'         : int(slicer_settings.extruder), # TODO: there's a field in SlicerConfiguration for this, but... so many other things need to be changed for it to work
+            'defaultExtruder'         : int(slicer_settings.extruder), # This is being passed to us as a string.
             'extruderProfiles'        : [
                 {
                     'firstLayerExtrusionProfile' : 'firstlayer',
