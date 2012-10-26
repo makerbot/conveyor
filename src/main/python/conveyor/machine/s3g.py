@@ -352,16 +352,19 @@ class S3gDriver(object):
     # error.
 
     def _get_start_end_variables(self, profile, slicer_settings, material):
+        """
+        @returns tuple of (start gcode block, end gcode block, variables)
+        """
+        tool_0, tool_1 = False, False
         if None is material:
             material = 'PLA'
         if '0' == slicer_settings.extruder:
             tool_0 = True
-            tool_1 = False
         elif '1' == slicer_settings.extruder:
-            tool_0 = False
             tool_1 = True
         else:
             raise ValueError(slicer_settings.extruder)
+
         ga = makerbot_driver.GcodeAssembler(profile, profile.path)
         start_template, end_template, variables = ga.assemble_recipe(
             tool_0=tool_0, tool_1=tool_1, material=material)
@@ -374,22 +377,29 @@ class S3gDriver(object):
 
     def _gcodelines(
         self, profile, gcodepath, skip_start_end, slicer_settings, material):
-            startgcode, endgcode, variables = self._get_start_end_variables(
+        """
+        @profle: undocumented, assuming a profile object
+        @gcodepath: undocumented assuming filepath
+        @skip_start_end: bool, True to skip start/end gcode bookends
+        @slicer_settings: undocumented. assuming dict
+        @material undocumneted, assuming string
+        """ 
+        startgcode, endgcode, variables = self._get_start_end_variables(
                 profile, slicer_settings, material)
-            def generator():
-                if not skip_start_end:
-                    if None is not startgcode:
-                        for data in startgcode:
-                            yield data
-                with open(gcodepath, 'r') as fp:
-                    for data in fp:
+        def generator():
+            if not skip_start_end:
+                if None is not startgcode:
+                    for data in startgcode:
                         yield data
-                if not skip_start_end:
-                    if None is not endgcode:
-                        for data in endgcode:
-                            yield data
-            gcodelines = list(generator())
-            return gcodelines, variables
+            with open(gcodepath, 'r') as fp:
+                for data in fp:
+                    yield data
+            if not skip_start_end:
+                if None is not endgcode:
+                    for data in endgcode:
+                        yield data
+        gcodelines = list(generator())
+        return gcodelines, variables
 
     def _countgcodelines(self, gcodelines):
         lines = 0
@@ -399,124 +409,158 @@ class S3gDriver(object):
             bytes += len(data)
         return (lines, bytes)
 
-    def _update_progress(self, current_progress, new_progress, task):
-        if None is not new_progress and new_progress != current_progress:
-            current_progress = new_progress
-            task.heartbeat(current_progress)
-        return current_progress
 
     def _genericprint(
         self, server, portname, profile, buildname, writer, polltemperature,
         pollinterval, gcodepath, skip_start_end, slicer_settings, material,
         task):
-            current_progress = None
-            new_progress = {
-                'name': 'print',
-                'progress': 0
-            }
-            current_progress = self._update_progress(
-                current_progress, new_progress, task)
-            parser = makerbot_driver.Gcode.GcodeParser()
-            parser.state.profile = profile
-            parser.state.set_build_name(str(buildname))
-            parser.s3g = makerbot_driver.s3g()
-            parser.s3g.writer = writer
-            def cancelcallback(task):
-                try:
-                    self._log.debug('setting external stop')
-                    writer.set_external_stop()
-                except makerbot_driver.ExternalStopError:
-                    self._log.debug('handled exception', exc_info=True)
-                if polltemperature:
-                    self._log.debug('aborting printer')
-                    # NOTE: need a new s3g object because the old one has
-                    # external stop set.
-                    # TODO: this is a horrible hack.
-                    s3g = makerbot_driver.s3g()
-                    s3g.writer = makerbot_driver.Writer.StreamWriter(parser.s3g.writer.file)
-                    s3g.abort_immediately()
-            task.cancelevent.attach(cancelcallback)
+        """
+        This does a generic print? 
+        @param server conveyor.server object
+        @param portname undocumneted. assuming it's the os-specific port name string
+        @param profile undocumented, assuming a profile object
+        @param buildname build name
+        @param writer   undocumented filewrite
+        @param polltemperature bool, true to poll temperture at pollinterval
+        @param pollinterval frequency of ?? poll, in seconds
+        @param gcodepath unddocumented assuming string name of gcode file to print
+        @param skip_start_end bool, set true to skip using start/end gcode
+        @param slicer_settings undocumented assuming a slicer settings dict
+        @param material a string indicating the material type
+        @param task undocumented, assuming it's a task object
+        """
+        current_progress = None
+        new_progress = {
+            'name': 'print',
+            'progress': 0
+        }
+        task.lazy_heartbeat(current_progress, new_progress )
+        current_progress, new_progress = new_progress, None
+        parser = makerbot_driver.Gcode.GcodeParser()
+        # ^ Technical debt: we should not be reaching 'into' objects in our 
+        # driver, and manually setting state info, etc. Those should be 
+        # constructor params
+        parser.state.profile = profile
+        parser.state.set_build_name(str(buildname))
+        parser.s3g = makerbot_driver.s3g()
+        parser.s3g.writer = writer
+        # ^ Technical debt: we should no be reacing into objects in our driver to 
+        # set values, they should be set in the constructor
+
+        def cancelcallback(task):
+            """ inline function to stop the writer and throw a 
+                ExternalStopError 
+            """
+            try:
+                self._log.debug('setting external stop')
+                writer.set_external_stop()
+            except makerbot_driver.ExternalStopError:
+                self._log.debug('handled exception', exc_info=True)
             if polltemperature:
-                self._log.debug('resetting machine %s', portname)
-                parser.s3g.reset()
-            now = time.time()
-            polltime = now + pollinterval
-            if not polltemperature:
-                temperature = None
+                self._log.debug('aborting printer')
+                # NOTE: need a new s3g object because the old one has
+                # external stop set.
+                # TODO: this is a horrible hack.
+                s3g = makerbot_driver.s3g()
+                s3g.writer = makerbot_driver.Writer.StreamWriter(parser.s3g.writer.file)
+                s3g.abort_immediately()
+        
+        task.cancelevent.attach(cancelcallback)
+        if polltemperature:
+            self._log.debug('resetting machine %s', portname)
+            parser.s3g.reset()
+        now = time.time()
+        polltime = now + pollinterval
+        if not polltemperature:
+            temperature = None
+        else:
+            temperature = _gettemperature(profile, parser.s3g)
+            server.changeprinter(portname, temperature)
+
+        gcodelines, variables = self._gcodelines(
+            profile, gcodepath, skip_start_end, slicer_settings, material)
+
+        parser.environment.update(variables)
+        # TODO: remove this {current,total}{byte,line} stuff; we have
+        # proper progress from the slicer now.
+        totallines, totalbytes = self._countgcodelines(gcodelines)
+        currentbyte = 0
+        for currentline, data in enumerate(gcodelines):
+            if conveyor.task.TaskState.RUNNING != task.state:
+                break
             else:
-                temperature = _gettemperature(profile, parser.s3g)
-                server.changeprinter(portname, temperature)
-            gcodelines, variables = self._gcodelines(
-                profile, gcodepath, skip_start_end, slicer_settings, material)
-            parser.environment.update(variables)
-            # TODO: remove this {current,total}{byte,line} stuff; we have
-            # proper progress from the slicer now.
-            totallines, totalbytes = self._countgcodelines(gcodelines)
-            currentbyte = 0
-            for currentline, data in enumerate(gcodelines):
-                if conveyor.task.TaskState.RUNNING != task.state:
-                    break
-                else:
-                    # Increment currentbyte *before* stripping whitespace
-                    # out of data or the currentbyte will not match the
-                    # actual file position.
-                    currentbyte += len(data)
-                    data = data.strip()
-                    now = time.time()
-                    if polltemperature and polltime <= now:
-                        temperature = _gettemperature(profile, parser.s3g)
-                    self._log.debug('gcode: %r', data)
-                    # The s3g module cannot handle unicode strings.
-                    data = str(data)
-                    parser.execute_line(data)
-                    new_progress = {
-                        'name': 'print',
-                        'progress': int(parser.state.percentage)
-                    }
-                    if polltime <= now:
-                        polltime = now + pollinterval
-                        if polltemperature:
-                            server.changeprinter(portname, temperature)
-                    current_progress = self._update_progress(
-                        current_progress, new_progress, task)
-
-            if polltemperature:
-                '''
-                # This is the code that should be, but it requires new
-                # firmware.
-                while conveyor.task.TaskState.STOPPED != task.state:
-                    build_stats = parser.s3g.get_build_stats()
-                    build_state = build_stats['BuildState']
-                    self._log.debug('build_stats=%r', build_stats)
-                    self._log.debug('build_state=%r', build_state)
-                    if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
-                        break
-                    else:
-                        time.sleep(0.2) # TODO: wait on a condition
-                '''
-                while conveyor.task.TaskState.STOPPED != task.state:
-                    available = parser.s3g.get_available_buffer_size()
-                    if 512 == available:
-                        break
-                    else:
-                        time.sleep(0.2) # TODO: wait on a condition
-
-            if conveyor.task.TaskState.STOPPED != task.state:
+                # Increment currentbyte *before* stripping whitespace
+                # out of data or the currentbyte will not match the
+                # actual file position.
+                currentbyte += len(data)
+                data = data.strip()
+                now = time.time()
+                if polltemperature and polltime <= now:
+                    temperature = _gettemperature(profile, parser.s3g)
+                self._log.debug('gcode: %r', data)
+                # The s3g module cannot handle unicode strings.
+                data = str(data)
+                parser.execute_line(data)
                 new_progress = {
                     'name': 'print',
-                    'progress': 100
+                    'progress': int(parser.state.percentage)
                 }
-                current_progress = self._update_progress(
-                    current_progress, new_progress, task)
-                task.end(None)
+                if polltime <= now:
+                    polltime = now + pollinterval
+                    if polltemperature:
+                        server.changeprinter(portname, temperature)
+                task.lazy_heartbeat(current_progress, new_progress)
+                current_progress,new_progress  = new_progress, None
+
+        if polltemperature:
+            '''
+            # This is the code that should be, but it requires new
+            # firmware.
+            while conveyor.task.TaskState.STOPPED != task.state:
+                build_stats = parser.s3g.get_build_stats()
+                build_state = build_stats['BuildState']
+                self._log.debug('build_stats=%r', build_stats)
+                self._log.debug('build_state=%r', build_state)
+                if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
+                    break
+                else:
+                    time.sleep(0.2) # TODO: wait on a condition
+            '''
+            while conveyor.task.TaskState.STOPPED != task.state:
+                available = parser.s3g.get_available_buffer_size()
+                if 512 == available:
+                    break
+                else:
+                    time.sleep(0.2) # TODO: wait on a condition
+
+        if conveyor.task.TaskState.STOPPED != task.state:
+            new_progress = {
+                'name': 'print',
+                'progress': 100
+            }
+            task.lazy_heartbeat(current_progress,new_progress)
+            current_progress, new_progress = new_progress,None
+            task.end(None)
 
     def print(
         self, server, portname, fp, profile, buildname, gcodepath,
         skip_start_end, slicer_settings, material, task):
-            writer = makerbot_driver.Writer.StreamWriter(fp)
-            self._genericprint(
-                server, portname, profile, buildname, writer, True, 5.0,
-                gcodepath, skip_start_end, slicer_settings, material, task)
+        """
+        @param server conveyor.server object
+        @param portname undocumneted. assuming it's the os-specific port name string
+        @param fp undocumneted file pointer to  ???
+        @param profile undocumented assuming a conveyor.Profile object
+        @param buildname undocumented assuming the name of the build
+        @param gcodepath unddocumented assuming string name of gcode file to print
+        @param skip_start_end bool, set true to skip using start/end gcode
+        @param slicer_settings undocumented assuming a slicer settings dict
+        @param material a string indicating the material type
+        @param task undocumented, assuming it's a task object
+        """ 
+        writer = makerbot_driver.Writer.StreamWriter(fp)
+        self._genericprint(
+            server, portname, profile, buildname, writer, True, 5.0,
+            gcodepath, skip_start_end, slicer_settings, material, task)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,
