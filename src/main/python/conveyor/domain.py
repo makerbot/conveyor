@@ -31,6 +31,7 @@ class Job(DomainObject):
     def __init__(
         self, id, build_name, path, config, printerid, gcodeprocessor,
         skip_start_end, with_start_end, slicer_settings, material):
+
             self.build_name = build_name
             self.conclusion = None
             self.config = config

@@ -30,10 +30,11 @@ import threading
 import conveyor.stoppable
 
 
-class Connection(conveyor.stoppable.Stoppable):
+class Connection(conveyor.stoppable.StoppableInterface):
     """ Base class for all conveyor connection objects """
+
     def __init__(self):
-        conveyor.stoppable.Stoppable.__init__(self)
+        conveyor.stoppable.StoppableInterface.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
 
     def read(self):

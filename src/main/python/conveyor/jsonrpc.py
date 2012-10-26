@@ -29,11 +29,11 @@ import sys
 import threading
 
 
-import conveyor.event
-from conveyor.event import Event
+#import conveyor.event
+#from conveyor.event import Event
 import conveyor.stoppable
-import conveyor.test
-import conveyor.task
+#import conveyor.test
+#import conveyor.task
 
 # See conveyor/doc/jsonreader.{dot,png}.
 #
@@ -152,7 +152,7 @@ class TaskFactory(object):
     def __call__(self, *args, **kwargs):
         raise NotImplementedError
 
-class JsonRpc(conveyor.stoppable.Stoppable):
+class JsonRpc(conveyor.stoppable.StoppableInterface):
     """ JsonRpc handles a json stream, to gaurentee the output file pointer 
     gets entire valid JSON blocks of data to process, by buffering up data 
     into complete blocks and only passing on entirer JSON blocks 
@@ -280,6 +280,7 @@ class JsonRpc(conveyor.stoppable.Stoppable):
         self._outfp.write(data)
 
     def run(self):
+        """ This loop will run until self._stopped is set true."""
         self._log.debug('starting')
         while True:
             with self._condition:
@@ -296,6 +297,7 @@ class JsonRpc(conveyor.stoppable.Stoppable):
         self._log.debug('ending')
 
     def stop(self):
+        """ required as a stoppable object. """
         with self._condition:
             self._stopped = True
         self._infp.stop()

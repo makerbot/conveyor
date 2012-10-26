@@ -527,10 +527,10 @@ class Queue(object):
             self._stop = True
             self._condition.notify_all()
 
-class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
+class _TaskQueueThread(threading.Thread, conveyor.stoppable.StoppableInterface):
     def __init__(self, queue):
         threading.Thread.__init__(self, name='taskqueue')
-        conveyor.stoppable.Stoppable.__init__(self)
+        conveyor.stoppable.StoppableInterface.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = queue
 
