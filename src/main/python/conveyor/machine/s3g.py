@@ -186,7 +186,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
 
     def print(
         self, job, buildname, gcodepath, skip_start_end, slicer_settings,
-        material, task):
+        print_to_file_type, material, task):
             def stoppedcallback(task):
                 with self._condition:
                     self._currenttask = None
@@ -196,11 +196,11 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._log.debug(
                 'job=%r, buildname=%r, gcodepath=%r, skip_start_end=%r, slicer_settings=%r, material=%r, task=%r',
                 job, buildname, gcodepath, skip_start_end, slicer_settings,
-                material, task)
+                print_to_file_type, material, task)
             with self._condition:
                 printjob = (
                     job, buildname, gcodepath, skip_start_end,
-                    slicer_settings, material, task)
+                    slicer_settings, print_to_file_type, material, task)
                 self._queue.appendleft(printjob)
                 self._condition.notify_all()
 
@@ -233,7 +233,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         self._condition.wait(1.0)
                         self._log.debug('resumed')
                 elif self._states['idle'] and self._curprintjob is not None:
-                    job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = self._curprintjob
+                    job, buildname, gcodepath, skip_start_end, slicer_settings, print_to_file_type, material, task = self._curprintjob
                     driver = S3gDriver()
                     try:
                         with self._condition:
@@ -242,7 +242,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         driver.print(
                             self._server, self._portname, self._fp,
                             self._profile, buildname, gcodepath,
-                            skip_start_end, slicer_settings, material, task)
+                            skip_start_end, slicer_settings, print_to_file_type, material, task)
                     except PrinterThreadNotIdleError:
                         self._log.debug('handled exception', exc_info=True)
                     except makerbot_driver.BuildCancelledError:
@@ -420,8 +420,10 @@ class S3gDriver(object):
             parser.state.profile = profile
             parser.state.set_build_name(str(buildname))
             parser.s3g = makerbot_driver.s3g()
+            self._log.info('print_to_file_type %s', parser.s3g.print_to_file_type)
             parser.s3g.writer = writer
-            parser.s3g.set_print_to_file_type(print_to_file_type);
+            if print_to_file_type is not None:
+                parser.s3g.set_print_to_file_type(print_to_file_type);
             def cancelcallback(task):
                 try:
                     self._log.debug('setting external stop')
