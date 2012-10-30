@@ -25,91 +25,117 @@ import json
 import os
 import os.path
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 Scale = conveyor.enum.enum('Scale', Millimeter=fractions.Fraction(1, 1000))
 
+
+class ManifestItem(object):
+    """ Base of all Manifest objects.
+    @param parent manifest, if one is available
+    @param name, default to an unnamed string if None
+    """
+    def __init__(self, manifest, name=None):
+        """@param manifest parent manifest object
+        @param name name of this object """
+        self.manifest = manifest
+        self.name = name if name is not None else 'Unnamed Manifest Item'
+
+    def validate(self):
+        if None == self.manifest or None == self.manifest.base:
+            raise Exception("%s requires a parent manifest to be valid" %self.__class__)
+
+
+
 class Manifest(object):
-    @classmethod
-    def frompath(cls, path):
+
+    
+    @staticmethod
+    def frompath(path):
+        """ 
+        @param path a path to a json file in a manifest
+        @return a Manifest constructed from the json .thing manifest at the path 
+        """
         with open(path) as stream:
-            manifest = Manifest.fromstream(stream, path)
-        return manifest
+            return Manifest.fromstream(stream, path)
 
     @classmethod
     def fromstream(cls, stream, path=None):
         data = json.load(stream)
-        if None == path:
-            base = None
-        else:
+        base = None
+        if None is not path:
             base = os.path.dirname(path)
-        manifest = cls(base)
-        for func in (Manifest._read_namespace, Manifest._read_constructions,
-            Manifest._read_objects, Manifest._read_instances,
-            Manifest._read_attribution, Manifest._read_unified_mesh_hack):
-                func(data, manifest)
-        return manifest
+        manifest = Manifest(data, base)
+        manifest._validate_namespace() 
+        manifest._read_constructions()
+        manifest._read_objects()
+        manifest._read_instances()
+        manifest._read_attribution()
+        return manifest        
 
-    @staticmethod
-    def _read_namespace(data, manifest):
-        if 'namespace' not in data:
-            raise Exception
-        elif 'http://spec.makerbot.com/ns/thing.0.1.1.1' != data['namespace']:
-            raise Exception
-
-    @staticmethod
-    def _read_objects(data, manifest):
-        if 'objects' not in data:
-            raise Exception
-        else:
-            for json_name, json_value in data['objects'].iteritems():
-                manifest_object = ManifestObject._from_json(manifest,
-                    json_name, json_value)
-                manifest.objects[manifest_object.name] = manifest_object
-
-    @staticmethod
-    def _read_constructions(data, manifest):
-        if 'constructions' not in data:
-            manifest_construction = ManifestConstruction(manifest, 'plastic A')
-            manifest.constructions[manifest_construction.name] = manifest_construction
-        else:
-            for json_name, json_value in data['constructions'].iteritems():
-                manifest_construction = ManifestConstruction._from_json(
-                    manifest, json_name, json_value)
-                manifest.constructions[manifest_construction.name] = manifest_construction
-
-    @staticmethod
-    def _read_instances(data, manifest):
-        if 'instances' not in data:
-            raise Exception
-        else:
-            for json_name, json_value in data['instances'].iteritems():
-                manifest_instance = ManifestInstance._from_json(manifest,
-                    json_name, json_value)
-                manifest.instances[manifest_instance.name] = manifest_instance
-
-    @staticmethod
-    def _read_attribution(data, manifest):
-        if 'attribution' in data:
-            manifest.attribution = data['attribution']
-
-    @staticmethod
-    def _read_unified_mesh_hack(data, manifest):
-        if 'UNIFIED_MESH_HACK' in data:
-            manifest.unified_mesh_hack = data['UNIFIED_MESH_HACK']
-
-    def __init__(self, base=None):
+    def __init__(self, rawJson, base=None):
         self.objects = {}
         self.constructions = {}
         self.instances = {}
         self.attribution = None
         self.base = base
-        self.unified_mesh_hack = None
+        self.unified_mesh_hack =None
+        self.rawJson = rawJson
+
+    def _validate_namespace(self):
+        """ @return True on success, throws exception otherwise. """
+        if 'namespace' not in self.rawJson:
+            raise Exception("No namespace specified. Format invalid")
+        elif 'http://spec.makerbot.com/ns/thing.0.1.1.1' != self.rawJson['namespace']:
+            raise Exception
+
+
+    def _read_objects(self):
+        """ @raises Exception of no objects in data """ 
+        if 'objects' not in self.rawJson:
+            raise Exception("no object defined in this manifest")
+        else:
+            for json_name, json_value in self.rawJson['objects'].iteritems():
+                manifest_object = ManifestObject._from_json(self,
+                                                            json_name, json_value)
+                self.objects[manifest_object.name] = manifest_object
+
+    def _read_constructions(self):
+        if 'constructions' not in self.rawJson:
+            manifest_construction = ManifestConstruction(self, 'plastic A')
+            self.constructions[
+                manifest_construction.name] = manifest_construction
+        else:
+            for json_name, json_value in self.rawJson['constructions'].iteritems():
+                manifest_construction = ManifestConstruction._from_json(
+                    self , json_name, json_value)
+                self.constructions[
+                    manifest_construction.name] = manifest_construction
+
+    def _read_instances( self ):
+        if 'instances' not in self.rawJson:
+            raise Exception
+        else:
+            for json_name, json_value in self.rawJson['instances'].iteritems():
+                manifest_instance = ManifestInstance._from_json(self,
+                                                                json_name, json_value)
+                self.instances[manifest_instance.name] = manifest_instance
+
+    def _read_attribution( self):
+        if 'attribution' in self.rawJson:
+            self.attribution = self.rawJson['attribution']
+
+    def _read_unified_mesh_hack(self):
+        """ due to needing a unified mesh for our beta release,
+        we added this undocumented entry. This entry contains an entire
+        print plate, in one material, as a single giant stl mesh, since
+        the math for multiple object platcement was incomplete at ship time"""
+        if 'UNIFIED_MESH_HACK' in self.rawJson:
+            self.unified_mesh_hack = self.rawJson['UNIFIED_MESH_HACK']
+        
 
     def validate(self):
+        """ valides this Manifest, and all objects contained in it.
+        raises exception on failure, no return on success 
+        """
         for name, manifest_object in self.objects.iteritems():
             if name != manifest_object.name:
                 raise Exception
@@ -126,27 +152,19 @@ class Manifest(object):
             else:
                 manifest_instance.validate()
 
-
     def material_types(self):
         """ returns a set of all material types found in this manifest, as a list """
-        l = [] 
+        l = []
         for k in self.instances.keys():
-                l.append(self.instances[k].construction_key)
+            l.append(self.instances[k].construction_key)
         setMaterials = set(l)
         return list(setMaterials)
- 	
 
-class ManifestItem(object):
-    def __init__(self, manifest, name):
-        self.manifest = manifest
-        self.name = name
-
-    def validate(self):
-        raise NotImplementedError
 
 class ManifestObject(ManifestItem):
     @classmethod
     def _from_json(cls, manifest, json_name, json_value):
+        """ @param manifest container manifest """
         if {} != json_value:
             raise Exception
         else:
@@ -161,35 +179,44 @@ class ManifestObject(ManifestItem):
             if not os.path.exists(object_path):
                 raise Exception
 
+
 class ManifestConstruction(ManifestItem):
+    """ a Manifest Construciton defines what way an item is constructed """
     @classmethod
     def _from_json(cls, manifest, json_name, json_value):
+        """ @param manifest container manifest """
         if {} != json_value:
-            raise Exception
-        else:
-            manifest_construction = ManifestConstruction(manifest, json_name)
-            return manifest_construction
+            raise Exception("json_value not empty in %s" %cls.__class__)
+        manifest_construction = ManifestConstruction(manifest, json_name)
+        return manifest_construction
 
-    def validate(self):
-        pass
 
 class ManifestInstance(ManifestItem):
+    """ Represents an instance of an item specified in a manifest. That object
+    MUST have a scale, object-key (ie, what mesh it is), and a construction (ie
+    how to create the instance
+    """
+
     @classmethod
     def _from_json(cls, manifest, json_name, json_value):
+        """ @param manifest container manifest """
         if 'object' not in json_value:
             raise Exception
         else:
             object_key = json_value['object']
+
             if 'construction' not in json_value:
                 construction_key = 'plastic A'
             else:
                 construction_key = json_value['construction']
+
             if 'scale' not in json_value or 'mm' == json_value['scale']:
                 scale = Scale.Millimeter
             else:
-                raise Exception
+                raise Exception("undocumneted exception in %s", self.__class__)
+
             manifest_object = ManifestInstance(manifest, json_name, object_key,
-                construction_key, scale)
+                                               construction_key, scale)
             return manifest_object
 
     def __init__(self, manifest, name, object_key, construction_key, scale):
@@ -205,232 +232,16 @@ class ManifestInstance(ManifestItem):
 
     @property
     def construction(self):
-        manifest_construction = self.manifest.constructions[self.construction_key]
+        manifest_construction = self.manifest.constructions[
+            self.construction_key]
         return manifest_construction
 
     def validate(self):
+        """ validates the instance. 
+        @return true on success, throws exception otherwise
+        """
         if self.object_key not in self.manifest.objects:
             raise Exception
         elif self.construction_key not in self.manifest.constructions:
             raise Exception
 
-class _ThingTestCase(unittest.TestCase):
-    def test_rfc_4_1(self):
-        '''Test example 4.1 from the .thing RFC.'''
-
-        manifest = Manifest.frompath('src/test/thing/rfc-4.1/manifest.json')
-
-        self.assertEqual(2, len(manifest.objects))
-
-        self.assertIn('bunny.stl', manifest.objects)
-        bunny = manifest.objects['bunny.stl']
-        self.assertIs(manifest, bunny.manifest)
-        self.assertEqual('bunny.stl', bunny.name)
-
-        self.assertIn('bunny2.stl', manifest.objects)
-        bunny2 = manifest.objects['bunny2.stl']
-        self.assertIs(manifest, bunny2.manifest)
-        self.assertEqual('bunny2.stl', bunny2.name)
-
-        self.assertEqual(2, len(manifest.constructions))
-
-        self.assertIn('plastic A', manifest.constructions)
-        plastic_a = manifest.constructions['plastic A']
-        self.assertIs(manifest, plastic_a.manifest)
-        self.assertEqual('plastic A', plastic_a.name)
-
-        self.assertIn('plastic B', manifest.constructions)
-        plastic_b = manifest.constructions['plastic B']
-        self.assertIs(manifest, plastic_b.manifest)
-        self.assertEqual('plastic B', plastic_b.name)
-
-        self.assertEqual(2, len(manifest.instances))
-
-        self.assertIn('NameA', manifest.instances)
-        instance_a = manifest.instances['NameA']
-        self.assertIs(manifest, instance_a.manifest)
-        self.assertEqual('NameA', instance_a.name)
-        self.assertEqual('bunny.stl', instance_a.object_key)
-        self.assertIs(bunny, instance_a.object)
-        self.assertEqual('plastic A', instance_a.construction_key)
-        self.assertIs(plastic_a, instance_a.construction)
-        self.assertEqual(Scale.Millimeter, instance_a.scale)
-
-        self.assertIn('NameB', manifest.instances)
-        instance_b = manifest.instances['NameB']
-        self.assertIs(manifest, instance_b.manifest)
-        self.assertEqual('NameB', instance_b.name)
-        self.assertEqual('bunny2.stl', instance_b.object_key)
-        self.assertIs(bunny2, instance_b.object)
-        self.assertEqual('plastic B', instance_b.construction_key)
-        self.assertIs(plastic_b, instance_b.construction)
-        self.assertEqual(Scale.Millimeter, instance_b.scale)
-
-    def test_rfc_5_1(self):
-        '''Test example 5.1 from the .thing RFC.'''
-
-        manifest = Manifest.frompath('src/test/thing/rfc-5.1/manifest.json')
-
-        self.assertEqual(1, len(manifest.objects))
-
-        self.assertIn('bunny.stl', manifest.objects)
-        bunny = manifest.objects['bunny.stl']
-        self.assertIs(manifest, bunny.manifest)
-        self.assertEqual('bunny.stl', bunny.name)
-
-        self.assertEqual(1, len(manifest.constructions))
-
-        self.assertIn('plastic A', manifest.constructions)
-        plastic_a = manifest.constructions['plastic A']
-        self.assertIs(manifest, plastic_a.manifest)
-        self.assertEqual('plastic A', plastic_a.name)
-
-        self.assertEqual(1, len(manifest.instances))
-
-        self.assertIn('bunny', manifest.instances)
-        instance = manifest.instances['bunny']
-        self.assertIs(manifest, instance.manifest)
-        self.assertEqual('bunny', instance.name)
-        self.assertEqual('bunny.stl', instance.object_key)
-        self.assertIs(bunny, instance.object)
-        self.assertEqual('plastic A', instance.construction_key)
-        self.assertIs(plastic_a, instance.construction)
-        self.assertEqual(Scale.Millimeter, instance.scale)
-
-    def test_rfc_5_2(self):
-        '''Test example 5.2 from the .thing RFC.'''
-
-        manifest = Manifest.frompath('src/test/thing/rfc-5.2/manifest.json')
-
-        self.assertEqual(2, len(manifest.objects))
-
-        self.assertIn('bunny.stl', manifest.objects)
-        bunny = manifest.objects['bunny.stl']
-        self.assertIs(manifest, bunny.manifest)
-        self.assertEqual('bunny.stl', bunny.name)
-
-        self.assertIn('bunny2.stl', manifest.objects)
-        bunny2 = manifest.objects['bunny2.stl']
-        self.assertIs(manifest, bunny2.manifest)
-        self.assertEqual('bunny2.stl', bunny2.name)
-
-        self.assertEqual(2, len(manifest.constructions))
-
-        self.assertIn('plastic A', manifest.constructions)
-        plastic_a = manifest.constructions['plastic A']
-        self.assertIs(manifest, plastic_a.manifest)
-        self.assertEqual('plastic A', plastic_a.name)
-
-        self.assertIn('plastic B', manifest.constructions)
-        plastic_b = manifest.constructions['plastic B']
-        self.assertIs(manifest, plastic_b.manifest)
-        self.assertEqual('plastic B', plastic_b.name)
-
-        self.assertEqual(2, len(manifest.instances))
-
-        self.assertIn('NameA', manifest.instances)
-        instance_a = manifest.instances['NameA']
-        self.assertIs(manifest, instance_a.manifest)
-        self.assertEqual('NameA', instance_a.name)
-        self.assertEqual('bunny.stl', instance_a.object_key)
-        self.assertIs(bunny, instance_a.object)
-        self.assertEqual('plastic B', instance_a.construction_key)
-        self.assertIs(plastic_b, instance_a.construction)
-        self.assertEqual(Scale.Millimeter, instance_a.scale)
-
-        self.assertIn('NameB', manifest.instances)
-        instance_b = manifest.instances['NameB']
-        self.assertIs(manifest, instance_b.manifest)
-        self.assertEqual('NameB', instance_b.name)
-        self.assertEqual('bunny2.stl', instance_b.object_key)
-        self.assertIs(bunny2, instance_b.object)
-        self.assertEqual('plastic B', instance_b.construction_key)
-        self.assertIs(plastic_b, instance_b.construction)
-        self.assertEqual(Scale.Millimeter, instance_b.scale)
-
-    def test_rfc_5_3(self):
-        '''Test example 5.3 from the .thing RFC.'''
-
-        # TODO: 5.3 is identical to 4.1?
-
-        manifest = Manifest.frompath('src/test/thing/rfc-5.3/manifest.json')
-
-        self.assertEqual(2, len(manifest.objects))
-
-        self.assertIn('bunny.stl', manifest.objects)
-        bunny = manifest.objects['bunny.stl']
-        self.assertIs(manifest, bunny.manifest)
-        self.assertEqual('bunny.stl', bunny.name)
-
-        self.assertIn('bunny2.stl', manifest.objects)
-        bunny2 = manifest.objects['bunny2.stl']
-        self.assertIs(manifest, bunny2.manifest)
-        self.assertEqual('bunny2.stl', bunny2.name)
-
-        self.assertEqual(2, len(manifest.constructions))
-
-        self.assertIn('plastic A', manifest.constructions)
-        plastic_a = manifest.constructions['plastic A']
-        self.assertIs(manifest, plastic_a.manifest)
-        self.assertEqual('plastic A', plastic_a.name)
-
-        self.assertIn('plastic B', manifest.constructions)
-        plastic_b = manifest.constructions['plastic B']
-        self.assertIs(manifest, plastic_b.manifest)
-        self.assertEqual('plastic B', plastic_b.name)
-
-        self.assertEqual(2, len(manifest.instances))
-
-        self.assertIn('NameA', manifest.instances)
-        instance_a = manifest.instances['NameA']
-        self.assertIs(manifest, instance_a.manifest)
-        self.assertEqual('NameA', instance_a.name)
-        self.assertEqual('bunny.stl', instance_a.object_key)
-        self.assertIs(bunny, instance_a.object)
-        self.assertEqual('plastic A', instance_a.construction_key)
-        self.assertIs(plastic_a, instance_a.construction)
-        self.assertEqual(Scale.Millimeter, instance_a.scale)
-
-        self.assertIn('NameB', manifest.instances)
-        instance_b = manifest.instances['NameB']
-        self.assertIs(manifest, instance_b.manifest)
-        self.assertEqual('NameB', instance_b.name)
-        self.assertEqual('bunny2.stl', instance_b.object_key)
-        self.assertIs(bunny2, instance_b.object)
-        self.assertEqual('plastic B', instance_b.construction_key)
-        self.assertIs(plastic_b, instance_b.construction)
-        self.assertEqual(Scale.Millimeter, instance_b.scale)
-
-    def test_rfc_5_4(self):
-        '''Test example 5.4 from the .thing RFC.'''
-
-        manifest = Manifest.frompath('src/test/thing/rfc-5.4/manifest.json')
-
-        self.assertEqual(1, len(manifest.objects))
-
-        self.assertIn('bunny.stl', manifest.objects)
-        bunny = manifest.objects['bunny.stl']
-        self.assertIs(manifest, bunny.manifest)
-        self.assertEqual('bunny.stl', bunny.name)
-
-        self.assertEqual(1, len(manifest.constructions))
-
-        self.assertIn('plastic A', manifest.constructions)
-        plastic_a = manifest.constructions['plastic A']
-        self.assertIs(manifest, plastic_a.manifest)
-        self.assertEqual('plastic A', plastic_a.name)
-
-        self.assertEqual(1, len(manifest.instances))
-
-        self.assertIn('bunny', manifest.instances)
-        instance = manifest.instances['bunny']
-        self.assertIs(manifest, instance.manifest)
-        self.assertEqual('bunny', instance.name)
-        self.assertEqual('bunny.stl', instance.object_key)
-        self.assertIs(bunny, instance.object)
-        self.assertEqual('plastic A', instance.construction_key)
-        self.assertIs(plastic_a, instance.construction)
-        self.assertEqual(Scale.Millimeter, instance.scale)
-
-        self.assertIsNotNone(manifest.attribution)
-        self.assertEqual({'author': 'Bob', 'license': 'foo'}, manifest.attribution)
