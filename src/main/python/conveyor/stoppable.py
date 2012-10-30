@@ -23,6 +23,7 @@ import gc
 import threading
 import weakref
 
+
 class StoppableInterface(object):
     """ Class defines the interface to a stoppable object
     these objects require a '.stop() and .run() functions
@@ -42,6 +43,7 @@ class StoppableThread(threading.Thread, StoppableInterface):
     def __init__(self, *args, **kwargs):
         threading.Thread.__init__(self, *args, **kwargs)
         StoppableInterface.__init__(self)
+
 
 class StoppableManager(object):
     _instance = None
@@ -92,24 +94,3 @@ class StoppableManager(object):
             stoppable = ref()
             if None is not stoppable:
                 stoppable.stop()
-
-
-class _StoppableTestObject(StoppableInterface):
-    def __init__(self):
-        StoppableInterface.__init__(self)
-        import conveyor.event
-        self.callback = conveyor.event.Callback()
-
-    def stop(self):
-        self.callback()
-
-    
-class _NotInitializedStoppableTestObject(StoppableInterface):
-    def __init__(self):
-        import conveyor.event
-        self.callback = conveyor.event.Callback()
-
-class _NotStoppableTestObject(object):
-    pass
-
-
