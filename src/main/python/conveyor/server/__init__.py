@@ -257,7 +257,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job = self._server.createjob(
                 build_name, inputpath, self._config, printerid, profile,
                 gcodeprocessor, skip_start_end, False, slicer_settings,
-                None, material)
+                profile.values['print_to_file_type'], material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.print(printerthread)
             job.process = process

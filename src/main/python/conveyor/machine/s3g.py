@@ -420,7 +420,7 @@ class S3gDriver(object):
             parser.state.profile = profile
             parser.state.set_build_name(str(buildname))
             parser.s3g = makerbot_driver.s3g()
-            self._log.info('print_to_file_type %s', parser.s3g.print_to_file_type)
+            self._log.debug('print_to_file_type %s', parser.s3g.print_to_file_type)
             parser.s3g.writer = writer
             if print_to_file_type is not None:
                 parser.s3g.set_print_to_file_type(print_to_file_type);
