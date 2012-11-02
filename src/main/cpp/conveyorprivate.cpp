@@ -3,6 +3,7 @@
 #include <QString>
 #include <iostream>
 #include <string>
+#include <QScopedPointer>
 
 #ifdef _WIN32
 # include <winsock2.h>

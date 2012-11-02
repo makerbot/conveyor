@@ -22,7 +22,7 @@ namespace conveyor
         ConnectionThread 
             ( Connection * connection
             , JsonRpc * jsonRpc
-            , ConveyorPrivate * m_conveyor
+            , ConveyorPrivate * conveyorprivate 
             );
 
     public slots:
@@ -34,7 +34,7 @@ namespace conveyor
     private:
         Connection * const m_connection;
         JsonRpc * const m_jsonRpc;
-        ConveyorPrivate * const m_conveyor;
+        ConveyorPrivate * conveyorprivate;
         bool volatile m_stop;
     };
 }

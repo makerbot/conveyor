@@ -21,9 +21,9 @@ namespace conveyor
     }
 
     Conveyor *
-    Conveyor::connectToDaemon (Address const * address, ConveyorPrivate * conveyorprivate)
+    Conveyor::connectToDaemon (Address const * address, Conveyor * conveyor)
     {
-        return ConveyorPrivate::connect (address, conveyorprivate);
+        return ConveyorPrivate::connect (address, conveyor->m_private.data());
     }
 
     Conveyor::Conveyor

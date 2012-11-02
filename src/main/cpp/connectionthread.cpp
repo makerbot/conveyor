@@ -21,11 +21,11 @@ namespace conveyor
     ConnectionThread::ConnectionThread
         ( Connection * const connection
         , JsonRpc * const jsonRpc
-        , ConveyorPrivate * const conveyor
+        , ConveyorPrivate * conveyorprivate
         )
         : m_connection (connection)
         , m_jsonRpc (jsonRpc)
-        , m_conveyor (conveyor)
+        , conveyorprivate (conveyorprivate)
         , m_stop (false)
     {
     }
@@ -44,7 +44,7 @@ namespace conveyor
                 if (static_cast <ssize_t> (-1) == read)
                 {
                     this->m_stop = true;
-                    this->m_conveyor->disconnect();
+                    this->conveyorprivate->disconnect();
                 }
                 else
                 if (static_cast <ssize_t> (0) != read)
@@ -55,7 +55,7 @@ namespace conveyor
                 else
                 {
                     this->m_stop = true;
-                    this->m_conveyor->disconnect();
+                    this->conveyorprivate->disconnect();
                 }
             }
             this->m_jsonRpc->feedeof ();
@@ -72,6 +72,6 @@ namespace conveyor
     {
         this->m_stop = true;
         this->m_connection->cancel ();
-        this->m_conveyor->disconnect();
+        this->conveyorprivate->disconnect();
     }
 }

@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QList>
 #include <QString>
+#include <QScopedPointer>
 
 #include <jsonrpc.h>
 #include <conveyor.h>
