@@ -1,7 +1,7 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
 #include <QString>
-
+#include <iostream>
 #include <string>
 
 #ifdef _WIN32
@@ -49,7 +49,7 @@ namespace conveyor
     }
 
     Conveyor *
-    ConveyorPrivate::connect (Address const * const address)
+    ConveyorPrivate::connect (Address const * const address, ConveyorPrivate * conveyorprivate)
     {
         Connection * const connection (address->createConnection ());
         ConnectionStream * const connectionStream
@@ -57,7 +57,7 @@ namespace conveyor
             );
         JsonRpc * const jsonRpc (new JsonRpc (connectionStream));
         ConnectionThread * const connectionThread
-            ( new ConnectionThread (connection, jsonRpc)
+            ( new ConnectionThread (connection, jsonRpc, conveyorprivate)
             );
         connectionThread->start ();
         try
@@ -83,14 +83,19 @@ namespace conveyor
         {
             connectionThread->stop ();
             connectionThread->wait ();
-
             delete connectionThread;
             delete jsonRpc;
             delete connectionStream;
             delete connection;
-
             throw;
         }
+    }
+
+    void
+    ConveyorPrivate::disconnect(void)
+    {
+        
+        std::cout << "Conveyor Private Disconnect" << std::endl;
     }
 
     ConveyorPrivate::ConveyorPrivate

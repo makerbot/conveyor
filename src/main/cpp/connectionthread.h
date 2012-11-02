@@ -8,6 +8,9 @@
 #include <jsonrpc.h>
 
 #include <conveyor/connection.h>
+#include <conveyor/conveyor.h>
+
+#include "conveyorprivate.h"
 
 namespace conveyor
 {
@@ -16,7 +19,11 @@ namespace conveyor
         Q_OBJECT
 
     public:
-        ConnectionThread (Connection * connection, JsonRpc * jsonRpc);
+        ConnectionThread 
+            ( Connection * connection
+            , JsonRpc * jsonRpc
+            , ConveyorPrivate * m_conveyor
+            );
 
     public slots:
         void stop (void);
@@ -27,6 +34,7 @@ namespace conveyor
     private:
         Connection * const m_connection;
         JsonRpc * const m_jsonRpc;
+        ConveyorPrivate * const m_conveyor;
         bool volatile m_stop;
     };
 }

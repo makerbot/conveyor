@@ -7,6 +7,7 @@
 #include <jsonrpc.h>
 
 #include <conveyor/connection.h>
+#include <conveyor/conveyor.h>
 
 #include "connectionthread.h"
 
@@ -20,9 +21,11 @@ namespace conveyor
     ConnectionThread::ConnectionThread
         ( Connection * const connection
         , JsonRpc * const jsonRpc
+        , ConveyorPrivate * const conveyor
         )
         : m_connection (connection)
         , m_jsonRpc (jsonRpc)
+        , m_conveyor (conveyor)
         , m_stop (false)
     {
     }
@@ -41,6 +44,7 @@ namespace conveyor
                 if (static_cast <ssize_t> (-1) == read)
                 {
                     this->m_stop = true;
+                    this->m_conveyor->disconnect();
                 }
                 else
                 if (static_cast <ssize_t> (0) != read)
@@ -51,6 +55,7 @@ namespace conveyor
                 else
                 {
                     this->m_stop = true;
+                    this->m_conveyor->disconnect();
                 }
             }
             this->m_jsonRpc->feedeof ();
@@ -67,5 +72,6 @@ namespace conveyor
     {
         this->m_stop = true;
         this->m_connection->cancel ();
+        this->m_conveyor->disconnect();
     }
 }

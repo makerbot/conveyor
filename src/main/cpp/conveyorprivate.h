@@ -12,6 +12,7 @@
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
 #include <conveyor/eeprommap.h>
+#include <conveyor/connectionstatus.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"
@@ -29,7 +30,7 @@ namespace conveyor
     public:
         static void initialize();
 
-        static Conveyor * connect (Address const * address);
+        static Conveyor * connect (Address const * address, ConveyorPrivate * conveyorprivate);
 
         ConveyorPrivate
             ( Conveyor * conveyor
@@ -82,6 +83,8 @@ namespace conveyor
         EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(Printer * const printer, EepromMap map);
         void resetToFactory(Printer * const printer) const;
+
+        void disconnect(void);
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;
