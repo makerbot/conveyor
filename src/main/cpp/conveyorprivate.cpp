@@ -1,9 +1,9 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
 #include <QString>
-#include <iostream>
 #include <string>
 #include <QScopedPointer>
+#include <iostream>
 
 #ifdef _WIN32
 # include <winsock2.h>
@@ -50,32 +50,33 @@ namespace conveyor
     }
 
     Conveyor *
-    ConveyorPrivate::connect (Address const * const address, ConveyorPrivate * conveyorprivate)
+    ConveyorPrivate::connect (Address const * const address)
     {
         Connection * const connection (address->createConnection ());
         ConnectionStream * const connectionStream
             ( new ConnectionStream (connection)
             );
         JsonRpc * const jsonRpc (new JsonRpc (connectionStream));
-        ConnectionThread * const connectionThread
-            ( new ConnectionThread (connection, jsonRpc, conveyorprivate)
-            );
-        connectionThread->start ();
+        // Forware declaration of ConnectionThread to create conveyor obj 
+        ConnectionThread * connectionThread;
         try
         {
-            Json::Value const hello
-                ( SynchronousCallback::invoke
-                    ( jsonRpc
-                    , "hello"
-                    , Json::Value (Json::arrayValue)
-                    )
-                );
             Conveyor * const conveyor
                 ( new Conveyor
                     ( connection
                     , connectionStream
                     , jsonRpc
                     , connectionThread
+                    )
+                );
+            // Create actual ConnectionThread
+            connectionThread = new ConnectionThread (connection, jsonRpc, conveyor->m_private.data());
+            connectionThread->start ();
+            Json::Value const hello
+                ( SynchronousCallback::invoke
+                    ( jsonRpc
+                    , "hello"
+                    , Json::Value (Json::arrayValue)
                     )
                 );
             return conveyor;
@@ -95,8 +96,8 @@ namespace conveyor
     void
     ConveyorPrivate::disconnect(void)
     {
-        
-        std::cout << "Conveyor Private Disconnect" << std::endl;
+        //throw SocketError("Connection Thread Terminated");
+        std::cout << "diconnected" << std::endl;
     }
 
     ConveyorPrivate::ConveyorPrivate

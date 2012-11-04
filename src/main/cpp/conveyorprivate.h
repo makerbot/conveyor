@@ -6,7 +6,6 @@
 #include <QHash>
 #include <QList>
 #include <QString>
-#include <QScopedPointer>
 
 #include <jsonrpc.h>
 #include <conveyor.h>
@@ -31,7 +30,7 @@ namespace conveyor
     public:
         static void initialize();
 
-        static Conveyor * connect (Address const * address, ConveyorPrivate * conveyorprivate);
+        static Conveyor * connect (Address const * address);
 
         ConveyorPrivate
             ( Conveyor * conveyor
@@ -91,7 +90,7 @@ namespace conveyor
         Connection * const m_connection;
         ConnectionStream * const m_connectionStream;
         JsonRpc * const m_jsonRpc;
-        ConnectionThread * const m_connectionThread;
+        ConnectionThread * m_connectionThread;
 
         PrinterAddedMethod m_printerAddedMethod;
         PrinterChangedMethod m_printerChangedMethod;

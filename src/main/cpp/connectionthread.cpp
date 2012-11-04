@@ -72,6 +72,5 @@ namespace conveyor
     {
         this->m_stop = true;
         this->m_connection->cancel ();
-        this->conveyorprivate->disconnect();
     }
 }
