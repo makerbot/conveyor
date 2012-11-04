@@ -7,6 +7,7 @@
 #include <conveyor/address.h>
 #include <conveyor/conveyor.h>
 #include <conveyor/eeprommap.h>
+#include <conveyor/exceptions.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"
@@ -46,6 +47,12 @@ namespace conveyor
 
     Conveyor::~Conveyor (void)
     {
+    }
+
+    void 
+    Conveyor::disconnect(void)
+    {
+        throw SocketError("Error reading/writing to socket");
     }
 
     void

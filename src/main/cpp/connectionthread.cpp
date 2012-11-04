@@ -55,7 +55,6 @@ namespace conveyor
                 else
                 {
                     this->m_stop = true;
-                    this->conveyorprivate->disconnect();
                 }
             }
             this->m_jsonRpc->feedeof ();

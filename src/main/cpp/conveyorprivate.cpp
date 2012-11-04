@@ -3,7 +3,6 @@
 #include <QString>
 #include <string>
 #include <QScopedPointer>
-#include <iostream>
 
 #ifdef _WIN32
 # include <winsock2.h>
@@ -58,20 +57,21 @@ namespace conveyor
             );
         JsonRpc * const jsonRpc (new JsonRpc (connectionStream));
         // Forware declaration of ConnectionThread to create conveyor obj 
-        ConnectionThread * connectionThread;
+        ConnectionThread * connectionThread = 0;
+        Conveyor * conveyor
+            ( new Conveyor
+                ( connection
+                , connectionStream
+                , jsonRpc
+                , connectionThread
+                )
+            );
+        // Create actual ConnectionThread
+        connectionThread = new ConnectionThread (connection, jsonRpc, conveyor->m_private.data());
+        conveyor->m_private->m_connectionThread = connectionThread;
+        connectionThread->start ();
         try
         {
-            Conveyor * const conveyor
-                ( new Conveyor
-                    ( connection
-                    , connectionStream
-                    , jsonRpc
-                    , connectionThread
-                    )
-                );
-            // Create actual ConnectionThread
-            connectionThread = new ConnectionThread (connection, jsonRpc, conveyor->m_private.data());
-            connectionThread->start ();
             Json::Value const hello
                 ( SynchronousCallback::invoke
                     ( jsonRpc
@@ -85,6 +85,7 @@ namespace conveyor
         {
             connectionThread->stop ();
             connectionThread->wait ();
+            delete conveyor;
             delete connectionThread;
             delete jsonRpc;
             delete connectionStream;
@@ -96,8 +97,7 @@ namespace conveyor
     void
     ConveyorPrivate::disconnect(void)
     {
-        //throw SocketError("Connection Thread Terminated");
-        std::cout << "diconnected" << std::endl;
+        this->m_conveyor->disconnect();
     }
 
     ConveyorPrivate::ConveyorPrivate
@@ -105,7 +105,7 @@ namespace conveyor
         , Connection * const connection
         , ConnectionStream * const connectionStream
         , JsonRpc * const jsonRpc
-        , ConnectionThread * const connectionThread
+        , ConnectionThread * connectionThread
         )
         : m_conveyor (conveyor)
         , m_connection (connection)
