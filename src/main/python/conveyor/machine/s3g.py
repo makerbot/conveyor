@@ -559,10 +559,10 @@ class S3gDriver(object):
         @param material a string indicating the material type
         @param task undocumented, assuming it's a task object
         """ 
-            writer = makerbot_driver.Writer.StreamWriter(fp)
-            self._genericprint(
-                server, portname, profile, buildname, writer, True, 5.0,
-                gcodepath, skip_start_end, slicer_settings, print_to_file_type, material, task)
+        writer = makerbot_driver.Writer.StreamWriter(fp)
+        self._genericprint(
+            server, portname, profile, buildname, writer, True, 5.0,
+            gcodepath, skip_start_end, slicer_settings, print_to_file_type, material, task)
 
     def printtofile(
         self, outputpath, profile, buildname, gcodepath, skip_start_end,

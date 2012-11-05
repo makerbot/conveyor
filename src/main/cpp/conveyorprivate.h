@@ -63,7 +63,7 @@ namespace conveyor
             , const SlicerConfiguration & slicer_conf
             , QString const & material
             , bool const skipStartEnd
-            , QString const printToFileType
+            , QString const & printToFileType
             );
         Job * slice
             ( Printer * printer
