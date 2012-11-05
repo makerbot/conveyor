@@ -29,22 +29,34 @@ import threading
 
 import conveyor.stoppable
 
+
 class Connection(conveyor.stoppable.Stoppable):
+    """ Base class for all conveyor connection objects """
     def __init__(self):
         conveyor.stoppable.Stoppable.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
 
     def read(self):
+        "Template read function, not implemented."
         raise NotImplementedError
 
     def write(self, data):
+        "Template write function, not implemented."
         raise NotImplementedError
 
 class ConnectionWriteException(Exception):
+    """ Default connection exception class."""
     pass
 
 class _AbstractSocketConnection(Connection):
+    """ Base Socket Connection class. Contains tools to 
+    read/write from generic json sockets. """
+
     def __init__(self, socket, address):
+        """ 
+        @param socket a socket object
+        @param address 
+        """
         Connection.__init__(self)
         self._condition = threading.Condition()
         self._stopped = False
@@ -52,16 +64,23 @@ class _AbstractSocketConnection(Connection):
         self._address = address
 
     def stop(self):
+        """ Sets stop flag to true, which will case the  write loop. """
         self._stopped = True
+        # ^ threading.Condition lock unneeded, boolean write is atomic
 
     def write(self, data):
+        """ writes data over a socket. Loops until either .stop() is set or 
+        data has been sent successfully. Exceptions for flow are handled in 
+        this functions, others are throw upwards.
+        @param data The data you want to send 
+        """
         with self._condition:
             while True:
                 try:
                     self._socket.sendall(data)
                 except IOError as e:
                     if e.args[0] in (errno.EINTR, errno.EAGAIN, errno.EWOULDBLOCK):
-                        # NOTE: too spammy
+                        # NOTE: debug too spammy
                         # self._log.debug('handled exception', exc_info=True)
                         continue
                     elif e.args[0] in (errno.EBADF, errno.EPIPE):
@@ -73,7 +92,13 @@ class _AbstractSocketConnection(Connection):
                     break
 
 if 'nt' != os.name:
+# TRICKY: Due to windows issues installing pywintypes, we wrote our own 
+# lower level socket classes. This is the posix section of those  
+
     class _PosixSocketConnection(_AbstractSocketConnection):
+        """ A Posix socket connection. 
+        Major functionality is via 'read','write','stop'.
+        """
         def stop(self):
             _AbstractSocketConnection.stop(self)
             # NOTE: use SHUT_RD instead of SHUT_RDWR or you will get annoying
@@ -108,11 +133,13 @@ if 'nt' != os.name:
                             raise
                     else:
                         return data
-
+    # Custom posix classes as 'PipeConnection' and 'SocketConnection
     PipeConnection = _PosixSocketConnection
     SocketConnection = _PosixSocketConnection
 
-else:
+else: # case for os == 'nt' (ie, windows machines')
+# TRICKY: Due to windows issues installing pywintypes, we wrote our own
+# ctypes based based socket class. 
     import ctypes
     import ctypes.wintypes
     import conveyor.platform.win32 as win32
@@ -124,6 +151,7 @@ else:
     _TIMEOUT = 1000
 
     class _Win32PipeConnection(Connection):
+        
         @staticmethod
         def create(handle):
             buffer = ctypes.create_string_buffer(_SIZE)
@@ -201,6 +229,11 @@ else:
                         raise ValueError(result)
 
         def write(self, data):
+            """ writes data over a socket. Loops until either .stop() is set or 
+            data has been sent successfully. Exceptions for flow are handled in 
+            this functions, others are throw upwards.
+            @param data The data you want to send 
+            """
             with self._condition:
                 s = str(data)
                 result = win32.WriteFile(
@@ -242,6 +275,7 @@ else:
                                 continue
                         else:
                             return data
-
+    
+    # use custom windowns socket classes as 'PipeConnection' and 'SocketConnection
     PipeConnection = _Win32PipeConnection
     SocketConnection = _Win32SocketConnection

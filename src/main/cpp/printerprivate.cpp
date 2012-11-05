@@ -82,11 +82,11 @@ namespace conveyor
             buildVolumeYmax = 74;
             buildVolumeZmax = 150;
         } else if ("The Replicator 2" == printerType) {
-            buildVolumeXmin = 0;
-            buildVolumeYmin = 0;
+            buildVolumeXmin = -142.5;
+            buildVolumeYmin = -75;
             buildVolumeZmin = 0;
-            buildVolumeXmax = 200;
-            buildVolumeYmax = 200;
+            buildVolumeXmax = 142.5;
+            buildVolumeYmax = 75;
             buildVolumeZmax = 150;
         } // else, BuildVolume is 0 for now
 

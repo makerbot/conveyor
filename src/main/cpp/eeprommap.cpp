@@ -28,6 +28,11 @@ namespace conveyor
         return this->m_private->getInt(path);
     }
 
+    std::vector<float> * EepromMap::getFloat(QString path) const
+    {
+        return this->m_private->getFloat(path);
+    }
+
     std::vector<QString> * EepromMap::getString(QString path) const
     {
         return this->m_private->getString(path);
@@ -36,6 +41,11 @@ namespace conveyor
     void EepromMap::setInt(QString path, std::vector<int> value)
     {
         this->m_private->setInt(path, value);
+    }
+
+    void EepromMap::setFloat(QString path, std::vector<float> value)
+    {
+        this->m_private->setFloat(path, value);
     }
 
     void EepromMap::setString(QString path, std::vector<QString> value)

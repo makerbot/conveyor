@@ -27,21 +27,30 @@ except ImportError:
 import conveyor.enum
 import conveyor.event
 
-TaskState = conveyor.enum.enum('TaskState', 'PENDING', 'RUNNING', 'STOPPED')
+TaskState = conveyor.enum.enum('TaskState',  # enum name
+        'PENDING', 'RUNNING', 'STOPPED')
+# Valid State Transitions are limited. see docs/task.png for state diagram
 
 TaskEvent = conveyor.enum.enum(
     'TaskEvent', 'START', 'HEARTBEAT', 'END', 'FAIL', 'CANCEL')
+# Valid State Transitions are limited. see docs/task.png for state diagram
 
 TaskConclusion = conveyor.enum.enum(
     'TaskConclusion', 'ENDED', 'FAILED', 'CANCELED')
+# Valid State Transitions are limited. see docs/task.png for state diagram
+
 
 class IllegalTransitionException(Exception):
+    """ Exception for an illegal state change of Task state machine """
     def __init__(self, state, event):
         Exception.__init__(self, state, event)
         self.state = state
         self.event = event
 
 class Task(object):
+    """ Class for managing an ongoing task, including starting, stopping, 
+        hearbeat (updates) and related tools.       
+    """
     def __init__(self, eventqueue=None):
         self.state = TaskState.PENDING
         self.conclusion = None
@@ -108,10 +117,26 @@ class Task(object):
             raise ValueError(self.state)
 
     def start(self):
+        """ Sets the Task in to active mode, where it can accept heartbeats,
+        events, etc 
+        """ 
         self._transition(TaskEvent.START, None)
 
     def heartbeat(self, progress):
+        """Post a heartbeat update. 
+        @param progress dict of { 'name':$PROGRESS, 'progress':$INT_PERCENT_PROGRESS }
+        """
         self._transition(TaskEvent.HEARTBEAT, progress)
+
+
+    def lazy_heartbeat(self, new_progress, old_progress = None):
+        """ Posts a hearbeat update only if it's different from the old, and not None 
+        @param new_progress progress dict, see heartbeat for details
+        @param old_progress progress dict, see heartbeat for details
+        """
+        if None is not new_progress and new_progress != old_progress:
+            self.heartbeat(new_progress)
+    
 
     def end(self, result):
         self._transition(TaskEvent.END, result)
@@ -146,193 +171,4 @@ class Task(object):
         canceled = TaskConclusion.CANCELED == self.conclusion
         return canceled
 
-class TaskTestCase(unittest.TestCase):
-    def _reset(self, callbacks):
-        for callback in callbacks:
-            callback.reset()
 
-    def _runeventqueue(self, eventqueue):
-        while eventqueue.runiteration(False):
-            pass
-
-    def test_events(self):
-        '''Test event delivery.'''
-
-        eventqueue = conveyor.event.geteventqueue()
-        task = Task()
-
-        startcallback = conveyor.event.Callback()
-        task.startevent.attach(startcallback)
-
-        heartbeatcallback = conveyor.event.Callback()
-        task.heartbeatevent.attach(heartbeatcallback)
-
-        endcallback = conveyor.event.Callback()
-        task.endevent.attach(endcallback)
-
-        failcallback = conveyor.event.Callback()
-        task.failevent.attach(failcallback)
-
-        cancelcallback = conveyor.event.Callback()
-        task.cancelevent.attach(cancelcallback)
-
-        runningcallback = conveyor.event.Callback()
-        task.runningevent.attach(runningcallback)
-
-        stoppedcallback = conveyor.event.Callback()
-        task.stoppedevent.attach(stoppedcallback)
-
-        callbacks = (
-            startcallback, heartbeatcallback, endcallback, failcallback,
-            cancelcallback, runningcallback, stoppedcallback)
-
-        self.assertFalse(startcallback.delivered)
-        self.assertFalse(heartbeatcallback.delivered)
-        self.assertFalse(endcallback.delivered)
-        self.assertFalse(failcallback.delivered)
-        self.assertFalse(cancelcallback.delivered)
-        self.assertFalse(runningcallback.delivered)
-        self.assertFalse(stoppedcallback.delivered)
-
-        task.start()
-        self._runeventqueue(eventqueue)
-        self.assertEqual(TaskState.RUNNING, task.state)
-        self.assertTrue(startcallback.delivered)
-        self.assertFalse(heartbeatcallback.delivered)
-        self.assertFalse(endcallback.delivered)
-        self.assertFalse(failcallback.delivered)
-        self.assertFalse(cancelcallback.delivered)
-        self.assertTrue(runningcallback.delivered)
-        self.assertFalse(stoppedcallback.delivered)
-
-        self._reset(callbacks)
-        task.progress = None
-        task.result = None
-        task.failure = None
-        task.heartbeat('progress')
-        self._runeventqueue(eventqueue)
-        self.assertEqual(TaskState.RUNNING, task.state)
-        self.assertEqual('progress', task.progress)
-        self.assertIsNone(task.result)
-        self.assertIsNone(task.failure)
-        self.assertFalse(startcallback.delivered)
-        self.assertTrue(heartbeatcallback.delivered)
-        self.assertFalse(endcallback.delivered)
-        self.assertFalse(failcallback.delivered)
-        self.assertFalse(cancelcallback.delivered)
-        self.assertFalse(runningcallback.delivered)
-        self.assertFalse(stoppedcallback.delivered)
-
-        self._reset(callbacks)
-        task.progress = None
-        task.result = None
-        task.failure = None
-        task.end('result')
-        self._runeventqueue(eventqueue)
-        self.assertEqual(TaskState.STOPPED, task.state)
-        self.assertIsNone(task.progress)
-        self.assertEqual('result', task.result)
-        self.assertIsNone(task.failure)
-        self.assertFalse(startcallback.delivered)
-        self.assertFalse(heartbeatcallback.delivered)
-        self.assertTrue(endcallback.delivered)
-        self.assertFalse(failcallback.delivered)
-        self.assertFalse(cancelcallback.delivered)
-        self.assertFalse(runningcallback.delivered)
-        self.assertTrue(stoppedcallback.delivered)
-
-        self._reset(callbacks)
-        task.progress = None
-        task.result = None
-        task.failure = None
-        task.state = TaskState.RUNNING
-        task.fail('failure')
-        self._runeventqueue(eventqueue)
-        self.assertEqual(TaskState.STOPPED, task.state)
-        self.assertIsNone(task.progress)
-        self.assertIsNone(task.result)
-        self.assertEqual('failure', task.failure)
-        self.assertFalse(startcallback.delivered)
-        self.assertFalse(heartbeatcallback.delivered)
-        self.assertFalse(endcallback.delivered)
-        self.assertTrue(failcallback.delivered)
-        self.assertFalse(cancelcallback.delivered)
-        self.assertFalse(runningcallback.delivered)
-        self.assertTrue(stoppedcallback.delivered)
-
-        self._reset(callbacks)
-        task.progress = None
-        task.result = None
-        task.failure = None
-        task.state = TaskState.PENDING
-        task.cancel()
-        self._runeventqueue(eventqueue)
-        self.assertEqual(TaskState.STOPPED, task.state)
-        self.assertIsNone(task.progress)
-        self.assertIsNone(task.result)
-        self.assertIsNone(task.failure)
-        self.assertFalse(startcallback.delivered)
-        self.assertFalse(heartbeatcallback.delivered)
-        self.assertFalse(endcallback.delivered)
-        self.assertFalse(failcallback.delivered)
-        self.assertTrue(cancelcallback.delivered)
-        self.assertFalse(runningcallback.delivered)
-        self.assertTrue(stoppedcallback.delivered)
-
-        self._reset(callbacks)
-        task.progress = None
-        task.result = None
-        task.failure = None
-        task.state = TaskState.RUNNING
-        task.cancel()
-        self._runeventqueue(eventqueue)
-        self.assertEqual(TaskState.STOPPED, task.state)
-        self.assertIsNone(task.progress)
-        self.assertIsNone(task.result)
-        self.assertIsNone(task.failure)
-        self.assertFalse(startcallback.delivered)
-        self.assertFalse(heartbeatcallback.delivered)
-        self.assertFalse(endcallback.delivered)
-        self.assertFalse(failcallback.delivered)
-        self.assertTrue(cancelcallback.delivered)
-        self.assertFalse(runningcallback.delivered)
-        self.assertTrue(stoppedcallback.delivered)
-
-    def test__transition_ValueError(self):
-        '''Test that the _transition method throws a ValueError when state is
-        an unknown value.
-
-        '''
-
-        task = Task()
-        task.state = None
-        with self.assertRaises(ValueError):
-            task._transition(None, None)
-
-    def test__transition_IllegalTransitionException(self):
-        '''Test that the _transition method throws an
-        IllegalTransitionException when the lifecycle methods are called in the
-        wrong order.
-
-        '''
-
-        task = Task()
-
-        def func(state, events):
-            task.state = state
-            for event in events:
-                with self.assertRaises(IllegalTransitionException) as cm:
-                    task._transition(event, None) # pragma: no cover
-                self.assertEqual(state, cm.exception.state)
-                self.assertEqual(event, cm.exception.event)
-
-        events = (TaskEvent.HEARTBEAT, TaskEvent.END, TaskEvent.FAIL,)
-        func(TaskState.PENDING, events)
-
-        events = (TaskEvent.START,)
-        func(TaskState.RUNNING, events)
-
-        events = (
-            TaskEvent.START, TaskEvent.HEARTBEAT, TaskEvent.END,
-            TaskEvent.FAIL, TaskEvent.CANCEL,)
-        func(TaskState.STOPPED, events)

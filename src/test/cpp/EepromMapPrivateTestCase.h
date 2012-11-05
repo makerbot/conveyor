@@ -16,10 +16,12 @@ class EepromMapPrivateTestCase : public CPPUNIT_NS::TestFixture
   CPPUNIT_TEST(testGetEepromMap);
   CPPUNIT_TEST(testSetString);
   CPPUNIT_TEST(testSetInt);
+  CPPUNIT_TEST(testSetFloat);
   CPPUNIT_TEST(testGetString);
   CPPUNIT_TEST(testGetInt);
   CPPUNIT_TEST(testGetEntryTopLevelEntry);
   CPPUNIT_TEST(testGetEntryWithSubMap);
+  CPPUNIT_TEST(testGetFloat);
 
 	CPPUNIT_TEST_SUITE_END();
 
@@ -34,8 +36,10 @@ public:
   void testGetEepromMap(void);
   void testSetString(void);
   void testSetInt(void);
+  void testSetFloat(void);
   void testGetString(void);
   void testGetInt(void);
+  void testGetFloat(void);
 
 private:
   EepromMapPrivate* createEepromMap(void);
