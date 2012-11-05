@@ -624,7 +624,7 @@ class S3gDriver(object):
             the_map = eeprom_reader.read_entire_map()
             return the_map
 
-    def create_xs3g_from_fp(self, fp):
+    def create_s3g_from_fp(self, fp):
         s = makerbot_driver.s3g()
         s.writer = makerbot_driver.Writer.StreamWriter(fp)
         return s
