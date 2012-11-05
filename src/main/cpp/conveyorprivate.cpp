@@ -264,6 +264,7 @@ namespace conveyor
         , const SlicerConfiguration & slicer_conf
         , QString const & material
         , bool const skipStartEnd 
+        , QString const & printToFileType
         )
     {
         Json::Value params (Json::objectValue);
@@ -276,6 +277,7 @@ namespace conveyor
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
+        params["print_to_file_type"] = Json::Value (printToFileType.toStdString());
         params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
