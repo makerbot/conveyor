@@ -64,7 +64,6 @@ namespace conveyor
         EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(Printer * const printer, EepromMap eepromMap);
         void resetToFactory(Printer * const printer) const;
-        void disconnect(void);
 
     signals:
         void printerAdded (Printer *);
@@ -76,12 +75,15 @@ namespace conveyor
         /** Signals that a job has finished and been removed */
         void jobRemoved (Job *);
 
+        /** Signal that the ConnectionThread has disconnected */
+        void connectionThreadDisconnect ();
+
     private:
         Conveyor
             ( Connection * connection
             , ConnectionStream * connectionStream
             , JsonRpc * jsonRpc
-            , ConnectionThread * connectionThread
+//            , ConnectionThread * connectionThread
             );
 
         QScopedPointer <ConveyorPrivate> m_private;
@@ -97,6 +99,8 @@ namespace conveyor
 
         void emitJobAdded (Job *);
         void emitJobRemoved (Job *);
+
+        void emitConnectionThreadDisconnect ();
     };
 }
 

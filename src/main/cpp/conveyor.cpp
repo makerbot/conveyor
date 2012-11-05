@@ -31,7 +31,7 @@ namespace conveyor
         ( Connection * const connection
         , ConnectionStream * const connectionStream
         , JsonRpc * const jsonRpc
-        , ConnectionThread * const connectionThread
+//        , ConnectionThread * const connectionThread
         )
         : m_private
             ( new ConveyorPrivate
@@ -39,7 +39,7 @@ namespace conveyor
                 , connection
                 , connectionStream
                 , jsonRpc
-                , connectionThread
+ //               , connectionThread
                 )
             )
     {
@@ -47,12 +47,6 @@ namespace conveyor
 
     Conveyor::~Conveyor (void)
     {
-    }
-
-    void 
-    Conveyor::disconnect(void)
-    {
-        throw SocketError("Error reading/writing to socket");
     }
 
     void
@@ -140,5 +134,11 @@ namespace conveyor
     Conveyor::emitJobRemoved (Job * const j)
     {
         emit jobRemoved(j);
+    }
+
+    void
+    Conveyor::emitConnectionThreadDisconnect ()
+    {
+        emit connectionThreadDisconnect ();
     }
 }

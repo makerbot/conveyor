@@ -37,7 +37,7 @@ namespace conveyor
             , Connection * connection
             , ConnectionStream * connectionStream
             , JsonRpc * jsonRpc
-            , ConnectionThread * connectionThread
+//            , ConnectionThread * connectionThread
             );
 
         ~ConveyorPrivate (void);
@@ -111,6 +111,8 @@ namespace conveyor
         void emitJobAdded (Job *);
         void emitJobChanged (Job *);
         void emitJobRemoved (Job *);
+
+        void emitConnectionThreadDisconnect ();
     };
 }
 

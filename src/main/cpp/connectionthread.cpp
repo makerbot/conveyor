@@ -44,7 +44,7 @@ namespace conveyor
                 if (static_cast <ssize_t> (-1) == read)
                 {
                     this->m_stop = true;
-                    this->conveyorprivate->disconnect();
+                    this->conveyorprivate->emitConnectionThreadDisconnect();
                 }
                 else
                 if (static_cast <ssize_t> (0) != read)
@@ -55,6 +55,7 @@ namespace conveyor
                 else
                 {
                     this->m_stop = true;
+                    this->conveyorprivate->emitConnectionThreadDisconnect();
                 }
             }
             this->m_jsonRpc->feedeof ();
@@ -62,6 +63,7 @@ namespace conveyor
         catch (...)
         {
             this->m_jsonRpc->feedeof ();
+            this->conveyorprivate->emitConnectionThreadDisconnect();
             throw;
         }
     }

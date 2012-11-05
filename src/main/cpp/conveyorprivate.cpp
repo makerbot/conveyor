@@ -57,18 +57,19 @@ namespace conveyor
             );
         JsonRpc * const jsonRpc (new JsonRpc (connectionStream));
         // Forware declaration of ConnectionThread to create conveyor obj 
-        ConnectionThread * connectionThread = 0;
+//        ConnectionThread * connectionThread = 0;
         Conveyor * conveyor
             ( new Conveyor
                 ( connection
                 , connectionStream
                 , jsonRpc
-                , connectionThread
+//                , connectionThread
                 )
             );
         // Create actual ConnectionThread
-        connectionThread = new ConnectionThread (connection, jsonRpc, conveyor->m_private.data());
-        conveyor->m_private->m_connectionThread = connectionThread;
+//      connectionThread = new ConnectionThread (connection, jsonRpc, conveyor->m_private.data());
+//      conveyor->m_private->m_connectionThread = connectionThread;
+        ConnectionThread * const connectionThread = conveyor->m_private->m_connectionThread;
         connectionThread->start ();
         try
         {
@@ -94,24 +95,18 @@ namespace conveyor
         }
     }
 
-    void
-    ConveyorPrivate::disconnect(void)
-    {
-        this->m_conveyor->disconnect();
-    }
-
     ConveyorPrivate::ConveyorPrivate
         ( Conveyor * const conveyor
         , Connection * const connection
         , ConnectionStream * const connectionStream
         , JsonRpc * const jsonRpc
-        , ConnectionThread * connectionThread
+//        , ConnectionThread * connectionThread
         )
         : m_conveyor (conveyor)
         , m_connection (connection)
         , m_connectionStream (connectionStream)
         , m_jsonRpc (jsonRpc)
-        , m_connectionThread (connectionThread)
+        , m_connectionThread (new ConnectionThread(connection, jsonRpc, this))
         , m_printerAddedMethod(this)
         , m_printerChangedMethod(this)
         , m_printerRemovedMethod(this)
@@ -449,5 +444,11 @@ namespace conveyor
     ConveyorPrivate::emitJobRemoved (Job * const j)
     {
         m_conveyor->emitJobRemoved(j);
+    }
+
+    void
+    ConveyorPrivate::emitConnectionThreadDisconnect(void)
+    {
+        m_conveyor->emitConnectionThreadDisconnect();
     }
 }
