@@ -4,8 +4,10 @@
 , "roofLayerCount": 4
 , "floorLayerCount": 4
 , "layerWidthRatio": 1.45
+, "preCoarseness": 0.0
 , "coarseness": 0.05
 , "doGraphOptimization": true
+, "directionWeight": 1.0
 , "rapidMoveFeedRateXY": 100
 , "rapidMoveFeedRateZ": 23.0
 , "doRaft": false
@@ -57,10 +59,10 @@
         { "feedrate": 80.0
         }
     , "firstlayer":
-        { "feedrate": 40.0
+        { "feedrate": 30.0
         }
     , "outlines":
-        { "feedrate": 40.0
+        { "feedrate": 35.0
         }
     }
 }

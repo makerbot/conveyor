@@ -242,7 +242,7 @@ namespace conveyor
         Json::Value null;
         params["printername"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
-        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
         params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
@@ -271,7 +271,7 @@ namespace conveyor
         params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
         params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
