@@ -353,7 +353,7 @@ namespace conveyor
         params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
         params["with_start_end"] = Json::Value (false);
         params["slicer_settings"] = slicer_conf.toJSON();
         params["material"] = Json::Value (material.toStdString());
