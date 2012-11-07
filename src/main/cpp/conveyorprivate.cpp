@@ -129,6 +129,11 @@ namespace conveyor
         delete this->m_connection;
     }
 
+    static bool printerCompare(const Printer *p1, const Printer *p2)
+    {
+        return p1->displayName() < p2->displayName();
+    }
+
     QList<Printer *>
     ConveyorPrivate::printers()
     {
@@ -153,6 +158,13 @@ namespace conveyor
             printer->m_private->updateFromJson(r);
             activePrinters.append(printer);
         }
+
+        // Sort the list so that it always appears in the same order
+        // in the UI. This is mainly for archetype printers; it's nice
+        // to have them in order.
+        qSort(activePrinters.begin(),
+              activePrinters.end(),
+              printerCompare);
 
         return activePrinters;
     }
