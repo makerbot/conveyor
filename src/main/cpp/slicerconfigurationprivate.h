@@ -62,6 +62,8 @@ namespace conveyor
         void setPrintSpeed(unsigned speed);
         void setTravelSpeed(unsigned speed);
 
+        void setProfilePath(const QString &path);
+
         SlicerConfiguration::Slicer m_slicer;
         SlicerConfiguration::Extruder m_extruder;
 
@@ -77,6 +79,8 @@ namespace conveyor
 
         unsigned m_printSpeed;
         unsigned m_travelSpeed;
+
+        QString m_profilePath;
     };
 }
 

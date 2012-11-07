@@ -76,7 +76,9 @@ namespace conveyor
         root["travel_speed"] = m_travelSpeed;
         root["print_speed"] = m_printSpeed;
 
-        root["path"] = Json::Value::null;
+        root["path"] = (m_profilePath.isEmpty() ?
+                        Json::Value::null :
+                        m_profilePath.toStdString());
 
         return root;
     }
@@ -201,5 +203,10 @@ namespace conveyor
     void SlicerConfigurationPrivate::setTravelSpeed(unsigned speed)
     {
         m_travelSpeed = speed;
+    }
+
+    void SlicerConfigurationPrivate::setProfilePath(const QString &path)
+    {
+        m_profilePath = path;
     }
 }
