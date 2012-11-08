@@ -385,8 +385,8 @@ class ClientMain(conveyor.main.AbstractMain):
                 code = 1
                 self._log.critical(
                     'failed to open socket: %s: %s',
-                    self._config['common']['socket'], e.strerror, exc_info=True)
-                if not self._has_daemon_lock():
+                    self._config['common']['address'], e.strerror, exc_info=True)
+                if not self._pidfile_exists():
                   self._log.critical(
                     'Unable to connect to conveyor server. Please verify that it is running.')
             else:
