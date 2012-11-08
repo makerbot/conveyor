@@ -401,7 +401,7 @@ class ClientMain(conveyor.main.AbstractMain):
     def _run_getuploadablemachines(self):
         def display(result):
             print(result)
-        params = {'printername' : None}
+        params = {}
         code = self._run_client('getuploadablemachines', params, False, display)
         return code
 

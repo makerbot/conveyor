@@ -134,6 +134,44 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
         task.runningevent.attach(runningcallback)
         return task
 
+class _GetUploadableMachinesTaskFactory(conveyor.jsonrpc.TaskFactory):
+
+    def __init__(self):
+        pass
+
+    def __call__(self):
+        import urllib2
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                machines = uploader.list_machines()
+                task.end(machines)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+
+class _GetMachineVersionsTaskFactory(conveyor.jsonrpc.TaskFactory):
+
+    def __init__(self):
+        pass
+
+    def __call__(self, machine_type):
+        import urllib2
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                versions = uploader.list_firmware_versions(machine_type)
+                task.end(versions)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+
 class _DownloadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self):
         pass
@@ -440,18 +478,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         eeprommap = printerthread.readeeprom()
         return eeprommap
 
-    @export('getuploadablemachines')
-    def _getuploadablemachines(self):
-        uploader = makerbot_driver.Firmware.Uploader()
-        machines = uploader.list_machines()
-        return machines
-
-    @export('getmachineversions')
-    def _getmachineversions(self, machine_type):
-        uploader = makerbot_driver.Firmware.Uploader()
-        versions = uploader.list_firmware_versions(machine_type)
-        return versions
-
     @export('resettofactory')
     def _resettofactory(self, printername):
         printerthread = self._findprinter(printername)
@@ -475,8 +501,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('getjobs', self._getjobs)
         self._jsonrpc.addmethod('writeeeprom', self._writeeeprom, "takes (eeprom_values)")
         self._jsonrpc.addmethod('readeeprom', self._readeeprom, "takes no params")
-        self._jsonrpc.addmethod('getuploadablemachines', self._getuploadablemachines, "takes no params")
-        self._jsonrpc.addmethod('getmachineversions', self._getmachineversions, ": takes (machine_type)")
+        getuploadablemachinesfactory = _GetUploadableMachinesTaskFactory()
+        self._jsonrpc.addmethod('getuploadablemachines', getuploadablemachinesfactory, ":takes no params")
+        getmachineversionstaskfactory = _GetMachineVersionsTaskFactory()
+        self._jsonrpc.addmethod('getmachineversions', getmachineversionstaskfactory, ': takes (machine_type)')
         downloadfirmwaretaskfactory = _DownloadFirmwareTaskFactory()
         self._jsonrpc.addmethod('downloadfirmware', downloadfirmwaretaskfactory, 'takes (machine, version)')
         uploadfirmwaretaskfactory = _UploadFirmwareTaskFactory(self)
