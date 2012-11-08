@@ -134,6 +134,24 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
         task.runningevent.attach(runningcallback)
         return task
 
+class _DownloadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self):
+        pass
+
+    def __call__(self, machinetype, version):
+        import urllib2
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                hex_file_path = uploader.download_firmware(machinetype, version)
+                task.end(hex_file_path)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+
 class _Method(object):
     pass
 
@@ -434,12 +452,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         versions = uploader.list_firmware_versions(machine_type)
         return versions
 
-    @export('downloadfirmware')
-    def _downloadfirmware(self, machinetype, version):
-        uploader = makerbot_driver.Firmware.Uploader()
-        hex_file_path = uploader.download_firmware(machinetype, version)
-        return hex_file_path
-
     @export('resettofactory')
     def _resettofactory(self, printername):
         printerthread = self._findprinter(printername)
@@ -465,7 +477,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('readeeprom', self._readeeprom, "takes no params")
         self._jsonrpc.addmethod('getuploadablemachines', self._getuploadablemachines, "takes no params")
         self._jsonrpc.addmethod('getmachineversions', self._getmachineversions, ": takes (machine_type)")
-        self._jsonrpc.addmethod('downloadfirmware', self._downloadfirmware, 'takes (machine, version)')
+        downloadfirmwaretaskfactory = _DownloadFirmwareTaskFactory()
+        self._jsonrpc.addmethod('downloadfirmware', downloadfirmwaretaskfactory, 'takes (machine, version)')
         uploadfirmwaretaskfactory = _UploadFirmwareTaskFactory(self)
         self._jsonrpc.addmethod('uploadfirmware', uploadfirmwaretaskfactory, ": takes (printername, machine_type, version)")
         self._jsonrpc.addmethod('resettofactory', self._resettofactory, ": takes no params")
