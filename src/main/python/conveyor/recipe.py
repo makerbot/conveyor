@@ -63,7 +63,7 @@ class RecipeManager(object):
         elif not os.path.isfile(job.path):
             raise NotFileException(job.path)
         else:
-            recipe = _GcodeRecipe(self._server, self._config, job)
+            recipe = _GcodeRecipe(self._server, self._config, job, job.path)
         return recipe
 
     def _getrecipe_stl(self, job):
@@ -96,7 +96,7 @@ class RecipeManager(object):
             else:
                 self._log.debug('unified_mesh_hack terminated with code %d', code)
                 stl_0_path = os.path.join(thing_dir, 'UNIFIED_MESH_HACK_0.stl')
-                stl_1_path = os.path.join(thing_dir, 'UNIFIED_MESH_HACK_0.stl')
+                stl_1_path = os.path.join(thing_dir, 'UNIFIED_MESH_HACK_1.stl')
                 if os.path.exists(stl_0_path) and os.path.exists(stl_1_path):
                     recipe = _DualThingRecipe(
                         self._server, self._config, job, stl_0_path, stl_1_path)
@@ -237,7 +237,7 @@ class _GcodeRecipe(Recipe):
             tasks.append(gcodeprocessortask)
 
         # Print
-        printtask = self._printtask(printerthread, processed_gcodepath)
+        printtask = self._printtask(printerthread, processed_gcodepath, False)
         tasks.append(printtask)
 
         def process_endcallback(task):
