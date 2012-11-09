@@ -33,7 +33,8 @@ namespace conveyor
 
         enum Extruder {
             Left,
-            Right
+            Right,
+            LeftAndRight
         };
 
         static SlicerConfiguration * defaultConfiguration(Quality quality);

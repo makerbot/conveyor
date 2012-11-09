@@ -60,8 +60,14 @@ namespace conveyor
         // Slicer name and min/max versions
         root["slicer"] = slicerName().toStdString();
 
-        root["extruder"] = (m_extruder == SlicerConfiguration::Left ?
-                            "1" : "0");
+        switch (m_extruder) {
+          case SlicerConfiguration::Left:
+            root["extruder"] = "1";
+          case SlicerConfiguration::Right:
+            root["extruder"] = "0";
+          case SlicerConfiguration::LeftAndRight:
+            root["extruder"] = "0, 1";
+        }
 
         root["raft"] = m_raft;
         root["support"] = m_supports;
