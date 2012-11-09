@@ -19,13 +19,13 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import contextlib
 import logging
 import makerbot_driver
 import os
 import os.path
+import subprocess
 import tempfile
-import zipfile
-import contextlib
 
 try:
     import unittest2 as unittest
@@ -33,17 +33,17 @@ except ImportError:
     import unittest
 
 import conveyor.domain
+import conveyor.dualstrusion
 import conveyor.enum
 import conveyor.process
 import conveyor.task
-import conveyor.thing
-import conveyor.dualstrusion
 
 
 class RecipeManager(object):
     def __init__(self, server, config):
         self._config = config
         self._server = server
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def getrecipe(self, job):
         root, ext = os.path.splitext(job.path)
@@ -54,8 +54,7 @@ class RecipeManager(object):
         elif '.thing' == ext.lower():
             recipe = self._getrecipe_thing(job)
         else:
-            #assuming a malformed thing. Print an error here someday
-            recipe = self._getrecipe_thing(job)
+            raise UnsupportedModelTypeException(job.path)
         return recipe
 
     def _getrecipe_gcode(self, job):
@@ -80,47 +79,36 @@ class RecipeManager(object):
         if not os.path.exists(job.path):
             raise MissingFileException(job.path)
         else:
-            if not os.path.isdir(job.path):
-                recipe = self._getrecipe_thing_zip(job)
-            else:
-                recipe = self._getrecipe_thing_dir(job, job.path)
-            return recipe
-
-    def _getrecipe_thing_zip(self, job):
-        directory = tempfile.mkdtemp()
-        zip = zipfile.ZipFile(job.path, 'r')
-        try:
-            zip.extractall(directory)
-        finally:
-            zip.close()
-        recipe = self._getrecipe_thing_dir(job, directory)
-        return recipe
-
-    def _getrecipe_thing_dir(self, job, directory):
-        if not os.path.isdir(directory):
-            raise NotDirectoryException(directory)
-        else:
-            manifestpath = os.path.join(directory, 'manifest.json')
-            if not os.path.exists(manifestpath):
-                raise MissingFileException(manifestpath)
-            else:
-                manifest = conveyor.thing.Manifest.frompath(manifestpath)
-                manifest.validate()
-                # This currently procludes us from doing any dualstrusion, since
-                # we will always be printing with the unified_mesh_hack
-#                if None is not manifest.unified_mesh_hack:
-#                    stlpath = os.path.join(
-#                        manifest.base, manifest.unified_mesh_hack)
-#                    recipe = _StlRecipe(
-#                        self._server, self._config, job, stlpath)
-                if 1 == len(manifest.instances):
-                    recipe = _SingleThingRecipe(
-                        self._server, self._config, job, manifest)
-                elif 2 == len(manifest.instances):
-                    recipe = _DualThingRecipe(
-                        self._server, self._config, job, manifest)
+            thing_dir = tempfile.mkdtemp()
+            popen = subprocess.Popen(
+                ['../Prototype/obj/unified_mesh_hack', job.path, thing_dir],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            while True:
+                line = popen.stdout.readline()
+                if '' == line:
+                    break
                 else:
-                    raise InvalidThingException # TODO: revisit with more detail
+                    self._log.info('%s', line)
+            code = popen.wait()
+            if 0 != code:
+                self._log.error('failed to extract meshes; unified_mesh_hack terminated with code %d', code)
+                raise InvalidThingException(job.path)
+            else:
+                self._log.debug('unified_mesh_hack terminated with code %d', code)
+                stl_0_path = os.path.join(thing_dir, 'UNIFIED_MESH_HACK_0.stl')
+                stl_1_path = os.path.join(thing_dir, 'UNIFIED_MESH_HACK_0.stl')
+                if os.path.exists(stl_0_path) and os.path.exists(stl_1_path):
+                    recipe = _DualThingRecipe(
+                        self._server, self._config, job, stl_0_path, stl_1_path)
+                    pass
+                elif os.path.exists(stl_0_path):
+                    recipe = _SingleThingRecipe(
+                        self._server, self._config, job, stl_0_path)
+                elif os.path.exists(stl_1_path):
+                    recipe = _SingleThingRecipe(
+                        self._server, self._config, job, stl_1_path)
+                else:
+                    raise InvalidThingException(job.path)
                 return recipe
 
 
@@ -386,26 +374,14 @@ class _StlRecipe(Recipe):
 
 
 class _ThingRecipe(Recipe):
-    def __init__(self, server, config, job, manifest):
-        Recipe.__init__(self, server, config, job)
-        self._manifest = manifest
-
-    def _getinstance(self, name):
-        for instance in self._manifest.instances.itervalues():
-            if name == instance.construction.name:
-                return instance
-        raise InvalidThingException # TODO: revisit with more detail
-
-    def _getinstance_a(self):
-        instance = self._getinstance('plastic A')
-        return instance
-
-    def _getinstance_b(self):
-        instance = self._getinstance('plastic B')
-        return instance
+    pass
 
 
 class _SingleThingRecipe(_ThingRecipe):
+    def __init__(self, server, config, job, stl_path):
+        _ThingRecipe.__init__(self, server, config, job)
+        self._stl_path = stl_path
+
     def print(self, printerthread):
         instance = self._getinstance_a()
         objectpath = os.path.join(self._manifest.base, instance.object.name)
@@ -432,27 +408,29 @@ class _SingleThingRecipe(_ThingRecipe):
 
 
 class _DualThingRecipe(_ThingRecipe):
+    def __init__(self, server, config, job, stl_0_path, stl_1_path):
+        _ThingRecipe.__init__(self, server, config, job)
+        self._stl_0_path = stl_0_path
+        self._stl_1_path = stl_1_path
+
     def printtofile(self, profile, outputpath):
         tasks = []
-        instance_a = self._getinstance_a()
-        instance_b = self._getinstance_b()
-        objectpath_a = os.path.join(self._manifest.base, instance_a.object.name)
-        objectpath_b = os.path.join(self._manifest.base, instance_b.object.name)
+        stl_1_path = self._stl_1_path
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
-            gcodepath_a = f.name
+            gcode_0_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
-            gcodepath_b = f.name
+            gcode_1_path = f.name
 
         with_start_end = False
-        tasks.append(self._slicertask(profile, objectpath_a, gcodepath_a, with_start_end))
+        tasks.append(self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end))
         new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         new_settings.extruder = 1
-        tasks.append(self._slicertask(profile, objectpath_b, gcodepath_b, with_start_end, slicer_config=new_settings))
+        tasks.append(self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=new_settings))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
             dualstrusion_path = f.name
-        tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
+        tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
         gcodeprocessors = self.getgcodeprocessors()
@@ -472,32 +450,28 @@ class _DualThingRecipe(_ThingRecipe):
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
-            for path in [gcodepath_a, gcodepath_b, processed_gcodepath]:
+            for path in [gcode_0_path, gcode_1_path, processed_gcodepath]:
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process
 
     def slice(self, profile, outputpath):
         tasks = []
-        instance_a = self._getinstance_a()
-        instance_b = self._getinstance_b()
-        objectpath_a = os.path.join(self._manifest.base, instance_a.object.name)
-        objectpath_b = os.path.join(self._manifest.base, instance_b.object.name)
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
-            gcodepath_a = f.name
+            gcode_0_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
-            gcodepath_b = f.name
+            gcode_1_path = f.name
 
         with_start_end = False
-        tasks.append(self._slicertask(profile, objectpath_a, gcodepath_a, with_start_end))
+        tasks.append(self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end))
         new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         new_settings.extruder = 1
-        tasks.append(self._slicertask(profile, objectpath_b, gcodepath_b, with_start_end, slicer_config=new_settings))
+        tasks.append(self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=new_settings))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
             dualstrusion_path = f.name
-        tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
+        tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
         gcodeprocessors = self.getgcodeprocessors()
@@ -507,34 +481,29 @@ class _DualThingRecipe(_ThingRecipe):
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
-            for path in [gcodepath_a, gcodepath_b, dualstrusion_path]:
+            for path in [gcode_0_path, gcode_1_path, dualstrusion_path]:
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process
 
     def print(self, printerthread):
-        printerthread.dualstrusion = True
         profile = printerthread.getprofile()
         tasks = []
-        instance_a = self._getinstance_a()
-        instance_b = self._getinstance_b()
-        objectpath_a = os.path.join(self._manifest.base, instance_a.object.name)
-        objectpath_b = os.path.join(self._manifest.base, instance_b.object.name)
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
-            gcodepath_a = f.name
+            gcode_0_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
-            gcodepath_b = f.name
+            gcode_1_path = f.name
 
         with_start_end = False
-        tasks.append(self._slicertask(profile, objectpath_a, gcodepath_a, with_start_end))
+        tasks.append(self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end))
         new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         new_settings.extruder = 1
-        tasks.append(self._slicertask(profile, objectpath_b, gcodepath_b, with_start_end, slicer_config=new_settings))
+        tasks.append(self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=new_settings))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
             dualstrusion_path = f.name
-        tasks.append(self._dualstrusiontask(gcodepath_a, gcodepath_b, dualstrusion_path))
+        tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
         gcodeprocessors = self.getgcodeprocessors()
@@ -553,10 +522,16 @@ class _DualThingRecipe(_ThingRecipe):
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
-            for path in [gcodepath_a, gcodepath_b, dualstrusion_path, processed_gcodefp]:
+            for path in [gcode_0_path, gcode_1_path, dualstrusion_path, processed_gcodefp]:
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process
+
+
+class UnsupportedModelTypeException(Exception):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
 
 
 class MissingFileException(Exception):
@@ -571,11 +546,7 @@ class NotFileException(Exception):
         self.path = path
 
 
-class NotDirectoryException(Exception):
+class InvalidThingException(Exception):
     def __init__(self, path):
         Exception.__init__(self, path)
         self.path = path
-
-
-class InvalidThingException(Exception):
-    pass
