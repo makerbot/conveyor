@@ -51,7 +51,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         return 'Skeinforge'
 
     def _prologue(self):
-        self._tmp_directory = tempfile.mkdtemp()
+        self._tmp_directory = tempfile.mkdtemp(suffix='.skeinforge')
         self._tmp_inputpath = os.path.join(
             self._tmp_directory, os.path.basename(self._inputpath))
         shutil.copy2(self._inputpath, self._tmp_inputpath)
@@ -185,7 +185,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
             driver = conveyor.machine.s3g.S3gDriver()
             startgcode, endgcode, variables = driver._get_start_end_variables(
-                self._profile, self._slicer_settings, self._material)
+                self._profile, self._slicer_settings, self._material, False)
             with open(self._outputpath, 'w') as wfp:
                 if self._with_start_end:
                     for line in startgcode:

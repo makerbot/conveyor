@@ -79,7 +79,7 @@ class RecipeManager(object):
         if not os.path.exists(job.path):
             raise MissingFileException(job.path)
         else:
-            thing_dir = tempfile.mkdtemp()
+            thing_dir = tempfile.mkdtemp(suffix='.thing')
             popen = subprocess.Popen(
                 ['../Prototype/obj/unified_mesh_hack', job.path, thing_dir],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -422,10 +422,16 @@ class _DualThingRecipe(_ThingRecipe):
             gcode_1_path = f.name
 
         with_start_end = False
-        tasks.append(self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end))
-        new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
-        new_settings.extruder = 1
-        tasks.append(self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=new_settings))
+
+        settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        settings_0.extruder = '0'
+        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end, slicer_config=settings_0)
+        tasks.append(slice_0_task)
+
+        settings_1 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        settings_1.extruder = '1'
+        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=settings_1)
+        tasks.append(slice_1_task)
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
@@ -463,10 +469,16 @@ class _DualThingRecipe(_ThingRecipe):
             gcode_1_path = f.name
 
         with_start_end = False
-        tasks.append(self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end))
-        new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
-        new_settings.extruder = 1
-        tasks.append(self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=new_settings))
+
+        settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        settings_0.extruder = '0'
+        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end, slicer_config=settings_0)
+        tasks.append(slice_0_task)
+
+        settings_1 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        settings_1.extruder = '1'
+        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=settings_1)
+        tasks.append(slice_1_task)
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
@@ -495,10 +507,16 @@ class _DualThingRecipe(_ThingRecipe):
             gcode_1_path = f.name
 
         with_start_end = False
-        tasks.append(self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end))
-        new_settings = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
-        new_settings.extruder = 1
-        tasks.append(self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=new_settings))
+
+        settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        settings_0.extruder = '0'
+        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end, slicer_config=settings_0)
+        tasks.append(slice_0_task)
+
+        settings_1 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
+        settings_1.extruder = '1'
+        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=settings_1)
+        tasks.append(slice_1_task)
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
