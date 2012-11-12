@@ -68,10 +68,10 @@ class DualstrusionWeaver(object):
     def create_transition_location(previous_point, next_point):
         all_codes = []
         if previous_point:
-            prev_codes = makerbot_driver.Gcode.parse_command(previous_point)[0]
+            prev_codes = makerbot_driver.Gcode.parse_line(previous_point)[0]
             # Attribute errors mean these commands are None.  We will try to recover though to produce something usable
             try:
-                next_codes = makerbot_driver.Gcode.parse_command(next_point)[0]
+                next_codes = makerbot_driver.Gcode.parse_line(next_point)[0]
             except AttributeError as e:
                 next_codes = {}
             trans_code = "G1"
