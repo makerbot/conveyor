@@ -35,6 +35,7 @@ except ImportError:
 import conveyor.domain
 import conveyor.dualstrusion
 import conveyor.enum
+import conveyor.machine.s3g
 import conveyor.process
 import conveyor.task
 
@@ -205,6 +206,32 @@ class Recipe(object):
                 dualstrusion)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
+        return task
+
+    def _with_start_end_task(self, profile, slicer_settings, material,
+            with_start_end, dualstrusion, input_path, output_path):
+        def running_callback(task):
+            try:
+                with open(input_path) as ifp:
+                    with open(output_path, 'w') as ofp:
+                        driver = conveyor.machine.s3g.S3gDriver()
+                        start, end, variables = driver._get_start_end_variables(
+                            profile, slicer_settings, material, dualstrusion)
+                        if with_start_end:
+                            for line in start:
+                                print(line, file=ofp)
+                        for line in ifp.readlines():
+                            ofp.write(line)
+                        if with_start_end:
+                            for line in end:
+                                print(line, file=ofp)
+            except Exception as e:
+                self._log.debug("unhandled exception", exec_info=true)
+                task.fail(e)
+            else:
+                task.end(None)
+        task = conveyor.task.Task()
+        task.runningevent.attach(running_callback)
         return task
 
     def print(self, printerthread):
@@ -480,10 +507,17 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
+        with tempfile.NamedTemporaryFile(suffix='.dual.gcode') as f:
+            dual_path = f.name
         gcodeprocessors = self.getgcodeprocessors()
         gcodeprocessortask = self._gcodeprocessortask(
-            dualstrusion_path, outputpath)
+            dualstrusion_path, dual_path)
         tasks.append(gcodeprocessortask)
+
+        with_start_end_task = self._with_start_end_task(
+            profile, self._job.slicer_settings, self._job.material,
+            self._job.with_start_end, True, dual_path, outputpath)
+        tasks.append(with_start_end_task)
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
@@ -534,7 +568,7 @@ class _DualThingRecipe(_ThingRecipe):
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
-            for path in [gcode_0_path, gcode_1_path, dualstrusion_path, processed_gcodefp]:
+            for path in [gcode_0_path, gcode_1_path, dualstrusion_path, processed_gcodepath]:
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process
