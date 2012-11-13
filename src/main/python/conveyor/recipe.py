@@ -410,9 +410,9 @@ class _DualThingRecipe(_ThingRecipe):
     def printtofile(self, profile, outputpath):
         tasks = []
         stl_1_path = self._stl_1_path
-        with tempfile.NamedTemporaryFile(suffix='.0.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.0.gcode') as f:
             gcode_0_path = f.name
-        with tempfile.NamedTemporaryFile(suffix='.1.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.1.gcode') as f:
             gcode_1_path = f.name
 
         with_start_end = False
@@ -437,7 +437,7 @@ class _DualThingRecipe(_ThingRecipe):
         if 0 == len(gcodeprocessors):
             processed_gcodepath = dualstrusion_path
         else:
-            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as processed_gcodefp:
+            with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
                 dualstrusion_path, processed_gcodepath)
@@ -457,9 +457,9 @@ class _DualThingRecipe(_ThingRecipe):
 
     def slice(self, profile, outputpath):
         tasks = []
-        with tempfile.NamedTemporaryFile(suffix='.0.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.0.gcode') as f:
             gcode_0_path = f.name
-        with tempfile.NamedTemporaryFile(suffix='.1.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.1.gcode') as f:
             gcode_1_path = f.name
 
         with_start_end = False
@@ -475,7 +475,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(slice_1_task)
 
         #Combine for dualstrusion
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.gcode') as f:
             dualstrusion_path = f.name
         tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
@@ -495,9 +495,9 @@ class _DualThingRecipe(_ThingRecipe):
     def print(self, printerthread):
         profile = printerthread.getprofile()
         tasks = []
-        with tempfile.NamedTemporaryFile(suffix='.0.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.0.gcode') as f:
             gcode_0_path = f.name
-        with tempfile.NamedTemporaryFile(suffix='.1.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.1.gcode') as f:
             gcode_1_path = f.name
 
         with_start_end = False
@@ -513,7 +513,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(slice_1_task)
 
         #Combine for dualstrusion
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.gcode') as f:
             dualstrusion_path = f.name
         tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
@@ -522,7 +522,7 @@ class _DualThingRecipe(_ThingRecipe):
         if 0 == len(gcodeprocessors):
             processed_gcodepath = dualstrusion_path
         else:
-            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as processed_gcodefp:
+            with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
                 dualstrusion_path, processed_gcodepath)
