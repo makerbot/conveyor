@@ -416,9 +416,9 @@ class _DualThingRecipe(_ThingRecipe):
     def printtofile(self, profile, outputpath):
         tasks = []
         stl_1_path = self._stl_1_path
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.0.gcode', delete=True) as f:
             gcode_0_path = f.name
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.1.gcode', delete=True) as f:
             gcode_1_path = f.name
 
         with_start_end = False
@@ -501,9 +501,9 @@ class _DualThingRecipe(_ThingRecipe):
     def print(self, printerthread):
         profile = printerthread.getprofile()
         tasks = []
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.0.gcode', delete=True) as f:
             gcode_0_path = f.name
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.1.gcode', delete=True) as f:
             gcode_1_path = f.name
 
         with_start_end = False
