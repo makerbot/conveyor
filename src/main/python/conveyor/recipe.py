@@ -383,26 +383,20 @@ class _SingleThingRecipe(_ThingRecipe):
         self._stl_path = stl_path
 
     def print(self, printerthread):
-        instance = self._getinstance_a()
-        objectpath = os.path.join(self._manifest.base, instance.object.name)
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, objectpath)
+            self._server, self._config, self._job, self._stl_path)
         process = stlrecipe.print(printerthread)
         return process
 
     def printtofile(self, profile, outputpath):
-        instance = self._getinstance_a()
-        objectpath = os.path.join(self._manifest.base, instance.object.name)
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, objectpath)
+            self._server, self._config, self._job, self._stl_path)
         process = stlrecipe.printtofile(profile, outputpath)
         return process
 
     def slice(self, profile, outputpath):
-        instance = self._getinstance_a()
-        objectpath = os.path.join(self._manifest.base, instance.object.name)
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, objectpath)
+            self._server, self._config, self._job, self._stl_path)
         process = stlrecipe.slice(profile, outputpath)
         return process
 
