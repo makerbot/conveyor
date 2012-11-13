@@ -363,13 +363,12 @@ class S3gDriver(object):
         if dualstrusion:
             tool_0 = True
             tool_1 = True
-        elif '0' == slicer_settings.extruder:
-            tool_0 = True
-        elif '1' == slicer_settings.extruder:
-            tool_1 = True
         else:
-            raise ValueError(slicer_settings.extruder)
-
+            extruders = [e.strip() for e in slicer_settings.extruder.split(',')]
+            if '0' in extruders:
+                tool_0 = True
+            if '1' in extruders:
+                tool_1 = True
         ga = makerbot_driver.GcodeAssembler(profile, profile.path)
         start_template, end_template, variables = ga.assemble_recipe(
             tool_0=tool_0, tool_1=tool_1, material=material)

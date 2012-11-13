@@ -152,7 +152,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '-e',
             '--extruder',
             default='right',
-            choices=('left', 'right'),
+            choices=('left', 'right', 'both'),
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
@@ -218,7 +218,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '-e',
             '--extruder',
             default='right',
-            choices=('left', 'right'),
+            choices=('left', 'right', 'both'),
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
@@ -275,7 +275,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '-e',
             '--extruder',
             default='right',
-            choices=('left', 'right'),
+            choices=('left', 'right', 'both'),
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
@@ -516,6 +516,8 @@ class ClientMain(conveyor.main.AbstractMain):
             extruder = '0'
         elif 'left' == self._parsedargs.extruder:
             extruder = '1'
+        elif 'both' == self._parsedargs.extruder:
+            extruder = '0,1'
         else:
             raise ValueError(self._parsedargs.extruder)
         slicer_settings = conveyor.domain.SlicerConfiguration(

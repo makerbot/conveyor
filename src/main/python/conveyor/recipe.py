@@ -425,12 +425,12 @@ class _DualThingRecipe(_ThingRecipe):
 
         settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_0.extruder = '0'
-        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end, slicer_config=settings_0)
+        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, False, slicer_config=settings_0)
         tasks.append(slice_0_task)
 
         settings_1 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_1.extruder = '1'
-        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=settings_1)
+        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, False, slicer_config=settings_1)
         tasks.append(slice_1_task)
 
         #Combine for dualstrusion
@@ -463,21 +463,21 @@ class _DualThingRecipe(_ThingRecipe):
 
     def slice(self, profile, outputpath):
         tasks = []
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.0.gcode', delete=True) as f:
             gcode_0_path = f.name
-        with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+        with tempfile.NamedTemporaryFile(suffix='.1.gcode', delete=True) as f:
             gcode_1_path = f.name
 
         with_start_end = False
 
         settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_0.extruder = '0'
-        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end, slicer_config=settings_0)
+        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, False, slicer_config=settings_0)
         tasks.append(slice_0_task)
 
         settings_1 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_1.extruder = '1'
-        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=settings_1)
+        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, False, slicer_config=settings_1)
         tasks.append(slice_1_task)
 
         #Combine for dualstrusion
@@ -510,12 +510,12 @@ class _DualThingRecipe(_ThingRecipe):
 
         settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_0.extruder = '0'
-        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, with_start_end, slicer_config=settings_0)
+        slice_0_task = self._slicertask(profile, self._stl_0_path, gcode_0_path, False, slicer_config=settings_0)
         tasks.append(slice_0_task)
 
         settings_1 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_1.extruder = '1'
-        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, with_start_end, slicer_config=settings_1)
+        slice_1_task = self._slicertask(profile, self._stl_1_path, gcode_1_path, False, slicer_config=settings_1)
         tasks.append(slice_1_task)
 
         #Combine for dualstrusion
