@@ -14,12 +14,14 @@ import collections
 import mock
 import unittest
 import makerbot_driver
+import conveyor
 
 class DualstrusionWeaver(object):
 
-    def __init__(self, tool_0_codes, tool_1_codes):
+    def __init__(self, tool_0_codes, tool_1_codes, task):
         self.tool_0_codes = tool_0_codes
         self.tool_1_codes = tool_1_codes
+        self.task = task
         self.last_position_0 = None
         self.next_position_0 = None
         self.last_position_1 = None
@@ -27,15 +29,11 @@ class DualstrusionWeaver(object):
         self.last_used_codes = self.tool_0_codes
         tool_0_length = len(self.tool_0_codes.gcodes)
         tool_1_length = len(self.tool_1_codes.gcodes)
-        if tool_0_length > tool_1_length:
-            self.longest_list = self.tool_0_codes
-            self.total_length = tool_0_length
-        else:
-            self.longtest_list = self.tool_1_codes
-            self.total_length = tool_1_length
+        self.total_length = tool_0_length + tool_1_length
         self.new_codes = []
         self.next_location_regex = re.compile("[gG]1.*?[zZ][-]?([\d]*\.?[\d]+)")
         self.last_location_regex = re.compile("[gG]1.*?[xXyY][-]?([\d]*\.?[\d]+)")
+        self.percent = 0
 
     def get_toolchange_commands(self, tool_codes):
         commands = []
@@ -50,8 +48,12 @@ class DualstrusionWeaver(object):
         commands.extend(transition_codes)
         return commands
 
-    def combine_codes(self, callback=None):
+    def combine_codes(self):
+        self.task.lazy_heartbeat(self.percent)
         while len(self.tool_0_codes.gcodes) is not 0 or len(self.tool_1_codes.gcodes) is not 0:
+            if conveyor.task.TaskState.RUNNING != self.task.state:
+                self.task.fail(None)
+                break
             next_gcode_obj = self.get_next_code_list()
             next_layer = self.get_next_layer(next_gcode_obj)
             self.set_next_location(next_layer, next_gcode_obj)
@@ -59,9 +61,11 @@ class DualstrusionWeaver(object):
             self.new_codes.extend(toolchange_codes)
             self.new_codes.extend(next_layer)
             self.set_last_location(next_layer, next_gcode_obj)
-        if callback:
-            percent = len(self.longest_list) / float(self.total_length)
-            callback(percent)
+            new_percent = min(int(len(self.new_codes) / float(self.total_length) * 100), 99)
+            self.task.lazy_heartbeat(new_percent, self.percent)
+            self.percent = new_percent
+        if conveyor.task.TaskState.RUNNING == self.task.state:
+            self.task.lazy_heartbeat(100, self.percent)
         return self.new_codes
 
     @staticmethod
