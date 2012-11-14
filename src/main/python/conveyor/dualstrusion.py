@@ -10,12 +10,10 @@ path = os.path.join(
 sys.path.insert(0, path)
 
 import re
+import collections
 import mock
 import unittest
-try:
-    import makerbot_driver
-except ImportError:
-    print("Cannot find makerbot_driver.  Expected at: %s.  Trying to continue anyway..." % (path))
+import makerbot_driver
 
 class DualstrusionWeaver(object):
 
@@ -36,6 +34,8 @@ class DualstrusionWeaver(object):
             self.longtest_list = self.tool_1_codes
             self.total_length = tool_1_length
         self.new_codes = []
+        self.next_location_regex = re.compile("[gG]1.*?[zZ][-]?([\d]*\.?[\d]+)")
+        self.last_location_regex = re.compile("[gG]1.*?[xXyY][-]?([\d]*\.?[\d]+)")
 
     def get_toolchange_commands(self, tool_codes):
         commands = []
@@ -87,9 +87,8 @@ class DualstrusionWeaver(object):
         return all_codes
 
     def set_next_location(self, codes, gcode_obj):
-        g1_regex = re.compile("[gG]1.*?[zZ][-]?([\d]*\.?[\d]+)")
         for code in codes:
-            if re.match(g1_regex, code):
+            if re.match(self.next_location_regex, code):
                 if gcode_obj == self.tool_0_codes:
                     self.next_position_0 = code
                 else:
@@ -97,10 +96,9 @@ class DualstrusionWeaver(object):
                 break
 
     def set_last_location(self, codes, gcode_obj):
-        g1_regex = re.compile("[gG]1.*?[xXyY][-]?([\d]*\.?[\d]+)")
         codes.reverse()
         for code in codes:
-            if re.match(g1_regex, code):
+            if re.match(self.last_location_regex, code):
                 if gcode_obj == self.tool_0_codes:
                     self.last_position_0 = code
                 else:
@@ -122,9 +120,10 @@ class DualstrusionWeaver(object):
 class GcodeObject(object):
 
     def __init__(self, gcodes=[]):
-        self.gcodes = gcodes
-        self.skeinforge_tag = re.compile("\(</layer>\)")
-        self.miraclegrue_tag = re.compile("\(Slice (\d+), (\d+) Extruder\)")
+        self.gcodes = collections.deque(gcodes)
+        #self.skeinforge_tag = re.compile("\(</layer>\)")
+        #self.miraclegrue_tag = re.compile("\(Slice (\d+), (\d+) Extruder\)")
+        self.layer_tag = re.compile("\(</layer>\)|\(Slice (\d+), (\d+) Extruder\)")
         self.layer_height_regex = re.compile("[gG]1.*?[zZ]([\d]*\.?[\d]+)")
         self.last_layer_height = 0
 
@@ -137,7 +136,7 @@ class GcodeObject(object):
                 break
             # If we encounter the next layer height, and no Z height was found, break and return
             # the last layer height found
-            if re.match(self.skeinforge_tag, code) or re.match(self.miraclegrue_tag, code):
+            if re.match(self.layer_tag, code):
                 break
         return self.last_layer_height
 
@@ -145,10 +144,10 @@ class GcodeObject(object):
         layer = []
         for line in self.gcodes:
             layer.append(line)
-            if re.match(self.skeinforge_tag, line) or re.match(self.miraclegrue_tag, line):
+            if re.match(self.layer_tag, line):
                 break
-        for line in layer:
-            self.gcodes.remove(line)
+        for i in range(len(layer)):
+            self.gcodes.popleft()
         return layer
 
 class TestGcodeObject(unittest.TestCase):
@@ -168,7 +167,7 @@ class TestGcodeObject(unittest.TestCase):
             "G1 X0 Y0 Z1",
             "G1 X0 Y0 Z20",
         ]
-        self.gcode_obj.gcodes = gcodes
+        self.gcode_obj.gcodes = collections.deque(gcodes)
         expected_next = 1.05
         self.assertEqual(expected_next, self.gcode_obj.peek_next_layer_height())
 
@@ -181,7 +180,7 @@ class TestGcodeObject(unittest.TestCase):
             "G1 X0 Y0 Z1",
             "G1 X0 Y0 Z20",
         ]
-        self.gcode_obj.gcodes = gcodes
+        self.gcode_obj.gcodes = collections.deque(gcodes)
         expected_next = 5
         self.assertEqual(expected_next, self.gcode_obj.peek_next_layer_height())
 
@@ -194,7 +193,7 @@ class TestGcodeObject(unittest.TestCase):
             "G1 X0 Y0 Z1",
             "G1 X0 Y0 Z20",
         ]
-        self.gcode_obj.gcodes = gcodes
+        self.gcode_obj.gcodes = collections.deque(gcodes)
         expected_next = .5
         self.assertEqual(expected_next, self.gcode_obj.peek_next_layer_height())
 
@@ -205,7 +204,7 @@ class TestGcodeObject(unittest.TestCase):
             "G1 X0 Y0 A0",
             "M99",
         ]
-        self.gcode_obj.gcodes = gcodes
+        self.gcode_obj.gcodes = collections.deque(gcodes)
         expected_next = 0
         self.assertEqual(expected_next, self.gcode_obj.peek_next_layer_height())
 
@@ -217,7 +216,7 @@ class TestGcodeObject(unittest.TestCase):
             "G92 X0 Y0",
             "(Slice 0, 5 Extruder)",
         ]
-        self.gcode_obj.gcodes = gcodes[:]
+        self.gcode_obj.gcodes = collections.deque(gcodes[:])
         expected_first_layer_height = .5
         self.assertEqual(expected_first_layer_height, self.gcode_obj.peek_next_layer_height())
         self.gcode_obj.get_next_layer()
@@ -236,7 +235,7 @@ class TestGcodeObject(unittest.TestCase):
             "G92 X100 Y100 Z100 A100",
             "(</layer>)",
         ]
-        self.gcode_obj.gcodes = gcodes[:]
+        self.gcode_obj.gcodes = collections.deque(gcodes[:])
         expected_layer = [
             "M134 T0",
             "G1 X0 Y0 Z0",
@@ -245,7 +244,7 @@ class TestGcodeObject(unittest.TestCase):
             "(some interesting comments)",
             "(</layer>)"
         ]
-        expected_leftovers = gcodes[6:]
+        expected_leftovers = collections.deque(gcodes[6:])
         self.assertEqual(expected_layer, self.gcode_obj.get_next_layer())
         self.assertEqual(len(self.gcode_obj.gcodes), len(gcodes) - len(expected_layer))
         self.assertEqual(expected_leftovers, self.gcode_obj.gcodes)
@@ -261,7 +260,7 @@ class TestGcodeObject(unittest.TestCase):
             "G1 X1 Y2 Z3",
             "G92 X100 Y100 Z100 A100",
             ]
-        self.gcode_obj.gcodes = gcodes[:]
+        self.gcode_obj.gcodes = collections.deque(gcodes[:])
         expected_layer = [
             "M134 T0",
             "G1 X0 Y0 Z0",
@@ -270,7 +269,7 @@ class TestGcodeObject(unittest.TestCase):
             "(some interesting comments)",
             "(Slice 54, 3 Extruder)",
         ]
-        expected_leftovers = gcodes[6:]
+        expected_leftovers = collections.deque(gcodes[6:])
         self.assertEqual(expected_layer, self.gcode_obj.get_next_layer())
         self.assertEqual(len(self.gcode_obj.gcodes), len(gcodes) - len(expected_layer))
         self.assertEqual(expected_leftovers, self.gcode_obj.gcodes)
@@ -285,7 +284,7 @@ class TestGcodeObject(unittest.TestCase):
             "G1 X1 Y2 Z3",
             "G92 X100 Y100 Z100 A100",
             ]
-        self.gcode_obj.gcodes = gcodes[:]
+        self.gcode_obj.gcodes = collections.deque(gcodes[:])
         expected_layer = [
             "M134 T0",
             "G1 X0 Y0 Z0",
@@ -295,7 +294,7 @@ class TestGcodeObject(unittest.TestCase):
             "G1 X1 Y2 Z3",
             "G92 X100 Y100 Z100 A100",
         ]
-        expected_leftovers = []
+        expected_leftovers = collections.deque([])
         self.assertEqual(expected_layer, self.gcode_obj.get_next_layer())
         self.assertEqual(len(self.gcode_obj.gcodes), len(expected_layer) - len(gcodes))
         self.assertEqual(expected_leftovers, self.gcode_obj.gcodes)
@@ -375,7 +374,7 @@ class TestDualstrusionWeaver(unittest.TestCase):
             "(</layer>)",
             ]
         expected_t0_codes = t0_codes[:5]
-        expected_leftovers = t0_codes[5:]
+        expected_leftovers = collections.deque(t0_codes[5:])
         tool_0_codes = GcodeObject(gcodes=t0_codes[:])
         tool_1_codes = GcodeObject(gcodes=[])
         weaver = DualstrusionWeaver(tool_0_codes, tool_1_codes)
