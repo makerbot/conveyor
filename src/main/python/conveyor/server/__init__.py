@@ -484,6 +484,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         task = conveyor.task.Task()
         printerthread.resettofactory(task)
 
+    @export('compatiblefirmware')
+    def _compatiblefirmware(self, firmware_version):
+        uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
+        return uploader.compatible_firmware(firmware_version)
+
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
@@ -510,6 +515,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         uploadfirmwaretaskfactory = _UploadFirmwareTaskFactory(self)
         self._jsonrpc.addmethod('uploadfirmware', uploadfirmwaretaskfactory, ": takes (printername, machine_type, version)")
         self._jsonrpc.addmethod('resettofactory', self._resettofactory, ": takes no params")
+        self._jsonrpc.addmethod('compatiblefirmware', self._compatiblefirmware, ": takes firmware_version")
 
     def run(self):
         # add our available functions to the json methods list
