@@ -31,6 +31,10 @@ import conveyor.task
 import conveyor.visitor
 
 def tasksequence(job, tasklist):
+    """
+    @param a job object
+    @param tasklist list of Task objects to run
+    """
     term = reduce(
         _TermSequence, (_TermYield(_TermTask(t)) for t in tasklist))
     machine = _Machine.create(term)
@@ -426,8 +430,9 @@ class _ProcessTaskTestCase(unittest.TestCase):
             callback()
             task.end(None)
         task = conveyor.task.Task()
+        fakeJob = conveyor.domain.Job(None,None,None,None,None,None,None,None,None,None)
         task.runningevent.attach(func)
-        process = tasksequence([task])
+        process = tasksequence(fakeJob,[task])
         process.start()
         self._runeventqueue(eventqueue)
         self.assertTrue(callback.delivered)
@@ -450,11 +455,13 @@ class _ProcessTaskTestCase(unittest.TestCase):
             self.assertFalse(callback2.delivered)
             callback2()
             task.end(None)
+
+        fakeJob = conveyor.domain.Job(None,None,None,None,None,None,None,None,None,None)
         task1 = conveyor.task.Task()
         task1.runningevent.attach(func1)
         task2 = conveyor.task.Task()
         task2.runningevent.attach(func2)
-        process = tasksequence([task1, task2])
+        process = tasksequence(fakeJob,[task1, task2])
         process.start()
         self._runeventqueue(eventqueue)
         self.assertTrue(callback1.delivered)
@@ -470,7 +477,8 @@ class _ProcessTaskTestCase(unittest.TestCase):
             task.end(None)
         task = conveyor.task.Task()
         task.runningevent.attach(func)
-        process = tasksequence([task])
+        fakeJob = conveyor.domain.Job(None,None,None,None,None,None,None,None,None,None)
+        process = tasksequence(fakeJob,[task])
         callback = conveyor.event.Callback()
         process.heartbeatevent.attach(callback)
         self.assertFalse(callback.delivered)
@@ -491,10 +499,11 @@ class _ProcessTaskTestCase(unittest.TestCase):
             self.assertFalse(callback2.delivered)
             callback1()
             task.fail(None)
+        fakeJob = conveyor.domain.Job(None,None,None,None,None,None,None,None,None,None)
         task1 = conveyor.task.Task()
         task1.runningevent.attach(func1)
         task2 = conveyor.task.Task()
-        process = tasksequence([task1, task2])
+        process = tasksequence(fakeJob,[task1, task2])
         process.start()
         self._runeventqueue(eventqueue)
         self.assertTrue(callback1.delivered)
@@ -516,7 +525,8 @@ class _ProcessTaskTestCase(unittest.TestCase):
         task1 = conveyor.task.Task()
         task1.runningevent.attach(func1)
         task2 = conveyor.task.Task()
-        process = tasksequence([task1, task2])
+        fakeJob = conveyor.domain.Job(None,None,None,None,None,None,None,None,None,None)
+        process = tasksequence(fakeJob,[task1, task2])
         process.start()
         self._runeventqueue(eventqueue)
         self.assertTrue(callback1.delivered)
@@ -529,7 +539,8 @@ class _ProcessTaskTestCase(unittest.TestCase):
         callback = conveyor.event.Callback()
         self.assertFalse(callback.delivered)
         task = conveyor.task.Task()
-        process = tasksequence([task])
+        fakeJob = conveyor.domain.Job(None,None,None,None,None,None,None,None,None,None)
+        process = tasksequence(fakeJob,[task])
         process.start()
         process.cancel()
         self._runeventqueue(eventqueue)

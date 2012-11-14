@@ -29,9 +29,9 @@ import conveyor.connection
 import conveyor.stoppable
 
 
-class Listener(conveyor.stoppable.Stoppable):
+class Listener(conveyor.stoppable.StoppableInterface):
     def __init__(self):
-        conveyor.stoppable.Stoppable.__init__(self)
+        conveyor.stoppable.StoppableInterface.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
 
     def accept(self):
@@ -58,7 +58,10 @@ class _AbstractSocketListener(Listener):
         self._socket = socket
 
     def stop(self):
-        self._stopped = True
+        self._stopped = True # conditional gaurd unneeded, run() does not sleep
+
+    def run(self):
+        self.accept()
 
     def accept(self):
         self._socket.settimeout(1.0)
@@ -117,7 +120,10 @@ else:
             self._path = path
 
         def stop(self):
-            self._stopped = True
+            self._stopped = True # conditional gaurd unneeded, run() does not sleep
+        
+        def run(self):
+            self.accept()
 
         def accept(self):
             handle = win32.CreateNamedPipeW(

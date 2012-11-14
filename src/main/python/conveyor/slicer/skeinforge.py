@@ -25,6 +25,8 @@ import re
 import shutil
 import sys
 import tempfile
+import datetime
+import unittest
 
 import conveyor.enum
 import conveyor.machine.s3g # TODO: aww, more bad coupling
@@ -170,20 +172,60 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         yield ''.join((module, ':', preference, '=', unicode(value)))
 
     def _readpopen(self):
+        """
+        Read the output of Skeinforge and turn them into progress updates.
+        SF does a poor job emitting progress updates, so we need to inject
+        artificial updates for it.  We have 3 stages of updates, and asymptotically 
+        increase them.  The first set goes up to 33, the second (natural) set goes from
+        33 to 66, and the final (artifical) set goes from 66 to 99.
+        """
         buffer = ''
+        #first_third_done = False
+        #second_third_done = False
+        sf_timeout= 15 #sf timeout in seconds
+		runner = 0.0
+		current_third = 1 # 1'st 3rd, fake, 2nd-third read, 3rd-3rd fake
+		faker_min, faker_max = 1, 33
+        progress_increment_hack = .5
+        progress_time_interval = 1
+        cur_datetime = datetime.datetime.now()
+        prev_datetime = cur_datetime 
+        sf_prev_datetime = cur_datetime 
         while True:
+            cur_datetime = datetime.datetime.now()
             data = self._popen.stdout.read(1) # :.(
+			# no good data, leave this loop forevar
             if '' == data:
                 break
-            else:
-                self._slicerlog.write(data)
-                buffer += data
-                match = self._regex.search(buffer)
-                if None is not match:
-                    buffer = buffer[match.end():]
-                    layer = int(match.group('layer'))
-                    total = int(match.group('total'))
-                    self._setprogress_ratio(layer, total)
+			self._slicerlog.write(data)
+			buffer += data
+			match = self._regex.search(buffer)
+			if current_third < 3 and match is not None:
+				sf_prev_datetime = datetime.datetime.now()
+				current_third = 2
+				buffer = buffer[match.end():]
+				layer = int(match.group('layer'))
+				total = int(match.group('total'))
+				progress = 100*layer/total
+				self._setprogress_percent(progress,33, 66)
+			# SF doesnt always emit updates for all its layers, we
+			# take a timestamp diff to see if we should begin 
+			# artificial update for the last 33% 
+			elif current_third == 2:
+				if(cur_datetime - sf_prev_datetime).total_seconds() > sf_timeout:
+					current_third = 3 # sf timeout is no longer updating, take over
+					runner = 66.0 #set this 
+			elif (cur_datetime - prev_datetime).total_seconds() > progress_time_interval:
+				prev_datetime = cur_datetime 
+				# fake the first 1/3 while skeinforge warms up
+				if current_third == 1:
+					runner = runner + progress_increment_hack
+					self._setprogress_percent(int(runner),1,33)
+				# fake the final 1/3 while skeinforge closes/writes
+				elif current_third == 3:
+					runner = runner + progress_increment_hack
+					self._setprogress_percent(int(runner),66, 99)
+
 
     def _epilogue(self):
         if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
