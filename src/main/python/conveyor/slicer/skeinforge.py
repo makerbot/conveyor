@@ -212,10 +212,10 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
 			# take a timestamp diff to see if we should begin 
 			# artificial update for the last 33% 
 			elif current_third == 2:
-				if(cur_datetime - sf_prev_datetime).total_seconds() > sf_timeout:
+				if self._total_seconds(cur_datetime - sf_prev_datetime) > sf_timeout:
 					current_third = 3 # sf timeout is no longer updating, take over
 					runner = 66.0 #set this 
-			elif (cur_datetime - prev_datetime).total_seconds() > progress_time_interval:
+			elif self._total_seconds(cur_datetime - prev_datetime) > progress_time_interval:
 				prev_datetime = cur_datetime 
 				# fake the first 1/3 while skeinforge warms up
 				if current_third == 1:
@@ -226,6 +226,9 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
 					runner = runner + progress_increment_hack
 					self._setprogress_percent(int(runner),66, 99)
 
+    def _total_seconds(self, td):
+        result = float(td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / float(10**6)
+        return result
 
     def _epilogue(self):
         if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
