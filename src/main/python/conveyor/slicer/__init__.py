@@ -51,7 +51,7 @@ class Slicer(object):
         @param new_progress progress dict of {'name':$NANME 'progress'$INT_PERCENT } 
         """
         self._task.lazy_heartbeat(new_progress, self._progress)
-
+        self._progress = new_progress
 
     def _setprogress_percent(self, percent, pMin=1, pMax=99):
         """ Sets a progress update as percent, clipped to pMin, pMax
@@ -62,7 +62,6 @@ class Slicer(object):
         clamped_percent= min(pMax, max(percent, pMin))
         progress = {'name': 'slice','progress': clamped_percent }
         self._setprogress(progress)
-    
 
     def _setprogress_ratio(self, current, total):
         """ sets progress based on current(int) and total(int)
@@ -77,8 +76,10 @@ class Slicer(object):
     def slice(self):
         raise NotImplementedError
 
+
 class SubprocessSlicerException(Exception):
     pass
+
 
 class SubprocessSlicer(Slicer):
     def __init__(
