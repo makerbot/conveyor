@@ -177,7 +177,7 @@ class Recipe(object):
                     for line in output:
                         f.write(line)
             except Exception as e:
-                self._log.debug("unhandled exception", exec_info=true)
+                self._log.debug("unhandled exception", exc_info=True)
                 task.fail(e)
             else:
                 task.end(None)
@@ -226,7 +226,7 @@ class Recipe(object):
                             for line in end:
                                 print(line, file=ofp)
             except Exception as e:
-                self._log.debug("unhandled exception", exec_info=true)
+                self._log.debug("unhandled exception", exc_info=True)
                 task.fail(e)
             else:
                 task.end(None)
