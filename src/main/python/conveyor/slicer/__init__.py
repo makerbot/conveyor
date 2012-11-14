@@ -28,7 +28,7 @@ import conveyor.task
 class Slicer(object):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task):
+        material, dualstrusion, task):
             self._log = logging.getLogger(self.__class__.__name__)
             self._progress = None
             self._slicerlog = None
@@ -39,6 +39,7 @@ class Slicer(object):
             self._with_start_end = with_start_end
             self._slicer_settings = slicer_settings
             self._material = material
+            self._dualstrusion = dualstrusion
             self._task = task
 
     def _getname(self):
@@ -72,10 +73,10 @@ class SubprocessSlicerException(Exception):
 class SubprocessSlicer(Slicer):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task, slicerpath):
+        material, dualstrusion, task, slicerpath):
             Slicer.__init__(
                 self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, task)
+                slicer_settings, material, dualstrusion, task)
 
             self._popen = None
             self._slicerlog = None

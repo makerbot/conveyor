@@ -738,22 +738,22 @@ class Server(object):
 
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
-        slicer_settings, material, task):
+        slicer_settings, material, dualstrusion, task):
             def func():
                 if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
                     slicerpath = self._config['miraclegrue']['path']
                     configpath = self._config['miraclegrue']['config']
                     slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer(
                         profile, inputpath, outputpath, with_start_end,
-                        slicer_settings, material, task, slicerpath,
-                        configpath)
+                        slicer_settings, material, dualstrusion, task,
+                        slicerpath, configpath)
                 elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
                     slicerpath = self._config['skeinforge']['path']
                     profilepath = self._config['skeinforge']['profile']
                     slicer = conveyor.slicer.skeinforge.SkeinforgeSlicer(
                         profile, inputpath, outputpath, with_start_end,
-                        slicer_settings, material, task, slicerpath,
-                        profilepath)
+                        slicer_settings, material, dualstrusion, task,
+                        slicerpath, profilepath)
                 else:
                     raise ValueError(slicer_settings.slicer)
                 slicer.slice()

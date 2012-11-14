@@ -35,10 +35,10 @@ SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 
 class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task, slicerpath, profilepath):
+        material, dualstrusion, task, slicerpath, profilepath):
             conveyor.slicer.SubprocessSlicer.__init__(
                 self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, task, slicerpath)
+                slicer_settings, material, dualstrusion, task, slicerpath)
 
             self._regex = re.compile(
                 'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
