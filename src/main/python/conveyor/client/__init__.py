@@ -411,7 +411,7 @@ class ClientMain(conveyor.main.AbstractMain):
         def display(result):
             print("Your firmware version is compatible: %r" % (result))
         params = {
-            'firmware_version': self._parsedargs.firmwareversion
+            'firmwareversion': self._parsedargs.firmwareversion
         }
         code = self._run_client('compatiblefirmware', params, False, display)
         return code

@@ -485,9 +485,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         printerthread.resettofactory(task)
 
     @export('compatiblefirmware')
-    def _compatiblefirmware(self, firmware_version):
+    def _compatiblefirmware(self, firmwareversion):
         uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
-        return uploader.compatible_firmware(firmware_version)
+        return uploader.compatible_firmware(firmwareversion)
 
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
