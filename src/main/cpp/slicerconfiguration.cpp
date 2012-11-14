@@ -161,4 +161,10 @@ namespace conveyor
     {
         m_private->setTravelSpeed(speed);
     }
+
+    void
+    SlicerConfiguration::setProfilePath(const QString &path)
+    {
+        m_private->setProfilePath(path);
+    }
 }

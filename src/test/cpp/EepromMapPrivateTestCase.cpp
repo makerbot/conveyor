@@ -86,7 +86,7 @@ void EepromMapPrivateTestCase::testSetString(void)
   Json::Value the_map = eepromMap->getEepromMap();
   Json::Value the_value = the_map["eeprom_map"]["MACHINE_NAME"]["value"];
   Json::Value the_name = the_value[0];
-  std::string  currentNameInMap= the_name.asString();
+  std::string currentNameInMap = the_name.asString();
 
   std::string currentName = "The Replicator";
   CPPUNIT_ASSERT(currentName == currentNameInMap);
@@ -103,6 +103,25 @@ void EepromMapPrivateTestCase::testSetString(void)
   Json::Value gotName = gotValues[0];
   QString gotString = QString(gotName.asCString());
   CPPUNIT_ASSERT(newName == gotString);
+}
+
+void EepromMapPrivateTestCase::testSetFloat(void)
+{
+  EepromMapPrivate * eepromMap = this->createEepromMap();
+  Json::Value the_map = eepromMap->getEepromMap();
+  Json::Value oldDTerm  = the_map["eeprom_map"]["T0_DATA_BASE"]["sub_map"]["EXTRUDER_PID_BASE"]["sub_map"]["D_TERM_OFFSET"]["value"];
+  float currentDTerm = oldDTerm[0].asFloat();
+  float expectedDTerm = 36.0;
+  CPPUNIT_ASSERT_EQUAL(currentDTerm, expectedDTerm);
+
+  float newDTerm = 3.33;
+  std::vector<float> newValues;
+  newValues.push_back(newDTerm);
+  QString path = QString("T0_DATA_BASE/EXTRUDER_PID_BASE/D_TERM");
+  eepromMap->setFloat(path, newValues);
+  Json::Value gotDTerms = eepromMap->getEepromMap()["eeprom_map"]["T0_DATA_BASE"]["sub_map"]["EXTRUDER_PID_BASE"]["sub_map"]["D_TERM"]["value"];
+  float gotDTerm = gotDTerms[0].asFloat();
+  CPPUNIT_ASSERT_EQUAL(newDTerm, gotDTerm);
 }
 
 void EepromMapPrivateTestCase::testSetInt(void)
@@ -129,12 +148,25 @@ void EepromMapPrivateTestCase::testGetString(void)
 {
   EepromMapPrivate* eepromMap = this->createEepromMap();
   Json::Value nameValues = eepromMap->getEepromMap()["eeprom_map"]["MACHINE_NAME"]["value"];
-  QString expectedName = QString(nameValues[0].asCString());
+  Json::Value expectedValue = nameValues[0];
+  QString expectedName = QString(expectedValue.asCString()); 
   QString path = QString("MACHINE_NAME");
   std::vector<QString> * gotValues = eepromMap->getString(path);
   QString gotName = (*gotValues)[0];
   CPPUNIT_ASSERT(expectedName == gotName);
 }
+
+void EepromMapPrivateTestCase::testGetFloat(void)
+{
+  EepromMapPrivate * eepromMap = this->createEepromMap();
+  Json::Value dTerm = eepromMap->getEepromMap()["eeprom_map"]["T0_DATA_BASE"]["sub_map"]["EXTRUDER_PID_BASE"]["sub_map"]["D_TERM_OFFSET"]["value"];
+  float expectedDTerm = dTerm[0].asFloat();
+  QString path = QString("T0_DATA_BASE/EXTRUDER_PID_BASE/D_TERM_OFFSET");
+  std::vector<float> * gotValues = eepromMap->getFloat(path);
+  float gotDTerm = (*gotValues)[0];
+  CPPUNIT_ASSERT(expectedDTerm == gotDTerm);
+}
+
 
 void EepromMapPrivateTestCase::testGetInt(void)
 {

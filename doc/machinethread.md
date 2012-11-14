@@ -1,113 +1,139 @@
 # Machine Thread
 
 conveyor allocates a thread for each machine it is managing.
-The threads follow this state machine:
+These threads follow this state machine:
 
 ![Machine Thread State Machine](machinethread.png)
 
-## States
+conveyor actually allocates a second thread for each machine.
+The second thread polls the status of the pysical machine and generates certain events ("went-busy", "went-idle", and "disconnected").
 
-A machine thread can be in one of five states:
+## Operations
 
-### Idle
+### Display Board Operations
 
-In the idle state the machine is not performing any action (although it may be preheating).
-
-### Busy
-
-A machine thread enters the busy state when the user performs some action with the machine's display board.
-Actions that put the machine into the busy state:
+These are the operations that are available from the machine's display board:
 
   * make from SD
   * change filament
   * level build plate
   * jog
-  * TODO: are there more actions?
 
-Some of these actions are also available through the conveyor command-line and MakerWare user interface.
-The state machine uses the "busy" state when these actions are run from the machine's display board and the "task" state when they are run from conveyor or MakerWare.
+### conveyor and MakerWare Operations
 
-### Making
+These are the operations that are available from conveyor and MakerWare:
 
-The machine is making an object.
-Internally this follows a second state machine:
+  * make
+  * change filament
+  * jog
+  * read or write EEPROM
+  * write firmware
 
-![Make State Machine](make.png)
+## States
 
-Pause is not included in this second state machine because it can happen at any point in the process (and this turns the DFA into a PDA).
+A machine thread can be in one of five states:
+
+### Disconnected
+
+The machine thread is in the disconnected state when it first starts.
+The disconnected state can be entered from every other state: the machine can be disconnected (i.e. physically, by turning the machine off or unplugging the USB cable) or by a user-initiated "disconnect" action available from conveyor or MakerWare.
+
+### Busy
+
+The machine thread is in the busy state when it first connects and whenever the machine itself indicates that it is busy.
+The busy state can be entered from every other state.
+
+Conditions that put the machine into the busy state:
+
+  * power on
+  * reset
+
+Display board operations that put the machine into the busy state:
+
+  * make from SD
+  * change filament
+  * level build plate
+  * jog
+
+Some of these operations are also available through the conveyor command-line and MakerWare user interface.
+The state machine uses the "busy" state when these operations are run from the machine's display board and the "operation" state when they are run from conveyor or MakerWare.
+
+The machine thread also enters this state whenever it is in the "operation" state its current operation ends normally, by failure, or if it is canceled.
+In all three cases the machine will naturally return to the "idle" state once it is ready to accept new commands.
+This should be almost immediate for when an operation ends normally.
+For cancellations and recoverable failures it will return to "idle" once step motor motion ends and the communication buffer is empty.
+
+### Idle
+
+In the idle state the machine is not performing any operation (although it may be preheating).
+
+### Operation
+
+The machine thread is running some operation on the physical machine in response to a request by conveyor or MakerWare (as opposed to the user running a similar operation from the machine's display board).
+
+  * make
+  * change filament
+  * jog
+  * upload firmware
+  * read or write settings (EEPROM)
+
+Some of these operations are also available through the conveyor command-line and MakerWare user interface.
+The state machine uses the "operation" state when these operations are run from conveyor or MakerWare and the "busy" state when they are run from the machine's display board.
 
 ### Paused
 
-The machine is making an object but is currently paused.
-
-### Task
-
-The machine is performing an action that was initiated through the conveyor command-line client or MakerWare.
-Actions that put the machine into the task state:
-
-  * firmware upload
-  * change filament
-  * jog
-
-Some of these actions are also available through the display board.
-The state machine uses the "task" state when these actions are run from conveyor or MakerWare and the "busy" state when they are run from the machine's display board.
-
-### Canceling
-
-The main purpose of this state is to let the machine thread account for actions necessary to cancel a print or task.
-For example, when a print is canceled the machine needs several seconds to lower the build plate.
-
-Not all tasks can be canceled.
-In particular, there is no way to cancel firmware upload (it would leave the machine in an unusable state).
-
-conveyor will automatically issue an 'M:went-idle' event once the cancellation is complete.
-At that point, the machine may stay in the idle state or it may move immediately to the busy state if an 'M:went-busy' event condition is detected.
+The machine thread is running some operation on the physical machine but that operation is paused.
+Only the "make" operation is pausable.
 
 ## Events
 
-### Machine Events
+### Connect
 
-These events are issued either by the machine or by conveyor as it finishes some action.
-They are never issued as a direct result of a user action although they are issued when some user-initiated actions finish.
-They are prefixed with an "M".
+This event is issued when a user requests by conveyor or MakerWare to connect a machine.
+It is only issued when the machine thread is in the "disconnected" state.
 
-#### M:went-busy
+### Disconnect
 
-This event is issued by the machine when the user performs an action using the display board.
-conveyor never issues this event.
+This event is issued when a user requests by conveyor or MakerWare to disconnect a machine.
+It can be issued from any state other than "disconnected".
+"disconnect" and "disconnected" are separate events so that the machine thread can perform error handling for the "disconnected" event.
 
-#### M:went-idle
+### Disconnected
 
-This event is issued by the machine when the user ends a display board action or when conveyor finishes some action.
+This event is issued when the machine disconnects unexpectedly.
+It can be issued from any state other than "disconnected".
+"disconnected" and "disconnect" are separate events so that the machine thread can perform error handling for the "disconnected" event.
 
-### Command Events
+### Went Idle
 
-These events are issued by conveyor in response to a user request.
-They are prefixed with a "C".
+This event is issued when the machine is ready to accept new commands.
+It is only issued when the machine is in the "busy" state.
 
-#### C:start-making
+### Went Busy
 
-This event is issued when the user wants to make a 3D object.
+This event is issued when the machine is first connected or when it is busy as defined above.
+It can be issued from any state other than "disconnected".
 
-#### C:pause
+### Start Operation
 
-This event is issued when the user wants to pause a print that is currently running.
+This event is issued when a user requests by conveyor or MakerWare to start some operation.
+It is only issued when the machine thread is in the "idle" state.
 
-#### C:unpause
+### Pause Operation
 
-This event is issued when the user wants to resume a paused print.
+This event is issued when a user requests by conveyor or MakerWare to pause the current operation.
+It is only issued when the machine thread is in the "operation" state.
+Only the "make" operation is pausable.
 
-#### C:start-task
+### Unpause Operation
 
-This event is issued when the user wants to run a non-printing task.
-The set of supported tasks is:
+This event is issued when a user requests by conveyor or MakerWare to unpause the current operation.
+It is only issued when the machine thread is in the "paused" state.
+Only the "make" operation is pausable.
 
-  * firmware upload
-  * change filament
-  * jog
+### Operation Stopped
 
-#### C:cancel
-
-This event is issued when the user wants to cancel a print or task.
+This event is issued when an operation stops normally, by failure, or if it is canceled.
+It is only issued when the machine thread is in the "operation" state.
 
 <!-- vim:set ai et fenc=utf-8 ff=unix sw=4 syntax=markdown ts=4: -->

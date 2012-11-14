@@ -129,6 +129,11 @@ namespace conveyor
         delete this->m_connection;
     }
 
+    static bool printerCompare(const Printer *p1, const Printer *p2)
+    {
+        return p1->displayName() < p2->displayName();
+    }
+
     QList<Printer *>
     ConveyorPrivate::printers()
     {
@@ -153,6 +158,13 @@ namespace conveyor
             printer->m_private->updateFromJson(r);
             activePrinters.append(printer);
         }
+
+        // Sort the list so that it always appears in the same order
+        // in the UI. This is mainly for archetype printers; it's nice
+        // to have them in order.
+        qSort(activePrinters.begin(),
+              activePrinters.end(),
+              printerCompare);
 
         return activePrinters;
     }
@@ -242,7 +254,7 @@ namespace conveyor
         Json::Value null;
         params["printername"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
-        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
         params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
@@ -264,6 +276,7 @@ namespace conveyor
         , const SlicerConfiguration & slicer_conf
         , QString const & material
         , bool const skipStartEnd 
+        , QString const & printToFileType
         )
     {
         Json::Value params (Json::objectValue);
@@ -271,11 +284,12 @@ namespace conveyor
         params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
         params["skip_start_end"] = skipStartEnd;
         params["archive_lvl"] = Json::Value ("all");
         params["archive_dir"] = null;
         params["slicer_settings"] = slicer_conf.toJSON();
+        params["print_to_file_type"] = Json::Value (printToFileType.toStdString());
         params["material"] = Json::Value (material.toStdString());
 
         Json::Value const result
@@ -351,7 +365,7 @@ namespace conveyor
         params["profilename"] = printer->uniqueName().toStdString();
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["preprocessor"] = Json::Value (Json::arrayValue);
+        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
         params["with_start_end"] = Json::Value (false);
         params["slicer_settings"] = slicer_conf.toJSON();
         params["material"] = Json::Value (material.toStdString());

@@ -208,13 +208,15 @@ namespace conveyor
         , const SlicerConfiguration & slicer_conf
         , QString const & material
         , bool const skipStartEnd
+        , QString const & printToFileType
         )
     {
         Job * const result (this->m_private->printToFile (inputFile,
                                                           outputFile,
                                                           slicer_conf,
                                                           material,
-                                                          skipStartEnd));
+                                                          skipStartEnd,
+                                                          printToFileType));
         return result;
     }
 

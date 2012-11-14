@@ -47,6 +47,19 @@ namespace conveyor
         return return_values;
     }
 
+    std::vector<float> * EepromMapPrivate::getFloat(QString path)
+    {
+        QStringList split_path = this->splitPath(path);
+        Json::Value theEntry(*this->getEntry(split_path));
+        Json::Value gotValues(theEntry["value"]);
+        std::vector<float> * return_values = new std::vector<float>;
+        for (Json::ArrayIndex i = 0; i < gotValues.size(); ++i)
+        {
+            return_values->push_back(gotValues[i].asFloat());
+        }
+        return return_values;
+    }
+
     std::vector<QString> * EepromMapPrivate::getString(QString path) 
     {
         QStringList split_path = this->splitPath(path);
@@ -61,6 +74,17 @@ namespace conveyor
     }
 
     void EepromMapPrivate::setInt(QString path, std::vector<int> inValue)
+    {
+        QStringList split_path = this->splitPath(path);
+        Json::Value * theEntry = this->getEntry(split_path);
+        Json::Value * oldValues = &((*theEntry)["value"]);
+        for (unsigned i = 0; i < inValue.size(); ++i)
+        {
+            (*oldValues)[i] = Json::Value(inValue[i]);
+        }
+    }
+
+    void EepromMapPrivate::setFloat(QString path, std::vector<float> inValue)
     {
         QStringList split_path = this->splitPath(path);
         Json::Value * theEntry = this->getEntry(split_path);

@@ -60,8 +60,14 @@ namespace conveyor
         // Slicer name and min/max versions
         root["slicer"] = slicerName().toStdString();
 
-        root["extruder"] = (m_extruder == SlicerConfiguration::Left ?
-                            "1" : "0");
+        switch (m_extruder) {
+          case SlicerConfiguration::Left:
+            root["extruder"] = "1";
+          case SlicerConfiguration::Right:
+            root["extruder"] = "0";
+          case SlicerConfiguration::LeftAndRight:
+            root["extruder"] = "0, 1";
+        }
 
         root["raft"] = m_raft;
         root["support"] = m_supports;
@@ -75,6 +81,10 @@ namespace conveyor
 
         root["travel_speed"] = m_travelSpeed;
         root["print_speed"] = m_printSpeed;
+
+        root["path"] = (m_profilePath.isEmpty() ?
+                        Json::Value::null :
+                        m_profilePath.toStdString());
 
         return root;
     }
@@ -199,5 +209,10 @@ namespace conveyor
     void SlicerConfigurationPrivate::setTravelSpeed(unsigned speed)
     {
         m_travelSpeed = speed;
+    }
+
+    void SlicerConfigurationPrivate::setProfilePath(const QString &path)
+    {
+        m_profilePath = path;
     }
 }
