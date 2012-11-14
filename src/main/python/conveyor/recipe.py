@@ -179,7 +179,7 @@ class Recipe(object):
                     for line in output:
                         f.write(line)
             except Exception as e:
-                self._log.debug("unhandled exception", exec_info=true)
+                self._log.debug("unhandled exception", exc_info=True)
                 task.fail(e)
             else:
                 task.end(None)
@@ -228,7 +228,7 @@ class Recipe(object):
                             for line in end:
                                 print(line, file=ofp)
             except Exception as e:
-                self._log.debug("unhandled exception", exec_info=true)
+                self._log.debug("unhandled exception", exc_info=True)
                 task.fail(e)
             else:
                 task.end(None)
@@ -297,7 +297,7 @@ class _GcodeRecipe(Recipe):
         tasks.append(printtofiletask)
 
         def process_endcallback(task):
-            if processed_gcodepath != self._gcoepath:
+            if processed_gcodepath != self._gcodepath:
                 os.unlink(processed_gcodepath)
         process = conveyor.process.tasksequence(self._job, tasks)
         process.endevent.attach(process_endcallback)
