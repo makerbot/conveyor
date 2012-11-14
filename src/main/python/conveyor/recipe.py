@@ -295,7 +295,7 @@ class _GcodeRecipe(Recipe):
         tasks.append(printtofiletask)
 
         def process_endcallback(task):
-            if processed_gcodepath != self._gcoepath:
+            if processed_gcodepath != self._gcodepath:
                 os.unlink(processed_gcodepath)
         process = conveyor.process.tasksequence(self._job, tasks)
         process.endevent.attach(process_endcallback)
