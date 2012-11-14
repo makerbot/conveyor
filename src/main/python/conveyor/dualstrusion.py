@@ -108,9 +108,13 @@ class DualstrusionWeaver(object):
     def get_next_code_list(self):
         tool_0_height = self.tool_0_codes.peek_next_layer_height()
         tool_1_height = self.tool_1_codes.peek_next_layer_height()
-        if tool_0_height < tool_1_height or len(self.tool_1_codes.gcodes) == 0:
+        if len(self.tool_0_codes.gcodes) == 0:
+            self.last_used_codes = self.tool_1_codes
+        elif len(self.tool_1_codes.gcodes) == 0:
             self.last_used_codes = self.tool_0_codes
-        elif tool_1_height < tool_0_height or len(self.tool_0_codes.gcodes) == 0:
+        elif tool_0_height < tool_1_height:
+            self.last_used_codes = self.tool_0_codes
+        elif tool_1_height < tool_0_height:
             self.last_used_codes = self.tool_1_codes
         return self.last_used_codes
 
