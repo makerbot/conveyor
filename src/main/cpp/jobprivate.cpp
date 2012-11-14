@@ -90,6 +90,9 @@ namespace conveyor
             m_currentStepProgress = 0;
         }
 
+        if (conclusion != m_conclusion)
+            m_job->emitConcluded();
+
         m_id = id;
         m_name = name;
         m_state = state;
