@@ -196,7 +196,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
 			self._slicerlog.write(data)
 			buffer += data
 			match = self._regex.search(buffer)
-			if current_third == 1 and match is not None:
+			if current_third < 3 and match is not None:
 				sf_prev_datetime = datetime.datetime.now()
 				current_third = 2
 				buffer = buffer[match.end():]
@@ -210,7 +210,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
 			elif current_third == 2:
 				if(cur_datetime - sf_prev_datetime).total_seconds() > sf_timeout:
 					current_third = 3 # sf timeout is no longer updating, take over
-					runner = 33.0 #set this 
+					runner = 66.0 #set this 
 			elif (cur_datetime - prev_datetime).total_seconds() > progress_time_interval:
 				prev_datetime = cur_datetime 
 				# fake the first 1/3 while skeinforge warms up
