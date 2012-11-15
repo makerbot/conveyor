@@ -111,6 +111,12 @@ namespace conveyor
         m_private->resetToFactory(printer);
     }
 
+    bool
+    Conveyor::compatibleFirmware(QString &firmwareVersion) const
+    {
+        return m_private->compatibleFirmware(firmwareVersion);
+    }
+
     void
     Conveyor::emitPrinterAdded (Printer * const p)
     {

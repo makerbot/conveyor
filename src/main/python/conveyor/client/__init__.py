@@ -66,6 +66,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_uploadfirmware,
             self._initsubparser_resettofactory,
             self._initsubparser_waitforservice,
+            self._initsubparser_compatiblefirmware,
         ):
                 method(subparsers)
 
@@ -373,6 +374,19 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.set_defaults(func=self._run_waitforservice)
         self._initparser_common(parser)
 
+    def _initsubparser_compatiblefirmware(self, subparsers):
+        parser = subparsers.add_parser(
+            'compatiblefirmware',
+            help='determine if firmware version is compatible with the makerbot_driver'
+        )
+        parser.set_defaults(func=self._run_compatiblefirmware)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'firmwareversion',
+            help='firmware version to check',
+            metavar='FIRMWAREVERSION',
+        )
+
     def _run(self):
         self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
@@ -391,6 +405,15 @@ class ClientMain(conveyor.main.AbstractMain):
                     'Unable to connect to conveyor server. Please verify that it is running.')
             else:
                 code = self._parsedargs.func()
+        return code
+
+    def _run_compatiblefirmware(self):
+        def display(result):
+            print("Your firmware version is compatible: %r" % (result))
+        params = {
+            'firmwareversion': self._parsedargs.firmwareversion
+        }
+        code = self._run_client('compatiblefirmware', params, False, display)
         return code
 
     def _run_resettofactory(self):
