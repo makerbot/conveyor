@@ -15,13 +15,16 @@ Under the platform-specific folder conveyor uses the same sub-folder layout for 
 
   * <prefix>/
       * firmware/
-          * <version>/
-              * eeprom.json
-              * firmware.hex
+          * <electronics>
+              * <version>/
+                  * eeprom.json
+                  * firmware.hex
       * machines/
           * machine.sqlite
 
-Firmware is stored in further sub-folders, one folder for each version of firmware.
+Firmware is stored in further sub-folders.
+At the first level there is a folder for each type of electronics (i.e., "mighty_one").
+Under each electronics folder the is a folder for each version of the firmware.
 Each firmware version folder has two files: the JSON map for the EEPROM and the firmware binary.
 
 Machine information is stored in a SQLite database.
