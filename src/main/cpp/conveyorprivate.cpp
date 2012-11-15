@@ -405,6 +405,17 @@ namespace conveyor
         SynchronousCallback::invoke (this->m_jsonRpc, "resettofactory", params);
     }
 
+    bool ConveyorPrivate::compatibleFirmware(QString &firmwareVersion) const
+    {
+        Json::Value params (Json::objectValue);
+        params["firmwareversion"] = firmwareVersion.toStdString();
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "compatiblefirmware", params)
+            );
+        bool compatible = result.asBool();
+        return compatible;
+    }
+
     void
     ConveyorPrivate::cancelJob (int jobId)
     {

@@ -83,6 +83,7 @@ namespace conveyor
         EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(Printer * const printer, EepromMap map);
         void resetToFactory(Printer * const printer) const;
+        bool compatibleFirmware(QString &firmwareVersion) const;
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;
