@@ -225,6 +225,10 @@ class SkeinforgeToolpath(object):
             yield self._option('alteration.csv', 'Name of End File:', '')
 
     def _getarguments_printomatic(self, inputpath):
+        ratio = self._configuration.pathwidth / self._configuration.layerheight
+        wall_width = self._configuration.pathwidth * self._configuration.shells
+        ceiling_layers = wall_width / self._configuration.layerheight
+    	ceiling_layers = int(ceiling_layers)
         yield self._option(
             'fill.csv', 'Infill Solidity (ratio):', self._configuration.infillratio)
         yield self._option(
@@ -232,17 +236,18 @@ class SkeinforgeToolpath(object):
         yield self._option(
             'speed.csv', 'Travel Feed Rate (mm/s):', self._configuration.travelrate)
         yield self._option(
-            'speed.csv', 'Flow Rate Setting (float):', self._configuration.feedrate)
+            'speed.csv', 'Flow Rate Setting (float):', float(self._configuration.feedrate))
         yield self._option(
             'dimension.csv', 'Filament Diameter (mm):',
             self._configuration.filamentdiameter)
-        ratio = self._configuration.pathwidth / self._configuration.layerheight
         yield self._option(
-            'carve.csv', 'Perimeter Width over Thickness (ratio):', ratio)
+            'carve.csv', 'Edge Width over Height (ratio):', ratio)
         yield self._option(
-            'fill.csv', 'Infill Width over Thickness (ratio):', ratio)
+            'inset.csv', 'Infill Width over Thickness (ratio):', ratio)
         yield self._option(
             'carve.csv', 'Layer Height (mm):', self._configuration.layerheight)
+        yield self._option(
+            'fill.csv', 'Solid Surface Thickness (layers):', ceiling_layers)
         yield self._option(
             'fill.csv', 'Extra Shells on Alternating Solid Layer (layers):',
             self._configuration.shells-1)
