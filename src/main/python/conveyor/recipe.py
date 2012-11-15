@@ -173,7 +173,9 @@ class Recipe(object):
                     t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
                     t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
                 weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes, task)
-                output = weaver.combine_codes()
+                woven_codes = weaver.combine_codes()
+                progress_processor = makerbot_driver.GcodeProcessors.DualstrusionProgressProcessor()
+                output = progress_processor.process_gcode(woven_codes)
                 with open(outputpath, 'w') as f:
                     for line in output:
                         f.write(line)
