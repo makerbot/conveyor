@@ -15,7 +15,7 @@ Under the platform-specific folder conveyor uses the same sub-folder layout for 
 
   * (prefix)/
       * firmware/
-          * (electronics)
+          * (electronics)/
               * (version)/
                   * eeprom.json
                   * firmware.hex
