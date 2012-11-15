@@ -63,10 +63,13 @@ namespace conveyor
         switch (m_extruder) {
           case SlicerConfiguration::Left:
             root["extruder"] = "1";
+            break;
           case SlicerConfiguration::Right:
             root["extruder"] = "0";
+            break;
           case SlicerConfiguration::LeftAndRight:
             root["extruder"] = "0, 1";
+            break;
         }
 
         root["raft"] = m_raft;
