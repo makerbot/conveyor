@@ -29,6 +29,8 @@ namespace conveyor
         QList<Job *> jobs (void);
         QList<Printer *> printers (void);
 
+        Printer * printerByUniqueName(QString uniqueName);
+
         void cancelJob (int jobId);
 
         /** Get connected machines that can be uploaded to
