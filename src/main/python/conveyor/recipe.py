@@ -211,6 +211,26 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
+    @staticmethod
+    def verifys3gtask(s3gpath):
+        """
+        This function is static so it can be accessed by server/__init__.py when 
+        executing the verifys3g command.
+        """
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            # If the filereader can parse it, then the s3g file is valid
+            reader = makerbot_driver.FileReader.FileReader()
+            try:
+                with open(s3gpath, 'rb') as reader.file:
+                    payloads = reader.ReadFile()
+                task.end(True)
+            except makerbot_driver.FileReader.S3gStreamError as e:
+                message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+
     def _with_start_end_task(self, profile, slicer_settings, material,
             with_start_end, dualstrusion, input_path, output_path):
         def running_callback(task):
@@ -297,6 +317,8 @@ class _GcodeRecipe(Recipe):
             profile, processed_gcodepath, outputpath, False)
         tasks.append(printtofiletask)
 
+        tasks.append(self.verifys3gtask(outputpath))
+
         def process_endcallback(task):
             if processed_gcodepath != self._gcodepath:
                 os.unlink(processed_gcodepath)
@@ -369,6 +391,8 @@ class _StlRecipe(Recipe):
         printtofiletask = self._printtofiletask(
             profile, processed_gcodepath, outputpath, False)
         tasks.append(printtofiletask)
+
+        tasks.append(self.verifys3gtask(outputpath))
 
         def process_endcallback(task):
             os.unlink(gcodepath)
@@ -483,6 +507,8 @@ class _DualThingRecipe(_ThingRecipe):
         printtofiletask = self._printtofiletask(
             profile, processed_gcodepath, outputpath, True)
         tasks.append(printtofiletask)
+
+        tasks.append(self.verifys3gtask(outputpath))
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
