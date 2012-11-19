@@ -27,18 +27,15 @@ fi
 
 if [ ! -d virtualenv/ ]
 then
-	python$PYBINVERSION virtualenv.py  --extra-search-dir=submodule/conveyor_bins/python --never-download virtualenv
+	python$PYBINVERSION virtualenv.py virtualenv
 fi
 
 . virtualenv/bin/activate
 
 echo "Upgrading setuptools"
-easy_install -q submodule/conveyor_bins/python/setuptools-0.6c11-py$PYVERSION.egg
+pip install -q --upgrade setuptools
 echo "Installing modules"
-easy_install -q submodule/conveyor_bins/python/mock-1.0.1-py$PYVERSION.egg
-easy_install -q submodule/conveyor_bins/python/lockfile-0.9.1-py$PYVERSION.egg
-easy_install -q submodule/conveyor_bins/python/python_daemon-1.5.5-py$PYVERSION.egg
-easy_install -q submodule/conveyor_bins/python/argparse-1.2.1-py$PYVERSION.egg
-easy_install -q submodule/conveyor_bins/python/unittest2-0.5.1-py$PYVERSION.egg
-easy_install -q submodule/conveyor_bins/python/pyserial-2.7_mb2.1-py$PYVERSION.egg
+pip install -q --use-mirrors coverage doxypy mock lockfile python-daemon unittest-xml-reporting argparse unittest2
+echo "Installing pyserial egg"
+easy_install -q submodule/conveyor_bins/pyserial-2.7_mb2.1-py$PYVERSION.egg
 
