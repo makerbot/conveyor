@@ -218,14 +218,16 @@ class Recipe(object):
         executing the verifys3g command.
         """
         task = conveyor.task.Task()
-        oldblob = None
-        def update(percent):
-            blob = {
+        progressreport = {
                 'name': 'verify',
-                'percent': percent,
+                'progress': 0,
             }
-            task.lazy_heartbeat(blob)
-            oldblob = blob
+        oldprogressreport = progressreport
+        def update(percent):
+            oldprogressreport = progressreport
+            progressreport['progress'] = percent
+            task.lazy_heartbeat(progressreport, oldprogressreport)
+
 
         def runningcallback(task):
             # If the filereader can parse it, then the s3g file is valid
