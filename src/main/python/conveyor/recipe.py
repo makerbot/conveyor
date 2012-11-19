@@ -218,12 +218,21 @@ class Recipe(object):
         executing the verifys3g command.
         """
         task = conveyor.task.Task()
+        oldblob = None
+        def update(percent):
+            blob = {
+                'name': 'verify',
+                'percent': percent,
+            }
+            task.lazy_heartbeat(blob)
+            oldblob = blob
+
         def runningcallback(task):
             # If the filereader can parse it, then the s3g file is valid
             reader = makerbot_driver.FileReader.FileReader()
             try:
                 with open(s3gpath, 'rb') as reader.file:
-                    payloads = reader.ReadFile()
+                    payloads = reader.ReadFile(update)
                 task.end(True)
             except makerbot_driver.FileReader.S3gStreamError as e:
                 message = unicode(e)
