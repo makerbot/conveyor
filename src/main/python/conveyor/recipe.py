@@ -172,7 +172,7 @@ class Recipe(object):
                 with contextlib.nested(open(tool_0_path), open(tool_1_path)) as (t0, t1):
                     t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
                     t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
-                weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes)
+                weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes, task)
                 woven_codes = weaver.combine_codes()
                 progress_processor = makerbot_driver.GcodeProcessors.DualstrusionProgressProcessor()
                 output = progress_processor.process_gcode(woven_codes)
