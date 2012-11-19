@@ -118,6 +118,25 @@ def export(name):
         return func
     return decorator
 
+class _VerifyS3gTaskFactory(conveyor.jsonrpc.TaskFactory):
+
+    def __init__(self):
+        pass
+
+    def __call__(self, s3gpath):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            # If the filereader can parse it, then the s3g file is valid
+            reader = makerbot_driver.FileReader.FileReader()
+            try:
+                with open(s3gpath, 'rb') as reader.file:
+                    payloads = reader.ReadFile()
+                task.end(True)
+            except makerbot_driver.FileReader.S3gStreamError as e:
+                task.end(False)
+        task.runningevent.attach(runningcallback)
+        return task
+
 class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
         self._clientthread = clientthread
@@ -514,6 +533,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('downloadfirmware', downloadfirmwaretaskfactory, 'takes (machine, version)')
         uploadfirmwaretaskfactory = _UploadFirmwareTaskFactory(self)
         self._jsonrpc.addmethod('uploadfirmware', uploadfirmwaretaskfactory, ": takes (printername, machine_type, version)")
+        verifys3gtaskfactory = _VerifyS3gTaskFactory()
+        self._jsonrpc.addmethod('verifys3g', verifys3gtaskfactory, ": takes a path to the s3g file")
         self._jsonrpc.addmethod('resettofactory', self._resettofactory, ": takes no params")
         self._jsonrpc.addmethod('compatiblefirmware', self._compatiblefirmware, ": takes firmware_version")
 

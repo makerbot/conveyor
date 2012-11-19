@@ -67,6 +67,7 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_resettofactory,
             self._initsubparser_waitforservice,
             self._initsubparser_compatiblefirmware,
+            self._initsubparser_verifys3g,
         ):
                 method(subparsers)
 
@@ -387,6 +388,19 @@ class ClientMain(conveyor.main.AbstractMain):
             metavar='FIRMWAREVERSION',
         )
 
+    def _initsubparser_verifys3g(self, subparsers):
+        parser = subparsers.add_parser(
+            'verifys3g',
+            help='Discern if an s3g file is valid',
+        )
+        parser.set_defaults(func=self._run_verifys3g)
+        self._initparser_common(parser)
+        parser.add_argument(
+            's3gfile',
+            help='s3g file to validate',
+            metavar='S3GFILE',
+        )
+
     def _run(self):
         self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
@@ -405,6 +419,15 @@ class ClientMain(conveyor.main.AbstractMain):
                     'Unable to connect to conveyor server. Please verify that it is running.')
             else:
                 code = self._parsedargs.func()
+        return code
+
+    def _run_verifys3g(self):
+        def display(result):
+            print("Your S3g File is %s Valid" % ("NOT" if result is False else ""))
+        params = {
+            's3gpath': self._parsedargs.s3gfile
+        }
+        code = self._run_client('verifys3g', params, False, display)
         return code
 
     def _run_compatiblefirmware(self):
