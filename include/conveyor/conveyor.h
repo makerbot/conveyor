@@ -65,6 +65,7 @@ namespace conveyor
         void writeEeprom(Printer * const printer, EepromMap eepromMap);
         void resetToFactory(Printer * const printer) const;
         bool compatibleFirmware(QString &firmwareVersion) const;
+        bool verifyS3g(QString &s3gPath) const;
 
     signals:
         void printerAdded (Printer *);

@@ -117,6 +117,12 @@ namespace conveyor
         return m_private->compatibleFirmware(firmwareVersion);
     }
 
+    bool
+    Conveyor::verifyS3g(QString &s3gPath) const
+    {
+        return m_private->verifyS3g(s3gPath);
+    }
+
     void
     Conveyor::emitPrinterAdded (Printer * const p)
     {
