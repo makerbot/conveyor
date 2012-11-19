@@ -66,6 +66,11 @@ namespace conveyor
         return m_private->jobs();
     }
 
+    Printer*
+    Conveyor::printerByUniqueName(QString name) {
+        return m_private->printerByUniqueName(name);
+    }
+
     Json::Value
     Conveyor::getUploadableMachines(void)
     {
