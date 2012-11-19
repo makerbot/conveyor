@@ -124,18 +124,7 @@ class _VerifyS3gTaskFactory(conveyor.jsonrpc.TaskFactory):
         pass
 
     def __call__(self, s3gpath):
-        task = conveyor.task.Task()
-        def runningcallback(task):
-            # If the filereader can parse it, then the s3g file is valid
-            reader = makerbot_driver.FileReader.FileReader()
-            try:
-                with open(s3gpath, 'rb') as reader.file:
-                    payloads = reader.ReadFile()
-                task.end(True)
-            except makerbot_driver.FileReader.S3gStreamError as e:
-                task.end(False)
-        task.runningevent.attach(runningcallback)
-        return task
+        return conveyor.recipe.Recipe.verifys3gtask(s3gpath)
 
 class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
