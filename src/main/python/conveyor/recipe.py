@@ -124,9 +124,11 @@ class Recipe(object):
         gcodeprocessors = self._job.gcodeprocessor
         if None is gcodeprocessors:
             gcodeprocessors = []
-        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer
-            and 'Skeinforge50Processor' not in gcodeprocessors):
+        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
+            if 'Skeinforge50Processor' not in gcodeprocessors:
                 gcodeprocessors.insert(0, 'Skeinforge50Processor')
+            if 'FanProcessor' not in gcodeprocessors:
+                gcodeprocessors.append('FanProcessor')
         return gcodeprocessors
 
     def _slicertask(self, profile, inputpath, outputpath, with_start_end,
