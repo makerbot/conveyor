@@ -37,7 +37,7 @@ easy_install -q submodule/conveyor_bins/python/setuptools-0.6c11-py$PYVERSION.eg
 echo "Installing modules"
 easy_install -q submodule/conveyor_bins/python/mock-1.0.1-py$PYVERSION.egg
 easy_install -q submodule/conveyor_bins/python/lockfile-0.9.1-py$PYVERSION.egg
-easy_install -q submodule/conveyor_bins/python/python_daemon-1.5.5-py$PYVERSION.egg
+easy_install -q submodule/conveyor_bins/python/python_daemon-1.6-py$PYVERSION.egg
 easy_install -q submodule/conveyor_bins/python/argparse-1.2.1-py$PYVERSION.egg
 easy_install -q submodule/conveyor_bins/python/unittest2-0.5.1-py$PYVERSION.egg
 easy_install -q submodule/conveyor_bins/python/pyserial-2.7_mb2.1-py$PYVERSION.egg
