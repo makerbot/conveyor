@@ -124,9 +124,11 @@ class Recipe(object):
         gcodeprocessors = self._job.gcodeprocessor
         if None is gcodeprocessors:
             gcodeprocessors = []
-        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer
-            and 'Skeinforge50Processor' not in gcodeprocessors):
+        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
+            if 'Skeinforge50Processor' not in gcodeprocessors:
                 gcodeprocessors.insert(0, 'Skeinforge50Processor')
+            if 'FanProcessor' not in gcodeprocessors:
+                gcodeprocessors.append('FanProcessor')
         return gcodeprocessors
 
     def _slicertask(self, profile, inputpath, outputpath, with_start_end,
@@ -172,7 +174,7 @@ class Recipe(object):
                 with contextlib.nested(open(tool_0_path), open(tool_1_path)) as (t0, t1):
                     t0_codes = conveyor.dualstrusion.GcodeObject(list(t0))
                     t1_codes = conveyor.dualstrusion.GcodeObject(list(t1))
-                weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes)
+                weaver = conveyor.dualstrusion.DualstrusionWeaver(t0_codes, t1_codes, task)
                 woven_codes = weaver.combine_codes()
                 progress_processor = makerbot_driver.GcodeProcessors.DualstrusionProgressProcessor()
                 output = progress_processor.process_gcode(woven_codes)
@@ -208,6 +210,37 @@ class Recipe(object):
                 self._job.print_to_file_type, self._job.material, task,
                 dualstrusion)
         task = conveyor.task.Task()
+        task.runningevent.attach(runningcallback)
+        return task
+
+    @staticmethod
+    def verifys3gtask(s3gpath):
+        """
+        This function is static so it can be accessed by server/__init__.py when 
+        executing the verifys3g command.
+        """
+        task = conveyor.task.Task()
+        progressreport = {
+                'name': 'verify',
+                'progress': 0,
+            }
+        oldprogressreport = progressreport
+        def update(percent):
+            oldprogressreport = progressreport
+            progressreport['progress'] = percent
+            task.lazy_heartbeat(progressreport, oldprogressreport)
+
+
+        def runningcallback(task):
+            # If the filereader can parse it, then the s3g file is valid
+            reader = makerbot_driver.FileReader.FileReader()
+            try:
+                with open(s3gpath, 'rb') as reader.file:
+                    payloads = reader.ReadFile(update)
+                task.end(True)
+            except makerbot_driver.FileReader.S3gStreamError as e:
+                message = unicode(e)
+                task.fail(message)
         task.runningevent.attach(runningcallback)
         return task
 
@@ -297,6 +330,8 @@ class _GcodeRecipe(Recipe):
             profile, processed_gcodepath, outputpath, False)
         tasks.append(printtofiletask)
 
+        tasks.append(self.verifys3gtask(outputpath))
+
         def process_endcallback(task):
             if processed_gcodepath != self._gcodepath:
                 os.unlink(processed_gcodepath)
@@ -369,6 +404,8 @@ class _StlRecipe(Recipe):
         printtofiletask = self._printtofiletask(
             profile, processed_gcodepath, outputpath, False)
         tasks.append(printtofiletask)
+
+        tasks.append(self.verifys3gtask(outputpath))
 
         def process_endcallback(task):
             os.unlink(gcodepath)
@@ -483,6 +520,8 @@ class _DualThingRecipe(_ThingRecipe):
         printtofiletask = self._printtofiletask(
             profile, processed_gcodepath, outputpath, True)
         tasks.append(printtofiletask)
+
+        tasks.append(self.verifys3gtask(outputpath))
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):

@@ -416,6 +416,17 @@ namespace conveyor
         return compatible;
     }
 
+    bool ConveyorPrivate::verifyS3g(QString &s3gPath) const
+    {
+        Json::Value params (Json::objectValue);
+        params["s3gpath"] = s3gPath.toStdString();
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "verifys3g", params)
+            );
+        bool valid = result.asBool();
+        return valid;
+    }
+
     void
     ConveyorPrivate::cancelJob (int jobId)
     {

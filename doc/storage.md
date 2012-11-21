@@ -13,10 +13,10 @@ conveyor stores data in a folder with a platform-specific location:
 
 Under the platform-specific folder conveyor uses the same sub-folder layout for all three supported platforms:
 
-  * <prefix>/
+  * (prefix)/
       * firmware/
-          * <electronics>
-              * <version>/
+          * (electronics)/
+              * (version)/
                   * eeprom.json
                   * firmware.hex
       * machines/
