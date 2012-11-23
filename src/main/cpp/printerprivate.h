@@ -36,6 +36,7 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const withStartEnd
             );
 
         void updateFromJson (Json::Value const &);

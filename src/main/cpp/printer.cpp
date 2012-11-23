@@ -226,12 +226,14 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
+        , bool const withStartEnd
         )
     {
         Job * const result (this->m_private->slice (inputFile,
                                                     outputFile,
                                                     slicer_conf,
-                                                    material));
+                                                    material,
+                                                    withStartEnd));
         return result;
     }
 
