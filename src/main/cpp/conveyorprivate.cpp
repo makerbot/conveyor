@@ -358,6 +358,7 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
+        , bool const withStartEnd
         )
     {
         Json::Value params (Json::objectValue);
@@ -366,7 +367,7 @@ namespace conveyor
         params["inputpath"] = Json::Value (inputFile.toStdString ());
         params["outputpath"] = Json::Value (outputFile.toStdString ());
         params["gcodeprocessor"] = Json::Value (Json::arrayValue);
-        params["with_start_end"] = Json::Value (false);
+        params["with_start_end"] = Json::Value (withStartEnd);
         params["slicer_settings"] = slicer_conf.toJSON();
         params["material"] = Json::Value (material.toStdString());
 
