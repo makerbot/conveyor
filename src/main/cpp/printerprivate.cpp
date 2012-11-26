@@ -65,8 +65,10 @@ namespace conveyor
         {
             machineNames << QString(json["machineNames"][i].asCString());
         }
+
         float buildVolumeXmin, buildVolumeYmin, buildVolumeZmin,
               buildVolumeXmax, buildVolumeYmax, buildVolumeZmax;
+
         if ("The Replicator Single" == printerType) {
             buildVolumeXmin = -113.5;
             buildVolumeYmin = -74;
@@ -88,7 +90,18 @@ namespace conveyor
             buildVolumeXmax = 142.5;
             buildVolumeYmax = 75;
             buildVolumeZmax = 150;
-        } // else, BuildVolume is 0 for now
+        } else {
+            // Let's use TOM as default
+            const int xlen = 106;
+            const int ylen = 120;
+            const int zlen = 106;
+            buildVolumeXmin = -xlen / 2;
+            buildVolumeYmin = -ylen / 2;
+            buildVolumeZmin = 0;
+            buildVolumeXmax = xlen / 2;
+            buildVolumeYmax = ylen / 2;
+            buildVolumeZmax = zlen;
+        }
 
         m_uniqueName = uniqueName;
         m_displayName = displayName;
