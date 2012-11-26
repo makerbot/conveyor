@@ -90,6 +90,15 @@ namespace conveyor
             buildVolumeXmax = 142.5;
             buildVolumeYmax = 75;
             buildVolumeZmax = 150;
+        } else if ("The Replicator 2X" == printerType) {
+            // TODO(nicholasbishop): these values are the same as rep2
+            // for now, not sure if correct though
+            buildVolumeXmin = -142.5;
+            buildVolumeYmin = -75;
+            buildVolumeZmin = 0;
+            buildVolumeXmax = 142.5;
+            buildVolumeYmax = 75;
+            buildVolumeZmax = 150;
         } else {
             // Let's use TOM as default
             const int xlen = 106;
