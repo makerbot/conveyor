@@ -30,7 +30,7 @@ class DomainObject(object):
 class Job(DomainObject):
     def __init__(
         self, id, build_name, path, config, printerid, gcodeprocessor,
-        skip_start_end, with_start_end, slicer_settings, material):
+        skip_start_end, with_start_end, slicer_settings, print_to_file_type, material):
             self.build_name = build_name
             self.conclusion = None
             self.config = config
@@ -46,6 +46,7 @@ class Job(DomainObject):
             self.slicer_settings = slicer_settings
             self.state = "RUNNING"
             self.with_start_end = with_start_end
+            self.print_to_file_type = print_to_file_type
 
     # TODO: we are not handling the currentstep and process fields evenly
     # between todict() and fromdict().
@@ -69,7 +70,8 @@ class Job(DomainObject):
             'skip_start_end': self.skip_start_end,
             'slicer_settings': self.slicer_settings.todict(),
             'state': self.state,
-            'with_start_end': self.with_start_end
+            'with_start_end': self.with_start_end,
+            'print_to_file_type': self.print_to_file_type
         }
         return dct
 
@@ -81,7 +83,7 @@ class Job(DomainObject):
         job = Job(
             dct['id'], dct['build_name'], dct['path'], dct['config'],
             dct['printerid'], dct['gcodeprocessor'], dct['skip_start_end'],
-            dct['with_start_end'], slicer_settings, dct['material'])
+            dct['with_start_end'],  slicer_settings, dct['print_to_file_type'], dct['material'])
         job.state = dct['state'] # TODO: :(
         job.conclusion = dct['conclusion'] # TODO: :'(
         job.failure = dct['failure'] # TODO: :''(

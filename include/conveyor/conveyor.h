@@ -29,6 +29,8 @@ namespace conveyor
         QList<Job *> jobs (void);
         QList<Printer *> printers (void);
 
+        Printer * printerByUniqueName(QString uniqueName);
+
         void cancelJob (int jobId);
 
         /** Get connected machines that can be uploaded to
@@ -64,6 +66,8 @@ namespace conveyor
         EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(Printer * const printer, EepromMap eepromMap);
         void resetToFactory(Printer * const printer) const;
+        bool compatibleFirmware(QString &firmwareVersion) const;
+        bool verifyS3g(QString &s3gPath) const;
 
     signals:
         void printerAdded (Printer *);

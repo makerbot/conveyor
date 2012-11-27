@@ -33,7 +33,8 @@ namespace conveyor
 
         enum Extruder {
             Left,
-            Right
+            Right,
+            LeftAndRight
         };
 
         static SlicerConfiguration * defaultConfiguration(Quality quality);
@@ -78,6 +79,8 @@ namespace conveyor
 
         void setPrintSpeed(unsigned speed);
         void setTravelSpeed(unsigned speed);
+
+        void setProfilePath(const QString &path);
 
     private:
         SlicerConfigurationPrivate * const m_private;

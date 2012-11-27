@@ -28,11 +28,15 @@ namespace conveyor
         int currentStepProgress (void) const;
         QString currentStepName (void) const;
 
+    public slots:
         void cancel (void);
         void pause (void);
         
     signals:
         void changed (const Job *);
+
+        // Emitted when the job's conclusion changes from NOTCONCLUDED
+        void concluded (const Job *job);
 
     private:
         Job (Conveyor * conveyor, int const & id);
@@ -40,6 +44,7 @@ namespace conveyor
         QScopedPointer <JobPrivate> m_private;
 
         void emitChanged (void);
+        void emitConcluded (void);
 
         friend class Conveyor;
         friend class ConveyorPrivate;

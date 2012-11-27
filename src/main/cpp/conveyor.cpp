@@ -66,6 +66,11 @@ namespace conveyor
         return m_private->jobs();
     }
 
+    Printer*
+    Conveyor::printerByUniqueName(QString name) {
+        return m_private->printerByUniqueName(name);
+    }
+
     Json::Value
     Conveyor::getUploadableMachines(void)
     {
@@ -109,6 +114,18 @@ namespace conveyor
     Conveyor::resetToFactory(Printer * const printer) const
     {
         m_private->resetToFactory(printer);
+    }
+
+    bool
+    Conveyor::compatibleFirmware(QString &firmwareVersion) const
+    {
+        return m_private->compatibleFirmware(firmwareVersion);
+    }
+
+    bool
+    Conveyor::verifyS3g(QString &s3gPath) const
+    {
+        return m_private->verifyS3g(s3gPath);
     }
 
     void

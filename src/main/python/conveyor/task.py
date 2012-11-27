@@ -47,6 +47,7 @@ class IllegalTransitionException(Exception):
         self.state = state
         self.event = event
 
+
 class Task(object):
     """ Class for managing an ongoing task, including starting, stopping, 
         hearbeat (updates) and related tools.       
@@ -74,6 +75,7 @@ class Task(object):
             'Task.runningevent', eventqueue)
         self.stoppedevent = conveyor.event.Event(
             'Task.stoppedevent', eventqueue)
+
 
     def _transition(self, event, data):
         if TaskState.PENDING == self.state:
@@ -121,6 +123,7 @@ class Task(object):
         events, etc 
         """ 
         self._transition(TaskEvent.START, None)
+
 
     def heartbeat(self, progress):
         """Post a heartbeat update. 

@@ -28,7 +28,7 @@ import conveyor.task
 class Slicer(object):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task):
+        material, dualstrusion, task):
             self._log = logging.getLogger(self.__class__.__name__)
             self._progress = None
             self._slicerlog = None
@@ -39,43 +39,55 @@ class Slicer(object):
             self._with_start_end = with_start_end
             self._slicer_settings = slicer_settings
             self._material = material
+            self._dualstrusion = dualstrusion
             self._task = task
 
     def _getname(self):
         raise NotImplementedError
 
     def _setprogress(self, new_progress):
-		"""
-		@param new_progress progress dict of {'name':$NANME 'progress'$INT_PERCENT } 
-		"""
+        """
+        posts progres update to our task, lazily
+        @param new_progress progress dict of {'name':$NANME 'progress'$INT_PERCENT } 
+        """
         self._task.lazy_heartbeat(new_progress, self._progress)
+        self._progress = new_progress
+
+    def _setprogress_percent(self, percent, pMin=1, pMax=99):
+        """ Sets a progress update as percent, clipped to pMin, pMax
+        @param percent integer percent for progress update
+        @param pMin percent min, default is 1 (0 is a special 'start' case)
+        @param pMax percent max, default is 99 (100 is a special 'start' case)
+        """
+        clamped_percent= min(pMax, max(percent, pMin))
+        progress = {'name': 'slice','progress': clamped_percent }
+        self._setprogress(progress)
 
     def _setprogress_ratio(self, current, total):
-		""" sets progress based on current(int) and total(int)
-		@param current: current integer index
-		@param total:	expected total count
-		TRICKY: This will not report 0% or 100%, those are special edge cases
-		"""
+        """ sets progress based on current(int) and total(int)
+        @param current: current integer index
+        @param total:   expected total count
+        TRICKY: This will not report 0% or 100%, those are special edge cases
+        """
         ratio = int((98 * current / total) + 1)
-        progress = {
-            'name': 'slice',
-            'progress': ratio
-        }
+        progress = {'name': 'slice','progress': ratio }
         self._setprogress(progress)
 
     def slice(self):
         raise NotImplementedError
 
+
 class SubprocessSlicerException(Exception):
     pass
+
 
 class SubprocessSlicer(Slicer):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task, slicerpath):
+        material, dualstrusion, task, slicerpath):
             Slicer.__init__(
                 self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, task)
+                slicer_settings, material, dualstrusion, task)
 
             self._popen = None
             self._slicerlog = None

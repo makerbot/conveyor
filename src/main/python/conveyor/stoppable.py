@@ -23,12 +23,11 @@ import gc
 import threading
 import weakref
 
-try:
-    import unittest2 as unittest
-except ImportError: # pragma: no cover
-    import unittest
 
-class Stoppable(object):
+class StoppableInterface(object):
+    """ Class defines the interface to a stoppable object
+    these objects require a '.stop() and .run() functions
+    """
     def __init__(self):
         stoppablemanager = StoppableManager.getinstance()
         stoppablemanager._addstoppable(self)
@@ -36,10 +35,15 @@ class Stoppable(object):
     def stop(self):
         raise NotImplementedError
 
-class StoppableThread(threading.Thread, Stoppable):
+    def run(self):
+        raise NotImplementedError
+
+
+class StoppableThread(threading.Thread, StoppableInterface):
     def __init__(self, *args, **kwargs):
         threading.Thread.__init__(self, *args, **kwargs)
-        Stoppable.__init__(self)
+        StoppableInterface.__init__(self)
+
 
 class StoppableManager(object):
     _instance = None
@@ -90,61 +94,3 @@ class StoppableManager(object):
             stoppable = ref()
             if None is not stoppable:
                 stoppable.stop()
-
-
-class _StoppableTestObject(Stoppable):
-    def __init__(self):
-        Stoppable.__init__(self)
-        import conveyor.event
-        self.callback = conveyor.event.Callback()
-
-    def stop(self):
-        self.callback()
-
-class _NotInitializedStoppableTestObject(Stoppable):
-    def __init__(self):
-        import conveyor.event
-        self.callback = conveyor.event.Callback()
-
-class _NotStoppableTestObject(object):
-    pass
-
-class _StoppableTestCase(unittest.TestCase):
-    def test_NotImplementedError(self):
-        s = Stoppable()
-        with self.assertRaises(NotImplementedError):
-            s.stop()
-
-    def test_removestoppable_unknown(self):
-        stoppablemanager = StoppableManager.getinstance()
-        stoppablemanager._reset()
-        s1 = _NotStoppableTestObject()
-        stoppablemanager._removestoppable(s1)
-
-    def test_stopall(self):
-        stoppablemanager = StoppableManager.getinstance()
-        stoppablemanager._reset()
-        s1 = _StoppableTestObject()
-        s2 = _StoppableTestObject()
-        self.assertFalse(s1.callback.delivered)
-        self.assertFalse(s2.callback.delivered)
-        stoppablemanager._removestoppable(s2)
-        StoppableManager.stopall()
-        self.assertTrue(s1.callback.delivered)
-        self.assertFalse(s2.callback.delivered)
-
-    def test_stale_weakref(self):
-        stoppablemanager = StoppableManager.getinstance()
-        stoppablemanager._reset()
-        s1 = _StoppableTestObject()
-        s2 = _NotInitializedStoppableTestObject()
-        ref = weakref.ref(s2) # no callback
-        stoppablemanager._stoppables.append(ref)
-        c2 = s2.callback
-        self.assertFalse(s1.callback.delivered)
-        self.assertFalse(s2.callback.delivered)
-        del s2
-        s2 = None
-        StoppableManager.stopall()
-        self.assertTrue(s1.callback.delivered)
-        self.assertFalse(c2.delivered)

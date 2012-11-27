@@ -66,6 +66,8 @@ class ClientMain(conveyor.main.AbstractMain):
             self._initsubparser_uploadfirmware,
             self._initsubparser_resettofactory,
             self._initsubparser_waitforservice,
+            self._initsubparser_compatiblefirmware,
+            self._initsubparser_verifys3g,
         ):
                 method(subparsers)
 
@@ -152,7 +154,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '-e',
             '--extruder',
             default='right',
-            choices=('left', 'right'),
+            choices=('left', 'right', 'both'),
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
@@ -179,7 +181,7 @@ class ClientMain(conveyor.main.AbstractMain):
     def _initsubparser_printtofile(self, subparsers):
         parser = subparsers.add_parser(
             'printtofile',
-            help='print an object to an .s3g file')
+            help='print an object to an .s3g  or .x3g file')
         parser.set_defaults(func=self._run_printtofile)
         self._initparser_common(parser)
         parser.add_argument(
@@ -188,7 +190,7 @@ class ClientMain(conveyor.main.AbstractMain):
             metavar='INPUTPATH')
         parser.add_argument(
             'outputpath',
-            help='the output path for the .s3g file',
+            help='the output path for the .s3g or .x3g file',
             metavar='OUTPUTPATH')
         parser.add_argument(
             '--skip-start-end',
@@ -218,14 +220,19 @@ class ClientMain(conveyor.main.AbstractMain):
             '-e',
             '--extruder',
             default='right',
-            choices=('left', 'right'),
+            choices=('left', 'right', 'both'),
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
             '--slicer-settings',
             default=None,
             help='A slicer profile to use',
-            dest='slicer_settings',
+            dest='slicer_settings')
+        parser.add_argument(
+            '--print-to-file-type',
+            default='x3g',
+            choices=('s3g', 'x3g'),
+            help='set the filetype for print to file',
         )
 
     def _initsubparser_slice(self, subparsers):
@@ -270,7 +277,7 @@ class ClientMain(conveyor.main.AbstractMain):
             '-e',
             '--extruder',
             default='right',
-            choices=('left', 'right'),
+            choices=('left', 'right', 'both'),
             help='set the extruder',
             dest='extruder')
         parser.add_argument(
@@ -368,6 +375,32 @@ class ClientMain(conveyor.main.AbstractMain):
         parser.set_defaults(func=self._run_waitforservice)
         self._initparser_common(parser)
 
+    def _initsubparser_compatiblefirmware(self, subparsers):
+        parser = subparsers.add_parser(
+            'compatiblefirmware',
+            help='determine if firmware version is compatible with the makerbot_driver'
+        )
+        parser.set_defaults(func=self._run_compatiblefirmware)
+        self._initparser_common(parser)
+        parser.add_argument(
+            'firmwareversion',
+            help='firmware version to check',
+            metavar='FIRMWAREVERSION',
+        )
+
+    def _initsubparser_verifys3g(self, subparsers):
+        parser = subparsers.add_parser(
+            'verifys3g',
+            help='Discern if an s3g file is valid',
+        )
+        parser.set_defaults(func=self._run_verifys3g)
+        self._initparser_common(parser)
+        parser.add_argument(
+            's3gfile',
+            help='s3g file to validate',
+            metavar='S3GFILE',
+        )
+
     def _run(self):
         self._log.debug('parsedargs=%r', self._parsedargs)
         self._initeventqueue()
@@ -380,12 +413,30 @@ class ClientMain(conveyor.main.AbstractMain):
                 code = 1
                 self._log.critical(
                     'failed to open socket: %s: %s',
-                    self._config['common']['socket'], e.strerror, exc_info=True)
-                if not self._has_daemon_lock():
+                    self._config['common']['address'], e.strerror, exc_info=True)
+                if not self._pidfile_exists():
                   self._log.critical(
                     'Unable to connect to conveyor server. Please verify that it is running.')
             else:
                 code = self._parsedargs.func()
+        return code
+
+    def _run_verifys3g(self):
+        def display(result):
+            print("Your S3g File is %s Valid" % ("NOT" if result is False else ""))
+        params = {
+            's3gpath': self._parsedargs.s3gfile
+        }
+        code = self._run_client('verifys3g', params, False, display)
+        return code
+
+    def _run_compatiblefirmware(self):
+        def display(result):
+            print("Your firmware version is compatible: %r" % (result))
+        params = {
+            'firmwareversion': self._parsedargs.firmwareversion
+        }
+        code = self._run_client('compatiblefirmware', params, False, display)
         return code
 
     def _run_resettofactory(self):
@@ -396,7 +447,7 @@ class ClientMain(conveyor.main.AbstractMain):
     def _run_getuploadablemachines(self):
         def display(result):
             print(result)
-        params = {'printername' : None}
+        params = {}
         code = self._run_client('getuploadablemachines', params, False, display)
         return code
 
@@ -511,6 +562,8 @@ class ClientMain(conveyor.main.AbstractMain):
             extruder = '0'
         elif 'left' == self._parsedargs.extruder:
             extruder = '1'
+        elif 'both' == self._parsedargs.extruder:
+            extruder = '0,1'
         else:
             raise ValueError(self._parsedargs.extruder)
         slicer_settings = conveyor.domain.SlicerConfiguration(
@@ -578,6 +631,7 @@ class ClientMain(conveyor.main.AbstractMain):
             'archive_lvl': 'all',
             'archive_dir': None,
             'slicer_settings': slicer_settings.todict(),
+            'print_to_file_type': self._parsedargs.print_to_file_type,
         }
         self._log.info(
             'printing to file: %s -> %s', self._parsedargs.inputpath,

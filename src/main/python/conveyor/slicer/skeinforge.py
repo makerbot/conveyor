@@ -25,6 +25,8 @@ import re
 import shutil
 import sys
 import tempfile
+import datetime
+import unittest
 
 import conveyor.enum
 import conveyor.machine.s3g # TODO: aww, more bad coupling
@@ -35,10 +37,10 @@ SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 
 class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task, slicerpath, profilepath):
+        material, dualstrusion, task, slicerpath, profilepath):
             conveyor.slicer.SubprocessSlicer.__init__(
                 self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, task, slicerpath)
+                slicer_settings, material, dualstrusion, task, slicerpath)
 
             self._regex = re.compile(
                 'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
@@ -51,7 +53,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         return 'Skeinforge'
 
     def _prologue(self):
-        self._tmp_directory = tempfile.mkdtemp()
+        self._tmp_directory = tempfile.mkdtemp(suffix='.skeinforge')
         self._tmp_inputpath = os.path.join(
             self._tmp_directory, os.path.basename(self._inputpath))
         shutil.copy2(self._inputpath, self._tmp_inputpath)
@@ -130,6 +132,9 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
             yield self._option('alteration.csv', 'Name of End File:', '')
 
     def _getarguments_printomatic(self):
+        ratio = SkeinforgeSlicer._PATHWIDTH / self._slicer_settings.layer_height
+        wall_width = SkeinforgeSlicer._PATHWIDTH * self._slicer_settings.shells
+        ceiling_layers = wall_width / self._slicer_settings.layer_height
         yield self._option(
             'fill.csv', 'Infill Solidity (ratio):', self._slicer_settings.infill)
         yield self._option(
@@ -141,13 +146,14 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         yield self._option(
             'dimension.csv', 'Filament Diameter (mm):',
             SkeinforgeSlicer._FILAMENTDIAMETER)
-        ratio = SkeinforgeSlicer._PATHWIDTH / self._slicer_settings.layer_height
         yield self._option(
             'carve.csv', 'Perimeter Width over Thickness (ratio):', ratio)
         yield self._option(
             'fill.csv', 'Infill Width over Thickness (ratio):', ratio)
         yield self._option(
             'carve.csv', 'Layer Height (mm):', self._slicer_settings.layer_height)
+        yield self._option(
+            'fill.csv', 'Solid Surface Thickness (layers):', ceiling_layers)
         yield self._option(
             'fill.csv', 'Extra Shells on Alternating Solid Layer (layers):',
             self._slicer_settings.shells-1)
@@ -166,26 +172,69 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         yield ''.join((module, ':', preference, '=', unicode(value)))
 
     def _readpopen(self):
+        """
+        Read the output of Skeinforge and turn them into progress updates.
+        SF does a poor job emitting progress updates, so we need to inject
+        artificial updates for it.  We have 3 stages of updates, and asymptotically 
+        increase them.  The first set goes up to 33, the second (natural) set goes from
+        33 to 66, and the final (artifical) set goes from 66 to 99.
+        """
         buffer = ''
+        #first_third_done = False
+        #second_third_done = False
+        sf_timeout= 15 #sf timeout in seconds
+		runner = 0.0
+		current_third = 1 # 1'st 3rd, fake, 2nd-third read, 3rd-3rd fake
+		faker_min, faker_max = 1, 33
+        progress_increment_hack = .5
+        progress_time_interval = 1
+        cur_datetime = datetime.datetime.now()
+        prev_datetime = cur_datetime 
+        sf_prev_datetime = cur_datetime 
         while True:
+            cur_datetime = datetime.datetime.now()
             data = self._popen.stdout.read(1) # :.(
+			# no good data, leave this loop forevar
             if '' == data:
                 break
-            else:
-                self._slicerlog.write(data)
-                buffer += data
-                match = self._regex.search(buffer)
-                if None is not match:
-                    buffer = buffer[match.end():]
-                    layer = int(match.group('layer'))
-                    total = int(match.group('total'))
-                    self._setprogress_ratio(layer, total)
+			self._slicerlog.write(data)
+			buffer += data
+			match = self._regex.search(buffer)
+			if current_third < 3 and match is not None:
+				sf_prev_datetime = datetime.datetime.now()
+				current_third = 2
+				buffer = buffer[match.end():]
+				layer = int(match.group('layer'))
+				total = int(match.group('total'))
+				progress = 100*layer/total
+				self._setprogress_percent(progress,33, 66)
+			# SF doesnt always emit updates for all its layers, we
+			# take a timestamp diff to see if we should begin 
+			# artificial update for the last 33% 
+			elif current_third == 2:
+				if self._total_seconds(cur_datetime - sf_prev_datetime) > sf_timeout:
+					current_third = 3 # sf timeout is no longer updating, take over
+					runner = 66.0 #set this 
+			elif self._total_seconds(cur_datetime - prev_datetime) > progress_time_interval:
+				prev_datetime = cur_datetime 
+				# fake the first 1/3 while skeinforge warms up
+				if current_third == 1:
+					runner = runner + progress_increment_hack
+					self._setprogress_percent(int(runner),1,33)
+				# fake the final 1/3 while skeinforge closes/writes
+				elif current_third == 3:
+					runner = runner + progress_increment_hack
+					self._setprogress_percent(int(runner),66, 99)
+
+    def _total_seconds(self, td):
+        result = float(td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / float(10**6)
+        return result
 
     def _epilogue(self):
         if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
             driver = conveyor.machine.s3g.S3gDriver()
             startgcode, endgcode, variables = driver._get_start_end_variables(
-                self._profile, self._slicer_settings, self._material)
+                self._profile, self._slicer_settings, self._material, False)
             with open(self._outputpath, 'w') as wfp:
                 if self._with_start_end:
                     for line in startgcode:

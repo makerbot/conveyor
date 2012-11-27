@@ -30,10 +30,10 @@ import conveyor.slicer
 class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task, slicerpath, configpath):
+        material, dualstrusion, task, slicerpath, configpath):
             conveyor.slicer.SubprocessSlicer.__init__(
                 self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, task, slicerpath)
+                slicer_settings, material, dualstrusion, task, slicerpath)
 
             self._tmp_startpath = None
             self._tmp_endpath = None
@@ -48,7 +48,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         if self._with_start_end:
             driver = conveyor.machine.s3g.S3gDriver()
             startgcode, endgcode, variables = driver._get_start_end_variables(
-                profile, slicer_settings, material)
+                self._profile, self._slicer_settings, self._material, False)
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
                 self._tmp_startpath = startfp.name
                 for line in startgcode:
@@ -88,6 +88,8 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
             fanLayer = config['fanLayer']
             fanLayer += raftLayers
             config['fanLayer'] = fanLayer
+        if self._dualstrusion:
+            config['doPutModelOnPlatform'] = False
         return config
 
     def _getexecutable(self):
