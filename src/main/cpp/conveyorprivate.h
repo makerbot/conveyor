@@ -71,6 +71,7 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const withStartEnd
             );
 
         void cancelJob (int jobId);

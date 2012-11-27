@@ -173,6 +173,8 @@ class AbstractMain(object):
         self._config['common'].setdefault('profile', 'ReplicatorSingle')
         self._config['common'].setdefault(
             'profiledir', '../s3g/makerbot_driver/profiles')
+        self._config['common'].setdefault(
+            'unified_mesh_hack', '../Prototype/bin/unified_mesh_hack')
         return None
 
     def _setconfigdefaults_miraclegrue(self):
@@ -229,7 +231,8 @@ class AbstractMain(object):
             self._checkconfig_common_address,
             self._checkconfig_common_pidfile,
             self._checkconfig_common_profile,
-            self._checkconfig_common_profiledir)
+            self._checkconfig_common_profiledir,
+            self._checkconfig_common_unified_mesh_hack)
         return code
 
     def _checkconfig_common_address(self):
@@ -246,6 +249,10 @@ class AbstractMain(object):
 
     def _checkconfig_common_profiledir(self):
         code = self._require_string('common', 'profiledir')
+        return code
+
+    def _checkconfig_common_unified_mesh_hack(self):
+        code = self._require_string('common', 'unified_mesh_hack')
         return code
 
     def _checkconfig_miraclegrue(self):
