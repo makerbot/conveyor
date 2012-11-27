@@ -635,10 +635,14 @@ class S3gDriver(object):
         self, eeprommap, fp):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
 
             version = self.get_version_with_dot(version)
 
-            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version)
+            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version, software_variant)
             eeprom_writer.write_entire_map(eeprommap)
             return True
 
@@ -646,10 +650,18 @@ class S3gDriver(object):
         self, fp):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
 
             version = self.get_version_with_dot(version)
 
-            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version)
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
+            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version, software_variant)
             the_map = eeprom_reader.read_entire_map()
             return the_map
 
