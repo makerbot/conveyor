@@ -153,8 +153,8 @@ class _ReadEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
                 printerthread = self._clientthread._findprinter(printername)
                 printerthread.readeeprom(task)
             except Exception as e:
-                msg = unicode(e)
-                task.fail(e)
+                message = unicode(e)
+                task.fail(message)
         task.runningevent.attach(runningcallback)
         return task
 
