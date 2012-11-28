@@ -126,6 +126,38 @@ class _VerifyS3gTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __call__(self, s3gpath):
         return conveyor.recipe.Recipe.verifys3gtask(s3gpath)
 
+class _WriteEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self, clientthread):
+        self._clientthread = clientthread
+
+    def __call__(self, printername, eeprommap):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                printerthread = self._clientthread._findprinter(printername)
+                printerthread.writeeeprom(eeprommap, task)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+
+class _ReadEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self, clientthread):
+        self._clientthread = clientthread
+
+    def __call__(self, printername):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                printerthread = self._clientthread._findprinter(printername)
+                printerthread.readeeprom(task)
+            except Exception as e:
+                msg = unicode(e)
+                task.fail(e)
+        task.runningevent.attach(runningcallback)
+        return task
+
 class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
         self._clientthread = clientthread
@@ -473,19 +505,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         result = job.todict()
         return result
 
-    @export('writeeeprom')
-    def _writeeeprom(self, printername, eeprommap):
-        printerthread = self._findprinter(printername)
-        task = conveyor.task.Task()
-        printerthread.writeeeprom(eeprommap, task)
-        return None
-
-    @export('readeeprom')
-    def _readeeprom(self, printername):
-        printerthread = self._findprinter(printername)
-        eeprommap = printerthread.readeeprom()
-        return eeprommap
-
     @export('resettofactory')
     def _resettofactory(self, printername):
         printerthread = self._findprinter(printername)
@@ -512,8 +531,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('getprinters', self._getprinters)
         self._jsonrpc.addmethod('getjob', self._getjob)
         self._jsonrpc.addmethod('getjobs', self._getjobs)
-        self._jsonrpc.addmethod('writeeeprom', self._writeeeprom, "takes (eeprom_values)")
-        self._jsonrpc.addmethod('readeeprom', self._readeeprom, "takes no params")
+        readeepromfactory = _ReadEepromTaskFactory(self)
+        self._jsonrpc.addmethod('readeeprom', readeepromfactory, ": takes a printerthread")
+        writeeepromfactory = _WriteEepromTaskFactory(self)
+        self._jsonrpc.addmethod('writeeeprom', writeeepromfactory, ": takes a printerthread and json eeprommap")
         getuploadablemachinesfactory = _GetUploadableMachinesTaskFactory()
         self._jsonrpc.addmethod('getuploadablemachines', getuploadablemachinesfactory, ":takes no params")
         getmachineversionstaskfactory = _GetMachineVersionsTaskFactory()

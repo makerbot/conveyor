@@ -274,31 +274,36 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         finally:
             self._fp.close()
 
-    def readeeprom(self):
+    def readeeprom(self, task):
         driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "readingeeprom")
-            eeprommap = driver.readeeprom(self._fp)
-            self._statetransition("readingeeprom", "idle")
-        return eeprommap
+            self._currenttask = task
+            try:
+                eeprommap = driver.readeeprom(self._fp)
+                task.end(eeprommap)
+            except makerbot_driver.EEPROM.EepromError as e:
+                self._log.debug('handled exception', exec_info=True)
+                raise
+            finally:
+                self._statetransition("readingeeprom", "idle")
+                self._currenttask = None
 
     def writeeeprom(self, eeprommap, task):
         with self._condition:
             self._statetransition("idle", "writingeeprom")
-            def stoppedcallback(task):
-                with self._condition:
-                    self._statetransition("writingeeprom", "idle")
-                    self._currenttask = None
-            def runningcallback(task):
-                driver = S3gDriver()
-                with self._condition:
-                    driver.writeeeprom(eeprommap, self._fp)
-                task.end(None)
-            task.stoppedevent.attach(stoppedcallback)
-            task.runningevent.attach(runningcallback)
             self._currenttask = task
-            self._currenttask.start()
-
+            driver = S3gDriver()
+            try:
+                driver.writeeeprom(eeprommap, self._fp)
+                task.end(None)
+            except makerbot_driver.EEPROM.EepromError as e:
+                self._log.debug('handled exception', exec_info=True)
+                raise
+            finally:
+                self._statetransition("writingeeprom", "idle")
+                self._currenttask = None
+    
     def uploadfirmware(self, machine_type, filename, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
