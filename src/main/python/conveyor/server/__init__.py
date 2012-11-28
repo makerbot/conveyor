@@ -679,7 +679,8 @@ class Server(object):
     def canceljob(self, id):
         with self._lock:
             job = self._jobs[id]
-        job.process.cancel()
+        if conveyor.task.TaskState.STOPPED != job.process.state:
+            job.process.cancel()
 
     def getjobs(self):
         with self._lock:
