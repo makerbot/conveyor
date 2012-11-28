@@ -669,3 +669,44 @@ class S3gDriver(object):
         s = makerbot_driver.s3g()
         s.writer = makerbot_driver.Writer.StreamWriter(fp)
         return s
+
+    def write_messages_to_display(self, s3gobj, messages, timeout, button_press, initial_clear):
+        """
+        Write messages to a machine.  If a message is too long, splits it in two and tries again.
+        NB: We cast messages as strs, since makerbot_driver can't handle unicode well :(
+        PNB: Since messages are just concatentated together, white-space needs to be baked into the messages.
+        The screen we are writing to is 20x4
+
+        @param s3g s3gobj: S3g object used to write messages
+        @param string/unicode/tuple/list messages: Messages to write to the bot. If not passed as a list or tuple, forced into a list
+        @param int timeout: Timeout for the messages.  Timeout = 0 displays indefinitely
+        @param bool button_press: Flag for wait on button press.  If true, waits on a button press
+        @param bool initial_clear: If True, clear the screen of any messages
+        """
+        if not isinstance(messages, (list, tuple)):
+            messages = [messages]
+        if initial_clear:
+            s3gobj.display_message(0, 0, str(''), 0, False, True, False) # Clear the screen of any messages
+        for i in range(len(messages)):
+            try:
+                s3gobj.display_message(0, 0, str(messages[i]), timeout, True, i==len(messages)-1, button_press)
+            # If the msg is too long, cut it in half and resend
+            except makerbot_driver.errors.PacketLengthError as e:
+                bifurcated_msg = self.split_message(messages[i])
+                self.write_messages_to_display(s3gobj, bifurcated_msg, timeout, button_press, False)
+        
+    def split_message(self, msg):
+        """
+        Takes a msg and spits it in half.  If msg is of length 1 or less,
+        returns a list containing only the msg
+
+        @param str msg: Message to split
+        @return list msgs: Split msg 
+        """
+        if len(msg) <= 1:
+            msgs = [msg]
+        else:
+            msg_1 = msg[:len(msg)/2]
+            msg_2 = msg[len(msg)/2:]
+            msgs = [msg_1, msg_2]
+        return msgs
