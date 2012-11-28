@@ -129,6 +129,7 @@ class _VerifyS3gTaskFactory(conveyor.jsonrpc.TaskFactory):
 class _WriteEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
         self._clientthread = clientthread
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def __call__(self, printername, eeprommap):
         task = conveyor.task.Task()
@@ -137,30 +138,38 @@ class _WriteEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
                 printerthread = self._clientthread._findprinter(printername)
                 printerthread.writeeeprom(eeprommap, task)
             except Exception as e:
+                self._log.debug('handled exception')
                 message = unicode(e)
                 task.fail(message)
+            else:
+                task.end(None)
         task.runningevent.attach(runningcallback)
         return task
 
 class _ReadEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
         self._clientthread = clientthread
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def __call__(self, printername):
         task = conveyor.task.Task()
         def runningcallback(task):
             try:
                 printerthread = self._clientthread._findprinter(printername)
-                printerthread.readeeprom(task)
+                eeprommap = printerthread.readeeprom(task)
             except Exception as e:
+                self._log.debug('handled exception')
                 message = unicode(e)
                 task.fail(message)
+            else:
+                task.end(eeprommap)
         task.runningevent.attach(runningcallback)
         return task
 
 class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
         self._clientthread = clientthread
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def __call__(self, printername, machinetype, filename):
         task = conveyor.task.Task()
@@ -169,8 +178,11 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
                 printerthread = self._clientthread._findprinter(printername)
                 printerthread.uploadfirmware(machinetype, filename, task)
             except Exception as e:
+                self._log.debug('handled exception')
                 message = unicode(e)
                 task.fail(message)
+            else:
+                task.end(None)
         task.runningevent.attach(runningcallback)
         return task
 

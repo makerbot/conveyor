@@ -281,25 +281,18 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._currenttask = task
             try:
                 eeprommap = driver.readeeprom(self._fp)
-                task.end(eeprommap)
-            except makerbot_driver.EEPROM.EepromError as e:
-                self._log.debug('handled exception', exec_info=True)
-                raise
+                return eeprommap
             finally:
                 self._statetransition("readingeeprom", "idle")
                 self._currenttask = None
 
     def writeeeprom(self, eeprommap, task):
+        driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "writingeeprom")
             self._currenttask = task
-            driver = S3gDriver()
             try:
                 driver.writeeeprom(eeprommap, self._fp)
-                task.end(None)
-            except makerbot_driver.EEPROM.EepromError as e:
-                self._log.debug('handled exception', exec_info=True)
-                raise
             finally:
                 self._statetransition("writingeeprom", "idle")
                 self._currenttask = None
@@ -311,11 +304,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._fp.close()
             try:
                 uploader.upload_firmware(self._portname, machine_type, filename)
-                task.end(None)
-            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                self._log.debug('handled exception', exc_info=True)
-                message = unicode(e)
-                task.fail(message)
             finally:
                 self._fp.open()
                 self._statetransition("uploadingfirmware", "idle")
