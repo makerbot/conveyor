@@ -464,6 +464,9 @@ class S3gDriver(object):
         if polltemperature:
             self._log.debug('resetting machine %s', portname)
             parser.s3g.reset()
+        parser.s3g.delay(5000)
+        parser.s3g.display_message(0, 0, str("Please clear the    "), 0, False, True, False)
+        parser.s3g.display_message(1, 0, str("build plate.        "), 0, True, True, True)
         now = time.time()
         polltime = now + pollinterval
         if not polltemperature:
