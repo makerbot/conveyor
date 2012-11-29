@@ -33,6 +33,11 @@ namespace conveyor
             config->setSlicer(SlicerConfiguration::Skeinforge);
             config->setLayerHeight(.1);
             break;
+
+        case SlicerConfiguration::SkeinforgeDefaults:
+            config->setSlicer(SlicerConfiguration::Skeinforge);
+            config->setLayerHeight(.27);
+            break;
         }
         return config;
     }
