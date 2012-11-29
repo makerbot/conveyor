@@ -274,31 +274,29 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         finally:
             self._fp.close()
 
-    def readeeprom(self):
+    def readeeprom(self, task):
         driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "readingeeprom")
-            eeprommap = driver.readeeprom(self._fp)
-            self._statetransition("readingeeprom", "idle")
-        return eeprommap
+            self._currenttask = task
+            try:
+                eeprommap = driver.readeeprom(self._fp)
+                return eeprommap
+            finally:
+                self._statetransition("readingeeprom", "idle")
+                self._currenttask = None
 
     def writeeeprom(self, eeprommap, task):
+        driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "writingeeprom")
-            def stoppedcallback(task):
-                with self._condition:
-                    self._statetransition("writingeeprom", "idle")
-                    self._currenttask = None
-            def runningcallback(task):
-                driver = S3gDriver()
-                with self._condition:
-                    driver.writeeeprom(eeprommap, self._fp)
-                task.end(None)
-            task.stoppedevent.attach(stoppedcallback)
-            task.runningevent.attach(runningcallback)
             self._currenttask = task
-            self._currenttask.start()
-
+            try:
+                driver.writeeeprom(eeprommap, self._fp)
+            finally:
+                self._statetransition("writingeeprom", "idle")
+                self._currenttask = None
+    
     def uploadfirmware(self, machine_type, filename, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
@@ -306,11 +304,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._fp.close()
             try:
                 uploader.upload_firmware(self._portname, machine_type, filename)
-                task.end(None)
-            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                self._log.debug('handled exception', exc_info=True)
-                message = unicode(e)
-                task.fail(message)
             finally:
                 self._fp.open()
                 self._statetransition("uploadingfirmware", "idle")
