@@ -1,6 +1,7 @@
 { "infillDensity": 0.1
 , "numberOfShells": 2
 , "insetDistanceMultiplier": 0.97
+, "infillShellSpacingMultiplier" : 0.20
 , "roofThickness" : 1.2
 , "floorThickness" : 1.0
 , "layerWidthRatio": 1.67
