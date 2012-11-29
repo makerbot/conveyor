@@ -20,6 +20,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import cStringIO as StringIO
+import codecs
 import errno
 import json
 import logging
@@ -173,6 +174,10 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         self._outfp = outfp # contract: .write(str)
         self._stopped = False
         self._tasks = {}
+        reader_class = codecs.getreader('UTF-8')
+        self._infp_reader = reader_class(self._infp)
+        writer_class = codecs.getwriter('UTF-8')
+        self._outfp_writer = writer_class(self._outfp)
 
     #
     # Common part
@@ -277,7 +282,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
 
     def _send(self, data):
         self._log.debug('data=%r', data)
-        self._outfp.write(data)
+        self._outfp_writer.write(data)
 
     def run(self):
         """ This loop will run until self._stopped is set true."""
@@ -288,7 +293,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
             if self._stopped:
                 break
             else:
-                data = self._infp.read()
+                data = self._infp_reader.read()
                 if 0 == len(data):
                     break
                 else:
