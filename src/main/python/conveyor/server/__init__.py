@@ -118,6 +118,18 @@ def export(name):
         return func
     return decorator
 
+def getexception(exception):
+    if None is not exception:
+        exception = {
+            'name': exception.__class__.__name__,
+            'args': exception.args,
+            'errno': getattr(exception, 'errno', None),
+            'strerror': getattr(exception, 'strerror', None),
+            'filename': getattr(exception, 'filename', None),
+            'winerror': getattr(exception, 'winerror', None)
+        }
+    return exception 
+
 class _VerifyS3gTaskFactory(conveyor.jsonrpc.TaskFactory):
 
     def __init__(self):
@@ -139,8 +151,8 @@ class _WriteEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
                 printerthread.writeeeprom(eeprommap, task)
             except Exception as e:
                 self._log.debug('handled exception')
-                message = unicode(e)
-                task.fail(message)
+                exception = getexception(e)
+                task.fail(exception)
             else:
                 task.end(None)
         task.runningevent.attach(runningcallback)
@@ -159,8 +171,8 @@ class _ReadEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
                 eeprommap = printerthread.readeeprom(task)
             except Exception as e:
                 self._log.debug('handled exception')
-                message = unicode(e)
-                task.fail(message)
+                exception = getexception(e)
+                task.fail(exception)
             else:
                 task.end(eeprommap)
         task.runningevent.attach(runningcallback)
