@@ -76,9 +76,10 @@ class _AbstractSocketConnection(Connection):
         @param data The data you want to send 
         """
         with self._condition:
-            while True:
+            i = 0
+            while not self._stopped and i < len(data):
                 try:
-                    self._socket.sendall(data)
+                    sent = self._socket.send(data[i:])
                 except IOError as e:
                     if e.args[0] in (errno.EINTR, errno.EAGAIN, errno.EWOULDBLOCK):
                         # NOTE: debug too spammy
@@ -86,11 +87,14 @@ class _AbstractSocketConnection(Connection):
                         continue
                     elif e.args[0] in (errno.EBADF, errno.EPIPE):
                         self._log.debug('handled exception', exc_info=True)
-                        raise ConnectionWriteException
+                        if self._stopped:
+                            break
+                        else:
+                            raise ConnectionWriteException
                     else:
                         raise
                 else:
-                    break
+                    i += sent
 
 if 'nt' != os.name:
 # TRICKY: Due to windows issues installing pywintypes, we wrote our own 

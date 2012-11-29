@@ -81,8 +81,9 @@ class RecipeManager(object):
             raise MissingFileException(job.path)
         else:
             thing_dir = tempfile.mkdtemp(suffix='.thing')
+            unified_mesh_hack = self._config['common']['unified_mesh_hack']
             popen = subprocess.Popen(
-                ['../Prototype/obj/unified_mesh_hack', job.path, thing_dir],
+                [unified_mesh_hack, job.path, thing_dir],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             while True:
                 line = popen.stdout.readline()
@@ -124,9 +125,12 @@ class Recipe(object):
         gcodeprocessors = self._job.gcodeprocessor
         if None is gcodeprocessors:
             gcodeprocessors = []
-        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer
-            and 'Skeinforge50Processor' not in gcodeprocessors):
+        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
+            if 'Skeinforge50Processor' not in gcodeprocessors:
                 gcodeprocessors.insert(0, 'Skeinforge50Processor')
+            if self._config['common']['profile'] == "Replicator2":
+                if 'FanProcessor' not in gcodeprocessors:
+                    gcodeprocessors.append('FanProcessor')
         return gcodeprocessors
 
     def _slicertask(self, profile, inputpath, outputpath, with_start_end,
@@ -218,14 +222,16 @@ class Recipe(object):
         executing the verifys3g command.
         """
         task = conveyor.task.Task()
-        oldblob = None
-        def update(percent):
-            blob = {
+        progressreport = {
                 'name': 'verify',
-                'percent': percent,
+                'progress': 0,
             }
-            task.lazy_heartbeat(blob)
-            oldblob = blob
+        oldprogressreport = progressreport
+        def update(percent):
+            oldprogressreport = progressreport
+            progressreport['progress'] = percent
+            task.lazy_heartbeat(progressreport, oldprogressreport)
+
 
         def runningcallback(task):
             # If the filereader can parse it, then the s3g file is valid
