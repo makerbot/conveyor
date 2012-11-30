@@ -4,10 +4,10 @@
 , "infillShellSpacingMultiplier" : 0.20
 , "roofThickness" : 1.2
 , "floorThickness" : 1.0
-, "layerWidthRatio": 1.67
+, "layerWidthRatio": 1.45
 , "layerWidthMinimum" : 0.40
 , "layerWidthMaximum" : 0.85
-, "preCoarseness": 0.0
+, "preCoarseness": 0.1
 , "coarseness": 0.05
 , "directionWeight": 0.8
 , "gridSpacingMultiplier" : 0.85
