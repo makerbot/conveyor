@@ -274,31 +274,29 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         finally:
             self._fp.close()
 
-    def readeeprom(self):
+    def readeeprom(self, task):
         driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "readingeeprom")
-            eeprommap = driver.readeeprom(self._fp)
-            self._statetransition("readingeeprom", "idle")
-        return eeprommap
+            self._currenttask = task
+            try:
+                eeprommap = driver.readeeprom(self._fp)
+                return eeprommap
+            finally:
+                self._statetransition("readingeeprom", "idle")
+                self._currenttask = None
 
     def writeeeprom(self, eeprommap, task):
+        driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "writingeeprom")
-            def stoppedcallback(task):
-                with self._condition:
-                    self._statetransition("writingeeprom", "idle")
-                    self._currenttask = None
-            def runningcallback(task):
-                driver = S3gDriver()
-                with self._condition:
-                    driver.writeeeprom(eeprommap, self._fp)
-                task.end(None)
-            task.stoppedevent.attach(stoppedcallback)
-            task.runningevent.attach(runningcallback)
             self._currenttask = task
-            self._currenttask.start()
-
+            try:
+                driver.writeeeprom(eeprommap, self._fp)
+            finally:
+                self._statetransition("writingeeprom", "idle")
+                self._currenttask = None
+    
     def uploadfirmware(self, machine_type, filename, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
@@ -306,11 +304,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._fp.close()
             try:
                 uploader.upload_firmware(self._portname, machine_type, filename)
-                task.end(None)
-            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                self._log.debug('handled exception', exc_info=True)
-                message = unicode(e)
-                task.fail(message)
             finally:
                 self._fp.open()
                 self._statetransition("uploadingfirmware", "idle")
@@ -471,6 +464,9 @@ class S3gDriver(object):
         if polltemperature:
             self._log.debug('resetting machine %s', portname)
             parser.s3g.reset()
+        parser.s3g.delay(5000)
+        parser.s3g.display_message(0, 0, str("Please clear the    "), 0, False, True, False)
+        parser.s3g.display_message(1, 0, str("build plate.        "), 0, True, True, True)
         now = time.time()
         polltime = now + pollinterval
         if not polltemperature:
@@ -670,7 +666,7 @@ class S3gDriver(object):
         s.writer = makerbot_driver.Writer.StreamWriter(fp)
         return s
 
-    def write_messages_to_display(self, s3gobj, messages, timeout, button_press, initial_clear):
+    def write_messages_to_display(self, s3gobj, messages, timeout, button_press, last_in_sequence):
         """
         Write messages to a machine.  If a message is too long, splits it in two and tries again.
         NB: We cast messages as strs, since makerbot_driver can't handle unicode well :(
@@ -681,19 +677,20 @@ class S3gDriver(object):
         @param string/unicode/tuple/list messages: Messages to write to the bot. If not passed as a list or tuple, forced into a list
         @param int timeout: Timeout for the messages.  Timeout = 0 displays indefinitely
         @param bool button_press: Flag for wait on button press.  If true, waits on a button press
-        @param bool initial_clear: If True, clear the screen of any messages
+        @param bool last_in_sequence: Flag to determine if this message is the last in a sequence.  Unless you want to send a 
+            sequence of messages, this should be set to True
         """
         if not isinstance(messages, (list, tuple)):
             messages = [messages]
-        if initial_clear:
-            s3gobj.display_message(0, 0, str(''), 0, False, True, False) # Clear the screen of any messages
         for i in range(len(messages)):
             try:
-                s3gobj.display_message(0, 0, str(messages[i]), timeout, True, i==len(messages)-1, button_press)
+                s3gobj.display_message(0, 0, str(messages[i]), timeout, True, False, False)
             # If the msg is too long, cut it in half and resend
             except makerbot_driver.errors.PacketLengthError as e:
                 bifurcated_msg = self.split_message(messages[i])
                 self.write_messages_to_display(s3gobj, bifurcated_msg, timeout, button_press, False)
+        if last_in_sequence:
+            s3gobj.display_message(0, 0, str(''), timeout, True, True, button_press)
         
     def split_message(self, msg):
         """
