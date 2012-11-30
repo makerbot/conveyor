@@ -35,15 +35,16 @@ def exception_to_failure(exception, **kwargs):
 
     """
 
-    failure = {
-        'exception': {
+    exception_data = None
+    if None is not exception:
+        exception_data = {
             'name': exception.__class__.__name__,
             'args': exception.args,
             'errno': getattr(exception, 'errno', None),
             'strerror': getattr(exception, 'strerror', None),
             'filename': getattr(exception, 'filename', None),
             'winerror': getattr(exception, 'winerror', None),
-        },
-    }
+        }
+    failure = {'exception': exception_data,}
     failure.update(kwargs)
     return failure
