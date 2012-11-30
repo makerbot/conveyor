@@ -24,6 +24,8 @@ import logging
 import subprocess
 
 import conveyor.task
+import conveyor.util
+
 
 class Slicer(object):
     def __init__(
@@ -167,21 +169,9 @@ class SubprocessSlicer(Slicer):
         raise NotImplementedError
 
     def _getfailure(self, exception):
-        if None is not exception:
-            exception = {
-                'name': exception.__class__.__name__,
-                'args': exception.args,
-                'errno': getattr(exception, 'errno', None),
-                'strerror': getattr(exception, 'strerror', None),
-                'filename': getattr(exception, 'filename', None),
-                'winerror': getattr(exception, 'winerror', None)
-            }
         slicerlog = None
         if None is not self._slicerlog:
             slicerlog = self._slicerlog.getvalue()
-        failure = {
-            'exception': exception,
-            'slicerlog': slicerlog,
-            'code': self._code
-        }
+        failure = conveyor.util.exception_to_failure(
+            exception, slicerlog=slicerlog, code=self._code)
         return failure
