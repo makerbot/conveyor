@@ -274,31 +274,29 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         finally:
             self._fp.close()
 
-    def readeeprom(self):
+    def readeeprom(self, task):
         driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "readingeeprom")
-            eeprommap = driver.readeeprom(self._fp)
-            self._statetransition("readingeeprom", "idle")
-        return eeprommap
+            self._currenttask = task
+            try:
+                eeprommap = driver.readeeprom(self._fp)
+                return eeprommap
+            finally:
+                self._statetransition("readingeeprom", "idle")
+                self._currenttask = None
 
     def writeeeprom(self, eeprommap, task):
+        driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "writingeeprom")
-            def stoppedcallback(task):
-                with self._condition:
-                    self._statetransition("writingeeprom", "idle")
-                    self._currenttask = None
-            def runningcallback(task):
-                driver = S3gDriver()
-                with self._condition:
-                    driver.writeeeprom(eeprommap, self._fp)
-                task.end(None)
-            task.stoppedevent.attach(stoppedcallback)
-            task.runningevent.attach(runningcallback)
             self._currenttask = task
-            self._currenttask.start()
-
+            try:
+                driver.writeeeprom(eeprommap, self._fp)
+            finally:
+                self._statetransition("writingeeprom", "idle")
+                self._currenttask = None
+    
     def uploadfirmware(self, machine_type, filename, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
@@ -306,11 +304,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._fp.close()
             try:
                 uploader.upload_firmware(self._portname, machine_type, filename)
-                task.end(None)
-            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                self._log.debug('handled exception', exc_info=True)
-                message = unicode(e)
-                task.fail(message)
             finally:
                 self._fp.open()
                 self._statetransition("uploadingfirmware", "idle")
@@ -471,6 +464,9 @@ class S3gDriver(object):
         if polltemperature:
             self._log.debug('resetting machine %s', portname)
             parser.s3g.reset()
+        parser.s3g.delay(5000)
+        parser.s3g.display_message(0, 0, str("Please clear the    "), 0, False, True, False)
+        parser.s3g.display_message(1, 0, str("build plate.        "), 0, True, True, True)
         now = time.time()
         polltime = now + pollinterval
         if not polltemperature:
@@ -635,10 +631,14 @@ class S3gDriver(object):
         self, eeprommap, fp):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
 
             version = self.get_version_with_dot(version)
 
-            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version)
+            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version, software_variant)
             eeprom_writer.write_entire_map(eeprommap)
             return True
 
@@ -646,10 +646,18 @@ class S3gDriver(object):
         self, fp):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
 
             version = self.get_version_with_dot(version)
 
-            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version)
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
+            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version, software_variant)
             the_map = eeprom_reader.read_entire_map()
             return the_map
 
@@ -657,3 +665,45 @@ class S3gDriver(object):
         s = makerbot_driver.s3g()
         s.writer = makerbot_driver.Writer.StreamWriter(fp)
         return s
+
+    def write_messages_to_display(self, s3gobj, messages, timeout, button_press, last_in_sequence):
+        """
+        Write messages to a machine.  If a message is too long, splits it in two and tries again.
+        NB: We cast messages as strs, since makerbot_driver can't handle unicode well :(
+        PNB: Since messages are just concatentated together, white-space needs to be baked into the messages.
+        The screen we are writing to is 20x4
+
+        @param s3g s3gobj: S3g object used to write messages
+        @param string/unicode/tuple/list messages: Messages to write to the bot. If not passed as a list or tuple, forced into a list
+        @param int timeout: Timeout for the messages.  Timeout = 0 displays indefinitely
+        @param bool button_press: Flag for wait on button press.  If true, waits on a button press
+        @param bool last_in_sequence: Flag to determine if this message is the last in a sequence.  Unless you want to send a 
+            sequence of messages, this should be set to True
+        """
+        if not isinstance(messages, (list, tuple)):
+            messages = [messages]
+        for i in range(len(messages)):
+            try:
+                s3gobj.display_message(0, 0, str(messages[i]), timeout, True, False, False)
+            # If the msg is too long, cut it in half and resend
+            except makerbot_driver.errors.PacketLengthError as e:
+                bifurcated_msg = self.split_message(messages[i])
+                self.write_messages_to_display(s3gobj, bifurcated_msg, timeout, button_press, False)
+        if last_in_sequence:
+            s3gobj.display_message(0, 0, str(''), timeout, True, True, button_press)
+        
+    def split_message(self, msg):
+        """
+        Takes a msg and spits it in half.  If msg is of length 1 or less,
+        returns a list containing only the msg
+
+        @param str msg: Message to split
+        @return list msgs: Split msg 
+        """
+        if len(msg) <= 1:
+            msgs = [msg]
+        else:
+            msg_1 = msg[:len(msg)/2]
+            msg_2 = msg[len(msg)/2:]
+            msgs = [msg_1, msg_2]
+        return msgs

@@ -28,7 +28,8 @@ namespace conveyor
         enum Quality {
             LowQuality,
             MediumQuality,
-            HighQuality
+            HighQuality,
+            SkeinforgeDefaults
         };
 
         enum Extruder {
