@@ -442,10 +442,6 @@ class S3gDriver(object):
         parser.s3g.writer = writer
         if print_to_file_type is not None:
             parser.s3g.set_print_to_file_type(print_to_file_type);
-        # Send the start of stream command for x3g bots
-        if print_to_file_type == 'x3g':
-            pid = parser.state.profile.values['PID']
-            parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
         # ^ Technical debt: we should no be reacing into objects in our driver to 
         # set values, they should be set in the constructor
         def cancelcallback(task):
@@ -475,6 +471,11 @@ class S3gDriver(object):
         else:
             temperature = _gettemperature(profile, parser.s3g)
             server.changeprinter(portname, temperature)
+        # Send the start of stream command for x3g bots
+        if print_to_file_type == 'x3g':
+            pid = parser.state.profile.values['PID']
+            # ^ Technical debt: we get this value from conveyor local bot info, not from the profile
+            parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
         gcodelines, variables = self._gcodelines(
             profile, gcodepath, skip_start_end, slicer_settings, material,
             dualstrusion)
