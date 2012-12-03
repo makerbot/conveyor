@@ -10,14 +10,16 @@ SET CURTIMEFULL=%CURTIMENC: =%
 
 SET DATETIMEPREFIX=%CURDATEFULL%_%CURTIMEFULL%_
 
-IF EXIST conveyord.avail.lock GOTO KILLSUCCEED
-ECHO No such file or directory: conveyord.avail.lock
+SET CONVEYOR_SYNC_FILE=conveyor.pid
+
+IF EXIST %CONVEYOR_SYNC_FILE% GOTO KILLSUCCEED
+ECHO No such file or directory: %CONVEYOR_SYNC_FILE%
 GOTO MOVELOG
 
 :KILLSUCCEED
 
-REM delete conveyord.avail.lock
-DEL /F /Q conveyord.avail.lock
+REM delete the sync file
+DEL /F /Q %CONVEYOR_SYNC_FILE%
 
 :MOVELOG
 
