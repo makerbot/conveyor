@@ -75,7 +75,9 @@ class ServerMain(conveyor.main.AbstractMain):
         pidfile = self._config['common']['pidfile']
         try:
             if self._parsedargs.nofork or not has_daemon:
-                signal.signal(signal.SIGTERM, handle_sigterm)
+                for signal_name in ('SIGTERM', 'SIGBREAK'):
+                    if hasattr(signal, signal_name):
+                        signal.signal(getattr(signal, signal_name), handle_sigterm)
                 lock = lockfile.pidlockfile.PIDLockFile(pidfile)
                 lock.acquire(0)
                 try:
