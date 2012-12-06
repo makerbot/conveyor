@@ -26,7 +26,7 @@ IF NOT ERRORLEVEL 0 DEL /F /Q %CONVEYOR_SYNC_FILE%
 :MOVELOG
 
 REM move conveyord.log to DATE_conveyord.log
-IF NOT EXIST conveyord.log GOTO FAILED
+IF NOT EXIST conveyord.log GOTO FAILEDLOG
 MOVE /Y conveyord.log %DATETIMEPREFIX%conveyord.log
 
 
@@ -36,7 +36,8 @@ REM IF EXIST virtualenv call virtualenv\Scripts\deactivate
 
 EXIT /B 0
 
-:FAILED
+:FAILEDLOG
+ECHO No such file or directory: conveyord.log
 
-EXIT /B 1
+EXIT /B 0
 
