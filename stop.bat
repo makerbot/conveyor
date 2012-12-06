@@ -21,7 +21,8 @@ GOTO MOVELOG
 REM stop conveyor process
 FOR /F %%A IN (%CONVEYOR_SYNC_FILE%) DO TASKKILL /PID %%A /F /T
 REM delete the sync file
-IF NOT ERRORLEVEL 0 DEL /F /Q %CONVEYOR_SYNC_FILE%
+REM don't delete, start.bat does this
+REM IF NOT ERRORLEVEL 0 DEL /F /Q %CONVEYOR_SYNC_FILE%
 
 :MOVELOG
 
