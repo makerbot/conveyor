@@ -134,7 +134,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
     def _getarguments_printomatic(self):
         ratio = SkeinforgeSlicer._PATHWIDTH / self._slicer_settings.layer_height
         wall_width = SkeinforgeSlicer._PATHWIDTH * self._slicer_settings.shells
-        ceiling_layers = wall_width / self._slicer_settings.layer_height
+        ceiling_layers = int(wall_width / self._slicer_settings.layer_height)
         yield self._option(
             'fill.csv', 'Infill Solidity (ratio):', self._slicer_settings.infill)
         yield self._option(
@@ -142,14 +142,14 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         yield self._option(
             'speed.csv', 'Travel Feed Rate (mm/s):', self._slicer_settings.travel_speed)
         yield self._option(
-            'speed.csv', 'Flow Rate Setting (float):', self._slicer_settings.print_speed)
+            'speed.csv', 'Flow Rate Setting (float):', float(self._slicer_settings.print_speed))
         yield self._option(
             'dimension.csv', 'Filament Diameter (mm):',
             SkeinforgeSlicer._FILAMENTDIAMETER)
         yield self._option(
-            'carve.csv', 'Perimeter Width over Thickness (ratio):', ratio)
+            'carve.csv', 'Edge Width over Height (ratio):', ratio)
         yield self._option(
-            'fill.csv', 'Infill Width over Thickness (ratio):', ratio)
+            'inset.csv', 'Infill Width over Thickness (ratio):', ratio)
         yield self._option(
             'carve.csv', 'Layer Height (mm):', self._slicer_settings.layer_height)
         yield self._option(
