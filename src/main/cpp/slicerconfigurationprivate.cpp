@@ -32,6 +32,7 @@ namespace conveyor
         case SlicerConfiguration::HighQuality:
             config->setSlicer(SlicerConfiguration::Skeinforge);
             config->setLayerHeight(.1);
+            config->setInfill(0.15);
             break;
 
         case SlicerConfiguration::SkeinforgeDefaults:
