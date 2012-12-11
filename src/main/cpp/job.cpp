@@ -80,4 +80,10 @@ namespace conveyor
     {
         emit changed(this);
     }
+
+    void
+    Job::emitConcluded (void)
+    {
+        emit concluded(this);
+    }
 }

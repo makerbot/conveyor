@@ -108,13 +108,11 @@ class _AbstractPipeAddress(Address):
             raise UnknownProtocolException(protocol,'pipe')
         if 2 != len(split):
             raise MissingPathException(s)
-        else:
-            path = split[1]
-            if 0 == len(path):
-                raise MissingPathException(s)
-            else:
-                address = PipeAddress(path)
-                return address
+        path = split[1]
+        if 0 == len(path):
+            raise MissingPathException(s)
+        address = PipeAddress(path)
+        return address
 
     def __init__(self, path):
         self._path = path
@@ -172,22 +170,18 @@ class TcpAddress(Address):
             raise UnknownProtocolException(protocol, 'tcp')
         if 2 != len(split):
             raise MissingHostException(s)
-        else:
-            hostport = split[1].split(':', 1)
-            if 2 != len(hostport):
-                raise MailformedUrlException(s)
-            else:
-                host = hostport[0]
-                if 0 == len(host):
-                    raise MissingHostException(s)
-                else:
-                    try:
-                        port = int(hostport[1])
-                    except ValueError:
-                        raise InvalidPortException(s, hostport[1])
-                    else:
-                        address = TcpAddress(host, port)
-                        return address
+        hostport = split[1].split(':', 1)
+        if 2 != len(hostport):
+            raise MailformedUrlException(s)
+        host = hostport[0]
+        if 0 == len(host):
+            raise MissingHostException(s)
+        try:
+            port = int(hostport[1])
+        except ValueError:
+            raise InvalidPortException(s, hostport[1])
+        address = TcpAddress(host, port)
+        return address
 
     def __init__(self, host, port):
         """
@@ -198,20 +192,36 @@ class TcpAddress(Address):
         self._port = port
 
     def listen(self):
-        """ creates a listener object connected to the specified port """
+        """ creates a listener object connected to the specified port
+        self._host must be a refer to the local host
+        self._port must be a valid port
+        """
+        return self.listener_factory(self._port, self._host)
+    
+    @staticmethod
+    def listener_factory(port, host='localhost'):
+        """
+        @param port must be an integer port number
+        @param host must be a string reference to localhost
+        @return a TcpListener object connected to the specified socket
+        """     
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((self._host, self._port))
+        s.bind((host, port))
         s.listen(socket.SOMAXCONN)
         listener = conveyor.listener.TcpListener(s)
         return listener
-
+ 
     def connect(self):
+        """ creates a connection based on internal settings.
+        @returns a SocketConnection object
+        """
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self._host, self._port))
         connection = conveyor.connection.SocketConnection(s, None)
         return connection
 
+    
 class UnknownProtocolException(Exception):
     def __init__(self, value, protocol):
         Exception.__init__(self, value, protocol)

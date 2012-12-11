@@ -186,7 +186,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
 
     def print(
         self, job, buildname, gcodepath, skip_start_end, slicer_settings,
-        material, task):
+        print_to_file_type, material, task, dualstrusion):
             def stoppedcallback(task):
                 with self._condition:
                     self._currenttask = None
@@ -196,11 +196,12 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._log.debug(
                 'job=%r, buildname=%r, gcodepath=%r, skip_start_end=%r, slicer_settings=%r, material=%r, task=%r',
                 job, buildname, gcodepath, skip_start_end, slicer_settings,
-                material, task)
+                print_to_file_type, material, task)
             with self._condition:
                 printjob = (
                     job, buildname, gcodepath, skip_start_end,
-                    slicer_settings, material, task)
+                    slicer_settings, print_to_file_type, material, task,
+                    dualstrusion)
                 self._queue.appendleft(printjob)
                 self._condition.notify_all()
 
@@ -233,7 +234,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         self._condition.wait(1.0)
                         self._log.debug('resumed')
                 elif self._states['idle'] and self._curprintjob is not None:
-                    job, buildname, gcodepath, skip_start_end, slicer_settings, material, task = self._curprintjob
+                    job, buildname, gcodepath, skip_start_end, slicer_settings, print_to_file_type, material, task, dualstrusion = self._curprintjob
                     driver = S3gDriver()
                     try:
                         with self._condition:
@@ -242,7 +243,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
                         driver.print(
                             self._server, self._portname, self._fp,
                             self._profile, buildname, gcodepath,
-                            skip_start_end, slicer_settings, material, task)
+                            skip_start_end, slicer_settings,
+                            print_to_file_type, material, task, dualstrusion)
                     except PrinterThreadNotIdleError:
                         self._log.debug('handled exception', exc_info=True)
                     except makerbot_driver.BuildCancelledError:
@@ -272,31 +274,29 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         finally:
             self._fp.close()
 
-    def readeeprom(self):
+    def readeeprom(self, task):
         driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "readingeeprom")
-            eeprommap = driver.readeeprom(self._fp)
-            self._statetransition("readingeeprom", "idle")
-        return eeprommap
+            self._currenttask = task
+            try:
+                eeprommap = driver.readeeprom(self._fp)
+                return eeprommap
+            finally:
+                self._statetransition("readingeeprom", "idle")
+                self._currenttask = None
 
     def writeeeprom(self, eeprommap, task):
+        driver = S3gDriver()
         with self._condition:
             self._statetransition("idle", "writingeeprom")
-            def stoppedcallback(task):
-                with self._condition:
-                    self._statetransition("writingeeprom", "idle")
-                    self._currenttask = None
-            def runningcallback(task):
-                driver = S3gDriver()
-                with self._condition:
-                    driver.writeeeprom(eeprommap, self._fp)
-                task.end(None)
-            task.stoppedevent.attach(stoppedcallback)
-            task.runningevent.attach(runningcallback)
             self._currenttask = task
-            self._currenttask.start()
-
+            try:
+                driver.writeeeprom(eeprommap, self._fp)
+            finally:
+                self._statetransition("writingeeprom", "idle")
+                self._currenttask = None
+    
     def uploadfirmware(self, machine_type, filename, task):
         with self._condition:
             self._statetransition("idle", "uploadingfirmware")
@@ -304,11 +304,6 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
             self._fp.close()
             try:
                 uploader.upload_firmware(self._portname, machine_type, filename)
-                task.end(None)
-            except makerbot_driver.Firmware.subprocess.CalledProcessError as e:
-                self._log.debug('handled exception', exc_info=True)
-                message = unicode(e)
-                task.fail(message)
             finally:
                 self._fp.open()
                 self._statetransition("uploadingfirmware", "idle")
@@ -351,20 +346,22 @@ class S3gDriver(object):
     # object that has the extruder and platform temperatures. Domain modeling
     # error.
 
-    def _get_start_end_variables(self, profile, slicer_settings, material):
+    def _get_start_end_variables(self, profile, slicer_settings, material, dualstrusion):
         """
         @returns tuple of (start gcode block, end gcode block, variables)
         """
         tool_0, tool_1 = False, False
         if None is material:
             material = 'PLA'
-        if '0' == slicer_settings.extruder:
+        if dualstrusion:
             tool_0 = True
-        elif '1' == slicer_settings.extruder:
             tool_1 = True
         else:
-            raise ValueError(slicer_settings.extruder)
-
+            extruders = [e.strip() for e in slicer_settings.extruder.split(',')]
+            if '0' in extruders:
+                tool_0 = True
+            if '1' in extruders:
+                tool_1 = True
         ga = makerbot_driver.GcodeAssembler(profile, profile.path)
         start_template, end_template, variables = ga.assemble_recipe(
             tool_0=tool_0, tool_1=tool_1, material=material)
@@ -375,8 +372,8 @@ class S3gDriver(object):
         variables['PLATFORM_TEMP'] = slicer_settings.platform_temperature
         return start_gcode, end_gcode, variables
 
-    def _gcodelines(
-        self, profile, gcodepath, skip_start_end, slicer_settings, material):
+    def _gcodelines(self, profile, gcodepath, skip_start_end, slicer_settings,
+            material, dualstrusion):
         """
         @profle: undocumented, assuming a profile object
         @gcodepath: undocumented assuming filepath
@@ -385,7 +382,7 @@ class S3gDriver(object):
         @material undocumneted, assuming string
         """ 
         startgcode, endgcode, variables = self._get_start_end_variables(
-                profile, slicer_settings, material)
+                profile, slicer_settings, material, dualstrusion)
         def generator():
             if not skip_start_end:
                 if None is not startgcode:
@@ -409,11 +406,10 @@ class S3gDriver(object):
             bytes += len(data)
         return (lines, bytes)
 
-
-    def _genericprint(
-        self, server, portname, profile, buildname, writer, polltemperature,
-        pollinterval, gcodepath, skip_start_end, slicer_settings, material,
-        task):
+    def _genericprint(self, server, portname, profile, buildname, writer,
+            polltemperature, pollinterval, gcodepath, skip_start_end,
+            slicer_settings, print_to_file_type, material, task,
+            dualstrusion):
         """
         This does a generic print? 
         @param server conveyor.server object
@@ -434,7 +430,7 @@ class S3gDriver(object):
             'name': 'print',
             'progress': 0
         }
-        task.lazy_heartbeat(current_progress, new_progress )
+        task.lazy_heartbeat(current_progress, new_progress)
         current_progress, new_progress = new_progress, None
         parser = makerbot_driver.Gcode.GcodeParser()
         # ^ Technical debt: we should not be reaching 'into' objects in our 
@@ -444,13 +440,16 @@ class S3gDriver(object):
         parser.state.set_build_name(str(buildname))
         parser.s3g = makerbot_driver.s3g()
         parser.s3g.writer = writer
+        if print_to_file_type is not None:
+            parser.s3g.set_print_to_file_type(print_to_file_type);
+        # Send the start of stream command for x3g bots
+        if print_to_file_type == 'x3g':
+            pid = parser.state.profile.values['PID']
+            parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
         # ^ Technical debt: we should no be reacing into objects in our driver to 
         # set values, they should be set in the constructor
-
         def cancelcallback(task):
-            """ inline function to stop the writer and throw a 
-                ExternalStopError 
-            """
+            """Stop the writer and catch an ExternalStopError."""
             try:
                 self._log.debug('setting external stop')
                 writer.set_external_stop()
@@ -462,9 +461,9 @@ class S3gDriver(object):
                 # external stop set.
                 # TODO: this is a horrible hack.
                 s3g = makerbot_driver.s3g()
-                s3g.writer = makerbot_driver.Writer.StreamWriter(parser.s3g.writer.file)
+                s3g.writer = makerbot_driver.Writer.StreamWriter(
+                    parser.s3g.writer.file)
                 s3g.abort_immediately()
-        
         task.cancelevent.attach(cancelcallback)
         if polltemperature:
             self._log.debug('resetting machine %s', portname)
@@ -476,10 +475,9 @@ class S3gDriver(object):
         else:
             temperature = _gettemperature(profile, parser.s3g)
             server.changeprinter(portname, temperature)
-
         gcodelines, variables = self._gcodelines(
-            profile, gcodepath, skip_start_end, slicer_settings, material)
-
+            profile, gcodepath, skip_start_end, slicer_settings, material,
+            dualstrusion)
         parser.environment.update(variables)
         # TODO: remove this {current,total}{byte,line} stuff; we have
         # proper progress from the slicer now.
@@ -510,8 +508,38 @@ class S3gDriver(object):
                     if polltemperature:
                         server.changeprinter(portname, temperature)
                 task.lazy_heartbeat(current_progress, new_progress)
-                current_progress,new_progress  = new_progress, None
-
+                current_progress, new_progress = new_progress, None
+        if polltemperature:
+            '''
+            # This is the code that should be, but it requires new
+            # firmware.
+            while conveyor.task.TaskState.STOPPED != task.state:
+                build_stats = parser.s3g.get_build_stats()
+                build_state = build_stats['BuildState']
+                self._log.debug('build_stats=%r', build_stats)
+                self._log.debug('build_state=%r', build_state)
+                if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
+                    break
+                else:
+                    time.sleep(0.2) # TODO: wait on a condition
+            '''
+            while conveyor.task.TaskState.STOPPED != task.state:
+                available = parser.s3g.get_available_buffer_size()
+                if 512 == available:
+                    break
+                else:
+                    time.sleep(0.2) # TODO: wait on a condition
+            if conveyor.task.TaskState.STOPPED != task.state:
+                new_progress = {
+                    'name': 'print',
+                    'progress': int(parser.state.percentage)
+                }
+                if polltime <= now:
+                    polltime = now + pollinterval
+                    if polltemperature:
+                        server.changeprinter(portname, temperature)
+                task.lazy_heartbeat(current_progress, new_progress)
+                current_progress, new_progress  = new_progress, None
         if polltemperature:
             '''
             # This is the code that should be, but it requires new
@@ -542,9 +570,9 @@ class S3gDriver(object):
             current_progress, new_progress = new_progress,None
             task.end(None)
 
-    def print(
-        self, server, portname, fp, profile, buildname, gcodepath,
-        skip_start_end, slicer_settings, material, task):
+    def print(self, server, portname, fp, profile, buildname, gcodepath,
+            skip_start_end, slicer_settings, print_to_file_type, material,
+            task, dualstrusion):
         """
         @param server conveyor.server object
         @param portname undocumneted. assuming it's the os-specific port name string
@@ -560,24 +588,24 @@ class S3gDriver(object):
         writer = makerbot_driver.Writer.StreamWriter(fp)
         self._genericprint(
             server, portname, profile, buildname, writer, True, 5.0,
-            gcodepath, skip_start_end, slicer_settings, material, task)
+            gcodepath, skip_start_end, slicer_settings, print_to_file_type,
+            material, task, dualstrusion)
 
-    def printtofile(
-        self, outputpath, profile, buildname, gcodepath, skip_start_end,
-        slicer_settings, material, task):
-            with open(outputpath, 'wb') as fp:
-                writer = makerbot_driver.Writer.FileWriter(fp)
-                self._genericprint(
-                    None, None, profile, buildname, writer, False, 5.0,
-                    gcodepath, skip_start_end, slicer_settings, material,
-                    task)
+    def printtofile(self, outputpath, profile, buildname, gcodepath,
+            skip_start_end, slicer_settings, print_to_file_type, material,
+            task, dualstrusion):
+        with open(outputpath, 'wb') as fp:
+            writer = makerbot_driver.Writer.FileWriter(fp)
+            self._genericprint(
+                None, None, profile, buildname, writer, False, 5.0,
+                gcodepath, skip_start_end, slicer_settings, print_to_file_type, material,
+                task, dualstrusion)
 
-    def resettofactory(
-        self, fp):
-            s = self.create_s3g_from_fp(fp)
-            s.reset_to_factory()
-            s.reset()
-            return True
+    def resettofactory(self, fp):
+        s = self.create_s3g_from_fp(fp)
+        s.reset_to_factory()
+        s.reset()
+        return True
 
     def get_version_with_dot(self, version):
         # Log original version string
@@ -604,10 +632,14 @@ class S3gDriver(object):
         self, eeprommap, fp):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
 
             version = self.get_version_with_dot(version)
 
-            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version)
+            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version, software_variant)
             eeprom_writer.write_entire_map(eeprommap)
             return True
 
@@ -615,10 +647,18 @@ class S3gDriver(object):
         self, fp):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
 
             version = self.get_version_with_dot(version)
 
-            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version)
+            advanced_version_dict = s.get_advanced_version()
+            software_variant = hex(advanced_version_dict['SoftwareVariant'])
+            if len(software_variant.split('x')[1]) == 1:
+                software_variant = software_variant.replace('x', 'x0')
+            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version, software_variant)
             the_map = eeprom_reader.read_entire_map()
             return the_map
 
@@ -626,3 +666,45 @@ class S3gDriver(object):
         s = makerbot_driver.s3g()
         s.writer = makerbot_driver.Writer.StreamWriter(fp)
         return s
+
+    def write_messages_to_display(self, s3gobj, messages, timeout, button_press, last_in_sequence):
+        """
+        Write messages to a machine.  If a message is too long, splits it in two and tries again.
+        NB: We cast messages as strs, since makerbot_driver can't handle unicode well :(
+        PNB: Since messages are just concatentated together, white-space needs to be baked into the messages.
+        The screen we are writing to is 20x4
+
+        @param s3g s3gobj: S3g object used to write messages
+        @param string/unicode/tuple/list messages: Messages to write to the bot. If not passed as a list or tuple, forced into a list
+        @param int timeout: Timeout for the messages.  Timeout = 0 displays indefinitely
+        @param bool button_press: Flag for wait on button press.  If true, waits on a button press
+        @param bool last_in_sequence: Flag to determine if this message is the last in a sequence.  Unless you want to send a 
+            sequence of messages, this should be set to True
+        """
+        if not isinstance(messages, (list, tuple)):
+            messages = [messages]
+        for i in range(len(messages)):
+            try:
+                s3gobj.display_message(0, 0, str(messages[i]), timeout, True, False, False)
+            # If the msg is too long, cut it in half and resend
+            except makerbot_driver.errors.PacketLengthError as e:
+                bifurcated_msg = self.split_message(messages[i])
+                self.write_messages_to_display(s3gobj, bifurcated_msg, timeout, button_press, False)
+        if last_in_sequence:
+            s3gobj.display_message(0, 0, str(''), timeout, True, True, button_press)
+        
+    def split_message(self, msg):
+        """
+        Takes a msg and spits it in half.  If msg is of length 1 or less,
+        returns a list containing only the msg
+
+        @param str msg: Message to split
+        @return list msgs: Split msg 
+        """
+        if len(msg) <= 1:
+            msgs = [msg]
+        else:
+            msg_1 = msg[:len(msg)/2]
+            msg_2 = msg[len(msg)/2:]
+            msgs = [msg_1, msg_2]
+        return msgs

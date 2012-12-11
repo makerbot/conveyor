@@ -1,0 +1,1 @@
+KERNEL=="tty*", SUBSYSTEM=="tty", RUN+="conveyor-udev"

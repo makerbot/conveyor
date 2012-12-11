@@ -10,19 +10,24 @@ SET CURTIMEFULL=%CURTIMENC: =%
 
 SET DATETIMEPREFIX=%CURDATEFULL%_%CURTIMEFULL%_
 
-IF EXIST conveyord.avail.lock GOTO KILLSUCCEED
-ECHO No such file or directory: conveyord.avail.lock
+SET CONVEYOR_SYNC_FILE=conveyor.pid
+
+IF EXIST %CONVEYOR_SYNC_FILE% GOTO KILLSUCCEED
+ECHO No such file or directory: %CONVEYOR_SYNC_FILE%
 GOTO MOVELOG
 
 :KILLSUCCEED
 
-REM delete conveyord.avail.lock
-DEL /F /Q conveyord.avail.lock
+REM stop conveyor process
+FOR /F %%A IN (%CONVEYOR_SYNC_FILE%) DO TASKKILL /PID %%A /F /T
+REM delete the sync file
+REM don't delete, start.bat does this
+REM IF NOT ERRORLEVEL 0 DEL /F /Q %CONVEYOR_SYNC_FILE%
 
 :MOVELOG
 
 REM move conveyord.log to DATE_conveyord.log
-IF NOT EXIST conveyord.log GOTO FAILED
+IF NOT EXIST conveyord.log GOTO FAILEDLOG
 MOVE /Y conveyord.log %DATETIMEPREFIX%conveyord.log
 
 
@@ -32,7 +37,8 @@ REM IF EXIST virtualenv call virtualenv\Scripts\deactivate
 
 EXIT /B 0
 
-:FAILED
+:FAILEDLOG
+ECHO No such file or directory: conveyord.log
 
-EXIT /B 1
+EXIT /B 0
 

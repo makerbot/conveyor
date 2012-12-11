@@ -1,220 +1,74 @@
-# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
-# conveyor/src/main/python/conveyor/thing.py
-#
-# conveyor - Printing dispatch engine for 3D objects and their friends.
-# Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+import unittest
 
-from __future__ import (absolute_import, print_function, unicode_literals)
-
-import conveyor.enum
-import fractions
-import json
+import sys
 import os
-import os.path
+import mock
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+#override sys.path for testing only 
+sys.path.insert(0,'./src/main/python')
+import conveyor
+import conveyor.thing
+from conveyor.thing import Manifest, ManifestItem, Scale
+from conveyor.thing import ManifestObject, ManifestConstruction, ManifestInstance
 
-Scale = conveyor.enum.enum('Scale', Millimeter=fractions.Fraction(1, 1000))
+class TestManifestSubitems(unittest.TestCase):
+    def test_manifest_base(self):
+        x = ManifestItem(None,None)
+        self.assertEquals(x.manifest,None)
+        self.assertEquals(x.name,'Unnamed Manifest Item')
+        with self.assertRaises(Exception):
+            x.validate() # invalid, no parent manifest with a 'base' value
 
-class Manifest(object):
-    @classmethod
-    def frompath(cls, path):
-        with open(path) as stream:
-            manifest = Manifest.fromstream(stream, path)
-        return manifest
+    def test_manifest_construction(self):
+        x = ManifestConstruction(None,None)
+        self.assertEquals(x.manifest,None)
+        self.assertEquals(x.name,'Unnamed Manifest Item')
+        with self.assertRaises(Exception):
+            x.validate() # invalid, no parent manifest with a 'base' value
 
-    @classmethod
-    def fromstream(cls, stream, path=None):
-        data = json.load(stream)
-        if None == path:
-            base = None
-        else:
-            base = os.path.dirname(path)
-        manifest = cls(base)
-        for func in (Manifest._read_namespace, Manifest._read_constructions,
-            Manifest._read_objects, Manifest._read_instances,
-            Manifest._read_attribution, Manifest._read_unified_mesh_hack):
-                func(data, manifest)
-        return manifest
+    def test_manifest_instance(self):
+        x = ManifestInstance(None,None,None,None,None)
+        self.assertEquals(x.manifest,None)
+        self.assertEquals(x.name,'Unnamed Manifest Item')
+        with self.assertRaises(Exception):
+            x.validate() # invalid, no parent manifest with a 'base' value
 
-    @staticmethod
-    def _read_namespace(data, manifest):
-        if 'namespace' not in data:
-            raise Exception
-        elif 'http://spec.makerbot.com/ns/thing.0.1.1.1' != data['namespace']:
-            raise Exception
+    def test_manifest_Object(self):
+        x = ManifestObject(None,None)
+        self.assertEquals(x.manifest,None)
+        self.assertEquals(x.name,'Unnamed Manifest Item')
+        with self.assertRaises(Exception):
+            x.validate() # invalid, no parent manifest with a 'base' value
 
-    @staticmethod
-    def _read_objects(data, manifest):
-        if 'objects' not in data:
-            raise Exception
-        else:
-            for json_name, json_value in data['objects'].iteritems():
-                manifest_object = ManifestObject._from_json(manifest,
-                    json_name, json_value)
-                manifest.objects[manifest_object.name] = manifest_object
-
-    @staticmethod
-    def _read_constructions(data, manifest):
-        if 'constructions' not in data:
-            manifest_construction = ManifestConstruction(manifest, 'plastic A')
-            manifest.constructions[manifest_construction.name] = manifest_construction
-        else:
-            for json_name, json_value in data['constructions'].iteritems():
-                manifest_construction = ManifestConstruction._from_json(
-                    manifest, json_name, json_value)
-                manifest.constructions[manifest_construction.name] = manifest_construction
-
-    @staticmethod
-    def _read_instances(data, manifest):
-        if 'instances' not in data:
-            raise Exception
-        else:
-            for json_name, json_value in data['instances'].iteritems():
-                manifest_instance = ManifestInstance._from_json(manifest,
-                    json_name, json_value)
-                manifest.instances[manifest_instance.name] = manifest_instance
-
-    @staticmethod
-    def _read_attribution(data, manifest):
-        if 'attribution' in data:
-            manifest.attribution = data['attribution']
-
-    @staticmethod
-    def _read_unified_mesh_hack(data, manifest):
-        if 'UNIFIED_MESH_HACK' in data:
-            manifest.unified_mesh_hack = data['UNIFIED_MESH_HACK']
-
-    def __init__(self, base=None):
-        self.objects = {}
-        self.constructions = {}
-        self.instances = {}
-        self.attribution = None
-        self.base = base
-        self.unified_mesh_hack = None
-
-    def validate(self):
-        for name, manifest_object in self.objects.iteritems():
-            if name != manifest_object.name:
-                raise Exception
-            else:
-                manifest_object.validate()
-        for name, manifest_construction in self.constructions.iteritems():
-            if name != manifest_construction.name:
-                raise Exception
-            else:
-                manifest_construction.validate()
-        for name, manifest_instance in self.instances.iteritems():
-            if name != manifest_instance.name:
-                raise Exception
-            else:
-                manifest_instance.validate()
-
-
-    def material_types(self):
-        """ returns a set of all material types found in this manifest, as a list """
-        l = [] 
-        for k in self.instances.keys():
-                l.append(self.instances[k].construction_key)
-        setMaterials = set(l)
-        return list(setMaterials)
- 	
-
-class ManifestItem(object):
-    def __init__(self, manifest, name):
-        self.manifest = manifest
-        self.name = name
-
-    def validate(self):
-        raise NotImplementedError
-
-class ManifestObject(ManifestItem):
-    @classmethod
-    def _from_json(cls, manifest, json_name, json_value):
-        if {} != json_value:
-            raise Exception
-        else:
-            manifest_object = ManifestObject(manifest, json_name)
-            return manifest_object
-
-    def validate(self):
-        if None == self.manifest.base:
-            raise Exception
-        else:
-            object_path = os.path.join(self.manifest.base, self.name)
-            if not os.path.exists(object_path):
-                raise Exception
-
-class ManifestConstruction(ManifestItem):
-    @classmethod
-    def _from_json(cls, manifest, json_name, json_value):
-        if {} != json_value:
-            raise Exception
-        else:
-            manifest_construction = ManifestConstruction(manifest, json_name)
-            return manifest_construction
-
-    def validate(self):
-        pass
-
-class ManifestInstance(ManifestItem):
-    @classmethod
-    def _from_json(cls, manifest, json_name, json_value):
-        if 'object' not in json_value:
-            raise Exception
-        else:
-            object_key = json_value['object']
-            if 'construction' not in json_value:
-                construction_key = 'plastic A'
-            else:
-                construction_key = json_value['construction']
-            if 'scale' not in json_value or 'mm' == json_value['scale']:
-                scale = Scale.Millimeter
-            else:
-                raise Exception
-            manifest_object = ManifestInstance(manifest, json_name, object_key,
-                construction_key, scale)
-            return manifest_object
-
-    def __init__(self, manifest, name, object_key, construction_key, scale):
-        ManifestItem.__init__(self, manifest, name)
-        self.object_key = object_key
-        self.construction_key = construction_key
-        self.scale = scale
-
-    @property
-    def object(self):
-        manifest_object = self.manifest.objects[self.object_key]
-        return manifest_object
-
-    @property
-    def construction(self):
-        manifest_construction = self.manifest.constructions[self.construction_key]
-        return manifest_construction
-
-    def validate(self):
-        if self.object_key not in self.manifest.objects:
-            raise Exception
-        elif self.construction_key not in self.manifest.constructions:
-            raise Exception
+    def test_manifest_insntace_factory(self):
+        json_name, json_value = {'foo':'bar'},{'baz':'fuzz'}
+        with self.assertRaises(Exception):
+           x = ManifestConstruction._from_json(None,json_name, json_value)
+        mock_parent = mock.Mock()
+        mock_parent.manifest  = mock.Mock()
+        mock_parent.manifest.base  = mock.Mock()
+        x = ManifestConstruction._from_json(mock_parent,json_name,{}) 
+        x.validate()
 
 class _ThingTestCase(unittest.TestCase):
+    def test_read_fails(self):
+        # construct base manifest 
+        manifest = Manifest.frompath('src/test/thing/rfc-4.1/manifest.json')
+        manifest.validate()
+
+        #munge the internal json dir, remove 'objects' and and run read_objects 
+        rawJson = manifest.rawJson
+        del manifest.rawJson['objects']
+        with self.assertRaises(Exception):
+            manifest._read_objects() # expceted to raise exception, no 'objects'
+        manifest.validate()
+
+        #munge the internal json dir, remove 'instances' and and run read_objects 
+        del manifest.rawJson['instances']
+        with self.assertRaises(Exception):
+            manifest._read_instances() # expceted to raise exception, no 'objects'
+        manifest.validate()
+
     def test_rfc_4_1(self):
         '''Test example 4.1 from the .thing RFC.'''
 
@@ -266,6 +120,20 @@ class _ThingTestCase(unittest.TestCase):
         self.assertIs(plastic_b, instance_b.construction)
         self.assertEqual(Scale.Millimeter, instance_b.scale)
 
+        manifest._validate_namespace() #throws exception on failure
+
+        materials = manifest.material_types()
+        self.assertTrue('plastic B' in materials)
+        self.assertTrue('plastic A' in materials)
+
+        manifest.rawJson['namespace'] = "unknown"
+        with self.assertRaises(Exception):
+            manifest._validate_namespace() # expects to throw, namespace name invalid
+        del manifest.rawJson['namespace'] 
+        with self.assertRaises(Exception):
+            manifest._validate_namespace() # expects to throw, missing namespace
+
+                
     def test_rfc_5_1(self):
         '''Test example 5.1 from the .thing RFC.'''
 
@@ -433,4 +301,25 @@ class _ThingTestCase(unittest.TestCase):
         self.assertEqual(Scale.Millimeter, instance.scale)
 
         self.assertIsNotNone(manifest.attribution)
-        self.assertEqual({'author': 'Bob', 'license': 'foo'}, manifest.attribution)
+        self.assertEqual(
+            {'author': 'Bob', 'license': 'foo'}, manifest.attribution)
+
+    def test_rfc_5_4_hack(self):
+        '''Test undocumented hack for the unified mesh hack.'''
+
+        #verify function works for hacky files
+        manifest = Manifest.frompath('src/test/thing/rfc-5.4-hack/manifest.json')
+        manifest._read_unified_mesh_hack()
+        self.assertIsNotNone(manifest.unified_mesh_hack)
+
+class TestManifestInstance(unittest.TestCase):
+        def test_manifest_instance(self):
+            manifest = Manifest.frompath('src/test/thing/rfc-4.1/manifest.json')
+            #mani_inst = manifest._read_instance(data,manifest)
+            #mani_int.validate()
+               
+
+if __name__ == "__main__":
+    unittest.main()
+
+

@@ -30,10 +30,10 @@ import conveyor.slicer
 class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, task, slicerpath, configpath):
+        material, dualstrusion, task, slicerpath, configpath):
             conveyor.slicer.SubprocessSlicer.__init__(
                 self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, task, slicerpath)
+                slicer_settings, material, dualstrusion, task, slicerpath)
 
             self._tmp_startpath = None
             self._tmp_endpath = None
@@ -48,7 +48,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         if self._with_start_end:
             driver = conveyor.machine.s3g.S3gDriver()
             startgcode, endgcode, variables = driver._get_start_end_variables(
-                profile, slicer_settings, material)
+                self._profile, self._slicer_settings, self._material, False)
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
                 self._tmp_startpath = startfp.name
                 for line in startgcode:
@@ -59,7 +59,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
                     print(line, file=endfp)
         with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
             self._tmp_configpath = configfp.name
-        if self._slicer_settings.path is None:
+        if None is self._slicer_settings.path:
             config = self._getconfig()
             s = json.dumps(config)
             self._log.debug('miracle grue configuration: %s', s)
@@ -88,10 +88,15 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
             fanLayer = config['fanLayer']
             fanLayer += raftLayers
             config['fanLayer'] = fanLayer
+        if self._dualstrusion:
+            config['doPutModelOnPlatform'] = False
+        config['startGcode'] = None
+        config['endGcode'] = None
         return config
 
     def _getexecutable(self):
-        return self._slicerpath
+        executable = os.path.abspath(self._slicerpath)
+        return executable
 
     def _getarguments(self):
         for iterable in self._getarguments_miraclegrue():
@@ -108,6 +113,13 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
             yield ('-e', self._tmp_endpath,)
         yield ('-j',)
         yield (self._inputpath,)
+
+    def _getcwd(self):
+        if None is self._slicer_settings.path:
+            cwd = None
+        else:
+            cwd = os.path.dirname(self._slicer_settings.path)
+        return cwd
 
     def _readpopen(self):
         while True:

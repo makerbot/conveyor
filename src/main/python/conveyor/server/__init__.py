@@ -75,7 +75,9 @@ class ServerMain(conveyor.main.AbstractMain):
         pidfile = self._config['common']['pidfile']
         try:
             if self._parsedargs.nofork or not has_daemon:
-                signal.signal(signal.SIGTERM, handle_sigterm)
+                for signal_name in ('SIGTERM', 'SIGBREAK'):
+                    if hasattr(signal, signal_name):
+                        signal.signal(getattr(signal, signal_name), handle_sigterm)
                 lock = lockfile.pidlockfile.PIDLockFile(pidfile)
                 lock.acquire(0)
                 try:
@@ -118,9 +120,70 @@ def export(name):
         return func
     return decorator
 
+def getexception(exception):
+    if None is not exception:
+        exception = {
+            'name': exception.__class__.__name__,
+            'args': exception.args,
+            'errno': getattr(exception, 'errno', None),
+            'strerror': getattr(exception, 'strerror', None),
+            'filename': getattr(exception, 'filename', None),
+            'winerror': getattr(exception, 'winerror', None)
+        }
+    return exception 
+
+class _VerifyS3gTaskFactory(conveyor.jsonrpc.TaskFactory):
+
+    def __init__(self):
+        pass
+
+    def __call__(self, s3gpath):
+        return conveyor.recipe.Recipe.verifys3gtask(s3gpath)
+
+class _WriteEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self, clientthread):
+        self._clientthread = clientthread
+        self._log = logging.getLogger(self.__class__.__name__)
+
+    def __call__(self, printername, eeprommap):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                printerthread = self._clientthread._findprinter(printername)
+                printerthread.writeeeprom(eeprommap, task)
+            except Exception as e:
+                self._log.debug('handled exception')
+                exception = getexception(e)
+                task.fail(exception)
+            else:
+                task.end(None)
+        task.runningevent.attach(runningcallback)
+        return task
+
+class _ReadEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self, clientthread):
+        self._clientthread = clientthread
+        self._log = logging.getLogger(self.__class__.__name__)
+
+    def __call__(self, printername):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                printerthread = self._clientthread._findprinter(printername)
+                eeprommap = printerthread.readeeprom(task)
+            except Exception as e:
+                self._log.debug('handled exception')
+                exception = getexception(e)
+                task.fail(exception)
+            else:
+                task.end(eeprommap)
+        task.runningevent.attach(runningcallback)
+        return task
+
 class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
         self._clientthread = clientthread
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def __call__(self, printername, machinetype, filename):
         task = conveyor.task.Task()
@@ -128,6 +191,65 @@ class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
             try:
                 printerthread = self._clientthread._findprinter(printername)
                 printerthread.uploadfirmware(machinetype, filename, task)
+            except Exception as e:
+                self._log.debug('handled exception')
+                message = unicode(e)
+                task.fail(message)
+            else:
+                task.end(None)
+        task.runningevent.attach(runningcallback)
+        return task
+
+class _GetUploadableMachinesTaskFactory(conveyor.jsonrpc.TaskFactory):
+
+    def __init__(self):
+        pass
+
+    def __call__(self):
+        import urllib2
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                machines = uploader.list_machines()
+                task.end(machines)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+
+class _GetMachineVersionsTaskFactory(conveyor.jsonrpc.TaskFactory):
+
+    def __init__(self):
+        pass
+
+    def __call__(self, machine_type):
+        import urllib2
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                versions = uploader.list_firmware_versions(machine_type)
+                task.end(versions)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+
+class _DownloadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
+    def __init__(self):
+        pass
+
+    def __call__(self, machinetype, version):
+        import urllib2
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                hex_file_path = uploader.download_firmware(machinetype, version)
+                task.end(hex_file_path)
             except Exception as e:
                 message = unicode(e)
                 task.fail(message)
@@ -257,7 +379,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job = self._server.createjob(
                 build_name, inputpath, self._config, printerid, profile,
                 gcodeprocessor, skip_start_end, False, slicer_settings,
-                material)
+                profile.values['print_to_file_type'][0], material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.print(printerthread)
             job.process = process
@@ -284,12 +406,12 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
 
     @export('printtofile')
     def _printtofile(
-        self, profilename, inputpath, outputpath, gcodeprocessor, skip_start_end,
-        archive_lvl, archive_dir, slicer_settings, material):
+        self, profilename, inputpath, outputpath, gcodeprocessor, skip_start_end, 
+        archive_lvl, archive_dir, slicer_settings, print_to_file_type, material):
             self._log.debug(
-                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, skip_start_end=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
+                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, skip_start_end=%r, print_to_file_type=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
                 profilename, inputpath, outputpath, gcodeprocessor,
-                skip_start_end, archive_lvl, archive_dir, slicer_settings,
+                skip_start_end, print_to_file_type, archive_lvl, archive_dir, slicer_settings,
                 material)
             slicer_settings = conveyor.domain.SlicerConfiguration.fromdict(slicer_settings)
             recipemanager = conveyor.recipe.RecipeManager(
@@ -299,7 +421,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
                 gcodeprocessor, skip_start_end, False, slicer_settings,
-                material)
+                print_to_file_type, material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.printtofile(profile, outputpath)
             job.process = process
@@ -341,7 +463,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job = self._server.createjob(
                 build_name, inputpath, self._config, None, profile,
                 gcodeprocessor, False, with_start_end, slicer_settings,
-                material)
+                None, material)
             recipe = recipemanager.getrecipe(job)
             process = recipe.slice(profile, outputpath)
             job.process = process
@@ -409,42 +531,16 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         result = job.todict()
         return result
 
-    @export('writeeeprom')
-    def _writeeeprom(self, printername, eeprommap):
-        printerthread = self._findprinter(printername)
-        task = conveyor.task.Task()
-        printerthread.writeeeprom(eeprommap, task)
-        return None
-
-    @export('readeeprom')
-    def _readeeprom(self, printername):
-        printerthread = self._findprinter(printername)
-        eeprommap = printerthread.readeeprom()
-        return eeprommap
-
-    @export('getuploadablemachines')
-    def _getuploadablemachines(self):
-        uploader = makerbot_driver.Firmware.Uploader()
-        machines = uploader.list_machines()
-        return machines
-
-    @export('getmachineversions')
-    def _getmachineversions(self, machine_type):
-        uploader = makerbot_driver.Firmware.Uploader()
-        versions = uploader.list_firmware_versions(machine_type)
-        return versions
-
-    @export('downloadfirmware')
-    def _downloadfirmware(self, machinetype, version):
-        uploader = makerbot_driver.Firmware.Uploader()
-        hex_file_path = uploader.download_firmware(machinetype, version)
-        return hex_file_path
-
     @export('resettofactory')
     def _resettofactory(self, printername):
         printerthread = self._findprinter(printername)
         task = conveyor.task.Task()
         printerthread.resettofactory(task)
+
+    @export('compatiblefirmware')
+    def _compatiblefirmware(self, firmwareversion):
+        uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
+        return uploader.compatible_firmware(firmwareversion)
 
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
@@ -461,14 +557,22 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('getprinters', self._getprinters)
         self._jsonrpc.addmethod('getjob', self._getjob)
         self._jsonrpc.addmethod('getjobs', self._getjobs)
-        self._jsonrpc.addmethod('writeeeprom', self._writeeeprom, "takes (eeprom_values)")
-        self._jsonrpc.addmethod('readeeprom', self._readeeprom, "takes no params")
-        self._jsonrpc.addmethod('getuploadablemachines', self._getuploadablemachines, "takes no params")
-        self._jsonrpc.addmethod('getmachineversions', self._getmachineversions, ": takes (machine_type)")
-        self._jsonrpc.addmethod('downloadfirmware', self._downloadfirmware, 'takes (machine, version)')
+        readeepromfactory = _ReadEepromTaskFactory(self)
+        self._jsonrpc.addmethod('readeeprom', readeepromfactory, ": takes a printerthread")
+        writeeepromfactory = _WriteEepromTaskFactory(self)
+        self._jsonrpc.addmethod('writeeeprom', writeeepromfactory, ": takes a printerthread and json eeprommap")
+        getuploadablemachinesfactory = _GetUploadableMachinesTaskFactory()
+        self._jsonrpc.addmethod('getuploadablemachines', getuploadablemachinesfactory, ":takes no params")
+        getmachineversionstaskfactory = _GetMachineVersionsTaskFactory()
+        self._jsonrpc.addmethod('getmachineversions', getmachineversionstaskfactory, ': takes (machine_type)')
+        downloadfirmwaretaskfactory = _DownloadFirmwareTaskFactory()
+        self._jsonrpc.addmethod('downloadfirmware', downloadfirmwaretaskfactory, 'takes (machine, version)')
         uploadfirmwaretaskfactory = _UploadFirmwareTaskFactory(self)
         self._jsonrpc.addmethod('uploadfirmware', uploadfirmwaretaskfactory, ": takes (printername, machine_type, version)")
+        verifys3gtaskfactory = _VerifyS3gTaskFactory()
+        self._jsonrpc.addmethod('verifys3g', verifys3gtaskfactory, ": takes a path to the s3g file")
         self._jsonrpc.addmethod('resettofactory', self._resettofactory, ": takes no params")
+        self._jsonrpc.addmethod('compatiblefirmware', self._compatiblefirmware, ": takes firmware_version")
 
     def run(self):
         # add our available functions to the json methods list
@@ -527,10 +631,10 @@ class Queue(object):
             self._stop = True
             self._condition.notify_all()
 
-class _TaskQueueThread(threading.Thread, conveyor.stoppable.Stoppable):
+class _TaskQueueThread(threading.Thread, conveyor.stoppable.StoppableInterface):
     def __init__(self, queue):
         threading.Thread.__init__(self, name='taskqueue')
-        conveyor.stoppable.Stoppable.__init__(self)
+        conveyor.stoppable.StoppableInterface.__init__(self)
         self._log = logging.getLogger(self.__class__.__name__)
         self._queue = queue
 
@@ -598,7 +702,7 @@ class Server(object):
 
     def createjob(
         self, build_name, path, config, printerid, profile, gcodeprocessor,
-        skip_start_end, with_start_end, slicer_settings, material):
+        skip_start_end, with_start_end, slicer_settings, print_to_file_type, material):
             # NOTE: The profile is not currently included in the actual job
             # because it can't be converted to or from JSON.
             with self._lock:
@@ -606,7 +710,7 @@ class Server(object):
                 self._jobcounter += 1
                 job = conveyor.domain.Job(
                     id, build_name, path, config, printerid, gcodeprocessor,
-                    skip_start_end, with_start_end, slicer_settings, material)
+                    skip_start_end, with_start_end, slicer_settings, print_to_file_type, material)
                 return job
 
     def addjob(self, job):
@@ -622,7 +726,8 @@ class Server(object):
     def canceljob(self, id):
         with self._lock:
             job = self._jobs[id]
-        job.process.cancel()
+        if conveyor.task.TaskState.STOPPED != job.process.state:
+            job.process.cancel()
 
     def getjobs(self):
         with self._lock:
@@ -684,34 +789,35 @@ class Server(object):
             params = {'id': printerid}
             self._invokeclients('printerremoved', params)
 
-    def printtofile(
-        self, profile, buildname, inputpath, outputpath, skip_start_end,
-        slicer_settings, material, task):
-            def func():
-                driver = conveyor.machine.s3g.S3gDriver()
-                driver.printtofile(
-                    outputpath, profile, buildname, inputpath, skip_start_end,
-                    slicer_settings, material, task)
-            self._queue.appendfunc(func)
+    def printtofile(self, profile, buildname, inputpath, outputpath,
+            skip_start_end, slicer_settings, print_to_file_type, material,
+            task, dualstrusion):
+        def func():
+            driver = conveyor.machine.s3g.S3gDriver()
+            driver.printtofile(
+                outputpath, profile, buildname, inputpath, skip_start_end,
+                slicer_settings, print_to_file_type, material, task,
+                dualstrusion)
+        self._queue.appendfunc(func)
 
     def slice(
         self, profile, inputpath, outputpath, with_start_end,
-        slicer_settings, material, task):
+        slicer_settings, material, dualstrusion, task):
             def func():
                 if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
                     slicerpath = self._config['miraclegrue']['path']
                     configpath = self._config['miraclegrue']['config']
                     slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer(
                         profile, inputpath, outputpath, with_start_end,
-                        slicer_settings, material, task, slicerpath,
-                        configpath)
+                        slicer_settings, material, dualstrusion, task,
+                        slicerpath, configpath)
                 elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
                     slicerpath = self._config['skeinforge']['path']
                     profilepath = self._config['skeinforge']['profile']
                     slicer = conveyor.slicer.skeinforge.SkeinforgeSlicer(
                         profile, inputpath, outputpath, with_start_end,
-                        slicer_settings, material, task, slicerpath,
-                        profilepath)
+                        slicer_settings, material, dualstrusion, task,
+                        slicerpath, profilepath)
                 else:
                     raise ValueError(slicer_settings.slicer)
                 slicer.slice()

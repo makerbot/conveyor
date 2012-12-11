@@ -63,6 +63,7 @@ namespace conveyor
             , const SlicerConfiguration & slicer_conf
             , QString const & material
             , bool const skipStartEnd
+            , QString const & printToFileType
             );
         Job * slice
             ( Printer * printer
@@ -70,6 +71,7 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
+            , bool const withStartEnd
             );
 
         void cancelJob (int jobId);
@@ -82,6 +84,8 @@ namespace conveyor
         EepromMap readEeprom(Printer * const printer) const;
         void writeEeprom(Printer * const printer, EepromMap map);
         void resetToFactory(Printer * const printer) const;
+        bool compatibleFirmware(QString &firmwareVersion) const;
+        bool verifyS3g(QString &s3gPath) const;
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

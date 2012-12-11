@@ -1,33 +1,44 @@
-{ "infillDensity": 0.1
+{ "infillDensity": 0.12
 , "numberOfShells": 2
-, "insetDistanceMultiplier": 0.9
-, "roofLayerCount": 4
-, "floorLayerCount": 4
+, "insetDistanceMultiplier": 0.97
+, "infillShellSpacingMultiplier" : 0.20
+, "roofThickness" : 1.2
+, "floorThickness" : 1.0
 , "layerWidthRatio": 1.45
-, "preCoarseness": 0.0
+, "layerWidthMinimum" : 0.35
+, "layerWidthMaximum" : 0.85
+, "preCoarseness": 0.1
 , "coarseness": 0.05
-, "doGraphOptimization": true
-, "directionWeight": 1.0
+, "doExternalSpurs" : true
+, "doInternalSpurs" : false
+, "minSpurWidth" : 0.12
+, "maxSpurWidth" : 0.79
+, "minSpurLength": 0.4
+, "spurOverlap" : 0.001
+, "minLayerDuration" : 10.0
 , "rapidMoveFeedRateXY": 100
 , "rapidMoveFeedRateZ": 23.0
 , "doRaft": false
-, "raftLayers": 2
+, "raftLayers": 3
 , "raftBaseThickness": 0.6
 , "raftInterfaceThickness": 0.3
 , "raftOutset": 6.0
-, "raftModelSpacing": 0.0
-, "raftDensity": 0.2
+, "raftModelSpacing": 0.3
+, "raftDensity": 0.25
+, "raftAligned" : true
 , "doSupport": false
-, "supportMargin": 1.5
-, "supportDensity": 0.2
-, "doFanCommand": true
-, "fanLayer": 2
+, "supportMargin": 2.5
+, "supportDensity": 0.15
 , "bedZOffset": 0.0
 , "layerHeight": 0.27
 , "startX": -110.4
 , "startY": -74.0
 , "startZ": 0.2
+, "startGcode": "start.gcode"
+, "endGcode": "end.gcode"
 , "doPrintProgress": true
+, "doFanCommand": true
+, "fanLayer": 3
 , "defaultExtruder": 0
 , "extruderProfiles":
     [ { "firstLayerExtrusionProfile": "firstlayer"
@@ -59,10 +70,10 @@
         { "feedrate": 80.0
         }
     , "firstlayer":
-        { "feedrate": 30.0
+        { "feedrate": 65.0
         }
     , "outlines":
-        { "feedrate": 35.0
+        { "feedrate": 40.0
         }
     }
 }
