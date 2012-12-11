@@ -111,9 +111,10 @@ class SubprocessSlicer(Slicer):
             arguments = list(self._getarguments())
             quoted_arguments = ' '.join(self._quote(a) for a in arguments)
             self._log.info('command: %s %s', quoted_executable, quoted_arguments)
+            cwd = self._getcwd()
             self._popen = subprocess.Popen(
                 arguments, executable=executable, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
+                stderr=subprocess.STDOUT, cwd=cwd)
             def cancelcallback(task):
                 self._popen.terminate()
             self._task.cancelevent.attach(cancelcallback)
@@ -157,6 +158,9 @@ class SubprocessSlicer(Slicer):
 
     def _getarguments(self):
         raise NotImplementedError
+
+    def _getcwd(self):
+        return None
 
     def _quote(self, s):
         quoted = ''.join(('"', unicode(s), '"'))

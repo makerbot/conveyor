@@ -59,7 +59,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
                     print(line, file=endfp)
         with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
             self._tmp_configpath = configfp.name
-        if self._slicer_settings.path is None:
+        if None is self._slicer_settings.path:
             config = self._getconfig()
             s = json.dumps(config)
             self._log.debug('miracle grue configuration: %s', s)
@@ -90,10 +90,13 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
             config['fanLayer'] = fanLayer
         if self._dualstrusion:
             config['doPutModelOnPlatform'] = False
+        config['startGcode'] = None
+        config['endGcode'] = None
         return config
 
     def _getexecutable(self):
-        return self._slicerpath
+        executable = os.path.abspath(self._slicerpath)
+        return executable
 
     def _getarguments(self):
         for iterable in self._getarguments_miraclegrue():
@@ -110,6 +113,13 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
             yield ('-e', self._tmp_endpath,)
         yield ('-j',)
         yield (self._inputpath,)
+
+    def _getcwd(self):
+        if None is self._slicer_settings.path:
+            cwd = None
+        else:
+            cwd = os.path.dirname(self._slicer_settings.path)
+        return cwd
 
     def _readpopen(self):
         while True:
