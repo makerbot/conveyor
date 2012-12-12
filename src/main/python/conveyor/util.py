@@ -31,7 +31,7 @@ def exception_to_failure(exception, **kwargs):
     Convert an exception to a failure dict suitable for passing to Task.fail.
 
     @param exception the exception
-    @param kwargs additional data that is included in the failure dict.
+    @param kwargs additional data that will be included in the failure dict.
 
     """
 
