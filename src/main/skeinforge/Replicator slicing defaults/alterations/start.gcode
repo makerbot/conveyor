@@ -13,7 +13,7 @@ G92 X163 Y75 Z0 A0 B0
 G1 X-112 Y-73 Z150 F3300.0 (move to waiting position)
 G130 X20 Y20 A20 B20 (Lower stepper Vrefs while heating)
 M135 T0
-M104 S230
+M104 T0 S230
 M133 T0
 G130 X127 Y127 A127 B127 (Set Stepper motor Vref to defaults)
 (*** End start gcode ***)
