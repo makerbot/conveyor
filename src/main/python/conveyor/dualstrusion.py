@@ -11,10 +11,14 @@ sys.path.insert(0, path)
 
 import re
 import collections
-import mock
 import unittest
 import makerbot_driver
 import conveyor
+
+try:
+    import mock
+except ImportError:
+    pass
 
 class DualstrusionWeaver(object):
 
