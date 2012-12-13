@@ -121,6 +121,7 @@ if 'nt' != os.name:
     class _PosixPipeAddress(_AbstractPipeAddress):
         def listen(self):
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.setblocking(True)
             s.bind(self._path)
             os.chmod(self._path, 0666)
             s.listen(socket.SOMAXCONN)
@@ -129,6 +130,7 @@ if 'nt' != os.name:
 
         def connect(self):
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.setblocking(True)
             s.connect(self._path)
             connection = conveyor.connection.SocketConnection(s, None)
             return connection
