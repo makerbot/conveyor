@@ -293,22 +293,11 @@ class _GcodeRecipe(Recipe):
     def print(self, printerthread):
         tasks = []
 
-        # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors()
-        if 0 == len(gcodeprocessors):
-            processed_gcodepath = self._job.path
-        else:
-            with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
-                processed_gcodepath = processed_gcodefp.name
-            gcodeprocessortask = self._gcodeprocessortask(
-                self._job.path, processed_gcodepath)
-            tasks.append(gcodeprocessortask)
-
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputfp:
             outputpath = outputfp.name
         with_start_end_task = self._with_start_end_task(
             printerthread._profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, False, processed_gcodepath, outputpath)
+            self._job.with_start_end, False, self._job.path, outputpath)
         tasks.append(with_start_end_task)
 
         # Print
@@ -326,22 +315,11 @@ class _GcodeRecipe(Recipe):
     def printtofile(self, profile, outputpath):
         tasks = []
 
-        # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors()
-        if 0 == len(gcodeprocessors):
-            processed_gcodepath = self._job.path
-        else:
-            with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
-                processed_gcodepath = processed_gcodefp.name
-            gcodeprocessortask = self._gcodeprocessortask(
-                self._job.path, processed_gcodepath)
-            tasks.append(gcodeprocessortask)
-
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, False, processed_gcodepath, start_end_path)
+            self._job.with_start_end, False, self._job.path, start_end_path)
         tasks.append(with_start_end_task)
 
         # Print
