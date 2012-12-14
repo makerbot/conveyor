@@ -50,6 +50,7 @@ namespace conveyor
         , m_printer(0)
         , m_id(id)
         , m_state(RUNNING)
+        , m_conclusion(NOTCONCLUDED)
     {
 
     }
