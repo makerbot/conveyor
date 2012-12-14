@@ -304,11 +304,7 @@ class _GcodeRecipe(Recipe):
         printtask = self._printtask(printerthread, outputpath, False)
         tasks.append(printtask)
 
-        def process_endcallback(task):
-            if processed_gcodepath != self._gcodepath:
-                os.unlink(processed_gcodepath)
         process = conveyor.process.tasksequence(self._job, tasks)
-        process.endevent.attach(process_endcallback)
         return process
 
 
@@ -330,8 +326,7 @@ class _GcodeRecipe(Recipe):
         tasks.append(self.verifys3gtask(outputpath))
 
         def process_endcallback(task):
-            if processed_gcodepath != self._gcodepath:
-                os.unlink(processed_gcodepath)
+            os.unlink(start_end_path)
         process = conveyor.process.tasksequence(self._job, tasks)
         process.endevent.attach(process_endcallback)
         return process
