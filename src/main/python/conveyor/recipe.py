@@ -460,7 +460,7 @@ class _StlRecipe(Recipe):
 
         gcodeprocessors = self.getgcodeprocessors()
         if 0 == len(gcodeprocessors):
-            processed_gcodepath = outputpath
+            processed_gcodepath = gcodepath 
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
