@@ -126,6 +126,8 @@ class Recipe(object):
         if None is gcodeprocessors:
             gcodeprocessors = []
         if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
+            if 'TemperatureProcessor' not in gcodeprocessors and self._job.slicer_settings.path is None:
+                gcodeprocessors.insert(0, 'TemperatureProcessor')
             if 'AnchorProcessor' not in gcodeprocessors and self._job.slicer_settings.path is None:
                 gcodeprocessors.insert(0, 'AnchorProcessor')
             if 'Skeinforge50Processor' not in gcodeprocessors:
