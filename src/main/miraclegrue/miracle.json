@@ -3,7 +3,7 @@
  slice settings. For documentation on MakerBot Slicer parameters, see here:
  http://www.makerbot.com/support/makerware/documentation/slicer"
 
-, "infillDensity": 0.12
+, "infillDensity": 0.1
 , "numberOfShells": 2
 , "insetDistanceMultiplier": 0.97
 , "infillShellSpacingMultiplier" : 0.20
@@ -75,7 +75,7 @@
         { "feedrate": 80.0
         }
     , "firstlayer":
-        { "feedrate": 65.0
+        { "feedrate": 40.0
         }
     , "outlines":
         { "feedrate": 40.0
