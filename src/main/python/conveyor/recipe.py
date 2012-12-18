@@ -128,8 +128,6 @@ class Recipe(object):
         if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
             # custom profile (has own start/end)
             if self._job.slicer_settings.path is None:
-                if 'SetTemperatureProcessor' not in gcodeprocessors:
-                    gcodeprocessors.append('SetTemperatureProcessor')
                 if 'AnchorProcessor' not in gcodeprocessors:
                     gcodeprocessors.insert(0, 'AnchorProcessor')
             if 'Skeinforge50Processor' not in gcodeprocessors:
