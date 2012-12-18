@@ -121,7 +121,7 @@ class Recipe(object):
         self._job = job
         self._server = server
 
-    def getgcodeprocessors(self):
+    def getgcodeprocessors(self, profile):
         gcodeprocessors = self._job.gcodeprocessor
         if None is gcodeprocessors:
             gcodeprocessors = []
@@ -132,7 +132,7 @@ class Recipe(object):
                 gcodeprocessors.insert(0, 'AnchorProcessor')
             if 'Skeinforge50Processor' not in gcodeprocessors:
                 gcodeprocessors.append('Skeinforge50Processor')
-            if self._config['common']['profile'] == "Replicator2":
+            if profile.values['type'] == "The Replicator 2":
                 if 'FanProcessor' not in gcodeprocessors:
                     gcodeprocessors.append('FanProcessor')
         return gcodeprocessors
@@ -150,9 +150,9 @@ class Recipe(object):
         slicertask.runningevent.attach(runningcallback)
         return slicertask
 
-    def _gcodeprocessortask(self, inputpath, outputpath):
+    def _gcodeprocessortask(self, inputpath, outputpath, profile):
         factory = makerbot_driver.GcodeProcessors.ProcessorFactory()
-        gcodeprocessor_list = self.getgcodeprocessors()
+        gcodeprocessor_list = self.getgcodeprocessors(profile)
         gcodeprocessors = list(factory.get_processors(gcodeprocessor_list))
         def runningcallback(task):
             try:
@@ -351,14 +351,14 @@ class _StlRecipe(Recipe):
         tasks.append(slicetask)
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors()
+        gcodeprocessors = self.getgcodeprocessors(profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
-                gcodepath, processed_gcodepath)
+                gcodepath, processed_gcodepath, profile)
             tasks.append(gcodeprocessortask)
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputfp:
@@ -391,14 +391,14 @@ class _StlRecipe(Recipe):
         tasks.append(slicetask)
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors()
+        gcodeprocessors = self.getgcodeprocessors(profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
-                gcodepath, processed_gcodepath)
+                gcodepath, processed_gcodepath, profile)
             tasks.append(gcodeprocessortask)
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
@@ -433,7 +433,7 @@ class _StlRecipe(Recipe):
             profile, self._stlpath, gcodepath, False, False)
         tasks.append(slicetask)
 
-        gcodeprocessors = self.getgcodeprocessors()
+        gcodeprocessors = self.getgcodeprocessors(profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath 
         else:
@@ -442,7 +442,7 @@ class _StlRecipe(Recipe):
 
         # Process Gcode
         if 0 != len(gcodeprocessors):
-            gcodeprocessortask = self._gcodeprocessortask(gcodepath, processed_gcodepath)
+            gcodeprocessortask = self._gcodeprocessortask(gcodepath, processed_gcodepath, profile)
             tasks.append(gcodeprocessortask)
 
         with_start_end_task = self._with_start_end_task(
@@ -523,14 +523,14 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors()
+        gcodeprocessors = self.getgcodeprocessors(profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = dualstrusion_path
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
-                dualstrusion_path, processed_gcodepath)
+                dualstrusion_path, processed_gcodepath, profile)
             tasks.append(gcodeprocessortask)
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
@@ -586,9 +586,9 @@ class _DualThingRecipe(_ThingRecipe):
         # Process Gcode
         with tempfile.NamedTemporaryFile(suffix='.dual.gcode') as f:
             dual_path = f.name
-        gcodeprocessors = self.getgcodeprocessors()
+        gcodeprocessors = self.getgcodeprocessors(profile)
         gcodeprocessortask = self._gcodeprocessortask(
-            dualstrusion_path, dual_path)
+            dualstrusion_path, dual_path, profile)
         tasks.append(gcodeprocessortask)
 
         with_start_end_task = self._with_start_end_task(
@@ -633,14 +633,14 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors()
+        gcodeprocessors = self.getgcodeprocessors(profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = dualstrusion_path
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
-                dualstrusion_path, processed_gcodepath)
+                dualstrusion_path, processed_gcodepath, profile)
             tasks.append(gcodeprocessortask)
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputpathfp:
