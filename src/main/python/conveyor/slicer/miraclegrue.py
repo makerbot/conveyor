@@ -85,9 +85,10 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         config['extrusionProfiles']['infill']['feedrate'] = self._slicer_settings.print_speed
         if self._slicer_settings.raft:
             raftLayers = config['raftLayers']
-            fanLayer = config['fanLayer']
-            fanLayer += raftLayers
-            config['fanLayer'] = fanLayer
+#            fanLayer = config['fanLayer']
+#            fanLayer += raftLayers
+#            config['fanLayer'] = fanLayer
+            config['fanLayer'] = raftLayers #We want the fan to turn on immediately after the raft
         if self._dualstrusion:
             config['doPutModelOnPlatform'] = False
         config['startGcode'] = None
