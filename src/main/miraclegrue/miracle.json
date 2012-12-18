@@ -21,7 +21,7 @@
 , "maxSpurWidth" : 0.79
 , "minSpurLength": 0.4
 , "spurOverlap" : 0.001
-, "minLayerDuration" : 10.0
+, "minLayerDuration" : 5.0
 , "rapidMoveFeedRateXY": 100
 , "rapidMoveFeedRateZ": 23.0
 , "doRaft": false
