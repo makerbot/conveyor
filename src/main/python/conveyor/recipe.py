@@ -126,10 +126,14 @@ class Recipe(object):
         if None is gcodeprocessors:
             gcodeprocessors = []
         if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
-            if 'TemperatureProcessor' not in gcodeprocessors and self._job.slicer_settings.path is None:
-                gcodeprocessors.insert(0, 'TemperatureProcessor')
-            if 'AnchorProcessor' not in gcodeprocessors and self._job.slicer_settings.path is None:
-                gcodeprocessors.insert(0, 'AnchorProcessor')
+            # custom profile (has own start/end)
+            if self._job.slicer_settings.path is None:
+                if 'GetTemperatureProcessor' not in gcodeprocessors:
+                    gcodeprocessors.insert(0, 'GetTemperatureProcessor')
+                if 'AnchorProcessor' not in gcodeprocessors:
+                    gcodeprocessors.insert(0, 'AnchorProcessor')
+            if 'SetTemperatureProcessor' not in gcodeprocessors:
+                gcodeprocessors.append('SetTemperatureProcessor')
             if 'Skeinforge50Processor' not in gcodeprocessors:
                 gcodeprocessors.append('Skeinforge50Processor')
             if profile.values['type'] == "The Replicator 2":
