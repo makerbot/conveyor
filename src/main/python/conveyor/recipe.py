@@ -226,15 +226,12 @@ class Recipe(object):
         executing the verifys3g command.
         """
         task = conveyor.task.Task()
-        progressreport = {
-                'name': 'verify',
-                'progress': 0,
-            }
-        oldprogressreport = progressreport
         def update(percent):
-            oldprogressreport = progressreport
-            progressreport['progress'] = percent
-            task.lazy_heartbeat(progressreport, oldprogressreport)
+            progress = {
+                'name': 'verify',
+                'progress': percent
+            }
+            task.lazy_heartbeat(progress)
 
 
         def runningcallback(task):
