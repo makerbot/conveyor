@@ -132,8 +132,6 @@ class Recipe(object):
                     gcodeprocessors.append('SetTemperatureProcessor')
                 if 'AnchorProcessor' not in gcodeprocessors:
                     gcodeprocessors.insert(0, 'AnchorProcessor')
-            if 'GetTemperatureProcessor' not in gcodeprocessors:
-                gcodeprocessors.append('GetTemperatureProcessor')
             if 'Skeinforge50Processor' not in gcodeprocessors:
                 gcodeprocessors.append('Skeinforge50Processor')
             if profile.values['type'] == "The Replicator 2":
