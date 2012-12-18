@@ -1,4 +1,9 @@
-{ "infillDensity": 0.1
+{ "comment" :
+"This is a custom profile for MakerBot Slicer. Editing it will modify your
+ slice settings. For documentation on MakerBot Slicer parameters, see here:
+ http://www.makerbot.com/support/makerware/documentation/slicer"
+
+, "infillDensity": 0.1
 , "numberOfShells": 2
 , "insetDistanceMultiplier": 0.97
 , "infillShellSpacingMultiplier" : 0.20
@@ -21,7 +26,7 @@
 , "doRaft": false
 , "raftLayers": 3
 , "raftBaseThickness": 0.6
-, "raftInterfaceThickness": 0.3
+, "raftInterfaceThickness": 0.1
 , "raftOutset": 6.0
 , "raftModelSpacing": 0.3
 , "raftDensity": 0.25
