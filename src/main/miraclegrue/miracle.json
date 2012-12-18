@@ -1,7 +1,8 @@
-{ "comment" :
-"This is a custom profile for MakerBot Slicer. Editing it will modify your
- slice settings. For documentation on MakerBot Slicer parameters, see here:
- http://www.makerbot.com/support/makerware/documentation/slicer"
+{ "comment" : [
+ "This is a custom profile for MakerBot Slicer. Editing it will modify your",
+  "slice settings. For documentation on MakerBot Slicer parameters, see here:",
+  "http://www.makerbot.com/support/makerware/documentation/slicer"
+]
 
 , "infillDensity": 0.1
 , "numberOfShells": 2
