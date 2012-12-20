@@ -165,13 +165,13 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         """
         self._condition = threading.Condition()
         self._idcounter = 0
-        self._infp = infp # contract: .read(), .stop()
+        self._infp = infp # contract: .read(), .stop(), .close()
         self._jsonreader = _JsonReader()
         self._jsonreader.event.attach(self._jsonreadercallback)
         self._log = logging.getLogger(self.__class__.__name__)
         self._methods = {}
         self._methodsinfo={}
-        self._outfp = outfp # contract: .write(str)
+        self._outfp = outfp # contract: .write(str), .close()
         self._stopped = False
         self._tasks = {}
         reader_class = codecs.getreader('UTF-8')
@@ -300,12 +300,23 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
                     self._jsonreader.feed(data)
         self._jsonreader.feedeof()
         self._log.debug('ending')
+        self.close()
 
     def stop(self):
         """ required as a stoppable object. """
         with self._condition:
             self._stopped = True
         self._infp.stop()
+
+    def close(self):
+        try:
+            self._infp_reader.close()
+        except:
+            self._log.debug('handled exception', exc_info=True)
+        try:
+            self._outfp_writer.close()
+        except:
+            self._log.debug('handled exception', exc_info=True)
 
     #
     # Client part
