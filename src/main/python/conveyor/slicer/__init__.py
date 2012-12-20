@@ -122,6 +122,14 @@ class SubprocessSlicer(Slicer):
             self._readpopen()
             slicerlog = self._slicerlog.getvalue()
             self._code = self._popen.wait()
+            try:
+                self._popen.stdout.close()
+            except:
+                self._log.debug('handled exception', exc_info=True)
+            try:
+                self._popen.stderr.close()
+            except:
+                self._log.debug('handled exception', exc_info=True)
             if (0 != self._code
                 and conveyor.task.TaskConclusion.CANCELED != self._task.conclusion):
                     self._log.error('%s terminated with code %s', name, self._code)
