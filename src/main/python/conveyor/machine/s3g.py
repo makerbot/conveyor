@@ -1,4 +1,4 @@
-# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
+# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4
 # conveyor/src/main/python/conveyor/machine/s3g.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.
@@ -634,10 +634,10 @@ class S3gDriver(object):
             s = self.create_s3g_from_fp(fp)
             version = str(s.get_version())
             try:
-              advanced_version_dict = s.get_advanced_version()
-              software_variant = hex(advanced_version_dict['SoftwareVariant'])
-              if len(software_variant.split('x')[1]) == 1:
-                  software_variant = software_variant.replace('x', 'x0')
+                advanced_version_dict = s.get_advanced_version()
+                software_variant = hex(advanced_version_dict['SoftwareVariant'])
+                if len(software_variant.split('x')[1]) == 1:
+                    software_variant = software_variant.replace('x', 'x0')
             except makerbot_driver.errors.CommandNotSupportedError:
                 software_variant = '0x00'
 
