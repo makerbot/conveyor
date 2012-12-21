@@ -7,10 +7,10 @@
 , "infillDensity": 0.1
 , "numberOfShells": 2
 , "insetDistanceMultiplier": 0.97
-, "infillShellSpacingMultiplier" : 0.20
+, "infillShellSpacingMultiplier" : 0.70
 , "roofThickness" : 1.2
 , "floorThickness" : 1.0
-, "layerWidthRatio": 1.45
+, "layerWidthRatio": 1.482
 , "layerWidthMinimum" : 0.4
 , "layerWidthMaximum" : 0.85
 , "preCoarseness": 0.1
@@ -34,7 +34,7 @@
 , "raftDensity": 0.25
 , "raftAligned" : true
 , "doSupport": false
-, "supportMargin": 2.5
+, "supportMargin": 1.5
 , "supportDensity": 0.15
 , "bedZOffset": 0.0
 , "layerHeight": 0.27
