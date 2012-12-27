@@ -88,22 +88,6 @@ libconveyor = cppenv.StaticLibrary(
         cppenv.Moc4('include/conveyor/eeprommap.h')
     ])
 
-inst = []
-inst.append(cppenv.InstallAs( 'etc/conveyor.conf','conveyor-debian.conf'))
-inst.append(cppenv.Install('usr/lib',libconveyor))
-inst.append(cppenv.Install('usr/include','include/conveyor.h'))
-
-pysrc_root = str(Dir('#/src/main/python'))
-for root,dirnames,filenames in os.walk(pysrc_root):
-    for filename in fnmatch.filter(filenames,'*.py'):
-        rpath = os.path.relpath(root,pysrc_root)
-        outdir = os.path.join('module',rpath)
-        insrc = os.path.join(root,filename)
-        inst.append(cppenv.Install(outdir,insrc))
-        # print outdir,insrc
-
-env.Alias('install',inst)
-
 tests = {}
 testenv = cppenv.Clone()
 
@@ -149,4 +133,104 @@ if run_unit_tests:
     for (name, test) in tests.items():
         testenv.Command('runtest_test_'+name, test, test)
 
+def rInstall(dest, src, pattern='*'):
+    installs = []
 
+    print "rInstall " + src + "->" + dest
+
+    for curpath, dirnames, filenames in os.walk(src):
+        relative = os.path.relpath(curpath, src)
+
+        print "Installing " + curpath + " into " + os.path.join(dest, relative)
+
+        installs.append(cppenv.Install(os.path.join(dest, relative),
+                                       filter(lambda f:
+                                                  (os.path.exists(str(f)) and
+                                                   not os.path.isdir(str(f))),
+                                         Glob(os.path.join(curpath, pattern)))))
+
+    return installs
+
+
+install_prefix = ARGUMENTS.get('install_prefix', '')
+config_prefix = ARGUMENTS.get('config_prefix', '')
+
+install_bins = ['submodule/conveyor_bins/python']
+
+inst = []
+if sys.platform == "linux2":
+    if install_prefix == '': install_prefix = '/usr'
+    if config_prefix == '': config_prefix = '/etc'
+
+    conveyor_dir = install_prefix + '/share/conveyor'
+    pylib_dir = conveyor_dir + '/lib'
+    mg_config_dir = install_prefix + '/share/miracle-grue'
+    sk_config_dir = install_prefix + '/share/skeinforge'
+    conveyor_bins_dir = conveyor_dir
+
+    inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
+                                 'conveyor-debian.conf'))
+    inst.append(cppenv.InstallAs(config_prefix + '/init/conveyor.conf',
+                               'linux/conveyor-upstart.conf'))
+    inst.append(cppenv.Install(install_prefix + '/lib', libconveyor))
+    inst.append(cppenv.Install(conveyor_dir, 'wrapper/conveyord'))
+    inst.append(cppenv.Install(conveyor_dir, 'setup.sh'))
+
+    inst += rInstall(install_prefix + '/include/makerbot',
+                     str(Dir('#/include')), '*.h')
+
+elif sys.platform == 'darwin':
+    framework_dir = install_prefix + '/Library/Frameworks/MakerBot.framework/Makerbot'
+    conveyor_dir = framework_dir + '/conveyor'
+    launchd_dir = '/Library/LaunchDaemons'
+
+    if config_prefix == '': config_prefix = conveyor_dir
+    pylib_dir = conveyor_dir + '/src/main/python'
+    mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
+    sk_config_dir = conveyor_dir + '/src/main/skeinforge'
+    conveyor_bins_dir = conveyor_dir + 'submodule/conveyor_bins'
+    install_bins.append('submodule/conveyor_bins/mac')
+
+    inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
+                                 'conveyor-mac.conf'))
+    inst.append(cppenv.Install(launchd_dir, 'mac/com.makerbot.conveyor.plist'))
+    inst.append(cppenv.Install(conveyor_dir, 'setup.sh'))
+
+elif sys.platform == 'win32':
+    if install_prefix == '':
+        if os.path.exists('c:/Program Files (x86)'):
+            install_prefix = 'c:/Program Files (x86)/MakerBot'
+        else:
+            install_prefix = 'c:/Program Files/MakerBot'
+
+    conveyor_dir = install_prefix + '/conveyor'
+
+    if config_prefix == '': config_prefix = conveyor_dir
+
+    pylib_dir = conveyor_dir + '/src/main/python'
+    mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
+    sk_config_dir = conveyor_dir + '/src/main/skeinforge'
+    conveyor_bins_dir = 'submodule/conveyor_bins'
+    install_bins.append('submodule/conveyor_bins/win')
+
+    inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
+                                 'conveyor-mac.conf'))
+    inst.append(cppenv.Install(conveyor_dir, 'setup.bat'))
+    inst.append(cppenv.Install(conveyor_dir, 'start.bat'))
+    inst.append(cppenv.Install(conveyor_dir, 'stop.bat'))
+
+    
+inst += rInstall(pylib_dir, str(Dir('#/src/main/python')), '*.py')
+inst += rInstall(mg_config_dir, str(Dir('#/src/main/miraclegrue')))
+inst += rInstall(sk_config_dir, str(Dir('#/src/main/skeinforge')))
+
+inst.append(cppenv.Install(conveyor_dir, 'conveyor_service.py'))
+inst.append(cppenv.Install(conveyor_dir, 'conveyor_cmdline_client.py'))
+inst.append(cppenv.Install(conveyor_dir, 'COPYING'))
+inst.append(cppenv.Install(conveyor_dir, 'README.md'))
+inst.append(cppenv.Install(conveyor_dir, 'HACKING.md'))
+
+for conveyor_bin in install_bins:
+    inst.append(rInstall(conveyor_bins_dir, conveyor_bin))
+
+env.Alias('install',inst)
