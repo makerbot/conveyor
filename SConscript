@@ -211,7 +211,7 @@ elif sys.platform == 'win32':
     mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
     sk_config_dir = conveyor_dir + '/src/main/skeinforge'
     conveyor_bins_dir = conveyor_dir + '/submodule/conveyor_bins'
-    install_bins.append('#/submodule/conveyor_bins/win')
+    install_bins.append('#/submodule/conveyor_bins/windows')
 
     inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
                                  'conveyor-mac.conf'))
