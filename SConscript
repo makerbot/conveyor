@@ -210,7 +210,7 @@ elif sys.platform == 'win32':
     pylib_dir = conveyor_dir + '/src/main/python'
     mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
     sk_config_dir = conveyor_dir + '/src/main/skeinforge'
-    conveyor_bins_dir = conveyor_dir + 'submodule/conveyor_bins'
+    conveyor_bins_dir = conveyor_dir + '/submodule/conveyor_bins'
     install_bins.append('#/submodule/conveyor_bins/win')
 
     inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
