@@ -155,7 +155,7 @@ def rInstall(dest, src, pattern='*'):
 install_prefix = ARGUMENTS.get('install_prefix', '')
 config_prefix = ARGUMENTS.get('config_prefix', '')
 
-install_bins = ['submodule/conveyor_bins/python']
+install_bins = ['#/submodule/conveyor_bins/python']
 
 inst = []
 if sys.platform == "linux2":
@@ -166,7 +166,7 @@ if sys.platform == "linux2":
     pylib_dir = conveyor_dir + '/lib'
     mg_config_dir = install_prefix + '/share/miracle-grue'
     sk_config_dir = install_prefix + '/share/skeinforge'
-    conveyor_bins_dir = conveyor_dir
+    conveyor_bins_dir = conveyor_dir + '/conveyor_bins'
 
     inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
                                  'conveyor-debian.conf'))
@@ -189,7 +189,7 @@ elif sys.platform == 'darwin':
     mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
     sk_config_dir = conveyor_dir + '/src/main/skeinforge'
     conveyor_bins_dir = conveyor_dir + 'submodule/conveyor_bins'
-    install_bins.append('submodule/conveyor_bins/mac')
+    install_bins.append('#/submodule/conveyor_bins/mac')
 
     inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
                                  'conveyor-mac.conf'))
@@ -211,7 +211,7 @@ elif sys.platform == 'win32':
     mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
     sk_config_dir = conveyor_dir + '/src/main/skeinforge'
     conveyor_bins_dir = 'submodule/conveyor_bins'
-    install_bins.append('submodule/conveyor_bins/win')
+    install_bins.append('#/submodule/conveyor_bins/win')
 
     inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
                                  'conveyor-mac.conf'))
@@ -231,6 +231,6 @@ inst.append(cppenv.Install(conveyor_dir, 'README.md'))
 inst.append(cppenv.Install(conveyor_dir, 'HACKING.md'))
 
 for conveyor_bin in install_bins:
-    inst.append(rInstall(conveyor_bins_dir, conveyor_bin))
+    inst.append(rInstall(conveyor_bins_dir, str(Dir(conveyor_bin))))
 
 env.Alias('install',inst)
