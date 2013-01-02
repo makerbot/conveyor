@@ -15,7 +15,7 @@
 , "layerWidthMaximum" : 0.85
 , "preCoarseness": 0.1
 , "coarseness": 0.05
-, "gridSpacingMultilier": 1.1
+, "gridSpacingMultiplier": 1.1
 , "doExternalSpurs" : true
 , "doInternalSpurs" : false
 , "minSpurWidth" : 0.12
