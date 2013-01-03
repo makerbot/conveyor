@@ -15,7 +15,7 @@
 , "layerWidthMaximum" : 0.85
 , "preCoarseness": 0.1
 , "coarseness": 0.05
-, "gridSpacingMultiplier": 0.8
+, "gridSpacingMultiplier": 0.99
 , "doExternalSpurs" : true
 , "doInternalSpurs" : false
 , "minSpurWidth" : 0.12
@@ -53,7 +53,7 @@
       , "infillsExtrusionProfile": "infill"
       , "outlinesExtrusionProfile": "outlines"
       , "feedDiameter": 1.82
-      , "feedstockMultiplier": 0.85
+      , "feedstockMultiplier": 0.773
       , "nozzleDiameter": 0.4
       , "retractDistance": 1.0
       , "retractRate": 20.0
@@ -64,7 +64,7 @@
       , "infillsExtrusionProfile": "infill"
       , "outlinesExtrusionProfile": "outlines"
       , "feedDiameter": 1.82
-      , "feedstockMultiplier": 0.85
+      , "feedstockMultiplier": 0.773
       , "nozzleDiameter": 0.4
       , "retractDistance": 1.0
       , "retractRate": 20.0
