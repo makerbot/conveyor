@@ -27,8 +27,8 @@
 , "rapidMoveFeedRateZ": 23.0
 , "doRaft": false
 , "raftLayers": 3
-, "raftBaseThickness": 0.6
-, "raftInterfaceThickness": 0.2
+, "raftBaseThickness": 0.5
+, "raftInterfaceThickness": 0.27
 , "raftOutset": 6.0
 , "raftModelSpacing": 0.15
 , "raftDensity": 0.25
