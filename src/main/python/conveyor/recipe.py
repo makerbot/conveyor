@@ -253,10 +253,6 @@ class Recipe(object):
         return task
     
     def verifygcodetask(self, gcodepath, profile, slicer_settings, material, dualstrusion):
-        """
-        This function is static so it can be accessed by server/__init__.py when 
-        executing the verifys3g command.
-        """
         task = conveyor.task.Task()
         
         def update(percent):
@@ -277,20 +273,16 @@ class Recipe(object):
             parser.s3g = mock.Mock()
             start_gcode, end_gcode, variables = conveyor.util._get_start_end_variables(profile, slicer_settings, material, dualstrusion)
             parser.environment.update(variables)
-            print("checking")
             try:
                 with open(gcodepath) as f:
                     for line in f:
-                        print("checking line")
                         parser.execute_line(line)
                         update(parser.state.percentage)
                 task.end(True)
             except makerbot_driver.Gcode.GcodeError as e:
                 message = conveyor.util.exception_to_failure(e)
                 task.fail(message)
-                print("FAIL")
         task.runningevent.attach(runningcallback)
-        print("OK")
         return task
 
     def _with_start_end_task(self, profile, slicer_settings, material,
@@ -359,13 +351,18 @@ class _GcodeRecipe(Recipe):
 
     def printtofile(self, profile, outputpath):
         tasks = []
+        dualstrusion = False
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.skip_start_end, False, self._job.path, start_end_path)
+            self._job.skip_start_end, dualstrusion, self._job.path, start_end_path)
         tasks.append(with_start_end_task)
+
+        #verify
+        verifytask = self.verifygcodetask(start_end_path, profile, self._job.slicer_settings, self._job.material, dualstrusion)
+        tasks.append(verifytask)
 
         # Print
         printtofiletask = self._printtofiletask(
@@ -434,6 +431,7 @@ class _StlRecipe(Recipe):
 
     def printtofile(self, profile, outputpath):
         tasks = []
+        dualstrusion = False
 
         # Slice
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
@@ -457,8 +455,12 @@ class _StlRecipe(Recipe):
             start_end_path = start_end_pathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.skip_start_end, False, processed_gcodepath, start_end_path)
+            self._job.skip_start_end, dualstrusion, processed_gcodepath, start_end_path)
         tasks.append(with_start_end_task)
+
+        #verify
+        verifytask = self.verifygcodetask(start_end_path, profile, self._job.slicer_settings, self._job.material, dualstrusion)
+        tasks.append(verifytask)
 
         # Print
         printtofiletask = self._printtofiletask(
@@ -547,6 +549,7 @@ class _DualThingRecipe(_ThingRecipe):
 
     def printtofile(self, profile, outputpath):
         tasks = []
+        dualstrusion = True
         stl_1_path = self._stl_1_path
         with tempfile.NamedTemporaryFile(suffix='.0.gcode') as f:
             gcode_0_path = f.name
@@ -589,9 +592,12 @@ class _DualThingRecipe(_ThingRecipe):
             start_end_path = start_end_pathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.skip_start_end, True, processed_gcodepath, start_end_path)
+            self._job.skip_start_end, dualstrusion, processed_gcodepath, start_end_path)
         tasks.append(with_start_end_task)
         
+        #verify
+        verifytask = self.verifygcodetask(start_end_path, profile, self._job.slicer_settings, self._job.material, dualstrusion)
+        tasks.append(verifytask)
 
         # Print To File
         printtofiletask = self._printtofiletask(
