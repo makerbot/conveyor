@@ -203,7 +203,7 @@ class Recipe(object):
             self._log.info("printing %s" % (inputpath))
             printerthread.print(
                 self._job, self._job.build_name, inputpath,
-                self._job.skip_start_end, self._job.slicer_settings,
+                self._job.slicer_settings,
                 self._job.print_to_file_type, self._job.material, task,
                 dualstrusion)
         task = conveyor.task.Task()
@@ -214,7 +214,7 @@ class Recipe(object):
         def runningcallback(task):
             self._server.printtofile(
                 profile, self._job.build_name, inputpath, outputpath,
-                self._job.skip_start_end,  self._job.slicer_settings,
+                self._job.slicer_settings,
                 self._job.print_to_file_type, self._job.material, task,
                 dualstrusion)
         task = conveyor.task.Task()
@@ -252,7 +252,7 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
     
-    def verifygcodetask(self, gcodepath, profile):
+    def verifygcodetask(self, gcodepath, profile, slicer_settings, material, dualstrusion):
         """
         This function is static so it can be accessed by server/__init__.py when 
         executing the verifys3g command.
@@ -275,25 +275,32 @@ class Recipe(object):
             parser.state.values['build_name'] = "VALIDATION"
             parser.state.profile = profile
             parser.s3g = mock.Mock()
+            start_gcode, end_gcode, variables = conveyor.util._get_start_end_variables(profile, slicer_settings, material, dualstrusion)
+            parser.environment.update(variables)
+            print("checking")
             try:
                 with open(gcodepath) as f:
                     for line in f:
+                        print("checking line")
                         parser.execute_line(line)
+                        update(parser.state.percentage)
+                task.end(True)
             except makerbot_driver.Gcode.GcodeError as e:
                 message = conveyor.util.exception_to_failure(e)
                 task.fail(message)
+                print("FAIL")
         task.runningevent.attach(runningcallback)
+        print("OK")
         return task
 
     def _with_start_end_task(self, profile, slicer_settings, material,
             skip_start_end, dualstrusion, input_path, output_path):
         def running_callback(task):
-            self._log.info("Writing out gcode to %s with%s start/end gcode" % (output_path, '' if with_start_end else 'out'))
+            self._log.info("Writing out gcode to %s with%s start/end gcode" % (output_path, '' if not skip_start_end else 'out'))
             try:
                 with open(input_path) as ifp:
                     with open(output_path, 'w') as ofp:
-                        driver = conveyor.machine.s3g.S3gDriver()
-                        start, end, variables = driver._get_start_end_variables(
+                        start, end, variables = conveyor.util._get_start_end_variables(
                             profile, slicer_settings, material, dualstrusion)
                         if not skip_start_end:
                             for line in start:
@@ -328,17 +335,18 @@ class _GcodeRecipe(Recipe):
         self._gcodepath = gcodepath
 
     def print(self, printerthread):
+        dualstrusion = False
         tasks = []
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputfp:
             outputpath = outputfp.name
         with_start_end_task = self._with_start_end_task(
             printerthread._profile, self._job.slicer_settings, self._job.material,
-            self._job.skip_start_end, False, self._job.path, outputpath)
+            self._job.skip_start_end, dualstrusion, self._job.path, outputpath)
         tasks.append(with_start_end_task)
 
         #verify
-        verifytask = self.verifygcodetask(outputpath, printerthread._profile)
+        verifytask = self.verifygcodetask(outputpath, printerthread._profile, self._job.slicer_settings, self._job.material, dualstrusion)
         tasks.append(verifytask)
 
         # Print
@@ -379,6 +387,7 @@ class _StlRecipe(Recipe):
         self._stlpath = stlpath
 
     def print(self, printerthread):
+        dualstrusion = False
         tasks = []
 
         # Slice
@@ -404,11 +413,11 @@ class _StlRecipe(Recipe):
             outputpath = outputfp.name
         with_start_end_task = self._with_start_end_task(
             printerthread._profile, self._job.slicer_settings, self._job.material,
-            self._job.skip_start_end, False, processed_gcodepath, outputpath)
+            self._job.skip_start_end, dualstrusion, processed_gcodepath, outputpath)
         tasks.append(with_start_end_task)
 
         #verify
-        verifytask = self.verifygcodetask(outputpath, printerthread._profile)
+        verifytask = self.verifygcodetask(outputpath, printerthread._profile, self._job.slicer_settings, self._job.material, dualstrusion)
         tasks.append(verifytask)
 
         # Print
@@ -647,6 +656,7 @@ class _DualThingRecipe(_ThingRecipe):
         return process
 
     def print(self, printerthread):
+        dualstrusion = True
         profile = printerthread.getprofile()
         tasks = []
         with tempfile.NamedTemporaryFile(suffix='.0.gcode') as f:
@@ -690,11 +700,11 @@ class _DualThingRecipe(_ThingRecipe):
             outputpath = outputpathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.skip_start_end, True, processed_gcodepath, outputpath)
+            self._job.skip_start_end, dualstrusion, processed_gcodepath, outputpath)
         tasks.append(with_start_end_task)
 
         #verify
-        verifytask = self.verifygcodetask(outputpath, printerthread._profile)
+        verifytask = self.verifygcodetask(outputpath, printerthread._profile, self._job.slicer_settings, self._job.material, dualstrusion)
         tasks.append(verifytask)
 
         #print
