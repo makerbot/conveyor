@@ -1,26 +1,40 @@
 #! /bin/sh
+# vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
+# conveyor/stop.sh
+#
+# conveyor - Printing dispatch engine for 3D objects and their friends.
+# Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # set -x
 
-#shutdown processes
 if [ -f conveyord.pid ]
 then
-	kill $(cat conveyord.pid)
-	if [ -e conveyord.pid ]
-	then
-		rm -f conveyord.pid
-	fi
-	if [ -e conveyord.socket ]
-	then
-		rm -f conveyord.socket
-	fi
+    _pid=$(cat conveyord.pid)
 else
-	echo no such file or directory: conveyord.pid
+    _pid=$(ps ax | grep -v grep | grep conveyor | cut -d ' ' -f 1)
 fi
 
-#deactivate our virtualenv
-if [ ! -z $VIRTUAL_ENV ] ; then
-	echo "Deactivating Virtual at $VIRTUAL_ENV"
-	deactivate
+if [ -z "${_pid}" ]
+then
+    echo "conveyord is not running"
+else
+    kill "${_pid}"
+    sleep 1
+    if ps ax | grep -v grep | grep "${_pid}" > /dev/null 2>&1
+    then
+        kill -KILL "${_pid}"
+    fi
 fi
-
