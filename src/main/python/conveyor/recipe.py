@@ -278,10 +278,11 @@ class Recipe(object):
                     for line in f:
                         parser.execute_line(line)
                         update(parser.state.percentage)
-                task.end(True)
             except makerbot_driver.Gcode.GcodeError as e:
                 message = conveyor.util.exception_to_failure(e)
                 task.fail(message)
+            finally:
+                task.end(True)
         task.runningevent.attach(runningcallback)
         return task
 
