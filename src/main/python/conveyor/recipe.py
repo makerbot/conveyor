@@ -22,6 +22,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import contextlib
 import logging
 import makerbot_driver
+import mock
 import os
 import os.path
 import subprocess
@@ -38,6 +39,7 @@ import conveyor.enum
 import conveyor.machine.s3g
 import conveyor.process
 import conveyor.task
+import conveyor.util
 
 
 class RecipeManager(object):
@@ -237,7 +239,6 @@ class Recipe(object):
             if progress != task.progress:
                 task.heartbeat(progress)
 
-
         def runningcallback(task):
             # If the filereader can parse it, then the s3g file is valid
             reader = makerbot_driver.FileReader.FileReader()
@@ -247,6 +248,39 @@ class Recipe(object):
                 task.end(True)
             except makerbot_driver.FileReader.S3gStreamError as e:
                 message = unicode(e)
+                task.fail(message)
+        task.runningevent.attach(runningcallback)
+        return task
+    
+    @staticmethod
+    def verifygcodetask(gcodepath, profile):
+        """
+        This function is static so it can be accessed by server/__init__.py when 
+        executing the verifys3g command.
+        """
+        task = conveyor.task.Task()
+        
+        def update(percent):
+            percent = min(percent, 100) 
+            progress = {
+                'name': 'verify',
+                'progress': percent,
+            }
+            # Use regular heartbeat here, since we cant keep track of past updates
+            if progress != task.progress:
+                task.heartbeat(progress)
+            
+        def runningcallback(task):
+            parser = makerbot_driver.Gcode.GcodeParser()
+            parser.state.values['build_name'] = "VALIDATION"
+            parser.state.profile = profile
+            parser.s3g = mock.Mock()
+            try:
+                with open(gcodepath) as f:
+                    for line in f:
+                        parser.execute_line(line)
+            except makerbot_driver.Gcode.GcodeError as e:
+                message = conveyor.util.exception_to_failure(e)
                 task.fail(message)
         task.runningevent.attach(runningcallback)
         return task
@@ -302,6 +336,10 @@ class _GcodeRecipe(Recipe):
             printerthread._profile, self._job.slicer_settings, self._job.material,
             self._job.with_start_end, False, self._job.path, outputpath)
         tasks.append(with_start_end_task)
+
+        #verify
+        verifytask = self.verifygcodetask(outputpath, printerthread._profile)
+        tasks.append(verifytask)
 
         # Print
         printtask = self._printtask(printerthread, outputpath, False)
@@ -368,6 +406,10 @@ class _StlRecipe(Recipe):
             printerthread._profile, self._job.slicer_settings, self._job.material,
             self._job.with_start_end, False, processed_gcodepath, outputpath)
         tasks.append(with_start_end_task)
+
+        #verify
+        verifytask = self.verifygcodetask(outputpath, printerthread._profile)
+        tasks.append(verifytask)
 
         # Print
         printtask = self._printtask(printerthread, outputpath, False)
@@ -650,6 +692,10 @@ class _DualThingRecipe(_ThingRecipe):
             profile, self._job.slicer_settings, self._job.material,
             self._job.with_start_end, True, processed_gcodepath, outputpath)
         tasks.append(with_start_end_task)
+
+        #verify
+        verifytask = self.verifygcodetask(outputpath, printerthread._profile)
+        tasks.append(verifytask)
 
         #print
         printtask = self._printtask(printerthread, outputpath, True)
