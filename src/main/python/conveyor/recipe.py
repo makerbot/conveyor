@@ -252,8 +252,7 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
     
-    @staticmethod
-    def verifygcodetask(gcodepath, profile):
+    def verifygcodetask(self, gcodepath, profile):
         """
         This function is static so it can be accessed by server/__init__.py when 
         executing the verifys3g command.
@@ -271,6 +270,7 @@ class Recipe(object):
                 task.heartbeat(progress)
             
         def runningcallback(task):
+            self._log.info("Validating gcode file %s" % (gcodepath))
             parser = makerbot_driver.Gcode.GcodeParser()
             parser.state.values['build_name'] = "VALIDATION"
             parser.state.profile = profile
@@ -286,7 +286,7 @@ class Recipe(object):
         return task
 
     def _with_start_end_task(self, profile, slicer_settings, material,
-            with_start_end, dualstrusion, input_path, output_path):
+            skip_start_end, dualstrusion, input_path, output_path):
         def running_callback(task):
             self._log.info("Writing out gcode to %s with%s start/end gcode" % (output_path, '' if with_start_end else 'out'))
             try:
@@ -295,12 +295,12 @@ class Recipe(object):
                         driver = conveyor.machine.s3g.S3gDriver()
                         start, end, variables = driver._get_start_end_variables(
                             profile, slicer_settings, material, dualstrusion)
-                        if with_start_end:
+                        if not skip_start_end:
                             for line in start:
                                 print(line, file=ofp)
                         for line in ifp.readlines():
                             ofp.write(line)
-                        if with_start_end:
+                        if not skip_start_end:
                             for line in end:
                                 print(line, file=ofp)
             except Exception as e:
@@ -334,7 +334,7 @@ class _GcodeRecipe(Recipe):
             outputpath = outputfp.name
         with_start_end_task = self._with_start_end_task(
             printerthread._profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, False, self._job.path, outputpath)
+            self._job.skip_start_end, False, self._job.path, outputpath)
         tasks.append(with_start_end_task)
 
         #verify
@@ -356,7 +356,7 @@ class _GcodeRecipe(Recipe):
             start_end_path = start_end_pathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, False, self._job.path, start_end_path)
+            self._job.skip_start_end, False, self._job.path, start_end_path)
         tasks.append(with_start_end_task)
 
         # Print
@@ -404,7 +404,7 @@ class _StlRecipe(Recipe):
             outputpath = outputfp.name
         with_start_end_task = self._with_start_end_task(
             printerthread._profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, False, processed_gcodepath, outputpath)
+            self._job.skip_start_end, False, processed_gcodepath, outputpath)
         tasks.append(with_start_end_task)
 
         #verify
@@ -448,7 +448,7 @@ class _StlRecipe(Recipe):
             start_end_path = start_end_pathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, False, processed_gcodepath, start_end_path)
+            self._job.skip_start_end, False, processed_gcodepath, start_end_path)
         tasks.append(with_start_end_task)
 
         # Print
@@ -490,7 +490,7 @@ class _StlRecipe(Recipe):
 
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, False, processed_gcodepath, outputpath)
+            self._job.skip_start_end, False, processed_gcodepath, outputpath)
         tasks.append(with_start_end_task)
 
         def process_endcallback(task):
@@ -580,7 +580,7 @@ class _DualThingRecipe(_ThingRecipe):
             start_end_path = start_end_pathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, True, processed_gcodepath, start_end_path)
+            self._job.skip_start_end, True, processed_gcodepath, start_end_path)
         tasks.append(with_start_end_task)
         
 
@@ -636,7 +636,7 @@ class _DualThingRecipe(_ThingRecipe):
 
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, True, dual_path, outputpath)
+            self._job.skip_start_end, True, dual_path, outputpath)
         tasks.append(with_start_end_task)
 
         process = conveyor.process.tasksequence(self._job, tasks)
@@ -690,7 +690,7 @@ class _DualThingRecipe(_ThingRecipe):
             outputpath = outputpathfp.name
         with_start_end_task = self._with_start_end_task(
             profile, self._job.slicer_settings, self._job.material,
-            self._job.with_start_end, True, processed_gcodepath, outputpath)
+            self._job.skip_start_end, True, processed_gcodepath, outputpath)
         tasks.append(with_start_end_task)
 
         #verify
