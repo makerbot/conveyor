@@ -25,6 +25,8 @@ specific.
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import makerbot_driver
+
 
 def exception_to_failure(exception, **kwargs):
     """
@@ -48,3 +50,30 @@ def exception_to_failure(exception, **kwargs):
     failure = {'exception': exception_data,}
     failure.update(kwargs)
     return failure
+
+def _get_start_end_variables(profile, slicer_settings, material, dualstrusion):
+    """
+    This function is static so it can be invoked be the verify gcode task.
+    @returns tuple of (start gcode block, end gcode block, variables)
+    """
+    tool_0, tool_1 = False, False
+    if None is material:
+        material = 'PLA'
+    if dualstrusion:
+        tool_0 = True
+        tool_1 = True
+    else:
+        extruders = [e.strip() for e in slicer_settings.extruder.split(',')]
+        if '0' in extruders:
+            tool_0 = True
+        if '1' in extruders:
+            tool_1 = True
+    ga = makerbot_driver.GcodeAssembler(profile, profile.path)
+    start_template, end_template, variables = ga.assemble_recipe(
+        tool_0=tool_0, tool_1=tool_1, material=material)
+    start_gcode = ga.assemble_start_sequence(start_template)
+    end_gcode = ga.assemble_end_sequence(end_template)
+    variables['TOOL_0_TEMP'] = slicer_settings.extruder_temperature
+    variables['TOOL_1_TEMP'] = slicer_settings.extruder_temperature
+    variables['PLATFORM_TEMP'] = slicer_settings.platform_temperature
+    return start_gcode, end_gcode, variables
