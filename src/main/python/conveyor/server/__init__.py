@@ -803,12 +803,12 @@ class Server(object):
             self._invokeclients('printerremoved', params)
 
     def printtofile(self, profile, buildname, inputpath, outputpath,
-            skip_start_end, slicer_settings, print_to_file_type, material,
+            slicer_settings, print_to_file_type, material,
             task, dualstrusion):
         def func():
             driver = conveyor.machine.s3g.S3gDriver()
             driver.printtofile(
-                outputpath, profile, buildname, inputpath, skip_start_end,
+                outputpath, profile, buildname, inputpath, 
                 slicer_settings, print_to_file_type, material, task,
                 dualstrusion)
         self._queue.appendfunc(func)
