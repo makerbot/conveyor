@@ -28,8 +28,8 @@ M135 T0 (Set the Right extruder as the main Extruder)
 ;M135 T1 (Set the Left extruder as the main Extruder)
 
 (*** To enable a heated build platform, remove the ";" at the beginning of these lines ***)
-;M134 T0 (Wait for the Platform to Heat Up)
 ;M109 T0 S110 (Set the platform temp to 110C)
+;M134 T0 (Wait for the Platform to Heat Up)
 
 (*** To heat a tool, make sure the applicable line is not preceded by a ";" ***)
 (*** Lines for tools not being used must be preceded by a ";"  ***)
