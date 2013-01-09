@@ -153,7 +153,7 @@ class Recipe(object):
     def _gcodeprocessortask(self, inputpath, outputpath, profile):
         factory = makerbot_driver.GcodeProcessors.ProcessorFactory()
         gcodeprocessor_list = self.getgcodeprocessors(profile)
-        gcodeprocessors = list(factory.get_processors(gcodeprocessor_list))
+        gcodeprocessors = list(factory.get_processors(gcodeprocessor_list, profile))
         def runningcallback(task):
             try:
                 self._log.info('processing gcode %s -> %s', inputpath, outputpath)

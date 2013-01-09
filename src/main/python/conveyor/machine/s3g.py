@@ -370,6 +370,10 @@ class S3gDriver(object):
         variables['TOOL_0_TEMP'] = slicer_settings.extruder_temperature
         variables['TOOL_1_TEMP'] = slicer_settings.extruder_temperature
         variables['PLATFORM_TEMP'] = slicer_settings.platform_temperature
+        start_position = profile.values['print_start_sequence']['start_position']
+        variables['START_X'] = start_position['start_x']
+        variables['START_Y'] = start_position['start_y']
+        variables['START_Z'] = start_position['start_z']
         return start_gcode, end_gcode, variables
 
     def _gcodelines(self, profile, gcodepath, skip_start_end, slicer_settings,
@@ -446,8 +450,8 @@ class S3gDriver(object):
         if print_to_file_type == 'x3g':
             pid = parser.state.profile.values['PID']
             parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
-        # ^ Technical debt: we should no be reacing into objects in our driver to 
-        # set values, they should be set in the constructor
+        # ^ Technical debt: we should not be reaching into objects in our driver
+        # to set values, they should be set in the constructor
         def cancelcallback(task):
             """Stop the writer and catch an ExternalStopError."""
             try:
