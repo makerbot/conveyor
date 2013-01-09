@@ -44,6 +44,7 @@ def exception_to_failure(exception, **kwargs):
             'strerror': getattr(exception, 'strerror', None),
             'filename': getattr(exception, 'filename', None),
             'winerror': getattr(exception, 'winerror', None),
+            'message': unicode(exception),
         }
     failure = {'exception': exception_data,}
     failure.update(kwargs)
