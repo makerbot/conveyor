@@ -397,7 +397,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 job.state = task.state
                 job.conclusion = task.conclusion
                 self._server.changejob(job)
-                self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
             process.start()
@@ -440,7 +439,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 job.state = task.state
                 job.conclusion = task.conclusion
                 self._server.changejob(job)
-                self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
             process.start()
@@ -482,7 +480,6 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
                 job.state = task.state
                 job.conclusion = task.conclusion
                 self._server.changejob(job)
-                self._log.info('progress: (job %d) %r', job.id, progress)
             process.heartbeatevent.attach(heartbeatcallback)
             process.stoppedevent.attach(self._stoppedcallback(job))
             process.start()
@@ -575,13 +572,17 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('compatiblefirmware', self._compatiblefirmware, ": takes firmware_version")
 
     def run(self):
-        # add our available functions to the json methods list
-        self._load_services()
-        self._server.appendclientthread(self)
         try:
-            self._jsonrpc.run()
-        finally:
-            self._server.removeclientthread(self)
+            # add our available functions to the json methods list
+            self._load_services()
+            self._server.appendclientthread(self)
+            try:
+                self._jsonrpc.run()
+            finally:
+                self._server.removeclientthread(self)
+                self._jsonrpc.close()
+        except:
+            self._log.exception('unhandled exception')
 
     def stop(self):
         self._jsonrpc.stop()
@@ -655,6 +656,7 @@ class Server(object):
         self._idcounter = 0
         self._jobcounter = 0
         self._jobs = {}
+        self._job_dicts = {}
         self._lock = threading.Lock()
         self._listener = listener
         self._log = logging.getLogger(self.__class__.__name__)
@@ -721,7 +723,18 @@ class Server(object):
 
     def changejob(self, job):
         params = job.todict()
-        self._invokeclients("jobchanged", params)
+        if job.id not in self._job_dicts:
+            send = True
+        else:
+            old_params = self._job_dicts[job.id]
+            send = old_params != params
+        if send:
+            self._job_dicts[job.id] = params
+            self._invokeclients("jobchanged", params)
+            task = job.process
+            childtask = task.progress
+            progress = childtask.progress
+            self._log.info('progress: (job %d) %r', job.id, progress)
 
     def canceljob(self, id):
         with self._lock:

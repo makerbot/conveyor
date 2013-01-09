@@ -71,6 +71,7 @@ class _AbstractSocketListener(Listener):
             else:
                 try:
                     sock, addr = self._socket.accept()
+                    sock.settimeout(None)
                 except socket.timeout:
                     # NOTE: too spammy
                     # self._log.debug('handled exception', exc_info=True)

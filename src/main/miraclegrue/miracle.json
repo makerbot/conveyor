@@ -1,33 +1,40 @@
-{ "infillDensity": 0.12
+{ "comment" : [
+ "This is a custom profile for MakerBot Slicer. Editing it will modify your",
+  "slice settings. For documentation on MakerBot Slicer parameters, see here:",
+  "http://www.makerbot.com/support/makerware/documentation/slicer"
+]
+
+, "infillDensity": 0.1
 , "numberOfShells": 2
 , "insetDistanceMultiplier": 0.97
-, "infillShellSpacingMultiplier" : 0.20
+, "infillShellSpacingMultiplier" : 0.70
 , "roofThickness" : 1.2
 , "floorThickness" : 1.0
-, "layerWidthRatio": 1.45
-, "layerWidthMinimum" : 0.35
+, "layerWidthRatio": 1.482
+, "layerWidthMinimum" : 0.4
 , "layerWidthMaximum" : 0.85
 , "preCoarseness": 0.1
 , "coarseness": 0.05
+, "gridSpacingMultiplier": 0.99
 , "doExternalSpurs" : true
 , "doInternalSpurs" : false
 , "minSpurWidth" : 0.12
 , "maxSpurWidth" : 0.79
 , "minSpurLength": 0.4
 , "spurOverlap" : 0.001
-, "minLayerDuration" : 10.0
+, "minLayerDuration" : 5.0
 , "rapidMoveFeedRateXY": 100
 , "rapidMoveFeedRateZ": 23.0
 , "doRaft": false
 , "raftLayers": 3
-, "raftBaseThickness": 0.6
-, "raftInterfaceThickness": 0.3
+, "raftBaseThickness": 0.5
+, "raftInterfaceThickness": 0.27
 , "raftOutset": 6.0
-, "raftModelSpacing": 0.3
+, "raftModelSpacing": 0.15
 , "raftDensity": 0.25
 , "raftAligned" : true
 , "doSupport": false
-, "supportMargin": 2.5
+, "supportMargin": 1.5
 , "supportDensity": 0.15
 , "bedZOffset": 0.0
 , "layerHeight": 0.27
@@ -46,6 +53,7 @@
       , "infillsExtrusionProfile": "infill"
       , "outlinesExtrusionProfile": "outlines"
       , "feedDiameter": 1.82
+      , "feedstockMultiplier": 0.773
       , "nozzleDiameter": 0.4
       , "retractDistance": 1.0
       , "retractRate": 20.0
@@ -56,6 +64,7 @@
       , "infillsExtrusionProfile": "infill"
       , "outlinesExtrusionProfile": "outlines"
       , "feedDiameter": 1.82
+      , "feedstockMultiplier": 0.773
       , "nozzleDiameter": 0.4
       , "retractDistance": 1.0
       , "retractRate": 20.0
@@ -70,7 +79,7 @@
         { "feedrate": 80.0
         }
     , "firstlayer":
-        { "feedrate": 65.0
+        { "feedrate": 40.0
         }
     , "outlines":
         { "feedrate": 40.0

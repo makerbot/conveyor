@@ -45,6 +45,9 @@ class Connection(conveyor.stoppable.StoppableInterface):
         "Template write function, not implemented."
         raise NotImplementedError
 
+    def close(self):
+        raise NotImplementedError
+
 class ConnectionWriteException(Exception):
     """ Default connection exception class."""
     pass
@@ -95,6 +98,9 @@ class _AbstractSocketConnection(Connection):
                         raise
                 else:
                     i += sent
+
+    def close(self):
+        self._socket.close()
 
 if 'nt' != os.name:
 # TRICKY: Due to windows issues installing pywintypes, we wrote our own 
