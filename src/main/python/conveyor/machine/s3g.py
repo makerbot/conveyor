@@ -355,7 +355,7 @@ class S3gDriver(object):
         @slicer_settings: undocumented. assuming dict
         @material undocumneted, assuming string
         """ 
-        startgcode, endgcode, variables = conveyor.util._get_start_end_variables(
+        startgcode, endgcode, variables = conveyor.util.get_start_end_variables(
                 profile, slicer_settings, material, dualstrusion)
         def generator():
             with open(gcodepath, 'r') as fp:

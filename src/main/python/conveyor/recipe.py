@@ -271,7 +271,7 @@ class Recipe(object):
             parser.state.values['build_name'] = "VALIDATION"
             parser.state.profile = profile
             parser.s3g = mock.Mock()
-            start_gcode, end_gcode, variables = conveyor.util._get_start_end_variables(profile, slicer_settings, material, dualstrusion)
+            start_gcode, end_gcode, variables = conveyor.util.get_start_end_variables(profile, slicer_settings, material, dualstrusion)
             parser.environment.update(variables)
             try:
                 with open(gcodepath) as f:
@@ -293,7 +293,7 @@ class Recipe(object):
             try:
                 with open(input_path) as ifp:
                     with open(output_path, 'w') as ofp:
-                        start, end, variables = conveyor.util._get_start_end_variables(
+                        start, end, variables = conveyor.util.get_start_end_variables(
                             profile, slicer_settings, material, dualstrusion)
                         if not skip_start_end:
                             for line in start:

@@ -51,7 +51,7 @@ def exception_to_failure(exception, **kwargs):
     failure.update(kwargs)
     return failure
 
-def _get_start_end_variables(profile, slicer_settings, material, dualstrusion):
+def get_start_end_variables(profile, slicer_settings, material, dualstrusion):
     """
     This function is static so it can be invoked be the verify gcode task.
     @returns tuple of (start gcode block, end gcode block, variables)

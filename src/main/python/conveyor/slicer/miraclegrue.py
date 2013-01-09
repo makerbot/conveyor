@@ -26,6 +26,7 @@ import tempfile
 import conveyor.event
 import conveyor.machine.s3g # TODO: aww, bad coupling
 import conveyor.slicer
+import conveyor.util
 
 class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
     def __init__(
@@ -47,7 +48,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
     def _prologue(self):
         if self._with_start_end:
             driver = conveyor.machine.s3g.S3gDriver()
-            startgcode, endgcode, variables = driver._get_start_end_variables(
+            startgcode, endgcode, variables = conveyor.util.get_start_end_variables(
                 self._profile, self._slicer_settings, self._material, False)
             with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
                 self._tmp_startpath = startfp.name

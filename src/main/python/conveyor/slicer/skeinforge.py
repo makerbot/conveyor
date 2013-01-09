@@ -31,6 +31,7 @@ import unittest
 import conveyor.enum
 import conveyor.machine.s3g # TODO: aww, more bad coupling
 import conveyor.slicer
+import conveyor.util
 
 SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 'FULL')
 
@@ -233,7 +234,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
     def _epilogue(self):
         if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
             driver = conveyor.machine.s3g.S3gDriver()
-            startgcode, endgcode, variables = driver._get_start_end_variables(
+            startgcode, endgcode, variables = conveyor.util.get_start_end_variables(
                 self._profile, self._slicer_settings, self._material, False)
             with open(self._outputpath, 'w') as wfp:
                 if self._with_start_end:
