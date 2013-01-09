@@ -63,8 +63,8 @@ def _main(argv):
     if 'PYTHONPATH' not in os.environ:
         os.environ['PYTHONPATH'] = pythonpath
     else:
-        os.environ['PYTHONPATH'] = os.pathsep.join(
-            pythonpath, os.environ['PYTHONPATH'])
+        os.environ['PYTHONPATH'] = os.pathsep.join([
+            pythonpath, os.environ['PYTHONPATH']])
     def generator():
         for dirpath, dirnames, filenames in os.walk(main_path):
             for filename in filenames:
