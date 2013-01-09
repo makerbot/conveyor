@@ -367,7 +367,7 @@ class AbstractMain(object):
         except conveyor.address.MissingHostException as e:
             code = 1
             self._log.error('missing socket host: %s', e.value)
-        except conveyor.address.MissingPortException as e:
+        except conveyor.address.MalformedUrlException as e:
             code = 1
             self._log.error('missing socket port: %s', e.value)
         except conveyor.address.InvalidPortException as e:
