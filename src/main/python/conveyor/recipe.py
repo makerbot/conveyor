@@ -281,7 +281,7 @@ class Recipe(object):
             except makerbot_driver.Gcode.GcodeError as e:
                 message = conveyor.util.exception_to_failure(e)
                 task.fail(message)
-            finally:
+            else:
                 task.end(True)
         task.runningevent.attach(runningcallback)
         return task
