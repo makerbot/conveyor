@@ -296,7 +296,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job.conclusion = task.conclusion
             job.failure = None
             if None is not task.failure:
-                if isinstance(task.failure.failure, dct):
+                if isinstance(task.failure.failure, dict):
                     job.failure = task.failure.failure
                 else:
                     job.failure = unicode(task.failure.failure)
