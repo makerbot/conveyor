@@ -499,7 +499,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             if 'recipes' != profile_name:
                 profile = makerbot_driver.Profile(profile_name, profiledir)
                 printer = conveyor.domain.Printer.fromprofile(
-                    profile, profile_name, None)
+                    profile, profile_name, None, None)
                 printer.can_print = False
                 dct = printer.todict()
                 result.append(dct)
@@ -507,8 +507,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         for portname, printerthread in printerthreads.items():
             profile = printerthread.getprofile()
             printerid = printerthread.getprinterid()
+            firmware_version = printerthread.get_firmware_version()
             printer = conveyor.domain.Printer.fromprofile(
-                profile, printerid, None)
+                profile, printerid, None, firmware_version)
             dct = printer.todict()
             result.append(dct)
         return result
@@ -766,7 +767,9 @@ class Server(object):
             self._printerthreads[portname] = printerthread
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
-        printer = conveyor.domain.Printer.fromprofile(profile, printerid, None)
+        firmware_version = printerthread.get_firmware_version()
+        printer = conveyor.domain.Printer.fromprofile(
+            profile, printerid, None, firmware_version)
         dct = printer.todict()
         self._invokeclients('printeradded', dct)
 
@@ -775,8 +778,9 @@ class Server(object):
         printerthread = self.findprinter_portname(portname)
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
+        firmware_version = printerthread.get_firmware_version()
         printer = conveyor.domain.Printer.fromprofile(
-            profile, printerid, temperature)
+            profile, printerid, temperature, firmware_version)
         dct = printer.todict()
         self._invokeclients('printerchanged', dct)
 

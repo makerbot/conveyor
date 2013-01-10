@@ -185,6 +185,12 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def getprofile(self):
         return self._profile
 
+    def get_firmware_version(self):
+        s3g = makerbot_driver.s3g()
+        s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp)
+        advanced_version = s3g.get_advanced_version()
+        return advanced_version['Version']
+
     def print(
         self, job, buildname, gcodepath, slicer_settings,
         print_to_file_type, material, task, dualstrusion):
