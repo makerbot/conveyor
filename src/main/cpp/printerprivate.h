@@ -59,6 +59,8 @@ namespace conveyor
         float m_buildVolumeXmax;
         float m_buildVolumeYmax;
         float m_buildVolumeZmax;
+
+        FirmwareVersion m_firmwareVersion;
     };
 }
 

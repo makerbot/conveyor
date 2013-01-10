@@ -128,6 +128,25 @@ namespace conveyor
         m_buildVolumeYmax = buildVolumeYmax;
         m_buildVolumeZmax = buildVolumeZmax;
 
+        // Get firmware version
+        const std::string firmwareVersionKey("firmware_version");
+        if (json.isMember(firmwareVersionKey)) {
+          if (json[firmwareVersionKey].isInt()) {
+            const int combinedVersion(json[firmwareVersionKey].asInt());
+            if (combinedVersion < 100) {
+              // At least a three digit number is expected
+              m_firmwareVersion.m_error = kFirmwareVersionTooSmall;
+            } else {
+              m_firmwareVersion.m_major = combinedVersion / 100;
+              m_firmwareVersion.m_minor = (combinedVersion
+                                           - m_firmwareVersion.m_major * 100);
+              m_firmwareVersion.m_error = kFirmwareVersionOK;
+            }
+          } else {
+            m_firmwareVersion.m_error = kFirmwareVersionNotInteger;
+          }
+        }
+        
         // Temperature of extruder(s) and platform(s)
         if (json.isMember("temperature")) {
             const Json::Value &temperature(json["temperature"]);

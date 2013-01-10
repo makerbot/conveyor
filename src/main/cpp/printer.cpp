@@ -13,6 +13,28 @@
 
 namespace conveyor
 {
+    FirmwareVersion::FirmwareVersion()
+        : m_error(kFirmwareVersionNotReceived)
+        , m_major(-1)
+        , m_minor(-1) {
+    }
+
+    QString FirmwareVersion::str() const
+    {
+        switch (m_error) {
+        case kFirmwareVersionOK:
+          return QObject::tr("%1.%2").arg(QString().setNum(m_major),
+                                          QString().setNum(m_minor));
+        case kFirmwareVersionNotReceived:
+          return QObject::tr("Firmware version not received");
+        case kFirmwareVersionNotInteger:
+          return QObject::tr("Firmware version not an integer");
+        case kFirmwareVersionTooSmall:
+          return QObject::tr("Firmware version is too small");
+        }
+        return QObject::tr("Unknown error in firmware version");
+    }
+
     void ToolTemperature::updateFromJson
     	( QMap<QString, Temperature> &tmap
         , const Json::Value &json)
@@ -180,6 +202,12 @@ namespace conveyor
     Printer::buildVolumeZmax() const
     {
         return m_private->m_buildVolumeZmax;
+    }
+
+    const FirmwareVersion &
+    Printer::firmwareVersion() const
+    {
+        return m_private->m_firmwareVersion;
     }
 
     Conveyor * 
