@@ -296,7 +296,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job.conclusion = task.conclusion
             job.failure = None
             if None is not task.failure:
-                job.failure = unicode(task.failure.failure)
+                if isinstance(task.failure.failure, dct):
+                    job.failure = task.failure.failure
+                else:
+                    job.failure = unicode(task.failure.failure)
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
                 self._log.info('job %d ended', job.id)
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
