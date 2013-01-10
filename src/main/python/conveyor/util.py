@@ -77,4 +77,8 @@ def get_start_end_variables(profile, slicer_settings, material, dualstrusion):
     variables['TOOL_0_TEMP'] = slicer_settings.extruder_temperature
     variables['TOOL_1_TEMP'] = slicer_settings.extruder_temperature
     variables['PLATFORM_TEMP'] = slicer_settings.platform_temperature
+    start_position = profile.values['print_start_sequence']['start_position']
+    variables['START_X'] = start_position['start_x']
+    variables['START_Y'] = start_position['start_y']
+    variables['START_Z'] = start_position['start_z']
     return start_gcode, end_gcode, variables
