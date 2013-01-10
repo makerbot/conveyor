@@ -127,7 +127,8 @@ class SubprocessSlicer(Slicer):
             except:
                 self._log.debug('handled exception', exc_info=True)
             try:
-                self._popen.stderr.close()
+                if None is not self._popen.stderr:
+                    self._popen.stderr.close()
             except:
                 self._log.debug('handled exception', exc_info=True)
             if (0 != self._code
