@@ -411,8 +411,8 @@ class S3gDriver(object):
         if print_to_file_type == 'x3g':
             pid = parser.state.profile.values['PID']
             parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
-        # ^ Technical debt: we should no be reacing into objects in our driver to 
-        # set values, they should be set in the constructor
+        # ^ Technical debt: we should not be reaching into objects in our driver
+        # to set values, they should be set in the constructor
         def cancelcallback(task):
             """Stop the writer and catch an ExternalStopError."""
             try:
