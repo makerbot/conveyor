@@ -188,8 +188,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def get_firmware_version(self):
         s3g = makerbot_driver.s3g()
         s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp)
-        advanced_version = s3g.get_advanced_version()
-        return advanced_version['Version']
+        version = s3g.get_version()
+        return version
 
     def print(
         self, job, buildname, gcodepath, slicer_settings,
