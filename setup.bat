@@ -21,14 +21,8 @@ GOTO DONE
 
 :DIRNOTEXISTS
 
-IF "%1"=="" GOTO DEFAULTPY
 set PYTHON=%1
-GOTO VIRTUALENV
 
-:DEFAULTPY
-set PYTHON=python
-
-:VIRTUALENV
 %PYTHON% virtualenv.py --extra-search-dir=submodule/conveyor_bins/python --never-download virtualenv
 GOTO DIREXISTS
 
