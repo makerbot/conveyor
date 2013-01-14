@@ -10,6 +10,7 @@
 #include <conveyor/conveyor.h>
 #include <conveyor/job.h>
 #include <conveyor/jobstatus.h>
+#include <conveyor/log.h>
 #include <conveyor/pipeaddress.h>
 #include <conveyor/printer.h>
 #include <conveyor/slicers.h>
