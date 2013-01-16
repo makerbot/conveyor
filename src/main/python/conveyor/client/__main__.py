@@ -23,12 +23,49 @@ import sys
 
 import conveyor.client
 import conveyor.log
+import conveyor.main
+
+from conveyor.decorator import command
+
+
+@command(conveyor.client._CancelCommand)
+@command(conveyor.client._CompatibleFirmware)
+@command(conveyor.client._DirCommand)
+@command(conveyor.client._DownloadFirmware)
+@command(conveyor.client._GetMachineVersions)
+@command(conveyor.client._GetUploadableMachines)
+@command(conveyor.client._JobCommand)
+@command(conveyor.client._JobsCommand)
+@command(conveyor.client._PrintCommand)
+@command(conveyor.client._PrintToFileCommand)
+@command(conveyor.client._PrintersCommand)
+@command(conveyor.client._ReadEepromCommand)
+@command(conveyor.client._ResetToFactoryCommand)
+@command(conveyor.client._SliceCommand)
+@command(conveyor.client._UploadFirmwareCommand)
+@command(conveyor.client._VerifyS3gCommand)
+@command(conveyor.client._WaitForServiceCommand)
+@command(conveyor.client._WriteEepromCommand)
+class ClientMain(conveyor.main.AbstractMain):
+    _program_name = 'conveyor'
+
+    _config_section = 'client'
+
+    _logging_handlers = ['stdout', 'stderr',]
+
+    def _run(self):
+        command = self._parsed_args.command_class(
+            self._parsed_args, self._config)
+        code = command.run()
+        return code
+
 
 def _main(argv): # pragma: no cover
     conveyor.log.earlylogging('conveyor')
-    main = conveyor.client.ClientMain()
+    main = ClientMain()
     code = main.main(argv)
     return code
+
 
 if '__main__' == __name__: # pragma: no cover
     sys.exit(_main(sys.argv))

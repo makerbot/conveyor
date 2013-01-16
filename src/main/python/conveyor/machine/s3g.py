@@ -53,7 +53,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
 
     def _runiteration(self):
         self._expire_blacklist()
-        profiledir = self._config['common']['profiledir']
+        profiledir = self._config.get('makerbot_driver', 'profile_dir')
         factory = makerbot_driver.MachineFactory(profiledir)
         available = self._detector.get_available_machines().copy()
         self._log.debug('self._available = %r', self._available)
@@ -94,7 +94,7 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
             if portname in self._available:
                 del self._available[portname]
             now = time.time()
-            unlisttime = now + self._config['server']['blacklisttime']
+            unlisttime = now + self._config.get('server', 'blacklisttime')
             self._blacklist[portname] = unlisttime
 
     def run(self):

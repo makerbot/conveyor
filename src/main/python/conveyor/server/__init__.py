@@ -21,13 +21,10 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import collections
 import errno
-import lockfile
-import lockfile.pidlockfile
 import logging
 import makerbot_driver
 import os
 import os.path
-import signal
 import sys
 import threading
 
@@ -36,7 +33,6 @@ try:
 except ImportError:
     import unittest
 
-import conveyor.address
 import conveyor.connection
 import conveyor.domain
 import conveyor.jsonrpc
@@ -47,73 +43,6 @@ import conveyor.slicer.miraclegrue
 import conveyor.slicer.skeinforge
 import conveyor.stoppable
 
-class ServerMain(conveyor.main.AbstractMain):
-    def __init__(self):
-        conveyor.main.AbstractMain.__init__(self, 'conveyord', 'server')
-
-    def _initparser_common(self, parser):
-        conveyor.main.AbstractMain._initparser_common(self, parser)
-        parser.add_argument(
-            '--nofork', action='store_true', default=False,
-            help='do not fork nor detach from the terminal')
-
-    def _initsubparsers(self):
-        return None
-
-    def _run(self):
-        has_daemon = False
-        code = -17 #failed to run err
-        try:
-            import daemon
-            import daemon.pidfile
-            has_daemon = True
-        except ImportError:
-            self._log.debug('handled exception', exc_info=True)
-        def handle_sigterm(signum, frame):
-            self._log.info('received signal %d', signum)
-            sys.exit(0)
-        pidfile = self._config['common']['pidfile']
-        try:
-            if self._parsedargs.nofork or not has_daemon:
-                for signal_name in ('SIGTERM', 'SIGBREAK'):
-                    if hasattr(signal, signal_name):
-                        signal.signal(getattr(signal, signal_name), handle_sigterm)
-                lock = lockfile.pidlockfile.PIDLockFile(pidfile)
-                lock.acquire(0)
-                try:
-                    code = self._run_server()
-                finally:
-                    lock.release()
-            else:
-                files_preserve = list(conveyor.log.getfiles())
-                dct = {
-                    'files_preserve': files_preserve,
-                    'pidfile': daemon.pidfile.TimeoutPIDLockFile(pidfile, 0)
-                }
-                if not self._config['server']['chdir']:
-                    dct['working_directory'] = os.getcwd()
-                context = daemon.DaemonContext(**dct)
-                # The daemon module's implementation of terminate() raises a
-                # SystemExit with a string message instead of an exit code. This
-                # monkey patch fixes it.
-                context.terminate = handle_sigterm # monkey patch!
-                with context:
-                    code = self._run_server()
-        except lockfile.AlreadyLocked:
-            self._log.debug('handled exception', exc_info=True)
-            self._log.error('pid file exists: %s', pidfile)
-            code = 1
-        except lockfile.UnlockError:
-            self._log.warning('error while removing pidfile', exc_info=True)
-        return code
-
-    def _run_server(self):
-        self._initeventqueue()
-        listener = self._address.listen()
-        with listener:
-            server = Server(self._config, listener)
-            code = server.run()
-            return code
 
 def export(name):
     def decorator(func):
@@ -256,8 +185,6 @@ class _DownloadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
         task.runningevent.attach(runningcallback)
         return task
 
-class _Method(object):
-    pass
 
 class _ClientThread(conveyor.stoppable.StoppableThread):
     @classmethod
@@ -496,7 +423,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     @export('getprinters')
     def _getprinters(self):
         result = []
-        profiledir = self._config['common']['profiledir']
+        profiledir = self._config('makerbot-driver', 'profiledir')
         profile_names = list(makerbot_driver.list_profiles(profiledir))
         for profile_name in profile_names:
             if 'recipes' != profile_name:
@@ -825,15 +752,15 @@ class Server(object):
         slicer_settings, material, dualstrusion, task):
             def func():
                 if conveyor.domain.Slicer.MIRACLEGRUE == slicer_settings.slicer:
-                    slicerpath = self._config['miraclegrue']['path']
-                    configpath = self._config['miraclegrue']['config']
+                    slicerpath = self._config.get('miracle_grue', 'exe')
+                    profiledir = self._config.get('miracle_grue', 'profile_dir')
                     slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer(
                         profile, inputpath, outputpath, with_start_end,
                         slicer_settings, material, dualstrusion, task,
-                        slicerpath, configpath)
+                        slicerpath, profiledir)
                 elif conveyor.domain.Slicer.SKEINFORGE == slicer_settings.slicer:
-                    slicerpath = self._config['skeinforge']['path']
-                    profilepath = self._config['skeinforge']['profile']
+                    slicerpath = self._config.get('skeinforge', 'exe')
+                    profiledir = self._config.get('skeinforge', 'profile_dir')
                     slicer = conveyor.slicer.skeinforge.SkeinforgeSlicer(
                         profile, inputpath, outputpath, with_start_end,
                         slicer_settings, material, dualstrusion, task,
