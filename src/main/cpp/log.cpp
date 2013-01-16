@@ -79,8 +79,7 @@ std::string Log::severityStr(const Log::Severity severity) {
 /// Get the current time in "Day Mth DD HH:MM:SS YYYY" format
 std::string Log::timeStr() {
     const time_t t(time(0));
-    char buf[64];
-    std::string s(ctime_r(&t, buf));
+    std::string s(ctime(&t));
     // Chop off trailing newline
     s.resize(s.size() - 1);
     return s;
