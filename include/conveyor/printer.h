@@ -21,6 +21,29 @@ namespace conveyor
 {
     class SlicerConfiguration;
 
+    enum FirmwareVersionError {
+      kFirmwareVersionOK,
+      kFirmwareVersionNotReceived,
+      kFirmwareVersionNotInteger,
+      kFirmwareVersionTooSmall
+    };
+
+    struct FirmwareVersion {
+      FirmwareVersion();
+
+      /// The major and minor values are only valid if error is
+      /// kFirmwareVersionOK
+      FirmwareVersionError m_error;
+      int m_major;
+      int m_minor;
+
+      /// Create a version string in format of "X.Y"
+      ///
+      /// If m_error is not kFirmwareVersionOK, the string will be an
+      /// error message instead of the version number
+      QString str() const;
+    };
+
     // XXX: not sure what type we want for this
     typedef float Temperature;
 
@@ -90,6 +113,8 @@ namespace conveyor
         float buildVolumeXmax() const;
         float buildVolumeYmax() const;
         float buildVolumeZmax() const;
+
+        const FirmwareVersion &firmwareVersion() const;
 
         /** Ask the machine to move by some amount at a given speed */
         void jog (float x, float y, float z, float a, float b, float f);

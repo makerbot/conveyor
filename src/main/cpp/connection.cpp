@@ -3,7 +3,10 @@
 #include <cstddef>
 #include <unistd.h>
 
+#include <string>
+
 #include <conveyor/connection.h>
+#include <conveyor/log.h>
 
 #include "connectionprivate.h"
 
@@ -24,12 +27,17 @@ namespace conveyor
     Connection::read (char * const buffer, std::size_t const length)
     {
         ssize_t const result (this->m_private->read (buffer, length));
+        if (buffer && result)
+            LOG_SPAM << "\"" << std::string(buffer, result) << "\"\n";
         return result;
     }
 
     void
     Connection::write (char const * const buffer, std::size_t const length)
     {
+        if (buffer && length)
+            LOG_SPAM << "\"" << std::string(buffer, length) << "\"\n";
+
         this->m_private->write (buffer, length);
     }
 

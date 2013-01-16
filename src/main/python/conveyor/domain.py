@@ -93,7 +93,7 @@ class Printer(DomainObject):
     def __init__(
         self, display_name, unique_name, printer_type, machine_names, can_print,
         can_printtofile, has_heated_platform, number_of_toolheads,
-        connection_status, temperature):
+        connection_status, temperature, firmware_version):
             self.display_name = display_name
             self.unique_name = unique_name
             self.printer_type = printer_type
@@ -104,6 +104,7 @@ class Printer(DomainObject):
             self.number_of_toolheads = number_of_toolheads
             self.connection_status = connection_status
             self.temperature = temperature
+            self.firmware_version = firmware_version
 
     def todict(self):
         dct = {
@@ -116,7 +117,8 @@ class Printer(DomainObject):
             'hasHeatedPlatform': self.has_heated_platform,
             'numberOfToolheads': self.number_of_toolheads,
             'connectionStatus': self.connection_status,
-            'temperature': self.temperature
+            'temperature': self.temperature,
+            'firmware_version': self.firmware_version,
         }
         return dct
 
@@ -126,11 +128,11 @@ class Printer(DomainObject):
             dct['displayName'], dct['uniqueName'], dct['printerType'],
             dct['machineNames'], dct['canPrint'], dct['canPrintToFile'], 
             dct['hasHeatedPlatform'], dct['numberOfToolheads'], 
-            dct['connectionStatus'], dct['temperature'])
+            dct['connectionStatus'], dct['temperature'], dct['firmware_version'])
         return printer
 
     @staticmethod
-    def fromprofile(profile, printerid, temperature):
+    def fromprofile(profile, printerid, temperature, firmware_version):
         printer = Printer(
             display_name=profile.values['type'],
             unique_name=printerid,
@@ -141,7 +143,8 @@ class Printer(DomainObject):
             has_heated_platform=len(profile.values['heated_platforms']) != 0,
             number_of_toolheads=len(profile.values['tools']),
             connection_status='connected',
-            temperature=temperature)
+            temperature=temperature,
+            firmware_version=firmware_version)
         return printer
 
 Slicer = conveyor.enum.enum('Slicer', 'MIRACLEGRUE', 'SKEINFORGE')

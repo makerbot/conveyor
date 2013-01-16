@@ -27,18 +27,20 @@ G130 X20 Y20 A20 B20 (Lower stepper Vrefs while heating)
 M135 T0 (Set the Right extruder as the main Extruder)
 ;M135 T1 (Set the Left extruder as the main Extruder)
 
+(*** To enable a heated build platform, remove the ";" at the beginning of these lines ***)
+;M109 T0 S110 (Set the platform temp to 110C)
+;M134 T0 (Wait for the Platform to Heat Up)
+
 (*** To heat a tool, make sure the applicable line is not preceded by a ";" ***)
 (*** Lines for tools not being used must be preceded by a ";"  ***)
 M104 T0 S230 (Set the right extruder temp to 230C)
 ;M104 T1 S230 (Set the left extruder temp to 230C)
-;M109 T0 S110 (Set the platform temp to 110C)
 
 (*** These codes are used to wait for a specific tool to heat up.***)
 (*** Lines for tools in use should not be preceded by a ";" ***)
 (*** Lines for tools not in use should be preceded by a ";" ***)
 M133 T0 (Wait for Right Extruder to Heat Up)
 ;M133 T1 (Wait for Left Extruder to Heat Up)
-;M134 T0 (Wait for the Platform to Heat Up)
 
 G130 X127 Y127 A127 B127 (Set Stepper motor Vref to defaults)
 (*** End start gcode ***)

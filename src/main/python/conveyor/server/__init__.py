@@ -296,7 +296,10 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             job.conclusion = task.conclusion
             job.failure = None
             if None is not task.failure:
-                job.failure = unicode(task.failure.failure)
+                if isinstance(task.failure.failure, dict):
+                    job.failure = task.failure.failure
+                else:
+                    job.failure = unicode(task.failure.failure)
             if conveyor.task.TaskConclusion.ENDED == task.conclusion:
                 self._log.info('job %d ended', job.id)
             elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
@@ -499,7 +502,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
             if 'recipes' != profile_name:
                 profile = makerbot_driver.Profile(profile_name, profiledir)
                 printer = conveyor.domain.Printer.fromprofile(
-                    profile, profile_name, None)
+                    profile, profile_name, None, None)
                 printer.can_print = False
                 dct = printer.todict()
                 result.append(dct)
@@ -507,8 +510,9 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         for portname, printerthread in printerthreads.items():
             profile = printerthread.getprofile()
             printerid = printerthread.getprinterid()
+            firmware_version = printerthread.get_firmware_version()
             printer = conveyor.domain.Printer.fromprofile(
-                profile, printerid, None)
+                profile, printerid, None, firmware_version)
             dct = printer.todict()
             result.append(dct)
         return result
@@ -766,7 +770,9 @@ class Server(object):
             self._printerthreads[portname] = printerthread
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
-        printer = conveyor.domain.Printer.fromprofile(profile, printerid, None)
+        firmware_version = printerthread.get_firmware_version()
+        printer = conveyor.domain.Printer.fromprofile(
+            profile, printerid, None, firmware_version)
         dct = printer.todict()
         self._invokeclients('printeradded', dct)
 
@@ -775,8 +781,9 @@ class Server(object):
         printerthread = self.findprinter_portname(portname)
         printerid = printerthread.getprinterid()
         profile = printerthread.getprofile()
+        firmware_version = printerthread.get_firmware_version()
         printer = conveyor.domain.Printer.fromprofile(
-            profile, printerid, temperature)
+            profile, printerid, temperature, firmware_version)
         dct = printer.todict()
         self._invokeclients('printerchanged', dct)
 
@@ -803,12 +810,12 @@ class Server(object):
             self._invokeclients('printerremoved', params)
 
     def printtofile(self, profile, buildname, inputpath, outputpath,
-            skip_start_end, slicer_settings, print_to_file_type, material,
+            slicer_settings, print_to_file_type, material,
             task, dualstrusion):
         def func():
             driver = conveyor.machine.s3g.S3gDriver()
             driver.printtofile(
-                outputpath, profile, buildname, inputpath, skip_start_end,
+                outputpath, profile, buildname, inputpath, 
                 slicer_settings, print_to_file_type, material, task,
                 dualstrusion)
         self._queue.appendfunc(func)

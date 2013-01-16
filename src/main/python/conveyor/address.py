@@ -174,7 +174,7 @@ class TcpAddress(Address):
             raise MissingHostException(s)
         hostport = split[1].split(':', 1)
         if 2 != len(hostport):
-            raise MailformedUrlException(s)
+            raise MalformedUrlException(s)
         host = hostport[0]
         if 0 == len(host):
             raise MissingHostException(s)
@@ -235,7 +235,7 @@ class MissingHostException(Exception):
         Exception.__init__(self, value)
         self.value = value
 
-class MailformedUrlException(Exception):
+class MalformedUrlException(Exception):
     """ Error when a tcp port specificion or url specification is invalid."""
     def __init__(self, value):
         Exception.__init__(self, value)

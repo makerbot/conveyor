@@ -609,6 +609,7 @@ class ClientMain(conveyor.main.AbstractMain):
                     self._log.info('  display name: %s', printer.display_name)
                     self._log.info('  unique name: %s', printer.unique_name)
                     self._log.info('  printer type: %s', printer.printer_type)
+                    self._log.info('  firmware version: %s', printer.firmware_version)
                     self._log.info('  can print: %s', printer.can_print)
                     self._log.info('  can print to file: %s', printer.can_printtofile)
                     self._log.info('  heated platform: %s', printer.has_heated_platform)
