@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # vim:ai:et:ff=unix:fileencoding=utf-8:sw=4:ts=4:
-# conveyor/start.py
+# conveyor/client.py
 #
 # conveyor - Printing dispatch engine for 3D objects and their friends.
 # Copyright © 2012 Matthew W. Samsonoff <matthew.samsonoff@makerbot.com>
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-'''A Python-based startup script for conveyor.'''
+'''A Python-based client script for conveyor.'''
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
@@ -35,34 +35,16 @@ try:
     import argparse
 except ImportError:
     print(
-        "conveyor-start: missing required module 'argparse'; is the virtualenv activated?",
+        "conveyor-client: missing required module 'argparse'; is the virtualenv activated?",
         file=sys.stderr)
     sys.exit(1)
 
 
 def _main(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-c',
-        '--config',
-        action='store',
-        default='conveyor-dev.conf',
-        type=str,
-        required=False,
-        help='read configuration from FILE',
-        metavar='FILE',
-        dest='config_file')
     parsed_args, unparsed_args = parser.parse_known_args(argv[1:])
-    with open(parsed_args.config_file) as fp:
-        config = json.load(fp)
-    pid_file = config.get('common', {}).get('pid_file', 'conveyord.pid')
-    if os.path.exists(pid_file):
-        print(
-            'conveyor-start: pid file exists; is the conveyor service already running?',
-            file=sys.stderr)
-        return 1
-    elif 'VIRTUAL_ENV' not in os.environ:
-        print('conveyor-start: virtualenv is not activated', file=sys.stderr)
+    if 'VIRTUAL_ENV' not in os.environ:
+        print('conveyor-client: virtualenv is not activated', file=sys.stderr)
         return 1
     else:
         path = os.pathsep.join([
@@ -75,13 +57,18 @@ def _main(argv):
             os.environ['PYTHONPATH'] = os.pathsep.join((
                 path, os.environ['PYTHONPATH']))
         arguments = [
-            'python',
+            sys.executable,
             '-B',
-            '-m', 'conveyor.server',
-            '-c', parsed_args.config_file,
+            '-m', 'conveyor.client',
             ]
+        if len(unparsed_args) > 0 and '--' == unparsed_args[0]:
+            unparsed_args = unparsed_args[1:]
         arguments.extend(unparsed_args)
-        os.execvp(sys.executable, arguments) # NOTE: this line does not return.
+        if not sys.platform.startswith('win'):
+            os.execvp(sys.executable, arguments) # NOTE: this line does not return.
+        else:
+            code = subprocess.call(arguments)
+            return code
 
 
 if '__main__' == __name__:

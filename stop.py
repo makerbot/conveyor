@@ -53,31 +53,20 @@ def _main(argv):
         parsed_args.config = 'conveyor-dev.conf'
     with open(parsed_args.config) as fp:
         config = json.load(fp)
-    pidfile = config['common']['pidfile']
-    if not os.path.exists(pidfile):
+    pid_file = config.get('common', {}).get('pid_file', 'conveyord.pid')
+    if not os.path.exists(pid_file):
         print(
             'conveyor-stop: pid file not found; is the conveyor service already stopped?',
             file=sys.stderr)
         code = 1
     else:
-        with open(pidfile) as fp:
-            try:
-                pid = int(fp.read())
-            except ValueError:
-                pid = None
-        if 'nt' == os.name:
-            sig = signal.CTRL_C_EVENT
-        else:
-            sig = signal.SIGTERM
-        os.kill(pid, sig) # Politely ask the daemon to stop.
+        with open(pid_file) as fp:
+            pid = int(fp.read())
+        _graceful(pid)
         time.sleep(1)
-        if os.path.exists(pidfile):
-            if 'nt' == os.name:
-                sig = 0
-            else:
-                sig = signal.SIGKILL
-            os.kill(pid, sig) # Murder the daemon!
-        if not os.path.exists(pidfile):
+        if os.path.exists(pid_file):
+            _kill(pid)
+        if not os.path.exists(pid_file):
             code = 0
         else:
             print(
@@ -85,6 +74,61 @@ def _main(argv):
                 file=sys.stderr)
             code = 1
         return code
+
+
+if not sys.platform.startswith('win'):
+
+    #
+    # Posix (a.k.a. not Windows)
+    #
+
+    def _graceful(pid):
+        os.kill(pid, signal.SIGTERM)
+
+
+    def _kill(pid):
+        os.kill(pid, signal.SIGKILL)
+
+
+else:
+
+    #
+    # Windows
+    #
+
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+
+    def _graceful(pid):
+        # http://msdn.microsoft.com/en-us/library/windows/desktop/ms681952%28v=vs.85%29.aspx
+        dwProcessId = pid
+        kernel32.AttachConsole(dwProcessId)
+
+        # http://msdn.microsoft.com/en-us/library/windows/desktop/ms686016%28v=vs.85%29.aspx
+        HandlerRoutine = None
+        Add = True
+        kernel32.SetConsoleCtrlHandler(HandlerRoutine, Add)
+
+        # http://msdn.microsoft.com/en-us/library/windows/desktop/ms683155%28v=vs.85%29.aspx
+        # dwCtrlEvent: 0=CTRL_C_EVENT, 1=CTRL_BREAK_EVENT
+        dwCtrlEvent = 0
+        dwProcessGroupId = 0
+        kernel32.GenerateConsoleCtrlEvent(dwCtrlEvent, dwProcessGroupId)
+
+    def _kill(pid):
+        # Based on:
+        # http://docs.python.org/2/faq/windows.html#how-do-i-emulate-os-kill-in-windows
+
+        # http://msdn.microsoft.com/en-us/library/windows/desktop/ms684320%28v=vs.85%29.aspx
+        # dwDesiredAccess: 1=PROCESS_TERMINATE
+        dwDesiredAccess = 1
+        bInheritHandle = False
+        dwProcessId = pid
+        hProcess = kernel32.OpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId)
+
+        # http://msdn.microsoft.com/en-us/library/windows/desktop/ms686714%28v=vs.85%29.aspx
+        uExitCode = 1
+        kernel32.TerminateProcess(hProcess, uExitCode)
 
 
 if '__main__' == __name__:
