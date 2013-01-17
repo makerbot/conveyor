@@ -467,7 +467,7 @@ class _PrintersCommand(_JsonCommand):
 
 @args(conveyor.arg.output_file)
 class _ReadEepromCommand(_QueryCommand):
-    name = 'reeadeeprom'
+    name = 'readeeprom'
 
     help = 'read a machine EEPROM'
 
