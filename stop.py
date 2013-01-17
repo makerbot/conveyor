@@ -51,9 +51,13 @@ def _main(argv):
     parsed_args, unparsed_args = parser.parse_known_args(argv[1:])
     if None is parsed_args.config:
         parsed_args.config = 'conveyor-dev.conf'
-    with open(parsed_args.config) as fp:
-        config = json.load(fp)
-    pid_file = config.get('common', {}).get('pid_file', 'conveyord.pid')
+    try:
+        with open(parsed_args.config) as fp:
+            config = json.load(fp)
+    except ValueError:
+        pid_file = 'conveyord.pid'
+    else:
+        pid_file = config.get('common', {}).get('pid_file', 'conveyord.pid')
     if not os.path.exists(pid_file):
         print(
             'conveyor-stop: pid file not found; is the conveyor service already stopped?',

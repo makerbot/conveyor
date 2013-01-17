@@ -21,7 +21,6 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import argparse
 import decimal
-import json
 import logging
 import os
 import sys
@@ -30,6 +29,7 @@ import conveyor.address
 import conveyor.arg
 import conveyor.config
 import conveyor.debug
+import conveyor.json
 import conveyor.platform
 
 from conveyor.decorator import args
@@ -107,7 +107,7 @@ class AbstractMain(object):
     def _load_config(self):
         try:
             with open(self._parsed_args.config_file) as fp:
-                dct = json.load(fp)
+                dct = conveyor.json.load(fp)
         except EnvironmentError as e:
             self._log.critical(
                 'failed to read configuration file: %s: %s',
