@@ -42,11 +42,14 @@ configuration must be a group/dict.
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import json
 import os.path
+import textwrap
 
 import conveyor.address
 import conveyor.error
 import conveyor.platform
+import conveyor.visitor
 
 
 class Config(object):
@@ -74,7 +77,8 @@ def convert(config_path, dct):
 
     '''
 
-    config = _DEFAULT.convert(config_path, '', dct)
+    type_ = _gettype()
+    config = type_.convert(config_path, '', dct)
     return config
 
 
@@ -105,6 +109,12 @@ def get(config_path, dct, *path):
         else:
             raise conveyor.error.ConfigKeyError(config_path, '.'.join(key))
     return value
+
+
+def format_default(fp):
+    formatter = _Formatter(fp)
+    type_ = _gettype()
+    formatter.visit(type_)
 
 
 class _Type(object):
@@ -171,7 +181,7 @@ class _Int(_Primitive):
         _Primitive.__init__(self, int, default)
 
 
-class _String(_Primitive):
+class _Str(_Primitive):
     '''
     A type representing a built-in Python string (any basestring; str or
     unicode).
@@ -292,168 +302,223 @@ class _Field(object):
         self.value = value
 
 
-class _PlatformChoice(_Type):
-    '''A type that delegates to another type based on the operating system.'''
+class _Formatter(conveyor.visitor.Visitor):
+    def __init__(self, fp):
+        self._fp = fp
+        self._level = 0
+        self._need_indent = True
 
-    def __init__(self, linux, osx, windows):
-        self._choices = {
-            conveyor.platform.Platform.LINUX: linux,
-            conveyor.platform.Platform.OSX: osx,
-            conveyor.platform.Platform.WINDOWS: windows,
-        }
+    def _indent(self):
+        self._level += 2
 
-    def  _getchoice(self):
-        choice = self._choices[conveyor.platform.PLATFORM]
-        return choice
+    def _dedent(self):
+        self._level -= 2
 
-    def _getdefault(self):
-        choice = self._getchoice()
-        default = choice._getdefault()
-        return default
+    def _newline(self):
+        self._fp.write('\n')
+        self._need_indent = True
 
-    def convert(self, config_path, key, value):
-        choice = self._getchoice()
-        result = choice.convert(config_path, key, value)
-        return result
+    def _text(self, s):
+        if self._need_indent:
+            self._need_indent = False
+            for i in range(self._level):
+                self._fp.write(' ')
+        self._fp.write(s)
+
+    def accept__Primitive(self, primitive):
+        self._text(json.dumps(primitive._default))
+        self._newline()
+
+    def accept__Address(self, address):
+        self._text('"todo"')
+        self._newline()
+
+    def accept__LogLevel(self, level):
+        self._text(json.dumps(level._default))
+        self._newline()
+
+    def accept__FilesystemItem(self, filesystem_item):
+        self._text(json.dumps(os.path.join(*filesystem_item._path)))
+        self._newline()
+
+    def accept__Group(self, group):
+        self._text('{')
+        first_in_group = True
+        for field in group._fields:
+            self._field(field, first_in_group)
+            first_in_group = False
+        self._text('}')
+        self._newline()
+
+    def _field(self, field, first_in_group):
+        if first_in_group:
+            self._text(' ')
+        else:
+            # self._newline()
+            self._text(', ')
+        self._indent()
+        if None is not field.comment:
+            # The wrapping width is 78 characters minus 5 to account for the
+            # "  // " minus the indentation, but not less than 40 characters.
+            width = max(40, 78 - 5 - self._level)
+            lines = textwrap.wrap(field.comment, width)
+            if 0 != lines:
+                for line in lines:
+                    self._text('// ')
+                    self._text(line)
+                    self._newline()
+        self._text(json.dumps(field.name))
+        self._text(':')
+        if not isinstance(field.value, _Group):
+            self._text(' ')
+            self.visit(field.value)
+        else:
+            self._newline()
+            self._indent()
+            self.visit(field.value)
+            self._dedent()
+        self._dedent()
 
 
-_DEFAULT = _Group(
-    _Field(
-        'Basic configuration parameters used by both the conveyor client and service.',
-        'common',
-        _Group(
-            _Field(
-                'The address of the conveyor service.',
-                'address',
-                _Address(),
-            ),
-            _Field(
-                'The location of the conveyor service PID file.',
-                'pid_file',
-                _File(conveyor.platform.DEFAULT_CONFIG_COMMON_PID_FILE),
-            ),
-        ),
-    ),
-    _Field(
-        'Configuration parameters for the MakerBot driver.',
-        'makerbot_driver',
-        _Group(
-            _Field(
-                'The directory containing the MakerBot machine profiles.',
-                'profile_dir',
-                _Directory(conveyor.platform.DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR),
-            ),
-        ),
-    ),
-    _Field(
-        'Configuration parameters for the Miracle Grue slicer.',
-        'miracle_grue',
-        _Group(
-            _Field(
-                'The path to the Miracle-Grue executable.',
-                'exe',
-                _Executable(conveyor.platform.DEFAULT_CONFIG_MIRACLE_GRUE_EXE),
-            ),
-            _Field(
-                'The directory containing the default Miracle-Grue slicing profiles.',
-                'profile_dir',
-                _Directory(conveyor.platform.DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR),
-            ),
-        ),
-    ),
-    _Field(
-        'Configuration parameters for the Skeinforge slicer.',
-        'skeinforge',
-        _Group(
-            _Field(
-                'The path to the Skeinforge application file.',
-                'file',
-                _File(conveyor.platform.DEFAULT_CONFIG_SKEINFORGE_FILE),
-            ),
-            _Field(
-                'The directory containing the default Skeinforge slicing profiles.',
-                'profile_dir',
-                _Directory(conveyor.platform.DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR),
-            ),
-            _Field(
-                'The default Skeinforge profile.',
-                'profile',
-                _String('Replicator slicing defaults'),
-            ),
-        ),
-    ),
-    _Field(
-        'Configuration parameters for the conveyor service.',
-        'server',
-        _Group(
-            _Field(
-                'Whether or not the conveyor service should change directory to the root directory after launching.',
-                'chdir',
-                _Bool(False),
-            ),
-            _Field(
-                'The number of threads available for handling events.',
-                'event_threads',
-                _Int(2),
-            ),
-            _Field(
-                'The logging configuration for the conveyor service.',
-                'logging',
-                _Group(
-                    _Field(
-                        'Whether or not logging is enabled for the conveyor service.',
-                        'enabled',
-                        _Bool(True),
-                        ),
-                    _Field(
-                        'The path for the conveyor service log file.',
-                        'file',
-                        _File(conveyor.platform.DEFAULT_CONFIG_SERVER_LOGGING_FILE),
-                        ),
-                    _Field(
-                        'The logging level for the conveyor service.',
-                        'level',
-                        _LogLevel('INFO'),
-                    ),
+def _gettype():
+    type_ = _Group(
+        _Field(
+            'Basic configuration parameters used by both the conveyor client and service.',
+            'common',
+            _Group(
+                _Field(
+                    'The address of the conveyor service.',
+                    'address',
+                    _Address(),
                 ),
-            ),
-            _Field(
-                'The path to the mesh extraction program.',
-                'unified_mesh_hack_exe',
-                _File(conveyor.platform.DEFAULT_CONFIG_SERVER_UNIFIED_MESH_HACK_EXE),
-            ),
-        ),
-    ),
-    _Field(
-        'Configuration parameters for the conveyor client.',
-        'client',
-        _Group(
-            _Field(
-                'The number of threads available for handling events.',
-                'event_threads',
-                _Int(2),
-            ),
-            _Field(
-                'The logging configuration for the conveyor client.',
-                'logging',
-                _Group(
-                    _Field(
-                        'Whether or not logging is enabled for the conveyor client.',
-                        'enabled',
-                        _Bool(True),
-                    ),
-                    _Field(
-                        'The path for the conveyor client log file.',
-                        'file',
-                        _File('conveyorc.log'),
-                    ),
-                    _Field(
-                        'The logging level for the conveyor service.',
-                        'level',
-                        _LogLevel('INFO'),
-                    ),
+                _Field(
+                    'The location of the conveyor service PID file.',
+                    'pid_file',
+                    _File(conveyor.platform.DEFAULT_CONFIG_COMMON_PID_FILE),
                 ),
             ),
         ),
-    ),
-)
+        _Field(
+            'Configuration parameters for the MakerBot driver.',
+            'makerbot_driver',
+            _Group(
+                _Field(
+                    'The directory containing the MakerBot machine profiles.',
+                    'profile_dir',
+                    _Directory(conveyor.platform.DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR),
+                ),
+            ),
+        ),
+        _Field(
+            'Configuration parameters for the Miracle Grue slicer.',
+            'miracle_grue',
+            _Group(
+                _Field(
+                    'The path to the Miracle-Grue executable.',
+                    'exe',
+                    _Executable(conveyor.platform.DEFAULT_CONFIG_MIRACLE_GRUE_EXE),
+                ),
+                _Field(
+                    'The directory containing the default Miracle-Grue slicing profiles.',
+                    'profile_dir',
+                    _Directory(conveyor.platform.DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR),
+                ),
+            ),
+        ),
+        _Field(
+            'Configuration parameters for the Skeinforge slicer.',
+            'skeinforge',
+            _Group(
+                _Field(
+                    'The path to the Skeinforge application file.',
+                    'file',
+                    _File(conveyor.platform.DEFAULT_CONFIG_SKEINFORGE_FILE),
+                ),
+                _Field(
+                    'The directory containing the default Skeinforge slicing profiles.',
+                    'profile_dir',
+                    _Directory(conveyor.platform.DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR),
+                ),
+                _Field(
+                    'The default Skeinforge profile.',
+                    'profile',
+                    _Str('Replicator slicing defaults'),
+                ),
+            ),
+        ),
+        _Field(
+            'Configuration parameters for the conveyor service.',
+            'server',
+            _Group(
+                _Field(
+                    'Whether or not the conveyor service should change directory to the root directory after launching.',
+                    'chdir',
+                    _Bool(False),
+                ),
+                _Field(
+                    'The number of threads available for handling events.',
+                    'event_threads',
+                    _Int(2),
+                ),
+                _Field(
+                    'The logging configuration for the conveyor service.',
+                    'logging',
+                    _Group(
+                        _Field(
+                            'Whether or not logging is enabled for the conveyor service.',
+                            'enabled',
+                            _Bool(True),
+                            ),
+                        _Field(
+                            'The path for the conveyor service log file.',
+                            'file',
+                            _File(conveyor.platform.DEFAULT_CONFIG_SERVER_LOGGING_FILE),
+                            ),
+                        _Field(
+                            'The logging level for the conveyor service.',
+                            'level',
+                            _LogLevel('INFO'),
+                        ),
+                    ),
+                ),
+                _Field(
+                    'The path to the mesh extraction program.',
+                    'unified_mesh_hack_exe',
+                    _File(conveyor.platform.DEFAULT_CONFIG_SERVER_UNIFIED_MESH_HACK_EXE),
+                ),
+            ),
+        ),
+        _Field(
+            'Configuration parameters for the conveyor client.',
+            'client',
+            _Group(
+                _Field(
+                    'The number of threads available for handling events.',
+                    'event_threads',
+                    _Int(2),
+                ),
+                _Field(
+                    'The logging configuration for the conveyor client.',
+                    'logging',
+                    _Group(
+                        _Field(
+                            'Whether or not logging is enabled for the conveyor client.',
+                            'enabled',
+                            _Bool(True),
+                        ),
+                        _Field(
+                            'The path for the conveyor client log file.',
+                            'file',
+                            _File('conveyorc.log'),
+                        ),
+                        _Field(
+                            'The logging level for the conveyor service.',
+                            'level',
+                            _LogLevel('INFO'),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    return type_
