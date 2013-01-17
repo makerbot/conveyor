@@ -24,6 +24,7 @@ import os
 import tempfile
 
 import conveyor.event
+import conveyor.json
 import conveyor.machine.s3g # TODO: aww, bad coupling
 import conveyor.slicer
 import conveyor.util
@@ -73,7 +74,7 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
 
     def _getconfig(self):
         with open(self._configpath, 'r') as fp:
-            config = json.load(fp)
+            config = conveyor.json.load(fp)
         config['infillDensity'] = self._slicer_settings.infill
         config['numberOfShells'] = self._slicer_settings.shells
         config['rapidMoveFeedRateXY'] = self._slicer_settings.travel_speed
@@ -85,11 +86,9 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         config['extrusionProfiles']['insets']['feedrate'] = self._slicer_settings.print_speed
         config['extrusionProfiles']['infill']['feedrate'] = self._slicer_settings.print_speed
         if self._slicer_settings.raft:
+            # Turn on the fan immediately after the raft.
             raftLayers = config['raftLayers']
-#            fanLayer = config['fanLayer']
-#            fanLayer += raftLayers
-#            config['fanLayer'] = fanLayer
-            config['fanLayer'] = raftLayers #We want the fan to turn on immediately after the raft
+            config['fanLayer'] = raftLayers
         if self._dualstrusion:
             config['doPutModelOnPlatform'] = False
         config['startGcode'] = None
