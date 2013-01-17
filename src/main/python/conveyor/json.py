@@ -20,6 +20,41 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import StringIO
+import json
+
+
+def loads(s, *args, **kwargs):
+    '''
+    A wrapper around the built-in `json.loads` that uses the `JsonReader` to
+    strip comments. It supports all of the same positional and keyword
+    arguments as `json.loads`.
+
+    '''
+
+    slot = [None]
+    def callback(result):
+        if None is not slot[0]:
+            raise ValueError('Extra data')
+        else:
+            slot[0] = json.loads(result, *args, **kwargs)
+    reader = JsonReader(callback, True)
+    reader.feed(s)
+    reader.feedeof()
+    return slot[0]
+
+
+def load(fp, *args, **kwargs):
+    '''
+    A wrapper around the built-in `json.load` that uses the `JsonReader` to
+    strip comments. It supports all of the same positional and keyword
+    arguments as `json.load`.
+
+    '''
+
+    data = fp.read()
+    result = loads(data, *args, **kwargs)
+    return result
+
 
 # NOTES:
 #
@@ -61,7 +96,6 @@ import StringIO
 # and S1: S0 only accepts whitespace while S1 will accept anything. This is a
 # subtle effect. Changing these validation rules will merely have other subtle
 # effects. Tread carefully.
-
 
 class JsonReader(object):
     '''
@@ -244,7 +278,8 @@ class JsonReader(object):
         error.
 
         The callback is not invoked if the JSON text consists only of
-        whitespace.
+        whitespace. This accounts for whitespace that may appear between a
+        top-level JSON array or object and the end of a file.
 
         '''
 
