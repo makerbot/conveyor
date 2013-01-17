@@ -71,7 +71,7 @@ class RecipeManager(object):
 
     def _getrecipe_stl(self, job):
         if not os.path.exists(job.path):
-            raise MissingPathExceptoin(job.path)
+            raise MissingFileException(job.path)
         elif not os.path.isfile(job.path):
             raise NotFileException(job.path)
         else:

@@ -281,9 +281,8 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         return printerthread
 
     def _findprofile(self, name):
-        if None is name:
-            name = self._config['common']['profile']
-        profile = makerbot_driver.Profile(name, self._config['common']['profiledir'])
+        profile = makerbot_driver.Profile(name, self._config.get(
+            'makerbot_driver', 'profile_dir'))
         return profile
 
     def _getbuildname(self, path):
@@ -338,7 +337,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self, profilename, inputpath, outputpath, gcodeprocessor, skip_start_end, 
         archive_lvl, archive_dir, slicer_settings, print_to_file_type, material):
             self._log.debug(
-                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, skip_start_end=%r, print_to_file_type=%r, printer=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
+                'profilename=%r, inputpath=%r, outputpath=%r, gcodeprocessor=%r, skip_start_end=%r, print_to_file_type=%r, archive_lvl=%r, archive_dir=%r, slicer_settings=%r, material=%r',
                 profilename, inputpath, outputpath, gcodeprocessor,
                 skip_start_end, print_to_file_type, archive_lvl, archive_dir, slicer_settings,
                 material)

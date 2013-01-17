@@ -211,7 +211,7 @@ class _MonitorCommand(_MethodCommand):
     '''
 
     def __init__(self, parsed_args, config):
-        _JsonCommand.__init__(self, parsed_args, config)
+        _MethodCommand.__init__(self, parsed_args, config)
         self._job_id = None
 
     def _export_methods(self):
@@ -225,6 +225,7 @@ class _MonitorCommand(_MethodCommand):
         '''
 
         job = conveyor.domain.Job.fromdict(kwargs)
+        job_id = job.id
         if (not self._stop and None is not self._job_id
                 and self._job_id == job_id):
             if conveyor.task.TaskState.STOPPED == job.state:
@@ -395,7 +396,7 @@ class _PrintCommand(_MonitorCommand):
         params = {
             'printername': None,
             'inputpath': os.path.abspath(self._parsed_args.input_file),
-            'gcodeprocessor': self._parsed_args.gcode_processor,
+            'gcodeprocessor': self._parsed_args.gcode_processor_name,
             'material': self._parsed_args.material_name,
             'skip_start_end': self._parsed_args.has_start_end,
             'archive_lvl': 'all',
@@ -424,10 +425,10 @@ class _PrintToFileCommand(_MonitorCommand):
         slicer_settings = _create_slicer_settings(self._parsed_args)
         slicer_settings.path = self._parsed_args.slicer_settings_path
         params = {
-            'profilename': None,
+            'profilename': 'ReplicatorDual', # TODO: fix this mess
             'inputpath': os.path.abspath(self._parsed_args.input_file),
             'outputpath': os.path.abspath(self._parsed_args.output_file),
-            'gcodeprocessor': self._parsed_args.gcode_processor,
+            'gcodeprocessor': self._parsed_args.gcode_processor_name,
             'material': self._parsed_args.material_name,
             'skip_start_end': self._parsed_args.has_start_end,
             'archive_lvl': 'all',
@@ -435,7 +436,7 @@ class _PrintToFileCommand(_MonitorCommand):
             'slicer_settings': slicer_settings.todict(),
             'print_to_file_type': self._parsed_args.file_type,
         }
-        method_task = self._jsonrpc.request('print', params)
+        method_task = self._jsonrpc.request('printtofile', params)
         return method_task
 
 
@@ -515,7 +516,7 @@ class _SliceCommand(_MonitorCommand):
             'profilename': None,
             'inputpath': os.path.abspath(self._parsed_args.input_file),
             'outputpath': os.path.abspath(self._parsed_args.output_file),
-            'gcodeprocessor': self._parsed_args.gcode_processor,
+            'gcodeprocessor': self._parsed_args.gcode_processor_name,
             'material': self._parsed_args.material_name,
             'with_start_end': self._parsed_args.add_start_end,
             'slicer_settings': slicer_settings.todict(),

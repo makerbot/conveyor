@@ -22,9 +22,11 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 def args(*funcs):
     def decorator(cls):
-        args_funcs = getattr(cls, '_args_funcs', [])
-        args_funcs = args_funcs[:]
-        args_funcs.extend(funcs)
+        # NOTE: decorators are applied bottom-up. To support positional
+        # arguments (listed in the source file in a sensible manner) we have to
+        # prepend the new argument functions to the list instead of appending
+        # them.
+        args_funcs = list(funcs) + getattr(cls, '_args_funcs', [])
         setattr(cls, '_args_funcs', args_funcs)
         return cls
     return decorator
@@ -32,9 +34,7 @@ def args(*funcs):
 
 def command(command_class):
     def decorator(cls):
-        command_classes = getattr(cls, '_command_classes', [])
-        command_classes = command_classes[:]
-        command_classes.append(command_class)
+        command_classes = [command_class] + getattr(cls, '_command_classes', [])
         setattr(cls, '_command_classes', command_classes)
         return cls
     return decorator
