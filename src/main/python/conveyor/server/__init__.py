@@ -89,26 +89,6 @@ class _WriteEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
         task.runningevent.attach(runningcallback)
         return task
 
-class _ReadEepromTaskFactory(conveyor.jsonrpc.TaskFactory):
-    def __init__(self, clientthread):
-        self._clientthread = clientthread
-        self._log = logging.getLogger(self.__class__.__name__)
-
-    def __call__(self, printername):
-        task = conveyor.task.Task()
-        def runningcallback(task):
-            try:
-                printerthread = self._clientthread._findprinter(printername)
-                eeprommap = printerthread.readeeprom(task)
-            except Exception as e:
-                self._log.debug('handled exception')
-                exception = getexception(e)
-                task.fail(exception)
-            else:
-                task.end(eeprommap)
-        task.runningevent.attach(runningcallback)
-        return task
-
 class _UploadFirmwareTaskFactory(conveyor.jsonrpc.TaskFactory):
     def __init__(self, clientthread):
         self._clientthread = clientthread
@@ -469,6 +449,22 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
         return uploader.compatible_firmware(firmwareversion)
 
+    @export('readeeprom')
+    def _readeeprom(self, printername):
+        task = conveyor.task.Task()
+        def runningcallback(task):
+            try:
+                printerthread = self._findprinter(printername)
+                eeprommap = printerthread.readeeprom(task)
+            except Exception as e:
+                self._log.debug('handled exception')
+                exception = getexception(e)
+                task.fail(exception)
+            else:
+                task.end(eeprommap)
+        task.runningevent.attach(runningcallback)
+        return task
+
     def _load_services(self):
         self._jsonrpc.addmethod('hello', self._hello, "no params. Returns 'world'")
         self._jsonrpc.addmethod('print', self._print, 
@@ -484,8 +480,7 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         self._jsonrpc.addmethod('getprinters', self._getprinters)
         self._jsonrpc.addmethod('getjob', self._getjob)
         self._jsonrpc.addmethod('getjobs', self._getjobs)
-        readeepromfactory = _ReadEepromTaskFactory(self)
-        self._jsonrpc.addmethod('readeeprom', readeepromfactory, ": takes a printerthread")
+        self._jsonrpc.addmethod('readeeprom', self._readeeprom, ": takes a printerthread")
         writeeepromfactory = _WriteEepromTaskFactory(self)
         self._jsonrpc.addmethod('writeeeprom', writeeepromfactory, ": takes a printerthread and json eeprommap")
         getuploadablemachinesfactory = _GetUploadableMachinesTaskFactory()
