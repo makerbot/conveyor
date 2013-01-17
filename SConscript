@@ -67,18 +67,24 @@ env.Append(CCFLAGS='-Wno-long-long')
 env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
-cppenv.Append(CPPPATH=Dir('include/'))
-if ARGUMENTS.get('debian_build',0):
-    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/'))
-else:
-    cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
-    cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
+cppenv.Append(CPPPATH=Dir('#/include/'))
+
+cppenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
+env.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
+
+cppenv.MBAddDevelLibPath('#/../jsonrpc/obj')
+cppenv.MBAddDevelLibPath('#/../json-cpp/obj')
+cppenv.MBAddDevelIncludePath('#/../jsonrpc/src/main/include')
+cppenv.MBAddDevelIncludePath('#/../json-cpp/include')
+
+cppenv.Append(LIBS = ['json', 'jsonrpc'])
+
 libconveyor_cpp = [Glob('src/main/cpp/*.cpp')]
 if 'win32' != sys.platform:
     libconveyor_cpp.append(Glob('src/main/cpp/posix/*.cpp'))
 else:
     libconveyor_cpp.append(Glob('src/main/cpp/win32/*.cpp'))
-libconveyor = cppenv.StaticLibrary(
+libconveyor = cppenv.SharedLibrary(
     'conveyor', [
         libconveyor_cpp,
         cppenv.Moc4('include/conveyor/conveyor.h'),
@@ -88,31 +94,26 @@ libconveyor = cppenv.StaticLibrary(
         cppenv.Moc4('include/conveyor/eeprommap.h')
     ])
 
+cppenv.MBInstallLib(libconveyor)
+cppenv.MBInstallHeaders('#/include')
+
 tests = {}
 testenv = cppenv.Clone()
 
 if "darwin" == sys.platform:
-    utilenv.Program('bin/start_conveyor_service',
-                    'src/util/cpp/mac_start_conveyor_service.c')
-    utilenv.Program('bin/stop_conveyor_service',
-                    'src/util/cpp/mac_stop_conveyor_service.c')
+    utilenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
+
+    startcmd = utilenv.Program('bin/start_conveyor_service',
+                               'src/util/cpp/mac_start_conveyor_service.c')
+    stopcmd = utilenv.Program('bin/stop_conveyor_service',
+                              'src/util/cpp/mac_stop_conveyor_service.c')
+
+    utilenv.MBInstallBin(startcmd)
+    utilenv.MBInstallBin(stopcmd)
 
 
 if build_unit_tests:
     testenv.Append(LIBS='cppunit')
-
-    if ARGUMENTS.get('debian_build',0):
-        testenv.Append(LIBPATH=[Dir('/usr/lib/makerbot')])
-    	testenv.Append(LIBS=['jsonrpc'])
-    	testenv.Append(LIBS=['json'])
-    else:
-        testenv.Append(LIBPATH=[Dir('#/../json-cpp/obj/')])
-    	testenv.Append(LIBPATH=[Dir('#/../jsonrpc/obj/')])
-    	testenv.Append(LIBS=['jsonrpc'])
-    	testenv.Append(LIBS=['json'])
-
-    if 'win32' == sys.platform:
-        testenv.Append(LIBS=['ws2_32'])
 
     test_common = ['src/test/cpp/UnitTestMain.cpp', libconveyor]
 
@@ -133,104 +134,48 @@ if run_unit_tests:
     for (name, test) in tests.items():
         testenv.Command('runtest_test_'+name, test, test)
 
-def rInstall(dest, src, pattern='*'):
-    installs = []
+conveyor_pysrc = []
+for curpath, dirnames, filenames in os.walk(str(Dir('#/src/main/python'))):
+    conveyor_pysrc.append(filter(lambda f:
+                                 (os.path.exists(str(f)) and
+                                  not os.path.isdir(str(f))),
+                             env.Glob(os.path.join(curpath, '*.py'))))
 
-    print "rInstall " + src + "->" + dest
+conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
+                           conveyor_pysrc,
+              "python -c 'import setuptools; execfile(\"setup.py\")' bdist_egg")
 
-    for curpath, dirnames, filenames in os.walk(src):
-        relative = os.path.relpath(curpath, src)
+env.MBInstallEgg(conveyor_egg)
 
-        print "Installing " + curpath + " into " + os.path.join(dest, relative)
-
-        installs.append(cppenv.Install(os.path.join(dest, relative),
-                                       filter(lambda f:
-                                                  (os.path.exists(str(f)) and
-                                                   not os.path.isdir(str(f))),
-                                         Glob(os.path.join(curpath, pattern)))))
-
-    return installs
-
-
-install_prefix = ARGUMENTS.get('install_prefix', '')
-config_prefix = ARGUMENTS.get('config_prefix', '')
-
-install_bins = ['#/submodule/conveyor_bins/python']
-
-inst = []
 if sys.platform == "linux2":
-    if install_prefix == '': install_prefix = '/usr'
-    if config_prefix == '': config_prefix = '/etc'
-
-    conveyor_dir = install_prefix + '/share/conveyor'
-    pylib_dir = conveyor_dir + '/lib'
-    mg_config_dir = install_prefix + '/share/miracle-grue'
-    sk_config_dir = install_prefix + '/share/skeinforge'
-    conveyor_bins_dir = conveyor_dir + '/conveyor_bins'
-
-    inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
-                                 'conveyor-debian.conf'))
-    inst.append(cppenv.InstallAs(config_prefix + '/init/conveyor.conf',
-                               'linux/conveyor-upstart.conf'))
-    inst.append(cppenv.Install(install_prefix + '/lib', libconveyor))
-    inst.append(cppenv.Install(conveyor_dir, 'wrapper/conveyord'))
-    inst.append(cppenv.Install(conveyor_dir, 'setup.sh'))
-
-    inst += rInstall(install_prefix + '/include/makerbot',
-                     str(Dir('#/include')), '*.h')
+    env.MBInstallResources('#/linux')
+    env.MBInstallBin('#/wrapper/conveyord')
+    env.MBInstallBin('#/setup.sh')
 
 elif sys.platform == 'darwin':
-    framework_dir = install_prefix + '/Library/Frameworks/MakerBot.framework/Makerbot'
-    conveyor_dir = framework_dir + '/conveyor'
     launchd_dir = '/Library/LaunchDaemons'
 
-    if config_prefix == '': config_prefix = conveyor_dir
-    pylib_dir = conveyor_dir + '/src/main/python'
-    mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
-    sk_config_dir = conveyor_dir + '/src/main/skeinforge'
-    conveyor_bins_dir = conveyor_dir + '/submodule/conveyor_bins'
-    install_bins.append('#/submodule/conveyor_bins/mac')
-
-    inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
-                                 'conveyor-mac.conf'))
-    inst.append(cppenv.Install(launchd_dir, 'mac/com.makerbot.conveyor.plist'))
-    inst.append(cppenv.Install(conveyor_dir, 'setup.sh'))
+    env.MBInstallResources('#/submodule/conveyor_bins/mac')
+    env.MBInstallResources('#/mac')
+    env.MBInstallBin('#/setup.sh')
+    env.MBInstallSystem(launchd_dir, '#/mac/com.makerbot.conveyor.plist')
 
 elif sys.platform == 'win32':
-    if install_prefix == '':
-        if os.path.exists('c:/Program Files (x86)'):
-            install_prefix = 'c:/Program Files (x86)/MakerBot'
-        else:
-            install_prefix = 'c:/Program Files/MakerBot'
+    env.MBInstallResources('#/submodule/conveyor_bins/windows')
+    env.MBInstallResources('#/win')
 
-    conveyor_dir = install_prefix + '/conveyor'
+    env.MBInstallBin('#/setup.bat')
+    env.MBInstallBin('#/start.bat')
+    env.MBInstallBin('#/stop.bat')
 
-    if config_prefix == '': config_prefix = conveyor_dir
-
-    pylib_dir = conveyor_dir + '/src/main/python'
-    mg_config_dir = conveyor_dir + '/src/main/miraclegrue'
-    sk_config_dir = conveyor_dir + '/src/main/skeinforge'
-    conveyor_bins_dir = conveyor_dir + '/submodule/conveyor_bins'
-    install_bins.append('#/submodule/conveyor_bins/windows')
-
-    inst.append(cppenv.InstallAs(config_prefix + '/conveyor.conf',
-                                 'conveyor-mac.conf'))
-    inst.append(cppenv.Install(conveyor_dir, 'setup.bat'))
-    inst.append(cppenv.Install(conveyor_dir, 'start.bat'))
-    inst.append(cppenv.Install(conveyor_dir, 'stop.bat'))
-
+env.MBInstallEgg(Glob('#/submodule/conveyor_bins/python/*'))
     
-inst += rInstall(pylib_dir, str(Dir('#/src/main/python')), '*.py')
-inst += rInstall(mg_config_dir, str(Dir('#/src/main/miraclegrue')))
-inst += rInstall(sk_config_dir, str(Dir('#/src/main/skeinforge')))
+env.MBInstallResources('#/src/main/miraclegrue')
+env.MBInstallResources('#/src/main/skeinforge')
 
-inst.append(cppenv.Install(conveyor_dir, 'conveyor_service.py'))
-inst.append(cppenv.Install(conveyor_dir, 'conveyor_cmdline_client.py'))
-inst.append(cppenv.Install(conveyor_dir, 'COPYING'))
-inst.append(cppenv.Install(conveyor_dir, 'README.md'))
-inst.append(cppenv.Install(conveyor_dir, 'HACKING.md'))
+env.MBInstallBin('#/conveyor_service.py')
+env.MBInstallBin('#/conveyor_cmdline_client.py')
 
-for conveyor_bin in install_bins:
-    inst.append(rInstall(conveyor_bins_dir, str(Dir(conveyor_bin))))
+env.MBCreateInstallTarget()
+cppenv.MBCreateInstallTarget()
 
-env.Alias('install',inst)
