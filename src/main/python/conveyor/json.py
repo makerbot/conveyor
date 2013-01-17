@@ -84,8 +84,8 @@ class JsonReader(object):
     When `strip_comments` is disabled comment characters are passed to the
     callback unmodified. This can have a surprising effect if `callback` does
     not raise an exception and a comment appears before a top-level JSON object
-    or array: each character of the comment will be sent individually to
-    `callback`.
+    or array: each non-whitespace character of the comment will be sent
+    individually to `callback`.
 
     '''
 
