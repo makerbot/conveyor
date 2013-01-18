@@ -20,7 +20,7 @@ import os.path
 import sys
 import fnmatch
 import re
-import glob
+from glob import glob
 
 # We require Qt 4.8.0; Oneiric ships with 4.7.4. On Oneiric, use the manually installed SDK.
 if sys.platform == 'linux2':
@@ -95,7 +95,7 @@ libconveyor = cppenv.SharedLibrary(
     ])
 
 cppenv.MBInstallLib(libconveyor)
-cppenv.MBInstallHeaders('#/include')
+cppenv.MBInstallHeaders(env.MBGlob('#/include/*'))
 
 tests = {}
 testenv = cppenv.Clone()
@@ -148,33 +148,33 @@ conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
 env.MBInstallEgg(conveyor_egg)
 
 if sys.platform == "linux2":
-    env.MBInstallResources('#/linux')
+    env.MBInstallResources(env.MBGlob('#/linux/*'))
     env.MBInstallBin('#/wrapper/conveyord')
-    env.MBInstallBin('#/setup.sh')
+    env.MBInstallResources('#/setup.sh')
 
 elif sys.platform == 'darwin':
     launchd_dir = '/Library/LaunchDaemons'
 
-    env.MBInstallResources('#/submodule/conveyor_bins/mac')
-    env.MBInstallResources('#/mac')
+    env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
+    env.MBInstallResources(env.MBGlob('#/mac/*'))
     env.MBInstallBin('#/setup.sh')
     env.MBInstallSystem(launchd_dir, '#/mac/com.makerbot.conveyor.plist')
 
 elif sys.platform == 'win32':
-    env.MBInstallResources('#/submodule/conveyor_bins/windows')
-    env.MBInstallResources('#/win')
+    env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/windows/*'))
+    env.MBInstallResources(env.MBGlob('#/win/*'))
 
     env.MBInstallBin('#/setup.bat')
     env.MBInstallBin('#/start.bat')
     env.MBInstallBin('#/stop.bat')
 
-env.MBInstallEgg(Glob('#/submodule/conveyor_bins/python/*'))
+env.MBInstallEgg(env.MBGlob('#/submodule/conveyor_bins/python/*'))
     
 env.MBInstallResources('#/src/main/miraclegrue')
 env.MBInstallResources('#/src/main/skeinforge')
 
-env.MBInstallBin('#/conveyor_service.py')
-env.MBInstallBin('#/conveyor_cmdline_client.py')
+env.MBInstallResources('#/conveyor_service.py')
+env.MBInstallResources('#/conveyor_cmdline_client.py')
 
 env.MBCreateInstallTarget()
 cppenv.MBCreateInstallTarget()
