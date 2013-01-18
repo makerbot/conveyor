@@ -150,21 +150,25 @@ env.MBInstallEgg(conveyor_egg)
 if sys.platform == "linux2":
     env.MBInstallResources(env.MBGlob('#/linux/*'))
     env.MBInstallBin('#/wrapper/conveyord')
-    env.MBInstallResources('#/setup.sh')
+    env.MBInstallResources('#/setup_conveyor_env.sh')
+    env.MBInstallConfig('#/conveyor-debian.conf', 'conveyor.conf')
+    env.MBInstallConfig('#/data/conveyor.conf', 'init/conveyor.conf')
 
 elif sys.platform == 'darwin':
     launchd_dir = '/Library/LaunchDaemons'
 
     env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
     env.MBInstallResources(env.MBGlob('#/mac/*'))
-    env.MBInstallBin('#/setup.sh')
+    env.MBInstallConfig('#/conveyor-mac.conf', 'conveyor.conf')
+    env.MBInstallBin('#/setup_conveyor_env.sh')
     env.MBInstallSystem(launchd_dir, '#/mac/com.makerbot.conveyor.plist')
 
 elif sys.platform == 'win32':
     env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/windows/*'))
     env.MBInstallResources(env.MBGlob('#/win/*'))
+    env.MBInstallConfig('#/conveyor-win.conf', 'conveyor.conf')
 
-    env.MBInstallBin('#/setup.bat')
+    env.MBInstallBin('#/setup_conveyor_env.bat')
     env.MBInstallBin('#/start.bat')
     env.MBInstallBin('#/stop.bat')
 
@@ -175,6 +179,7 @@ env.MBInstallResources('#/src/main/skeinforge')
 
 env.MBInstallResources('#/conveyor_service.py')
 env.MBInstallResources('#/conveyor_cmdline_client.py')
+env.MBInstallResources('#/virtualenv.py')
 
 env.MBCreateInstallTarget()
 cppenv.MBCreateInstallTarget()
