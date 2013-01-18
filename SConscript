@@ -80,7 +80,7 @@ cppenv.MBAddDevelIncludePath('#/../json-cpp/include')
 cppenv.Append(LIBS = ['json', 'jsonrpc'])
 
 if sys.platform == 'win32':
-    env.Append(LIBS=['ws2_32'])
+    cppenv.Append(LIBS=['ws2_32'])
 
 
 libconveyor_cpp = [Glob('src/main/cpp/*.cpp')]
