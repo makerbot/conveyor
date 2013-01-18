@@ -147,7 +147,7 @@ for curpath, dirnames, filenames in os.walk(str(Dir('#/src/main/python'))):
 
 conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
                            conveyor_pysrc,
-              "python -c 'import setuptools; execfile(\"setup.py\")' bdist_egg")
+              'python -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
 
 env.MBInstallEgg(conveyor_egg)
 
