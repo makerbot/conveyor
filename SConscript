@@ -170,7 +170,7 @@ elif sys.platform == 'darwin':
 elif sys.platform == 'win32':
     env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/windows/*'))
     env.MBInstallResources(env.MBGlob('#/win/*'))
-    env.MBInstallConfig('#/conveyor-win.conf', 'conveyor.conf')
+    env.MBInstallConfig('#/conveyor-win32.conf', 'conveyor.conf')
 
     env.MBInstallBin('#/setup_conveyor_env.bat')
     env.MBInstallBin('#/start.bat')
