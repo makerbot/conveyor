@@ -19,3 +19,34 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import os.path
+
+
+DEFAULT_CONFIG_FILE = '/etc/conveyor.conf'
+
+
+DEFAULT_CONFIG_COMMON_ADDRESS = 'pipe:/var/run/conveyor/conveyord.socket'
+
+
+DEFAULT_CONFIG_COMMON_PID_FILE = '/var/run/conveyor/conveyord.pid'
+
+
+DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = '/usr/share/makerbot_driver/profiles/'
+
+
+DEFAULT_CONFIG_MIRACLE_GRUE_EXE = '/usr/bin/miracle_grue'
+
+
+DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR = '/usr/share/Miracle-Grue'
+
+
+DEFAULT_CONFIG_SKEINFORGE_FILE = '/usr/share/skeinforge/skeinforge_application/skeinforge.py'
+
+
+DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = '/usr/share/skeinforge'
+
+
+DEFAULT_CONFIG_SERVER_LOGGING_FILE = '/var/log/conveyord/conveyord.log'
+
+
+DEFAULT_CONFIG_SERVER_UNIFIED_MESH_HACK_EXE = '/usr/bin/unified_mesh_hack'

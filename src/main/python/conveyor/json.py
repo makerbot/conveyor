@@ -20,7 +20,31 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import StringIO
+import decimal
 import json
+
+
+# Float is an abomination.
+# http://stackoverflow.com/questions/1960516/python-json-serialize-a-decimal-object
+class DecimalEncoder(json.JSONEncoder):
+    def _iterencode(self, o, markers=None):
+        if isinstance(o, decimal.Decimal):
+            result = (str(o),)
+        else:
+            result = json.JSONEncoder._iterencode(self, o, markers)
+        return result
+
+
+def dump(obj, fp, *args, **kwargs):
+    kwargs['cls'] = DecimalEncoder
+    result = json.dump(obj, fp, *args, **kwargs)
+    return result
+
+
+def dumps(obj, *args, **kwargs):
+    kwargs['cls'] = DecimalEncoder
+    result = json.dumps(obj, *args, **kwargs)
+    return result
 
 
 def loads(s, *args, **kwargs):
@@ -90,12 +114,12 @@ def load(fp, *args, **kwargs):
 # top-level JSON object or array and the latter handles them after. They return
 # to S0 and S1 respectively.
 #
-# The issue described below where if a comment appears before a top-level JSON
-# object or array then each character of the comment is passed to the callback
-# individually is caused by subtle differences in validation performed by S0
-# and S1: S0 only accepts whitespace while S1 will accept anything. This is a
-# subtle effect. Changing these validation rules will merely have other subtle
-# effects. Tread carefully.
+# The issue described below where if `strip_comments` is disabled and a comment
+# appears before a top-level JSON object or array then each character of the
+# comment is passed to the callback individually is caused by the difference in
+# validation performed by S0 and S1: S0 only accepts whitespace while S1 will
+# accept anything. This is a subtle effect. Changing the validation will merely
+# have other subtle effects. Tread carefully.
 
 class JsonReader(object):
     '''
@@ -142,11 +166,12 @@ class JsonReader(object):
         '''
 
         # To support the invariant that the reader is in its initial state
-        # whenever it invokes the callback statements must be executed in this
+        # whenever it invokes the callback, statements must be executed in this
         # order:
         #
         #   1. zero or more calls to self._buffer.write
-        #   2. zero or one calls to self._stack.append OR zero or one calls to self._stack.pop
+        #   2. zero or one calls to self._stack.append OR zero or one calls to
+        #      self._stack.pop
         #   3. zero or one assignment to self._state
         #   4. zero or one calls to self._send
         #

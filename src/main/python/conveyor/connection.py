@@ -67,6 +67,9 @@ class _AbstractSocketConnection(Connection):
         self._socket = socket
         self._address = address
 
+    def getaddress(self):
+        return self._address
+
     def stop(self):
         """ Sets stop flag to true, which will case the  write loop. """
         self._stopped = True

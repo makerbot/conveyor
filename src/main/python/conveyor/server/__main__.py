@@ -20,13 +20,17 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import lockfile.pidlockfile
+import os
 import signal
 import sys
 
 import conveyor.arg
 import conveyor.log
 import conveyor.main
+import conveyor.machine
+import conveyor.machine.port
 import conveyor.server
+import conveyor.spool
 
 from conveyor.decorator import args
 
@@ -56,7 +60,8 @@ class ServerMain(conveyor.main.AbstractMain):
             if self._parsed_args.nofork or not has_daemon:
                 for signal_name in ('SIGTERM', 'SIGBREAK'):
                     if hasattr(signal, signal_name):
-                        signal.signal(getattr(signal, signal_name), handle_sigterm)
+                        signal.signal(
+                            getattr(signal, signal_name), handle_sigterm)
                 lock = lockfile.pidlockfile.PIDLockFile(pidfile)
                 lock.acquire(0)
                 try:
@@ -88,10 +93,20 @@ class ServerMain(conveyor.main.AbstractMain):
 
     def _run_server(self):
         self._log.info('conveyord started')
+        self._init_event_threads()
+        driver_manager = conveyor.machine.DriverManager.create(self._config)
+        port_manager = conveyor.machine.port.PortManager.create(
+            driver_manager)
+        machine_manager = conveyor.machine.MachineManager()
+        spool = conveyor.spool.Spool()
+        connection_manager = conveyor.server.ConnectionManager(
+            machine_manager, spool)
         address = self._config.get('common', 'address')
         listener = address.listen()
         with listener:
-            server = conveyor.server.Server(self._config, listener)
+            server = conveyor.server.Server(
+                self._config, driver_manager, port_manager, machine_manager,
+                spool, connection_manager, listener)
             code = server.run()
             return code
 

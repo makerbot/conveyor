@@ -24,120 +24,23 @@ import codecs
 import errno
 import json
 import logging
+import inspect
 import io
 import os
 import sys
 import threading
 
-
 import conveyor.event
-from conveyor.event import Event
+import conveyor.json
 import conveyor.stoppable
-import conveyor.test
 import conveyor.task
 
-# See conveyor/doc/jsonreader.{dot,png}.
-#
-#   State 0 - handles whitespace before the top-level JSON object or array
-#   State 1 - handles JSON text that is not a string
-#   State 2 - handles JSON strings
-#   State 3 - handles JSON string escape sequences
-#
-# The _JsonReader state machine invokes the event handler whenever it makes an
-# invalid transition. This resets the machine to S0 and sends the invalid JSON
-# to the event handler. The event handler is expected to try to parse the
-# invalid JSON and issue an error.
 
-
-class _JsonReader(object):
-    """ Basic class to handle reading a JSON stream. Reads data via the
-   'feed' and 'feedeof' functions. Waits for completed JSON chunks, and
-    then passes them to self.event when a complete block is detected 
-    """
-    def __init__(self, inEvent=None):
-        """ 
-        @param conveyor event object, if None a new event object is created
-        """ 
-        # v Event to consume data
-        self.event = inEvent if inEvent is not None else Event('_JsonReader.event')
-        self._log = logging.getLogger(self.__class__.__name__)
-        self._reset()
-
-    def _reset(self):
-        """ Resets our JSON stream. """
-        self._log.debug('')
-        self._state = 0
-        self._stack = [] #json bracket-stack. stores JSON nesting level
-        self._buffer = StringIO.StringIO()
-
-    def _consume(self, ch):
-        """ consume a single charachter, storing it and updating JSON stream 
-        state. If char is mid-block, it is stored and state is updated. If
-        the charachter completes a JSON block, the complete block is sent to 
-        the associated Event, and the buffer is cleared. 
-        @param ch is assumed to be a unicode char, in a JSON stream
-        """
-        self._buffer.write(ch) # buffer our new char
-        # handle 'before top lvl json object' setup.
-        if 0 == self._state:
-            if ch in ('{', '['):
-                self._state = 1
-                self._stack.append(ch)
-            elif ch not in (' ', '\t', '\n', '\r'):
-                self._send()
-        # handle during JSON object  
-        elif 1 == self._state:
-            if '"' == ch:
-                self._state = 2
-            elif ch in ('{', '['):
-                self._stack.append(ch)
-            elif ch in ('}', ']'):
-                send = False
-                if 0 == len(self._stack):
-                    send = True
-                else:
-                    firstch = self._stack.pop()
-                    if ('{' == firstch and '}' != ch) or ('[' == firstch
-                        and ']' != ch):
-                            send = True
-                    else:
-                        send = (0 == len(self._stack))
-                if send:
-                    self._send()
-        # handle json strings
-        elif 2 == self._state:
-            if '"' == ch:
-                self._state = 1
-            elif '\\' == ch:
-                self._state = 3
-        # handle json string escapes 
-        elif 3 == self._state:
-            self._state = 2
-        else:
-            raise ValueError(self._state)
-
-    def _send(self):
-        """ posts _buffer to out registered Event, stripping edge chars"""
-        data = self._buffer.getvalue()
-        self._log.debug('data=%r', data)
-        self._reset()
-        if 0 != len(data.strip(' \t\n\r')):
-            self.event(data)
-
-    def feed(self, data):
-        """ 
-        Feed a chunk of data to the reader. If this chunk completes a JSON  dict, 
-        that full be automatically be passed to the attached Event as part of 
-        transition. 
-        @param data, assumed to be unicode JSON data
-        """
-        self._log.debug('data=%r', data)
-        for ch in data:
-            self._consume(ch)
-
-    def feedeof(self):
-        """ send EOF """
-        self._send()
+def install(jsonrpc, obj):
+    for name, value in inspect.getmembers(obj):
+        if inspect.ismethod(value) and getattr(value, '_jsonrpc', False):
+            exported_name = getattr(value, '_jsonrpc_name', name)
+            jsonrpc.addmethod(exported_name, value)
 
 
 class JsonRpcException(Exception):
@@ -147,11 +50,6 @@ class JsonRpcException(Exception):
         self.message = message
         self.data = data
 
-# TODO: This TaskFactory nonsense is a pretty terrible hack. Ugh.
-
-class TaskFactory(object):
-    def __call__(self, *args, **kwargs):
-        raise NotImplementedError
 
 class JsonRpc(conveyor.stoppable.StoppableInterface):
     """ JsonRpc handles a json stream, to gaurentee the output file pointer 
@@ -166,8 +64,8 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         self._condition = threading.Condition()
         self._idcounter = 0
         self._infp = infp # contract: .read(), .stop(), .close()
-        self._jsonreader = _JsonReader()
-        self._jsonreader.event.attach(self._jsonreadercallback)
+        self._jsonreader = conveyor.json.JsonReader(
+            self._jsonreadercallback, False)
         self._log = logging.getLogger(self.__class__.__name__)
         self._methods = {}
         self._methodsinfo={}
@@ -448,5 +346,3 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
 
     def getmethods(self):
         return self._methods
-
-

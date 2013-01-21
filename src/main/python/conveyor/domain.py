@@ -27,6 +27,11 @@ class DomainObject(object):
     def todict(self):
         raise NotImplementedError
 
+    def to_dict(self):
+        result = self.todict()
+        return result
+
+
 class Job(DomainObject):
     def __init__(
         self, id, build_name, path, config, printerid, gcodeprocessor,

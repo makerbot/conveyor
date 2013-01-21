@@ -28,6 +28,10 @@ import conveyor.util
 
 
 class Slicer(object):
+    MIRACLEGRUE = 'miraclegrue'
+
+    SKEINFORGE = 'skeinforge'
+
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
         material, dualstrusion, task):

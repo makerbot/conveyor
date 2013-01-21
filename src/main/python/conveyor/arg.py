@@ -80,6 +80,14 @@ def output_file(parser):
         metavar='OUTPUT-FILE',
         )
 
+def output_file_optional(parser):
+    parser.add_argument(
+        'output_file',
+        nargs='?',
+        help='write output to OUTPUT-FILE',
+        metavar='OUTPUT-FILE',
+        )
+
 
 # Options #####################################################################
 

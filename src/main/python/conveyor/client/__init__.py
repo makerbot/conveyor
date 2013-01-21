@@ -19,12 +19,14 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import itertools
 import json
 import logging
 import os.path
 import socket
 import sys
 import tempfile
+import textwrap
 import time
 
 import conveyor.arg
@@ -41,8 +43,12 @@ class _ClientCommand(conveyor.main.Command):
     '''A client command.'''
 
 
-class _ConnectionCommand(_ClientCommand):
-    '''A client command that requires a connection to the conveyor service.'''
+class _JsonRpcCommand(_ClientCommand):
+    '''
+    A client command that requires a JSON-RPC connection to the conveyor
+    service.
+
+    '''
 
     def __init__(self, parsed_args, config):
         _ClientCommand.__init__(self, parsed_args, config)
@@ -67,7 +73,8 @@ class _ConnectionCommand(_ClientCommand):
                 self._connection, self._connection)
             self._export_methods()
             hello_task = self._jsonrpc.request('hello', {})
-            hello_task.stoppedevent.attach(self._hello_callback_wrapper)
+            hello_task.stoppedevent.attach(
+                self._guard_callback(self._hello_callback))
             hello_task.start()
             self._jsonrpc.run()
         return self._code
@@ -84,24 +91,23 @@ class _ConnectionCommand(_ClientCommand):
 
         '''
 
-    def _hello_callback_wrapper(self, hello_task):
+    def _guard_callback(self, callback):
         '''
-        A callback wrapper that calls `_check_task` before calling
-        `_hello_callback`. This reduces some repetitive code.
+        Creates a new callback that invokes `_check_task` and then invokes
+        `callback` only if `_check_task` returns `True`. This reduces some
+        repetitive code.
 
         '''
-
-        if self._check_task(hello_task):
-            self._hello_callback(hello_task)
-
-    def _hello_callback(self, hello_task):
-        '''
-        A callback invoked after the command successfully invokes `hello` on
-        the conveyor service. This callback can be used to invoke additional
-        methods on the conveyor service.
-
-        '''
-        raise NotImplementedError
+        def guard(task):
+            if self._check_task(task):
+                def func():
+                    try:
+                        callback(task)
+                    except:
+                        self._stop_jsonrpc()
+                        raise
+                conveyor.error.guard(self._log, func)
+        return guard
 
     def _check_task(self, task):
         '''
@@ -123,6 +129,7 @@ class _ConnectionCommand(_ClientCommand):
             self._stop_jsonrpc()
             result = False
         else:
+            self._stop_jsonrpc()
             raise ValueError(task.conclusion)
         return result
 
@@ -131,21 +138,34 @@ class _ConnectionCommand(_ClientCommand):
         self._stop = True
         self._jsonrpc.stop()
 
+    def _hello_callback(self, hello_task):
+        '''
+        A callback invoked after the command successfully invokes `hello` on
+        the conveyor service. This callback can be used to invoke additional
+        methods on the conveyor service.
 
-class _MethodCommand(_ConnectionCommand):
+        '''
+        raise NotImplementedError
+
+
+class _MethodCommand(_JsonRpcCommand):
     '''
-    A client command that invokes a JSON-RPC request or notification on the
-    conveyor service.
+    A client command that invokes a JSON-RPC request on the conveyor service.
 
     '''
 
     def _hello_callback(self, hello_task):
         method_task = self._create_method_task()
-        method_task.stoppedevent.attach(self._method_callback)
+        method_task.stoppedevent.attach(
+            self._guard_callback(self._method_callback))
         method_task.start()
 
     def _create_method_task(self):
-        '''Creates a task for a request to be invoked on the conveyor service.'''
+        '''
+        Creates a task for a request to be invoked on the conveyor service.
+
+        '''
+
         raise NotImplementedError
 
     def _method_callback(self, method_task):
@@ -166,9 +186,8 @@ class _QueryCommand(_MethodCommand):
     '''
 
     def _method_callback(self, method_task):
-        if self._check_task(method_task):
-            self._handle_result(method_task.result)
-            self._stop_jsonrpc()
+        self._handle_result(method_task.result)
+        self._stop_jsonrpc()
 
     def _handle_result(self, result):
         '''Handles the result of the query.'''
@@ -190,7 +209,10 @@ class _JsonCommand(_QueryCommand):
             self._handle_result_default(result)
 
     def _handle_result_json(self, result):
-        '''Handles the result of the query by printing it in raw JSON format.'''
+        '''
+        Handles the result of the query by printing it in raw JSON format.
+
+        '''
         json.dump(result, sys.stdout)
         print()
 
@@ -243,16 +265,55 @@ class _MonitorCommand(_MethodCommand):
                 self._stop_jsonrpc()
 
     def _method_callback(self, method_task):
-        if self._check_task(method_task):
-            if (None is not method_task.result
-                    and isinstance(method_task.result, dict)
-                    and 'id' in method_task.result):
-                self._job_id = method_task.result['id']
-            else:
-                self._code = 1
-                self._log.error(
-                    'the conveyor service returned invalid job information')
-                self._stop_jsonrpc()
+        if (None is not method_task.result
+                and isinstance(method_task.result, dict)
+                and 'id' in method_task.result):
+            self._job_id = method_task.result['id']
+        else:
+            self._code = 1
+            self._log.error(
+                'the conveyor service returned invalid job information')
+            self._stop_jsonrpc()
+
+
+@args(conveyor.arg.driver)
+@args(conveyor.arg.machine)
+@args(conveyor.arg.port)
+@args(conveyor.arg.profile)
+class _ConnectedCommand(_MonitorCommand):
+    '''
+    A client command that connects a machine, invokes a JSON-RPC request on the
+    conveyor service and waits for a job to complete. The request must return a
+    job id.
+
+    (This is essentially a `_MonitorCommand` that calls `connect` on the
+    conveyor service before invoking the job-related method.)
+
+    '''
+
+    def __init__(self, parsed_args, config):
+        _MonitorCommand.__init__(self, parsed_args, config)
+        self._machine_name = None
+
+    def _hello_callback(self, hello_task):
+        params = {
+            'machine_name': self._parsed_args.machine_name,
+            'port_name': self._parsed_args.port_name,
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+            'persistent': False,
+        }
+        connect_task = self._jsonrpc.request('connect', params)
+        connect_task.stoppedevent.attach(
+            self._guard_callback(self._connect_callback))
+        connect_task.start()
+
+    def _connect_callback(self, connect_task):
+        self._machine_name = connect_task.result['machine_name']
+        method_task = self._create_method_task()
+        method_task.stoppedevent.attach(
+            self._guard_callback(self._method_callback))
+        method_task.start()
 
 
 @args(conveyor.arg.job)
@@ -267,8 +328,7 @@ class _CancelCommand(_MethodCommand):
         return method_task
 
     def _method_callback(self, method_task):
-        if self._check_task(method_task):
-            self._stop_jsonrpc()
+        self._stop_jsonrpc()
 
 
 @args(conveyor.arg.firmware_version)
@@ -286,6 +346,45 @@ class _CompatibleFirmware(_QueryCommand):
         print('Your firmware version is compatible: %r' % (result,))
 
 
+@args(conveyor.arg.driver)
+@args(conveyor.arg.machine)
+@args(conveyor.arg.port)
+@args(conveyor.arg.profile)
+class _ConnectCommand(_MethodCommand):
+    name = 'connect'
+
+    help = 'connect to a machine'
+
+    def _create_method_task(self):
+        params = {
+            'machine_name': self._parsed_args.machine_name,
+            'port_name': self._parsed_args.port_name,
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+            'persistent': True,
+        }
+        method_task = self._jsonrpc('connect', params)
+        return method_task
+
+    def _method_callback(self, method_task):
+        self._stop_jsonrpc()
+
+
+@args(conveyor.arg.output_file_optional)
+class _DefaultConfigCommand(_ClientCommand):
+    name = 'defaultconfig'
+
+    help = 'print the platform\'s default conveyor configuration'
+
+    def run(self):
+        if None is self._parsed_args.output_file:
+            conveyor.config.format_default(sys.stdout)
+        else:
+            with open(self._parsed_args.output_file, 'w') as fp:
+                conveyor.config.format_default(fp)
+        return 0
+
+
 class _DirCommand(_JsonCommand):
     name = 'dir'
 
@@ -298,7 +397,41 @@ class _DirCommand(_JsonCommand):
 
     def _handle_result_default(self, result):
         for method_name, description in result.items():
-            self._log.info('%s: %s', method_name, description)
+            lines = textwrap.dedent(description).splitlines()
+            def is_blank(s):
+                return 0 == len(s) or s.isspace()
+            # Remove blank lines at the end of the description. This puts the
+            # lines in reverse order.
+            lines = list(itertools.dropwhile(is_blank, reversed(lines)))
+            # Remove blank lines at the start of the description. This also has
+            # the side-effect of putting the lines back in forward order.
+            lines = list(itertools.dropwhile(is_blank, reversed(lines)))
+            self._log.info('%s:', method_name)
+            for line in lines:
+                self._log.info('    %s', line)
+
+
+@args(conveyor.arg.driver)
+@args(conveyor.arg.machine)
+@args(conveyor.arg.port)
+@args(conveyor.arg.profile)
+class _DisconnectCommand(_MethodCommand):
+    name = 'disconnect'
+
+    help = 'disconnect from a machine'
+
+    def _create_method_task(self):
+        params = {
+            'machine_name': self._parsed_args.machine_name,
+            'port_name': self._parsed_args.port_name,
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+        }
+        method_task = self._jsonrpc('disconnect', params)
+        return method_task
+
+    def _method_callback(self, method_task):
+        self._stop_jsonrpc()
 
 
 @args(conveyor.arg.machine_type)
@@ -378,6 +511,36 @@ class _JobsCommand(_JsonCommand):
         self._log.info('%s', result)
 
 
+class _PauseCommand(_ConnectedCommand):
+    name = 'pause'
+
+    help = 'pause a machine'
+
+    def _create_method_task(self):
+        params = {
+            'machine_name': self._parsed_args.machine_name,
+            'port_name': self._parsed_args.port_name,
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+        }
+        pause_task = self._jsonrpc.request('pause', params)
+        return pause_task
+
+
+class _PortsCommand(_JsonCommand):
+    name = 'ports'
+
+    help = 'list the available ports'
+
+    def _create_method_task(self):
+        params = {}
+        method_task = self._jsonrpc('getports', params)
+        return method_task
+
+    def _handle_result_default(self, result):
+        print(result) # TODO: stop slacking.....
+
+
 @args(conveyor.arg.extruder)
 @args(conveyor.arg.gcode_processor)
 @args(conveyor.arg.has_start_end)
@@ -385,33 +548,39 @@ class _JobsCommand(_JsonCommand):
 @args(conveyor.arg.slicer)
 @args(conveyor.arg.slicer_settings)
 @args(conveyor.arg.input_file)
-class _PrintCommand(_MonitorCommand):
+class _PrintCommand(_ConnectedCommand):
     name = 'print'
 
     help = 'print an object'
 
     def _create_method_task(self):
-        slicer_settings = _create_slicer_settings(self._parsed_args)
+        slicer_settings = _create_slicer_settings(
+            self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
         params = {
-            'printername': None,
-            'inputpath': os.path.abspath(self._parsed_args.input_file),
-            'gcodeprocessor': self._parsed_args.gcode_processor_name,
-            'material': self._parsed_args.material_name,
-            'skip_start_end': self._parsed_args.has_start_end,
-            'archive_lvl': 'all',
-            'archive_dir': None,
-            'slicer_settings': slicer_settings.todict(),
+            'machine_name': self._parsed_args.machine_name,
+            'port_name': self._parsed_args.port_name,
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+            'input_file': self._parsed_args.input_file,
+            'extruder_name': self._parsed_args.extruder_name,
+            'gcode_processor_name': self._parsed_args.gcode_processor_name,
+            'has_start_end': self._parsed_args.has_start_end,
+            'material_name': self._parsed_args.material_name,
+            'slicer_name': self._parsed_args.slicer_name,
+            'slicer_settings': slicer_settings.to_dict(),
         }
         method_task = self._jsonrpc.request('print', params)
         return method_task
 
 
+@args(conveyor.arg.driver)
 @args(conveyor.arg.extruder)
 @args(conveyor.arg.gcode_processor)
 @args(conveyor.arg.file_type)
 @args(conveyor.arg.has_start_end)
 @args(conveyor.arg.material)
+@args(conveyor.arg.profile)
 @args(conveyor.arg.slicer)
 @args(conveyor.arg.slicer_settings)
 @args(conveyor.arg.input_file)
@@ -422,19 +591,21 @@ class _PrintToFileCommand(_MonitorCommand):
     help = 'print an object to an .s3g or .x3g file'
 
     def _create_method_task(self):
-        slicer_settings = _create_slicer_settings(self._parsed_args)
+        slicer_settings = _create_slicer_settings(
+            self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
         params = {
-            'profilename': 'ReplicatorDual', # TODO: fix this mess
-            'inputpath': os.path.abspath(self._parsed_args.input_file),
-            'outputpath': os.path.abspath(self._parsed_args.output_file),
-            'gcodeprocessor': self._parsed_args.gcode_processor_name,
-            'material': self._parsed_args.material_name,
-            'skip_start_end': self._parsed_args.has_start_end,
-            'archive_lvl': 'all',
-            'archive_dir': None,
-            'slicer_settings': slicer_settings.todict(),
-            'print_to_file_type': self._parsed_args.file_type,
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+            'input_file': self._parsed_args.input_file,
+            'output_file': self._parsed_args.output_file,
+            'extruder_name': self._parsed_args.extruder_name,
+            'file_type': self._parsed_args.file_type,
+            'gcode_processor_name': self._parsed_args.gcode_processor_name,
+            'has_start_end': self._parsed_args.has_start_end,
+            'material_name': self._parsed_args.material_name,
+            'slicer_name': self._parsed_args.slicer_name,
+            'slicer_settings': slicer_settings.to_dict(),
         }
         method_task = self._jsonrpc.request('printtofile', params)
         return method_task
@@ -447,7 +618,7 @@ class _PrintersCommand(_JsonCommand):
 
     def _create_method_task(self):
         params = {}
-        method_task = self._jsonrpc.request('printers', params)
+        method_task = self._jsonrpc.request('getprinters', params)
         return method_task
 
     def _handle_result_default(self, result):
@@ -488,7 +659,7 @@ class _ResetToFactoryCommand(_QueryCommand):
     help = 'reset a machine EEPROM to factory settings'
 
     def _create_method_task(self):
-        params = {'printername', None}
+        params = {'printername': None}
         method_task = self._jsonrpc.request('resettofactory', params)
         return method_task
 
@@ -497,9 +668,11 @@ class _ResetToFactoryCommand(_QueryCommand):
 
 
 @args(conveyor.arg.add_start_end)
+@args(conveyor.arg.driver)
 @args(conveyor.arg.extruder)
 @args(conveyor.arg.gcode_processor)
 @args(conveyor.arg.material)
+@args(conveyor.arg.profile)
 @args(conveyor.arg.slicer)
 @args(conveyor.arg.slicer_settings)
 @args(conveyor.arg.input_file)
@@ -510,19 +683,39 @@ class _SliceCommand(_MonitorCommand):
     help = 'slice an object to a .gcode file'
 
     def _create_method_task(self):
-        slicer_settings = _create_slicer_settings(self._parsed_args)
+        slicer_settings = _create_slicer_settings(
+            self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
         params = {
-            'profilename': None,
-            'inputpath': os.path.abspath(self._parsed_args.input_file),
-            'outputpath': os.path.abspath(self._parsed_args.output_file),
-            'gcodeprocessor': self._parsed_args.gcode_processor_name,
-            'material': self._parsed_args.material_name,
-            'with_start_end': self._parsed_args.add_start_end,
-            'slicer_settings': slicer_settings.todict(),
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+            'input_file': self._parsed_args.input_file,
+            'output_file': self._parsed_args.output_file,
+            'add_start_end': self._parsed_args.add_start_end,
+            'extruder_name': self._parsed_args.extruder_name,
+            'gcode_processor_name': self._parsed_args.gcode_processor_name,
+            'material_name': self._parsed_args.material_name,
+            'slicer_name': self._parsed_args.slicer_name,
+            'slicer_settings': slicer_settings.to_dict(),
         }
         method_task = self._jsonrpc.request('slice', params)
         return method_task
+
+
+class _UnpauseCommand(_ConnectedCommand):
+    name = 'unpause'
+
+    help = 'unpause a machine'
+
+    def _create_method_task(self):
+        params = {
+            'machine_name': self._parsed_args.machine_name,
+            'port_name': self._parsed_args.port_name,
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+        }
+        pause_task = self._jsonrpc.request('unpause', params)
+        return pause_task
 
 
 @args(conveyor.arg.machine_type)
@@ -608,7 +801,7 @@ class _WriteEepromCommand(_QueryCommand):
         pass
 
 
-def _create_slicer_settings(parsed_args):
+def _create_slicer_settings(parsed_args, config):
     if 'miraclegrue' == parsed_args.slicer_name:
         slicer = conveyor.domain.Slicer.MIRACLEGRUE
     elif 'skeinforge' == parsed_args.slicer_name:
@@ -626,13 +819,16 @@ def _create_slicer_settings(parsed_args):
     slicer_settings = conveyor.domain.SlicerConfiguration(
         slicer=slicer,
         extruder=extruder,
-        raft=False,
-        support=False,
-        infill=0.1,
-        layer_height=0.27,
-        shells=2,
-        extruder_temperature=230.0,
-        platform_temperature=110.0,
-        print_speed=80.0,
-        travel_speed=100.0)
+        raft=config.get('client', 'slicing', 'raft'),
+        support=config.get('client', 'slicing', 'support'),
+        infill=config.get('client', 'slicing', 'infill'),
+        layer_height=config.get('client', 'slicing', 'layer_height'),
+        shells=config.get('client', 'slicing', 'shells'),
+        extruder_temperature=config.get(
+            'client', 'slicing', 'extruder_temperature'),
+        platform_temperature=config.get(
+            'client', 'slicing', 'platform_temperature'),
+        print_speed=config.get('client', 'slicing', 'print_speed'),
+        travel_speed=config.get('client', 'slicing', 'travel_speed'),
+    )
     return slicer_settings

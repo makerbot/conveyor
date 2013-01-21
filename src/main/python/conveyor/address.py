@@ -76,7 +76,7 @@ class Address(object):
     Base class for a addressable endpoint. This class can create the
     underlying sockets as needed based on the communication endpoint type.
     """
-    
+
     @staticmethod
     def address_factory(addr):
         """ Constructs an Address object based on the passed string
@@ -99,8 +99,11 @@ class Address(object):
     def connect(self):
         raise NotImplementedError
 
-class _AbstractPipeAddress(Address):
+    def __str__(self):
+        raise NotImplementedError
 
+
+class _AbstractPipeAddress(Address):
     @staticmethod
     def _factory(s, split):
         protocol = split[0]
@@ -116,6 +119,11 @@ class _AbstractPipeAddress(Address):
 
     def __init__(self, path):
         self._path = path
+
+    def __str__(self):
+        s = ':'.join(('pipe', self._path))
+        return s
+
 
 if 'nt' != os.name:
     class _PosixPipeAddress(_AbstractPipeAddress):
@@ -164,7 +172,6 @@ else:
     PipeAddress = _Win32PipeAddress
 
 class TcpAddress(Address):
-    
     @staticmethod
     def _factory(s, split):
         protocol = split[0]
@@ -199,7 +206,7 @@ class TcpAddress(Address):
         self._port must be a valid port
         """
         return self.listener_factory(self._port, self._host)
-    
+
     @staticmethod
     def listener_factory(port, host='localhost'):
         """
@@ -213,7 +220,7 @@ class TcpAddress(Address):
         s.listen(socket.SOMAXCONN)
         listener = conveyor.listener.TcpListener(s)
         return listener
- 
+
     def connect(self):
         """ creates a connection based on internal settings.
         @returns a SocketConnection object
@@ -223,7 +230,11 @@ class TcpAddress(Address):
         connection = conveyor.connection.SocketConnection(s, None)
         return connection
 
-    
+    def __str__(self):
+        s = ':'.join(('tcp', self._host, str(self._port)))
+        return s
+
+
 class UnknownProtocolException(Exception):
     def __init__(self, value, protocol):
         Exception.__init__(self, value, protocol)

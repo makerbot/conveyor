@@ -55,17 +55,17 @@ class AbstractMain(object):
     def main(self, args):
         self._unparsed_args = args
         def func():
-            self._init_parser()
-            self._init_subparsers()
-            self._parsed_args = self._parser.parse_args(
-                self._unparsed_args[1:])
-            if None is not self._parsed_args.level_name:
-                root = logging.getLogger()
-                root.setLevel(self._parsed_args.level_name)
-            self._load_config()
-            self._init_logging()
             try:
-                self._init_event_threads()
+                conveyor.debug.initdebug()
+                self._init_parser()
+                self._init_subparsers()
+                self._parsed_args = self._parser.parse_args(
+                    self._unparsed_args[1:])
+                if None is not self._parsed_args.level_name:
+                    root = logging.getLogger()
+                    root.setLevel(self._parsed_args.level_name)
+                self._load_config()
+                self._init_logging()
                 code = self._run()
             finally:
                 conveyor.stoppable.StoppableManager.stopall()
@@ -80,7 +80,8 @@ class AbstractMain(object):
         else:
             level = logging.ERROR
         self._log.log(
-            level, '%s terminating with exit code %d', self._program_name, code)
+            level, '%s terminating with exit code %d', self._program_name,
+            code)
         # Uncomment this to log lingering threads.
         # conveyor.debug.logthreads(logging.INFO)
         return code
@@ -100,7 +101,7 @@ class AbstractMain(object):
                 dest='command_name', title='Commands')
             for command_class in command_classes:
                 subparser = subparsers.add_parser(
-                    command_class.name, help=command_class.help)
+                    str(command_class.name), help=command_class.help)
                 conveyor.arg.install(subparser, command_class)
                 subparser.set_defaults(command_class=command_class)
 

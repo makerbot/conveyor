@@ -29,19 +29,25 @@ from conveyor.decorator import command
 
 
 @command(conveyor.client._CancelCommand)
+@command(conveyor.client._ConnectCommand)
 @command(conveyor.client._CompatibleFirmware)
+@command(conveyor.client._DefaultConfigCommand)
 @command(conveyor.client._DirCommand)
+@command(conveyor.client._DisconnectCommand)
 @command(conveyor.client._DownloadFirmware)
 @command(conveyor.client._GetMachineVersions)
 @command(conveyor.client._GetUploadableMachines)
 @command(conveyor.client._JobCommand)
 @command(conveyor.client._JobsCommand)
+@command(conveyor.client._PauseCommand)
+@command(conveyor.client._PortsCommand)
 @command(conveyor.client._PrintCommand)
 @command(conveyor.client._PrintToFileCommand)
 @command(conveyor.client._PrintersCommand)
 @command(conveyor.client._ReadEepromCommand)
 @command(conveyor.client._ResetToFactoryCommand)
 @command(conveyor.client._SliceCommand)
+@command(conveyor.client._UnpauseCommand)
 @command(conveyor.client._UploadFirmwareCommand)
 @command(conveyor.client._VerifyS3gCommand)
 @command(conveyor.client._WaitForServiceCommand)
@@ -54,6 +60,7 @@ class ClientMain(conveyor.main.AbstractMain):
     _logging_handlers = ['stdout', 'stderr',]
 
     def _run(self):
+        self._init_event_threads()
         command = self._parsed_args.command_class(
             self._parsed_args, self._config)
         code = command.run()

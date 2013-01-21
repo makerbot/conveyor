@@ -23,11 +23,11 @@ configuration file.
 
 The configuration file is stored on disk in JSON format. It is loaded with
 Python's built-in JSON parser, yielding a set of nested dicts with primitive
-bool, int, and string values at the leaves. This module's `convert` method
-transforms those nested dicts, applying validation rules and default values, to
-obtain a completely populated configuration with richer values at the leaves
-(i.e., the `address` field will contain a valid `Address` object instead of a
-plain string).
+bool, float, int, and string values at the leaves. This module's `convert`
+method transforms those nested dicts, applying validation rules and default
+values, to obtain a completely populated configuration with richer values at
+the leaves (i.e., the `address` field will contain a valid `Address` object
+instead of a plain string).
 
 This module also exports a `get` function which is useful for accessing values
 deep within the configuration. The configuration should be fully populated
@@ -42,11 +42,13 @@ configuration must be a group/dict.
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import decimal
 import json
 import os.path
 import textwrap
 
 import conveyor.address
+import conveyor.json
 import conveyor.error
 import conveyor.platform
 import conveyor.visitor
@@ -172,6 +174,27 @@ class _Bool(_Primitive):
 
     def __init__(self, default):
         _Primitive.__init__(self, bool, default)
+
+
+class _Decimal(_Primitive):
+    def __init__(self, s):
+        default = decimal.Decimal(s)
+        _Primitive.__init__(self, (float, decimal.Decimal), default)
+        #                         ^^^^^^^^^^^^^^^^^^^^^^^^
+        # NOTE: this misuses the fact that `self._type` is passed as the second
+        # argument to `isinstance` and that will accept a tuple. The
+        # consequence is that the default values are stored as `Decimal` but
+        # read back as `float`. It prevents values like `0.27` from being
+        # rendered as `0.27000000000000002` in the default configuration file.
+        # However, values may still appear in other files with excessive
+        # precision (i.e., in a Miracle Grue configuration file).
+
+
+class _Float(_Primitive):
+    '''A type representing a built-in Python float.'''
+
+    def __init__(self, default):
+        _Primitive.__init__(self, float, default)
 
 
 class _Int(_Primitive):
@@ -326,19 +349,19 @@ class _Formatter(conveyor.visitor.Visitor):
         self._fp.write(s)
 
     def accept__Primitive(self, primitive):
-        self._text(json.dumps(primitive._default))
+        self._text(conveyor.json.dumps(primitive._default))
         self._newline()
 
     def accept__Address(self, address):
-        self._text('"todo"')
+        self._text(conveyor.json.dumps(str(address._getdefault())))
         self._newline()
 
     def accept__LogLevel(self, level):
-        self._text(json.dumps(level._default))
+        self._text(conveyor.json.dumps(level._default))
         self._newline()
 
     def accept__FilesystemItem(self, filesystem_item):
-        self._text(json.dumps(os.path.join(*filesystem_item._path)))
+        self._text(conveyor.json.dumps(os.path.join(*filesystem_item._path)))
         self._newline()
 
     def accept__Group(self, group):
@@ -358,16 +381,17 @@ class _Formatter(conveyor.visitor.Visitor):
             self._text(', ')
         self._indent()
         if None is not field.comment:
-            # The wrapping width is 78 characters minus 5 to account for the
-            # "  // " minus the indentation, but not less than 40 characters.
-            width = max(40, 78 - 5 - self._level)
+            # The text wrapping width is 78 characters, minus the indentation,
+            # minus 3 to account for the '// ', but not less than 40
+            # characters.
+            width = max(40, 78 - self._level - 3)
             lines = textwrap.wrap(field.comment, width)
             if 0 != lines:
                 for line in lines:
                     self._text('// ')
                     self._text(line)
                     self._newline()
-        self._text(json.dumps(field.name))
+        self._text(conveyor.json.dumps(field.name))
         self._text(':')
         if not isinstance(field.value, _Group):
             self._text(' ')
@@ -458,7 +482,7 @@ def _gettype():
                 _Field(
                     'The number of threads available for handling events.',
                     'event_threads',
-                    _Int(2),
+                    _Int(4),
                 ),
                 _Field(
                     'The logging configuration for the conveyor service.',
@@ -514,7 +538,58 @@ def _gettype():
                         _Field(
                             'The logging level for the conveyor service.',
                             'level',
-                            _LogLevel('INFO'),
+                            _LogLevel('DEBUG'),
+                        ),
+                    ),
+                ),
+                _Field(
+                    'Default slicing settings.',
+                    'slicing',
+                    _Group(
+                        _Field(
+                            'Whether or not to print a raft.',
+                            'raft',
+                            _Bool(False),
+                        ),
+                        _Field(
+                            'Whether no not to print support material.',
+                            'support',
+                            _Bool(False),
+                        ),
+                        _Field(
+                            'The infill density.',
+                            'infill',
+                            _Decimal('0.1'),
+                        ),
+                        _Field(
+                            'The layer height.',
+                            'layer_height',
+                            _Decimal('0.27'),
+                        ),
+                        _Field(
+                            'The number of shells.',
+                            'shells',
+                            _Int(2),
+                        ),
+                        _Field(
+                            'The extruder temperature.',
+                            'extruder_temperature',
+                            _Decimal('230.0'),
+                        ),
+                        _Field(
+                            'The platform temperature.',
+                            'platform_temperature',
+                            _Decimal('110.0'),
+                        ),
+                        _Field(
+                            'The print speed.',
+                            'print_speed',
+                            _Decimal('80.0'),
+                        ),
+                        _Field(
+                            'The travel speed.',
+                            'travel_speed',
+                            _Decimal('100.0'),
                         ),
                     ),
                 ),
