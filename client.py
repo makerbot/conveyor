@@ -42,7 +42,18 @@ except ImportError:
 
 def _main(argv):
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-c',
+        '--config',
+        action='store',
+        type=str,
+        required=False,
+        help='read configuration from FILE',
+        metavar='FILE',
+        dest='config_file')
     parsed_args, unparsed_args = parser.parse_known_args(argv[1:])
+    if None is parsed_args.config_file:
+        parsed_args.config_file = 'conveyor-dev.conf'
     if 'VIRTUAL_ENV' not in os.environ:
         print('conveyor-client: virtualenv is not activated', file=sys.stderr)
         return 1
@@ -59,7 +70,8 @@ def _main(argv):
         arguments = [
             sys.executable,
             '-B',
-            '-m', 'conveyor.client',
+            os.path.join('src', 'main', 'python', 'conveyor', 'client', '__main__.py'),
+            '-c', parsed_args.config_file,
             ]
         if len(unparsed_args) > 0 and '--' == unparsed_args[0]:
             unparsed_args = unparsed_args[1:]
