@@ -534,7 +534,7 @@ class _PortsCommand(_JsonCommand):
 
     def _create_method_task(self):
         params = {}
-        method_task = self._jsonrpc('getports', params)
+        method_task = self._jsonrpc.request('getports', params)
         return method_task
 
     def _handle_result_default(self, result):

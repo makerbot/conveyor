@@ -341,6 +341,13 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
         task = conveyor.recipe.Recipe.verifys3gtask(s3gpath)
         return task
 
+    @jsonrpc('getports')
+    def _getports(self):
+        result = []
+        for port in self._server._port_manager.get_ports():
+            result.append(port.to_dict())
+        return result
+
     @jsonrpc('connect')
     def _connect(
             self, machine_name, port_name, driver_name, profile_name,
