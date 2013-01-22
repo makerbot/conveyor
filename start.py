@@ -46,13 +46,14 @@ def _main(argv):
         '-c',
         '--config',
         action='store',
-        default='conveyor-dev.conf',
         type=str,
         required=False,
         help='read configuration from FILE',
         metavar='FILE',
         dest='config_file')
     parsed_args, unparsed_args = parser.parse_known_args(argv[1:])
+    if None is parsed_args.config_file:
+        parsed_args.config_file = 'conveyor-dev.conf'
     try:
         with open(parsed_args.config_file) as fp:
             config = json.load(fp)
@@ -81,9 +82,11 @@ def _main(argv):
         arguments = [
             'python',
             '-B',
-            '-m', 'conveyor.server',
+            os.path.join('src', 'main', 'python', 'conveyor', 'server', '__main__.py'),
             '-c', parsed_args.config_file,
             ]
+        if len(unparsed_args) > 0 and '--' == unparsed_args[0]:
+            unparsed_args = unparsed_args[1:]
         arguments.extend(unparsed_args)
         os.execvp(sys.executable, arguments) # NOTE: this line does not return.
 
