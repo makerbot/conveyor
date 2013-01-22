@@ -79,9 +79,10 @@ class S3gDetectorThread(conveyor.stoppable.StoppableThread):
                     profile = getattr(returnobj, 'profile')
                     printerid = available[portname]['iSerial']
                     fp = s3g.writer.file
+                    firmware_version = s3g.get_version()
                     s3gprinterthread = S3gPrinterThread(
                         self._server, self._config, portname, printerid, profile,
-                        fp)
+                        fp, firmware_version)
                     s3gprinterthread.start()
                     self._server.appendprinter(portname, s3gprinterthread)
                 except:
@@ -137,12 +138,13 @@ class PrinterThreadBadStateError(Exception):
         pass
 
 class S3gPrinterThread(conveyor.stoppable.StoppableThread):
-    def __init__(self, server, config, portname, printerid, profile, fp):
+    def __init__(self, server, config, portname, printerid, profile, fp, firmware_version):
         conveyor.stoppable.StoppableThread.__init__(self)
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
         self._config = config
         self._currenttask = None
+        self._firmware_version = firmware_version
         self._fp = fp
         self._log = logging.getLogger(self.__class__.__name__)
         self._portname = portname
@@ -186,10 +188,7 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
         return self._profile
 
     def get_firmware_version(self):
-        s3g = makerbot_driver.s3g()
-        s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp)
-        version = s3g.get_version()
-        return version
+        return self._firmware_version
 
     def print(
         self, job, buildname, gcodepath, slicer_settings,
