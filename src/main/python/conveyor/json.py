@@ -27,11 +27,11 @@ import json
 # Float is an abomination.
 # http://stackoverflow.com/questions/1960516/python-json-serialize-a-decimal-object
 class DecimalEncoder(json.JSONEncoder):
-    def _iterencode(self, o, markers=None):
+    def iterencode(self, o, *args, **kwargs):
         if isinstance(o, decimal.Decimal):
             result = (str(o),)
         else:
-            result = json.JSONEncoder._iterencode(self, o, markers)
+            result = json.JSONEncoder.iterencode(self, o, *args, **kwargs)
         return result
 
 
