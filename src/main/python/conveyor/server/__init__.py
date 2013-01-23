@@ -352,7 +352,11 @@ class _ClientThread(conveyor.stoppable.StoppableThread):
     def _connect(
             self, machine_name, port_name, driver_name, profile_name,
             persistent):
-        pass
+        machine = self._server.connect(
+            self, machine_name, port_name, driver_name, profile_name,
+            persistent)
+        result = machine.to_dict()
+        return result
 
     @jsonrpc('disconnect')
     def _disconnect(self, machine_name):
@@ -654,6 +658,9 @@ class Server(object):
                 slicer.slice()
             self._queue.appendfunc(func)
 
+    def machine_connected(self, machine):
+        pass # TODO
+
     def connect(
             self, client, machine_name, port_name, driver_name, profile_name,
             persistent):
@@ -672,11 +679,23 @@ class Server(object):
                 elif len(ports) > 1:
                     raise conveyor.error.MultiplePortsException
                 else:
-                    # NOTE: at some point there will be multiple records in
-                    # `driver_profiles`, but for now there is only one and this
-                    # loop extracts it.
-                    for driver_name in port.driver_profiles.keys():
-                        driver = self._driver_manager.get_driver(driver_name)
+                    port = ports[0]
+            machine = port.get_machine()
+        if None is not machine:
+            driver = machine.get_driver()
+            if None is not driver_name and driver_name != driver.name:
+                raise conveyor.error.DriverMismatchException
+        elif None is not driver_name:
+            driver = self._driver_manager.get_driver(driver_name)
+        else:
+            if 0 == len(port.driver_profiles):
+                raise conveyor.error.NoDriversException
+            elif len(port.driver_profiles) > 1:
+                raise MultipleDriversException
+            else:
+                # NOTE: this loop extracts the single driver.
+                for driver_name in port.driver_profiles.keys():
+                    driver = self._driver_manager.get_driver(driver_name)
         if None is not machine:
             profile = machine.get_profile()
             if None is not profile_name and profile_name != profile.name:
@@ -688,6 +707,9 @@ class Server(object):
             if 1 == len(profiles):
                 profile = profiles[0]
             else:
+                # NOTE: when there are no profiles or multiple profiles, we set
+                # `profile` to `None` and expect that the driver determines the
+                # correct profile. It will raise an exception if it cannot.
                 profile = None
         if None is machine:
             machine = self._machine_manager.new_machine(port, driver, profile)

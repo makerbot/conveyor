@@ -67,7 +67,23 @@ class ConfigValueError(ValueError):
         self.value = value
 
 
+class DriverMismatchException(Exception):
+    pass
+
+
 class MachineStateException(Exception):
+    pass
+
+
+class MultipleDriversException(Exception):
+    pass
+
+
+class MultiplePortsException(Exception):
+    pass
+
+
+class NoDriversException(Exception):
     pass
 
 
@@ -127,16 +143,29 @@ def guard(log, func):
         log.critical(
             'invalid value for configuration file element: %s: %s: %s',
             e.config_path, e.key, e.value, exc_info=True)
+    except DriverMismatchException as e:
+        code = 1
+        log.critical(
+            'the requested driver does not match the machine\'s current driver',
+            exc_info=True)
     except MachineStateException as e:
         code = 1
         log.critical(
             'the machine is in an invalid state for that operation',
+            exc_info=True)
+    except MultipleDriversException as e:
+        code = 1
+        log.critical(
+            'there are multiple drivers available; please specify a driver',
             exc_info=True)
     except MultiplePortsException as e:
         code = 1
         log.critical(
             'there are multiple ports available; please specify a port',
             exc_info=True)
+    except NoDriversException as e:
+        code = 1
+        log.critical('there are no drivers available', exc_info=True)
     except NoPortsException as e:
         code = 1
         log.critical('there are no ports available', exc_info=True)

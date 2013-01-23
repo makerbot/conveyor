@@ -34,6 +34,7 @@ import conveyor.domain
 import conveyor.jsonrpc
 import conveyor.main
 import conveyor.task
+import conveyor.machine.port
 import conveyor.main
 
 from conveyor.decorator import args, command
@@ -317,7 +318,7 @@ class _ConnectedCommand(_MonitorCommand):
 
 
 @args(conveyor.arg.job)
-class _CancelCommand(_MethodCommand):
+class CancelCommand(_MethodCommand):
     name = 'cancel'
 
     help = 'cancel a job'
@@ -332,7 +333,7 @@ class _CancelCommand(_MethodCommand):
 
 
 @args(conveyor.arg.firmware_version)
-class _CompatibleFirmware(_QueryCommand):
+class CompatibleFirmware(_QueryCommand):
     name = 'compatiblefirmware'
 
     help = 'determine if a firmware verison is comatible with the MakerBot driver'
@@ -350,7 +351,7 @@ class _CompatibleFirmware(_QueryCommand):
 @args(conveyor.arg.machine)
 @args(conveyor.arg.port)
 @args(conveyor.arg.profile)
-class _ConnectCommand(_MethodCommand):
+class ConnectCommand(_MethodCommand):
     name = 'connect'
 
     help = 'connect to a machine'
@@ -363,7 +364,7 @@ class _ConnectCommand(_MethodCommand):
             'profile_name': self._parsed_args.profile_name,
             'persistent': True,
         }
-        method_task = self._jsonrpc('connect', params)
+        method_task = self._jsonrpc.request('connect', params)
         return method_task
 
     def _method_callback(self, method_task):
@@ -371,7 +372,7 @@ class _ConnectCommand(_MethodCommand):
 
 
 @args(conveyor.arg.output_file_optional)
-class _DefaultConfigCommand(_ClientCommand):
+class DefaultConfigCommand(_ClientCommand):
     name = 'defaultconfig'
 
     help = 'print the platform\'s default conveyor configuration'
@@ -385,7 +386,7 @@ class _DefaultConfigCommand(_ClientCommand):
         return 0
 
 
-class _DirCommand(_JsonCommand):
+class DirCommand(_JsonCommand):
     name = 'dir'
 
     help = 'list the methods available from the conveyor service'
@@ -415,7 +416,7 @@ class _DirCommand(_JsonCommand):
 @args(conveyor.arg.machine)
 @args(conveyor.arg.port)
 @args(conveyor.arg.profile)
-class _DisconnectCommand(_MethodCommand):
+class DisconnectCommand(_MethodCommand):
     name = 'disconnect'
 
     help = 'disconnect from a machine'
@@ -436,7 +437,7 @@ class _DisconnectCommand(_MethodCommand):
 
 @args(conveyor.arg.machine_type)
 @args(conveyor.arg.machine_version)
-class _DownloadFirmware(_QueryCommand):
+class DownloadFirmware(_QueryCommand):
     name = 'downloadfirmware'
 
     help = 'download firmware'
@@ -454,7 +455,7 @@ class _DownloadFirmware(_QueryCommand):
 
 
 @args(conveyor.arg.machine_type)
-class _GetMachineVersions(_QueryCommand):
+class GetMachineVersions(_QueryCommand):
     name = 'getmachineversions'
 
     help = 'get the firmware versions available for a machine'
@@ -468,7 +469,7 @@ class _GetMachineVersions(_QueryCommand):
         self._log.info('%s', result)
 
 
-class _GetUploadableMachines(_QueryCommand):
+class GetUploadableMachines(_QueryCommand):
     name = 'getuploadablemachines'
 
     help = 'list the machines to which conveyor can upload firmware'
@@ -483,7 +484,7 @@ class _GetUploadableMachines(_QueryCommand):
 
 
 @args(conveyor.arg.job)
-class _JobCommand(_JsonCommand):
+class JobCommand(_JsonCommand):
     name = 'job'
 
     help = 'get the details for a job'
@@ -497,7 +498,7 @@ class _JobCommand(_JsonCommand):
         self._log.info('%s', result)
 
 
-class _JobsCommand(_JsonCommand):
+class JobsCommand(_JsonCommand):
     name = 'jobs'
 
     help = 'get the details for all jobs'
@@ -511,7 +512,7 @@ class _JobsCommand(_JsonCommand):
         self._log.info('%s', result)
 
 
-class _PauseCommand(_ConnectedCommand):
+class PauseCommand(_ConnectedCommand):
     name = 'pause'
 
     help = 'pause a machine'
@@ -527,7 +528,7 @@ class _PauseCommand(_ConnectedCommand):
         return pause_task
 
 
-class _PortsCommand(_JsonCommand):
+class PortsCommand(_JsonCommand):
     name = 'ports'
 
     help = 'list the available ports'
@@ -538,7 +539,18 @@ class _PortsCommand(_JsonCommand):
         return method_task
 
     def _handle_result_default(self, result):
-        print(result) # TODO: stop slacking.....
+        for port in result:
+            if conveyor.machine.port.PortType.SERIAL == port['type']:
+                self._handle_serial(port)
+            else:
+                raise ValueError(port['type'])
+
+    def _handle_serial(self, port):
+        self._log.info('Serial port:')
+        self._log.info('  name    - %s', port['name'])
+        self._log.info('  path    - %s', port['path'])
+        self._log.info('  iSerial - %s', port['iserial'])
+        self._log.info('  VID:PID - %04X:%04X', port['vid'], port['pid'])
 
 
 @args(conveyor.arg.extruder)
@@ -548,7 +560,7 @@ class _PortsCommand(_JsonCommand):
 @args(conveyor.arg.slicer)
 @args(conveyor.arg.slicer_settings)
 @args(conveyor.arg.input_file)
-class _PrintCommand(_ConnectedCommand):
+class PrintCommand(_ConnectedCommand):
     name = 'print'
 
     help = 'print an object'
@@ -585,7 +597,7 @@ class _PrintCommand(_ConnectedCommand):
 @args(conveyor.arg.slicer_settings)
 @args(conveyor.arg.input_file)
 @args(conveyor.arg.output_file)
-class _PrintToFileCommand(_MonitorCommand):
+class PrintToFileCommand(_MonitorCommand):
     name = 'printtofile'
 
     help = 'print an object to an .s3g or .x3g file'
@@ -611,7 +623,7 @@ class _PrintToFileCommand(_MonitorCommand):
         return method_task
 
 
-class _PrintersCommand(_JsonCommand):
+class PrintersCommand(_JsonCommand):
     name = 'printers'
 
     help = 'list connected printers'
@@ -625,19 +637,19 @@ class _PrintersCommand(_JsonCommand):
         for dct in result:
             printer = conveyor.domain.Printer.fromdict(dct)
             self._log.info('Printer:')
-            self._log.info('  display name: %s', printer.display_name)
-            self._log.info('  unique name: %s', printer.unique_name)
-            self._log.info('  printer type: %s', printer.printer_type)
-            self._log.info('  firmware version: %s', printer.firmware_version)
-            self._log.info('  can print: %s', printer.can_print)
-            self._log.info('  can print to file: %s', printer.can_printtofile)
-            self._log.info('  heated platform: %s', printer.has_heated_platform)
-            self._log.info('  number of toolheads: %s', printer.number_of_toolheads)
-            self._log.info('  connection status: %s', printer.connection_status)
+            self._log.info('  display name        - %s', printer.display_name)
+            self._log.info('  unique name         - %s', printer.unique_name)
+            self._log.info('  printer type        - %s', printer.printer_type)
+            self._log.info('  firmware version    - %s', printer.firmware_version)
+            self._log.info('  can print           - %s', printer.can_print)
+            self._log.info('  can print to file   - %s', printer.can_printtofile)
+            self._log.info('  heated platform     - %s', printer.has_heated_platform)
+            self._log.info('  number of toolheads - %s', printer.number_of_toolheads)
+            self._log.info('  connection status   - %s', printer.connection_status)
 
 
 @args(conveyor.arg.output_file)
-class _ReadEepromCommand(_QueryCommand):
+class ReadEepromCommand(_QueryCommand):
     name = 'readeeprom'
 
     help = 'read a machine EEPROM'
@@ -653,7 +665,7 @@ class _ReadEepromCommand(_QueryCommand):
             json.dump(result, fp, sort_keys=True, indent=2)
 
 
-class _ResetToFactoryCommand(_QueryCommand):
+class ResetToFactoryCommand(_QueryCommand):
     name = 'resettofactory'
 
     help = 'reset a machine EEPROM to factory settings'
@@ -677,7 +689,7 @@ class _ResetToFactoryCommand(_QueryCommand):
 @args(conveyor.arg.slicer_settings)
 @args(conveyor.arg.input_file)
 @args(conveyor.arg.output_file)
-class _SliceCommand(_MonitorCommand):
+class SliceCommand(_MonitorCommand):
     name = 'slice'
 
     help = 'slice an object to a .gcode file'
@@ -702,7 +714,7 @@ class _SliceCommand(_MonitorCommand):
         return method_task
 
 
-class _UnpauseCommand(_ConnectedCommand):
+class UnpauseCommand(_ConnectedCommand):
     name = 'unpause'
 
     help = 'unpause a machine'
@@ -720,7 +732,7 @@ class _UnpauseCommand(_ConnectedCommand):
 
 @args(conveyor.arg.machine_type)
 @args(conveyor.arg.input_file)
-class _UploadFirmwareCommand(_QueryCommand):
+class UploadFirmwareCommand(_QueryCommand):
     name = 'uploadfirmware'
 
     help = 'upload firmware'
@@ -739,7 +751,7 @@ class _UploadFirmwareCommand(_QueryCommand):
 
 
 @args(conveyor.arg.input_file)
-class _VerifyS3gCommand(_QueryCommand):
+class VerifyS3gCommand(_QueryCommand):
     name = 'verifys3g'
 
     help = 'verify an s3g/x3g file.'
@@ -753,7 +765,7 @@ class _VerifyS3gCommand(_QueryCommand):
         print('Your s3g file is %s valid' % ('NOT' if result is False else '',))
 
 
-class _WaitForServiceCommand(_ClientCommand):
+class WaitForServiceCommand(_ClientCommand):
     name = 'waitforservice'
 
     help = 'wait for the conveyor service to start'
@@ -781,7 +793,7 @@ class _WaitForServiceCommand(_ClientCommand):
 
 
 @args(conveyor.arg.input_file)
-class _WriteEepromCommand(_QueryCommand):
+class WriteEepromCommand(_QueryCommand):
     name = 'writeeeprom'
 
     help = 'write a machine EEPROM'
