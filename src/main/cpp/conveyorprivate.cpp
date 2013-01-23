@@ -431,6 +431,38 @@ namespace conveyor
         return valid;
     }
 
+    std::list<Port>
+    ConveyorPrivate::getPorts() const
+    {
+        Json::Value params (Json::objectValue);
+        Json::Value result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "getports", params)
+            );
+        std::list<Port> ports;
+        if (result.isArray()) {
+            const int end(result.size());
+            for (int i = 0; i < end; i++) {
+                ports.push_back(Port(result[i]));
+            }
+        }
+        return ports;
+    }
+
+    void
+    ConveyorPrivate::connectToPort(const Port &port) const
+    {
+      Json::Value params (Json::objectValue);
+      // TODO(nicholasbishop)
+      params["machine_name"] = Json::nullValue;
+      params["port_name"] = port.m_name;
+      params["driver_name"] = Json::nullValue;
+      params["profile_name"] = Json::nullValue;
+      params["persistent"] = false;
+      Json::Value result
+          ( SynchronousCallback::invoke (this->m_jsonRpc, "connect", params)
+            );
+    }
+
     void
     ConveyorPrivate::cancelJob (int jobId)
     {
