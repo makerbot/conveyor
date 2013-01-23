@@ -41,7 +41,7 @@ utilenv = env.Clone()
 Import('build_unit_tests', 'run_unit_tests')
 
 if 'win32' == sys.platform:
-    env.Tool('mingw')
+    env.Tool('mb_mingw', toolpath=[Dir('submodule/mw-scons-tools')])
     env.Replace(CCFLAGS=[])
 
 #NOTE: If you put '~'s in your bash profile, youre gonna have
