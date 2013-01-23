@@ -71,6 +71,14 @@ class MachineStateException(Exception):
     pass
 
 
+class NoPortsException(Exception):
+    pass
+
+
+class PortMismatchException(Exception):
+    pass
+
+
 class ProfileMismatchException(Exception):
     pass
 
@@ -123,6 +131,19 @@ def guard(log, func):
         code = 1
         log.critical(
             'the machine is in an invalid state for that operation',
+            exc_info=True)
+    except MultiplePortsException as e:
+        code = 1
+        log.critical(
+            'there are multiple ports available; please specify a port',
+            exc_info=True)
+    except NoPortsException as e:
+        code = 1
+        log.critical('there are no ports available', exc_info=True)
+    except PortMismatchException as e:
+        code = 1
+        log.critical(
+            'the requested port does not match the machine\'s current port',
             exc_info=True)
     except ProfileMismatchException as e:
         code = 1

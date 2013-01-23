@@ -72,9 +72,9 @@ class Driver(object):
         raise NotImplementedError
 
     def print_to_file(
-            self, profile, input_path, output_path, skip_start_end,
-            extruders, extruder_temperature, platform_temperature,
-            material_name, build_name, task):
+            self, profile, input_file, output_file,
+            extruder_name, file_type, has_start_end, material_name,
+            build_name, task):
         raise NotImplementedError
 
 
@@ -122,23 +122,23 @@ class MachineManager(object):
         machines = self._machines.values()
         return machines
 
-    def get_machine(self, machine_id):
+    def get_machine(self, machine_name):
         try:
-            machine = self._machines[machine_id]
+            machine = self._machines[machine_name]
         except KeyError:
-            raise conveyor.error.UnknownMachineError(machine_id)
+            raise conveyor.error.UnknownMachineError(machine_name)
         else:
             return machine
 
     def new_machine(self, port, driver, profile):
         machine = driver.new_machine_from_port(port, profile)
-        self._machines[machine.id] = machine
+        self._machines[machine.name] = machine
         return machine
 
 
 class Machine(object):
-    def __init__(self, id, driver, profile):
-        self.id = id
+    def __init__(self, name, driver, profile):
+        self.name = name
         self._driver = driver
         self._profile = profile
         self._log = logging.getLogger(self.__class__.__name__)
@@ -186,7 +186,7 @@ class Machine(object):
 
     def to_dict(self):
         dct = {
-            'id': self.id,
+            'name': self.name,
             'state': self._state,
         }
         return dct

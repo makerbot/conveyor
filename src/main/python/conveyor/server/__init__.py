@@ -453,15 +453,11 @@ class ConnectionManager(object):
         self._acquired_machines = collections.defaultdict(set)
         self._acquired_machines_condition = threading.Condition()
 
-    def acquire_machine(self, session, machine):
-        with self._acquired_machines_condition:
-            self._acquired_machines[machine.id].add(session._session_id) # TODO: _session_id is fail.
+    def acquire_machine(self, client, machine, persistent):
+        pass
 
-    def session_removed(self, session):
-        with self._acquired_machines_condition:
-            for machine_id, sessions in self._acquired_machines.items():
-                sessions.remove(session)
-                # TODO
+    def client_removed(self):
+        pass
 
     def job_changed(self, job):
         pass
@@ -657,6 +653,51 @@ class Server(object):
                     raise ValueError(slicer_settings.slicer)
                 slicer.slice()
             self._queue.appendfunc(func)
+
+    def connect(
+            self, client, machine_name, port_name, driver_name, profile_name,
+            persistent):
+        if None is not machine_name:
+            machine = self._machine_manager.get_machine(machine_name)
+            port = machine.get_port()
+            if None is not port_name and port_name != port.name:
+                raise conveyor.error.PortMismatchException
+        else:
+            if None is not port_name:
+                port = self._port_manager.get_port(port_name)
+            else:
+                ports = self._port_manager.get_ports()
+                if 0 == len(ports):
+                    raise conveyor.error.NoPortsException
+                elif len(ports) > 1:
+                    raise conveyor.error.MultiplePortsException
+                else:
+                    # NOTE: at some point there will be multiple records in
+                    # `driver_profiles`, but for now there is only one and this
+                    # loop extracts it.
+                    for driver_name in port.driver_profiles.keys():
+                        driver = self._driver_manager.get_driver(driver_name)
+        if None is not machine:
+            profile = machine.get_profile()
+            if None is not profile_name and profile_name != profile.name:
+                raise conveyor.error.ProfileMismatchException
+        elif None is not profile_name:
+            profile = driver.get_profile(profile_name)
+        else:
+            profiles = port.driver_profiles[driver.name]
+            if 1 == len(profiles):
+                profile = profiles[0]
+            else:
+                profile = None
+        if None is machine:
+            machine = self._machine_manager.new_machine(port, driver, profile)
+            machine.set_port(port)
+            port.set_machine(machine)
+        if conveyor.machine.MachineState.DISCONNECTED == machine.get_state():
+            machine.connect()
+            self.machine_connected(machine)
+        self._connection_manager.acquire_machine(client, machine, persistent)
+        return machine
 
     def run(self):
         taskqueuethread = _TaskQueueThread(self._queue)
