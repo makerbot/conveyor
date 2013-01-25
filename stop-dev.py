@@ -67,7 +67,7 @@ def _main(argv):
         with open(pid_file) as fp:
             pid = int(fp.read())
         _graceful(pid)
-        time.sleep(1)
+        time.sleep(2)
         if os.path.exists(pid_file):
             _kill(pid)
         if not os.path.exists(pid_file):
