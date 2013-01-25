@@ -196,13 +196,12 @@ class Server(conveyor.stoppable.StoppableInterface):
             job_id, job_name, machine, input_file, extruder_name,
             gcode_processor_name, has_start_end, material_name, slicer_name,
             slicer_settings)
-        # TODO: create process and start job
+        recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
+        recipe = recipe_manager.get_recipe(job)
+        job.process = recipe.get_process()
+        self._attach_job_callbacks(job.process)
+        job.process.start()
         return job
-
-    def _get_job_name(self, p):
-        root, ext = os.path.splitext(p)
-        job_name = os.path.basename(root)
-        return job_name
 
     def pause(self, client, machine_name):
         machine = self._find_machine(machine_name, None, None, None)
@@ -224,7 +223,11 @@ class Server(conveyor.stoppable.StoppableInterface):
             job_id, job_name, driver, profile, input_file, output_file,
             extruder_name, gcode_processor_name, has_start_end,
             material_name, slicer_name, slicer_settings)
-        # TODO: create process and start job
+        recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
+        recipe = recipe_manager.get_recipe(job)
+        job.process = recipe.get_process()
+        self._attach_job_callbacks(job.process)
+        job.process.start()
         return job
 
     def slice(
@@ -239,7 +242,11 @@ class Server(conveyor.stoppable.StoppableInterface):
             id, name, driver_name, profile_name, input_file,
             output_file, add_start_end, extruder_name, gcode_processor_name,
             material_name, slicer_name, slicer_settings)
-        # TODO: create process and start job
+        recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
+        recipe = recipe_manager.get_recipe(job)
+        job.process = recipe.get_process()
+        self._attach_job_callbacks(job.process)
+        job.process.start()
         return job
 
     def get_jobs(self, client):
@@ -362,6 +369,14 @@ class Server(conveyor.stoppable.StoppableInterface):
     def verify_s3g(self, input_file):
         task = conveyor.recipe.Recipe.verifys3gtask(s3gpath)
         return task
+
+    def _get_job_name(self, p):
+        root, ext = os.path.splitext(p)
+        job_name = os.path.basename(root)
+        return job_name
+
+    def _attach_job_callbacks(self, job):
+        pass
 
 
 class _Client(conveyor.stoppable.StoppableThread):
