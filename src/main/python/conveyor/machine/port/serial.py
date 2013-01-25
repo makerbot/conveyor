@@ -94,8 +94,8 @@ class _SerialDetectorThread(conveyor.stoppable.StoppableThread):
             self._log.exception('unhandled exception; serial port detection has stopped')
 
     def stop(self):
+        self._stop = True
         with self._stop_condition:
-            self._stop = True
             self._stop_condition.notify_all()
 
     def _runiteration(self):

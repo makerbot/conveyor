@@ -91,8 +91,8 @@ class S3gDriver(conveyor.machine.Driver):
         return machine
 
     def _get_id(self, port):
-        vid = '0x%04X' % (port.vid,)
-        pid = '0x%04X' % (port.pid,)
+        vid = '%04X' % (port.vid,)
+        pid = '%04X' % (port.pid,)
         id = ':'.join((vid, pid, port.iserial))
         return id
 
@@ -216,7 +216,7 @@ _BuildState = conveyor.enum.enum(
     CANCELED=4, SLEEPING=5)
 
 
-class _S3gMachine(conveyor.machine.Machine, conveyor.stoppable.StoppableInterface):
+class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machine):
     @staticmethod
     def _create(id, driver, profile):
         machine = _S3gMachine(id, driver, profile)
@@ -228,9 +228,9 @@ class _S3gMachine(conveyor.machine.Machine, conveyor.stoppable.StoppableInterfac
         machine._work_thread.start()
         return machine
 
-    def __init__(self, id, driver, profile):
-        conveyor.machine.Machine.__init__(self, id, driver, profile)
+    def __init__(self, name, driver, profile):
         conveyor.stoppable.StoppableInterface.__init__(self)
+        conveyor.machine.Machine.__init__(self, name, driver, profile)
         self._poll_interval = 5.0
         self._poll_thread = None
         self._poll_time = time.time()
@@ -254,11 +254,48 @@ class _S3gMachine(conveyor.machine.Machine, conveyor.stoppable.StoppableInterfac
         with self._state_condition:
             self._state_condition.notify_all()
 
+    def get_info(self):
+        port = self.get_port()
+        if None is port:
+            port_name = None
+        else:
+            port_name = port.name
+        driver = self.get_driver()
+        profile = self.get_profile()
+        state = self.get_state()
+        info = conveyor.machine.MachineInfo(
+            self.name, port_name, driver.name, profile.name, state)
+
+        info.display_name = profile._s3g_profile.values['type']
+        info.unique_name = self.name
+        info.printer_type = profile._s3g_profile.values['type']
+        info.machine_names = profile._s3g_profile.values['machinenames']
+        info.can_print = True
+        info.can_printtofile = True
+        info.has_heated_platform = (0 != len(profile._s3g_profile.values['heated_platforms']))
+        info.number_of_toolheads = len(profile._s3g_profile.values['tools'])
+        toolhead_temperature = {}
+        if None is not self._toolhead_temperature:
+            for i, t in enumerate(self._toolhead_temperature):
+                toolhead_temperature[i] = t
+        platform_temperature = {}
+        if (info.has_heated_platform
+                and None is not self._platform_temperature):
+            platform_temperature[i] = self._platform_temperature
+        info.temperature = {
+            'tools': toolhead_temperature,
+            'heated_platforms': platform_temperature,
+        }
+        info.firmware_version = self._firmware_version
+
+        return info
+
     def connect(self):
         with self._state_condition:
             if conveyor.machine.MachineState.DISCONNECTED == self._state:
                 self._s3g = self._driver._connect(
                     self._port, self._state_condition)
+                self._firmware_version = self._s3g.get_version()
                 self._toolhead_count = self._s3g.get_toolhead_count()
                 self._change_state(conveyor.machine.MachineState.BUSY)
                 self._poll()
@@ -411,6 +448,7 @@ class _S3gMachine(conveyor.machine.Machine, conveyor.stoppable.StoppableInterfac
         if None is not self._s3g:
             self._s3g.writer.close()
         self._s3g = None
+        self._firmware_version = None
         self._toolhead_count = None
         self._motherboard_status = None
         self._build_stats = None

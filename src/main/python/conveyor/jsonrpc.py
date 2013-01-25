@@ -39,7 +39,9 @@ import conveyor.task
 def install(jsonrpc, obj):
     for name, value in inspect.getmembers(obj):
         if inspect.ismethod(value) and getattr(value, '_jsonrpc', False):
-            exported_name = getattr(value, '_jsonrpc_name', name)
+            exported_name = getattr(value, '_jsonrpc_name', None)
+            if None is exported_name:
+                exported_name = name
             jsonrpc.addmethod(exported_name, value)
 
 
@@ -340,7 +342,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
             self._log.debug('response=%r', response)
         return response
 
-    def addmethod(self, method, func, info=None):
+    def addmethod(self, method, func):
         self._log.debug('method=%r, func=%r', method, func)
         self._methods[method] = func
 

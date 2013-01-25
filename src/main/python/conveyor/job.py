@@ -21,27 +21,29 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import conveyor.enum
 
-# NOTE: the `from_dict` method is only present on `Job` and `NamedJob` because
-# conveyor never needs to decode any other type of job from JSON.
-
 
 JobType = conveyor.enum.enum(
     'JobType', 'PRINT_JOB', 'PRINT_TO_FILE_JOB', 'SLICE_JOB')
 
 
-class Job(object):
-    def __init__(self, type_, id):
+class JobInfo(object):
+    '''This is the JSON-serializable portion of a `Job`.'''
+
+    def __init__(
+            self, type_, id_, name, state, progress, conclusion, failure):
         self.type = type_
-        self.id = id
-        self.state = conveyor.task.TaskState.PENDING
-        self.progress = None
-        self.conclusion = None
-        self.failure = None
+        self.id = id_
+        self.name = name
+        self.state = state
+        self.progress = progress
+        self.conclusion = conclusion
+        self.failure = failure
 
     def to_dict(self):
         dct = {
-            'type': self.type_,
+            'type': self.type,
             'id': self.id,
+            'name': self.name,
             'state': self.state,
             'progress': self.progress,
             'conclusion': self.conclusion,
@@ -51,44 +53,43 @@ class Job(object):
 
     @staticmethod
     def from_dict(dct):
-        job = Job(dct['type'], dct['id'])
-        job.state = dct['state']
-        job.progress = dct['progress']
-        job.conclusion = dct['conclusion']
-        job.failure = dct['failure']
-        return job
+        info = JobInfo(
+            dct['type'], dct['id'], dct['name'], dct['state'],
+            dct['progress'], dct['conclusion'], dct['failure'])
+        return info
 
 
-class NamedJob(Job):
-    def __init__(self, type_, id, name):
-        Job.__init__(self, type, id)
+class Job(object):
+    def __init__(self, type_, id_, name):
+        self.type = type_
+        self.id = id_
         self.name = name
+        self.task = None
 
-    def to_dict(self):
-        dct = Job.to_dict(self)
-        dct['name'] = name
-        return dct
-
-    @staticmethod
-    def from_dict(dct):
-        named_job = NamedJob(dct['type'], dct['id'], dct['name'])
-        named_job.state = dct['state']
-        named_job.progress = dct['progress']
-        named_job.conclusion = dct['conclusion']
-        named_job.failure = dct['failure']
-        return named_job
+    def get_info(self):
+        if None is self.task:
+            state = None
+            progress = None
+            conclusion = None
+            failure = None
+        else:
+            state = self.task.state
+            progress = self.task.progress
+            conclusion = self.task.conclusion
+            failure = self.task.failure
+        info = JobInfo(
+            self.type, self.id, self.name, state, progress, conclusion,
+            failure)
+        return info
 
 
 class PrintJob(Job):
     def __init__(
-            self, id, name, machine_name, port_name, driver_name,
-            profile_name, input_file, extruder_name, gcode_processor_name,
-            has_start_end, material_name, slicer_name, slicer_settings):
+            self, id, name, machine, input_file, extruder_name,
+            gcode_processor_name, has_start_end, material_name, slicer_name,
+            slicer_settings):
         Job.__init__(self, JobType.PRINT_JOB, id, name)
-        self.machine_name = machine_name
-        self.port_name = port_name
-        self.driver_name = driver_name
-        self.profile_name = profile_name
+        self.machine = machine
         self.input_file = input_file
         self.extruder_name = extruder_name
         self.gcode_processor_name = gcode_processor_name
@@ -97,30 +98,15 @@ class PrintJob(Job):
         self.slicer_name = slicer_name
         self.slicer_settings = slicer_settings
 
-    def to_dict(self):
-        dct = Job.to_dict(self)
-        dct['machine_name'] = self.machine_name
-        dct['port_name'] = self.port_name
-        dct['driver_name'] = self.driver_name
-        dct['profile_name'] = self.profile_name
-        dct['input_file'] = self.input_file
-        dct['extruder_name'] = self.extruder_name
-        dct['gcode_processor_name'] = self.gcode_processor_name
-        dct['has_start_end'] = self.has_start_end
-        dct['material_name'] = self.material_name
-        dct['slicer_name'] = self.slicer_name
-        dct['slicer_settings'] = self.slicer_settings
-        return dct
 
-
-class PrintToFileJob(NamedJob):
+class PrintToFileJob(Job):
     def __init__(
-            self, id, name, driver_name, profile_name, input_file,
-            output_file, extruder_name, gcode_processor_name, has_start_end,
+            self, id, name, driver, profile, input_file, output_file,
+            extruder_name, gcode_processor_name, has_start_end,
             material_name, slicer_name, slicer_settings):
         Job.__init__(self, JobType.PRINT_TO_FILE, id, name)
-        self.driver_name = driver_name
-        self.profile_name = profile_name
+        self.driver = driver
+        self.profile = profile
         self.input_file = input_file
         self.output_file = output_file
         self.extruder_name = extruder_name
@@ -130,29 +116,15 @@ class PrintToFileJob(NamedJob):
         self.slicer_name = slicer_name
         self.slicer_settings = slicer_settings
 
-    def to_dict(self):
-        dct = Job.to_dict(self)
-        dct['driver_name'] = self.driver_name
-        dct['profile_name'] = self.profile_name
-        dct['input_file'] = self.input_file
-        dct['output_file'] = self.output_file
-        dct['extruder_name'] = self.extruder_name
-        dct['gcode_processor_name'] = self.gcode_processor_name
-        dct['has_start_end'] = self.has_start_end
-        dct['material_name'] = self.material_name
-        dct['slicer_name'] = self.slicer_name
-        dct['slicer_settings'] = self.slicer_settings
-        return dct
-
 
 class SliceJob(Job):
     def __init__(
-            self, id, name, driver_name, profile_name, input_file,
-            output_file, add_start_end, extruder_name, gcode_processor_name,
+            self, id, name, driver, profile, input_file, output_file,
+            add_start_end, extruder_name, gcode_processor_name,
             material_name, slicer_name, slicer_settings):
         Job.__init__(self, JobType.SLICE_JOB, id, name)
-        self.driver_name = driver_name
-        self.profile_name = profile_name
+        self.driver = driver
+        self.profile = profile
         self.input_file = input_file
         self.output_file = output_file
         self.add_start_end = add_start_end
@@ -161,17 +133,3 @@ class SliceJob(Job):
         self.material_name = material_name
         self.slicer_name = slicer_name
         self.slicer_settings = slicer_settings
-
-    def to_dict(self):
-        dct = Job.to_dict(self)
-        dct['driver_name'] = self.driver_name
-        dct['profile_name'] = self.profile_name
-        dct['input_file'] = self.input_file
-        dct['output_file'] = self.output_file
-        dct['add_start_end'] = self.add_start_end
-        dct['extruder_name'] = self.extruder_name
-        dct['gcode_processor_name'] = self.gcode_processor_name
-        dct['material_name'] = self.material_name
-        dct['slicer_name'] = self.slicer_name
-        dct['slicer_settings'] = self.slicer_settings
-        return dct

@@ -136,6 +136,57 @@ class MachineManager(object):
         return machine
 
 
+class MachineInfo(object):
+    '''This is the JSON-serializable portion of a `Machine`.'''
+
+    def __init__(self, name, port_name, driver_name, profile_name, state):
+        self.name = name
+        self.port_name = port_name
+        self.driver_name = driver_name
+        self.profile_name = profile_name
+        self.state = state
+
+        # Below are the fields from the old `Printer` object. Not all of them
+        # are useful. The `_S3gMachine` should populate these fields.
+        #
+        # We dropped the `connection_status` field since it had been
+        # permanently set to `connected` and is now subsumed by `state`.
+
+        self.display_name = None
+        self.unique_name = None
+        self.printer_type = None
+        self.machine_names = None
+        self.can_print = None
+        self.can_printtofile = None
+        self.has_heated_platform = None
+        self.number_of_toolheads = None
+        self.temperature = None
+        self.firmware_version = None
+
+    def to_dict(self):
+        dct = {
+            'name': self.name,
+            'port_name': self.port_name,
+            'driver_name': self.driver_name,
+            'profile_name': self.profile_name,
+            'state': self.state,
+
+            # Old stuff:
+
+            'displayName': self.display_name,
+            'uniqueName': self.unique_name,
+            'printerType': self.printer_type,
+            'machineNames': self.machine_names,
+            'canPrint': self.can_print,
+            'canPrintToFile': self.can_printtofile,
+            'hasHeatedPlatform': self.has_heated_platform,
+            'numberOfToolheads': self.number_of_toolheads,
+            'temperature': self.temperature,
+            'firmware_version': self.firmware_version,
+        }
+        return dct
+
+
 class Machine(object):
     def __init__(self, name, driver, profile):
         self.name = name
@@ -147,6 +198,9 @@ class Machine(object):
         self._state_condition = threading.Condition()
         self.state_changed = conveyor.event.Event('state_changed')
         self.temperature_changed = conveyor.event.Event('temperature_changed')
+
+    def get_info(self):
+        raise NotImplementedError
 
     def get_port(self):
         return self._port
@@ -183,10 +237,3 @@ class Machine(object):
             extruder_temperature, platform_temperature, material_name,
             build_name, task):
         raise NotImplementedError
-
-    def to_dict(self):
-        dct = {
-            'name': self.name,
-            'state': self._state,
-        }
-        return dct

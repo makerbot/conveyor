@@ -19,7 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-# NOTE: If you convert it to or from JSON, it should go in this file.
+# NOTE: this file should go away.
 
 import conveyor.enum
 

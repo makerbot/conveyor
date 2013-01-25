@@ -412,10 +412,7 @@ class DirCommand(_JsonCommand):
                 self._log.info('    %s', line)
 
 
-@args(conveyor.arg.driver)
 @args(conveyor.arg.machine)
-@args(conveyor.arg.port)
-@args(conveyor.arg.profile)
 class DisconnectCommand(_MethodCommand):
     name = 'disconnect'
 
@@ -424,11 +421,8 @@ class DisconnectCommand(_MethodCommand):
     def _create_method_task(self):
         params = {
             'machine_name': self._parsed_args.machine_name,
-            'port_name': self._parsed_args.port_name,
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
         }
-        method_task = self._jsonrpc('disconnect', params)
+        method_task = self._jsonrpc.request('disconnect', params)
         return method_task
 
     def _method_callback(self, method_task):
@@ -634,18 +628,14 @@ class PrintersCommand(_JsonCommand):
         return method_task
 
     def _handle_result_default(self, result):
-        for dct in result:
-            printer = conveyor.domain.Printer.fromdict(dct)
+        for machine in result:
             self._log.info('Printer:')
-            self._log.info('  display name        - %s', printer.display_name)
-            self._log.info('  unique name         - %s', printer.unique_name)
-            self._log.info('  printer type        - %s', printer.printer_type)
-            self._log.info('  firmware version    - %s', printer.firmware_version)
-            self._log.info('  can print           - %s', printer.can_print)
-            self._log.info('  can print to file   - %s', printer.can_printtofile)
-            self._log.info('  heated platform     - %s', printer.has_heated_platform)
-            self._log.info('  number of toolheads - %s', printer.number_of_toolheads)
-            self._log.info('  connection status   - %s', printer.connection_status)
+            self._log.info('  name        - %s', machine['name'])
+            self._log.info('  state       - %s', machine['state'])
+            self._log.info('  temperature - %s', machine['temperature'])
+            self._log.info('  firmware    - %s', machine['firmware_version'])
+
+            # TODO: stop being lazy and add the rest of the fields.
 
 
 @args(conveyor.arg.output_file)
