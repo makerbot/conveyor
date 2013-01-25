@@ -173,6 +173,7 @@ elif sys.platform == 'win32':
     env.MBInstallConfig('#/conveyor-win32.conf', 'conveyor.conf')
 
     env.MBInstallBin('#/setup_conveyor_env.bat')
+    env.MBInstallBin('#/restart.bat')
     env.MBInstallBin('#/start.bat')
     env.MBInstallBin('#/stop.bat')
 
