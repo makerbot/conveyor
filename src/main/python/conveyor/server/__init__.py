@@ -450,7 +450,7 @@ class _Client(conveyor.stoppable.StoppableThread):
     def getports(self):
         result = []
         for port in self._server.get_ports():
-            dct = port.to_dict()
+            dct = port.get_info().to_dict()
             result.append(dct)
         return result
 

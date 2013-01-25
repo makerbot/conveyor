@@ -36,6 +36,27 @@ class SerialPortFactory(conveyor.machine.port.PortFactory):
         self._thread.start()
 
 
+class SerialPortInfo(conveyor.machine.port.PortInfo):
+    def __init__(self, name, driver_profiles, path, iserial, vid, pid, label):
+        conveyor.machine.port.PortInfo.__init__(
+            self, conveyor.machine.port.PortType.SERIAL, name,
+            driver_profiles)
+        self.path = path
+        self.iserial = iserial
+        self.vid = vid
+        self.pid = pid
+        self.label = label
+
+    def to_dict(self):
+        dct = conveyor.machine.port.PortInfo.to_dict(self)
+        dct['path'] = self.path
+        dct['iserial'] = self.iserial
+        dct['vid'] = self.vid
+        dct['pid'] = self.pid
+        dct['label'] = self.label
+        return dct
+
+
 class SerialPort(conveyor.machine.port.Port):
     def __init__(self, name, path, iserial, vid, pid, label):
         conveyor.machine.port.Port.__init__(
@@ -46,14 +67,16 @@ class SerialPort(conveyor.machine.port.Port):
         self.pid = pid
         self.label = label
 
-    def to_dict(self):
-        dct = conveyor.machine.port.Port.to_dict(self)
-        dct['path'] = self.path
-        dct['iserial'] = self.iserial
-        dct['vid'] = self.vid
-        dct['pid'] = self.pid
-        dct['label'] = self.label
-        return dct
+    def get_info(self):
+        info = SerialPortInfo(
+            self.name, self.driver_profiles, self.path, self.iserial,
+            self.vid, self.pid, self.label)
+        return info
+
+    def __str__(self):
+        s = '%s, %04X:%04X:%s' % (
+            self.name, self.vid, self.pid, self.iserial,)
+        return s
 
 
 class _SerialPortCategory(object):

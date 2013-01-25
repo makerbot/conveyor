@@ -19,6 +19,8 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import logging
+
 import conveyor.enum
 import conveyor.error
 import conveyor.event
@@ -75,25 +77,30 @@ class PortManager(object):
 class PortFactory(object):
     def __init__(self, driver_manager):
         self._driver_manager = driver_manager
+        self._log = logging.getLogger(self.__class__.__name__)
         self.port_attached = conveyor.event.Event('port_attached')
+        self.port_attached.attach(self._port_attached_callback)
         self.port_detached = conveyor.event.Event('port_detached')
+        self.port_detached.attach(self._port_detached_callback)
 
     def _start(self):
         raise NotImplementedError
 
+    def _port_attached_callback(self, port):
+        self._log.info('port attached: %s', port)
 
-class Port(object):
-    def __init__(self, type, name):
-        self.type = type
+    def _port_detached_callback(self, port_name):
+        self._log.info('port detached: %s', port_name)
+
+
+PortType = conveyor.enum.enum('PortType', 'SERIAL')
+
+
+class PortInfo(object):
+    def __init__(self, type_, name, driver_profiles):
+        self.type = type_
         self.name = name
-        self.driver_profiles = {}
-        self._machine = None
-
-    def get_machine(self):
-        return self._machine
-
-    def set_machine(self, machine):
-        self._machine = machine
+        self.driver_profiles = driver_profiles
 
     def to_dict(self):
         dct = {
@@ -104,4 +111,18 @@ class Port(object):
         return dct
 
 
-PortType = conveyor.enum.enum('PortType', 'SERIAL')
+class Port(object):
+    def __init__(self, type, name):
+        self.type = type
+        self.name = name
+        self.driver_profiles = {}
+        self._machine = None
+
+    def get_info(self):
+        raise NotImplementedError
+
+    def get_machine(self):
+        return self._machine
+
+    def set_machine(self, machine):
+        self._machine = machine
