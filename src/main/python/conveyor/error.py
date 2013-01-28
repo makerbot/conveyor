@@ -19,12 +19,23 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+
+class Error(object):
+    def handle(self, log):
+        '''
+        Handle the error by writing it to the specified log and returning an
+        exit code.
+
+        '''
+        raise NotImplementedError
+
+
 # NOTE: some exceptions end with `Error` and others with `Exception`. The name
 # should have the same ending as the base class. Most of the `Error` classes
 # derive from the built-in `KeyError`.
 
 
-class ConfigKeyError(KeyError):
+class ConfigKeyError(KeyError, Error):
     '''
     Raised when the configuration is missing a key. Since there are default
     values, the configuration should always be fully populated and this
@@ -37,8 +48,12 @@ class ConfigKeyError(KeyError):
         self.config_path = config_path
         self.key = key
 
+    def handle(self, log):
+        log.critical('internal error', exc_info=True)
+        return 1
 
-class ConfigTypeError(TypeError):
+
+class ConfigTypeError(TypeError, Error):
     '''
     Raised when a configuration file element has an invalid type (e.g., it is a
     string instead of a number).
@@ -51,8 +66,14 @@ class ConfigTypeError(TypeError):
         self.key = key
         self.value = value
 
+    def handle(self, log):
+        log.critical(
+            'invalid type for configuration file element: %s: %s: %s',
+            e.config_path, e.key, e.value, exc_info=True)
+        return 1
 
-class ConfigValueError(ValueError):
+
+class ConfigValueError(ValueError, Error):
     '''
     Raised when a configuration file element has an invalid value (e.g., the
     value for the logging level parameter is not one of the valid logging
@@ -66,143 +87,136 @@ class ConfigValueError(ValueError):
         self.key = key
         self.value = value
 
-
-class DriverMismatchException(Exception):
-    pass
-
-
-class MachineStateException(Exception):
-    pass
+    def handle(self, log):
+        log.critical(
+            'invalid value for configuration file element: %s: %s: %s',
+            e.config_path, e.key, e.value, exc_info=True)
+        return 1
 
 
-class MultipleDriversException(Exception):
-    pass
+class DriverMismatchException(Exception, Error):
+    def handle(self, log):
+        log.critical(
+            'the requested driver does not match the machine\'s current driver',
+            exc_info=True)
+        return 1
 
 
-class MultiplePortsException(Exception):
-    pass
+class MachineStateException(Exception, Error):
+    def handle(self, log):
+        log.critical(
+            'the machine is in an invalid state for that operation',
+            exc_info=True)
+        return 1
 
 
-class NoDriversException(Exception):
-    pass
+class MultipleDriversException(Exception, Error):
+    def handle(self, log):
+        log.critical(
+            'there are multiple drivers available; please specify a driver',
+            exc_info=True)
+        return 1
 
 
-class NoPortsException(Exception):
-    pass
+class MultiplePortsException(Exception, Error):
+    def handle(self, log):
+        log.critical(
+            'there are multiple ports available; please specify a port',
+            exc_info=True)
+        return 1
 
 
-class PortMismatchException(Exception):
-    pass
+class NoDriversException(Exception, Error):
+    def handle(self, log):
+        log.critical('there are no drivers available', exc_info=True)
+        return 1
 
 
-class ProfileMismatchException(Exception):
-    pass
+class NoPortsException(Exception, Error):
+    def handle(self, log):
+        log.critical('there are no ports available', exc_info=True)
+        return 1
 
 
-class UnknownDriverError(KeyError):
+class PortMismatchException(Exception, Error):
+    def handle(self, log):
+        log.critical(
+            'the requested port does not match the machine\'s current port',
+            exc_info=True)
+        return 1
+
+
+class ProfileMismatchException(Exception, Error):
+    def handle(self, log):
+        log.critical(
+            'the requested profile does not match the machine\'s current profile',
+            exc_info=True)
+        return 1
+
+
+class UnknownDriverError(KeyError, Error):
     def __init__(self, driver_name):
         KeyError.__init__(self, driver_name)
         self.driver_name = driver_name
 
+    def handle(self, log):
+        log.critical('unknown driver: %s', e.driver_name, exc_info=True)
+        return 1
 
-class UnknownJobError(KeyError):
+
+class UnknownJobError(KeyError, Error):
     def __init__(self, job_id):
         KeyError.__init__(self, job_id)
         self.job_id = job_id
 
+    def handle(self, log):
+        log.critical('unknown job: %s', e.job_id, exc_info=True)
+        return 1
 
-class UnknownMachineError(KeyError):
+
+class UnknownMachineError(KeyError, Error):
     def __init__(self, machine_name):
         KeyError.__init__(self, machine_name)
         self.machine_name = machine_name
 
+    def handle(self, log):
+        log.critical('unknown machine: %s', e.machine_name, exc_info=True)
+        return 1
 
-class UnknownPortError(KeyError):
+
+class UnknownPortError(KeyError, Error):
     def __init__(self, port_name):
         KeyError.__init__(self, port_name)
         self.port_name = port_name
 
+    def handle(self, log):
+        log.critical('unknown port: %s', e.port_name, exc_info=True)
+        return 1
 
-class UnknownProfileError(KeyError):
+
+class UnknownProfileError(KeyError, Error):
     def __init__(self, profile_name):
         KeyError.__init__(self, profile_name)
         self.profile_name = profile_name
 
+    def handle(self, log):
+        log.critical('unknown profile: %s', e.profile_name, exc_info=True)
+        return 1
 
-class UnsupportedPlatformException(Exception):
+
+class UnsupportedPlatformException(Exception, Error):
     '''Raised when conveyor does not support your operating system.'''
+
+    def handle(self, log):
+        log.critical('conveyor does not support your platform', exc_info=True)
+        return 1
 
 
 def guard(log, func):
     try:
         code = func()
-    except ConfigKeyError as e:
-        code = 1
-        log.critical('internal error', exc_info=True)
-    except ConfigTypeError as e:
-        code = 1
-        log.critical(
-            'invalid type for configuration file element: %s: %s: %s',
-            e.config_path, e.key, e.value, exc_info=True)
-    except ConfigValueError as e:
-        code = 1
-        log.critical(
-            'invalid value for configuration file element: %s: %s: %s',
-            e.config_path, e.key, e.value, exc_info=True)
-    except DriverMismatchException as e:
-        code = 1
-        log.critical(
-            'the requested driver does not match the machine\'s current driver',
-            exc_info=True)
-    except MachineStateException as e:
-        code = 1
-        log.critical(
-            'the machine is in an invalid state for that operation',
-            exc_info=True)
-    except MultipleDriversException as e:
-        code = 1
-        log.critical(
-            'there are multiple drivers available; please specify a driver',
-            exc_info=True)
-    except MultiplePortsException as e:
-        code = 1
-        log.critical(
-            'there are multiple ports available; please specify a port',
-            exc_info=True)
-    except NoDriversException as e:
-        code = 1
-        log.critical('there are no drivers available', exc_info=True)
-    except NoPortsException as e:
-        code = 1
-        log.critical('there are no ports available', exc_info=True)
-    except PortMismatchException as e:
-        code = 1
-        log.critical(
-            'the requested port does not match the machine\'s current port',
-            exc_info=True)
-    except ProfileMismatchException as e:
-        code = 1
-        log.critical(
-            'the requested profile does not match the machine\'s current profile',
-            exc_info=True)
-    except UnknownDriverError as e:
-        code = 1
-        log.critical('unknown driver: %s', e.driver_name, exc_info=True)
-    except UnknownJobError as e:
-        code = 1
-        log.critical('unknown job: %s', e.job_id, exc_info=True)
-    except UnknownMachineError as e:
-        code = 1
-        log.critical('unknown machine: %s', e.machine_name, exc_info=True)
-    except UnknownPortError as e:
-        code = 1
-        log.critical('unknown port: %s', e.port_name, exc_info=True)
-    except UnknownProfileError as e:
-        code = 1
-        log.critical('unknown profile: %s', e.profile_name, exc_info=True)
-    except UnsupportedPlatformException as e:
-        code = 1
-        log.critical('conveyor does not support your platform', exc_info=True)
+    except Error as e:
+        code = e.handle(log)
     except KeyboardInterrupt:
         code = 0
         log.warning('interrupted')
