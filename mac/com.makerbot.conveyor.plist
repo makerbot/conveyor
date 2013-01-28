@@ -7,13 +7,13 @@
     <key>Label</key>
     <string>com.makerbot.conveyor.daemon</string>
     <key>WorkingDirectory</key>
-    <string>/Library/Frameworks/MakerBot.framework/MakerBot/conveyor</string>
+    <string>/Library/MakerBot</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Library/Frameworks/MakerBot.framework/MakerBot/conveyor/virtualenv/bin/python</string>
-        <string>/Library/Frameworks/MakerBot.framework/MakerBot/conveyor/conveyor_service.py</string>
+        <string>/Library/MakerBot/virtualenv/bin/python</string>
+        <string>/Library/MakerBot/conveyor_service.py</string>
         <string>-c</string>
-        <string>/Library/Frameworks/MakerBot.framework/MakerBot/conveyor/conveyor.conf</string>
+        <string>/Library/MakerBot/conveyor.conf</string>
         <string>--nofork</string>
     </array>
     <key>KeepAlive</key>
