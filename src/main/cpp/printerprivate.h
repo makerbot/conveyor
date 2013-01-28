@@ -56,7 +56,6 @@ namespace conveyor
         bool m_hasHeatedPlatform;
         int m_numberOfToolheads;
         ToolTemperature m_toolTemperature;
-        ConnectionStatus m_connectionStatus;
         float m_buildVolumeXmin;
         float m_buildVolumeYmin;
         float m_buildVolumeZmin;

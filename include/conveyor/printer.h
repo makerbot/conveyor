@@ -11,7 +11,6 @@
 #include <QScopedPointer>
 
 #include <conveyor/fwd.h>
-#include <conveyor/connectionstatus.h>
 
 namespace Json {
     class Value;
@@ -90,13 +89,6 @@ namespace conveyor
         bool canPrintToFile () const;
 
         Conveyor * conveyor ();
-
-        /** Details about our connection to the printer */
-        ConnectionStatus connectionStatus () const;
-
-        /** A human readable version of the connection status, possibly with
-            additional details */
-        QString connectionStatusString () const;
 
         /** The number of extruders the printer has. Usually 1 or 2. */
         int numberOfExtruders () const;
