@@ -214,7 +214,8 @@ class S3gPrinterThread(conveyor.stoppable.StoppableThread):
     def run(self):
         try:
             s3g = makerbot_driver.s3g()
-            s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp)
+            condition = threading.Condition()
+            s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp, condition)
             now = time.time()
             polltime = now + 5.0
             while not self._stop:
