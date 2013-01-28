@@ -57,6 +57,19 @@ class DriverManager(object):
             return driver
 
 
+class DriverInfo(object):
+    def __init__(self, name, profiles):
+        self.name = name
+        self.profiles = profiles
+
+    def to_dict(self):
+        dct = {
+            'name': self.name,
+            'profiles': [p.to_dict() for p in self.profiles],
+        }
+        return dct
+
+
 class Driver(object):
     def __init__(self, name):
         self.name = name
@@ -77,6 +90,45 @@ class Driver(object):
             build_name, task):
         raise NotImplementedError
 
+    def get_info(self):
+        profiles = []
+        for profile in self.get_profiles(None):
+            profile_info = profile.get_info()
+            profiles.append(profile_info)
+        info = DriverInfo(self.name, profiles)
+        return info
+
+
+class ProfileInfo(object):
+    '''This is the JSON-serializable portion of a `Profile`.'''
+
+    def __init__(
+            self, name, driver_name, xsize, ysize, zsize, can_print,
+            can_print_to_file, has_heated_platform, number_of_tools):
+        self.name = name
+        self.driver_name = driver_name
+        self.xsize = xsize
+        self.ysize = ysize
+        self.zsize = zsize
+        self.can_print = can_print
+        self.can_print_to_file = can_print_to_file
+        self.has_heated_platform = has_heated_platform
+        self.number_of_tools = number_of_tools
+
+    def to_dict(self):
+        dct = {
+            'name': self.name,
+            'driver_name': self.driver_name,
+            'xsize': self.xsize,
+            'ysize': self.ysize,
+            'zsize': self.zsize,
+            'can_print': self.can_print,
+            'can_print_to_file': self.can_print_to_file,
+            'has_heated_platform': self.has_heated_platform,
+            'number_of_tools': self.number_of_tools,
+        }
+        return dct
+
 
 class Profile(object):
     def __init__(self, name, driver, xsize, ysize, zsize, can_print,
@@ -95,6 +147,13 @@ class Profile(object):
             self, extruders, extruder_temperature, platform_temperature,
             material_name):
         raise NotImplementedError
+
+    def get_info(self):
+        info = ProfileInfo(
+            self.name, self.driver.name, self.xsize, self.ysize, self.zsize,
+            self.can_print, self.can_print_to_file, self.has_heated_platform,
+            self.number_of_tools,)
+        return info
 
 
 class GcodeScaffold(object):

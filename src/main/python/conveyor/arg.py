@@ -49,7 +49,15 @@ def install(parser, cls):
 # Positional Arguments ########################################################
 
 
-def firmware_version(parser):
+def positional_driver(parser):
+    parser.add_argument(
+        'driver_name',
+        help='use DRIVER',
+        metavar='DRIVER',
+        )
+
+
+def positional_firmware_version(parser):
     parser.add_argument(
         'firmware_version',
         help='the FIRMWARE-VERSION',
@@ -57,7 +65,7 @@ def firmware_version(parser):
         )
 
 
-def input_file(parser):
+def positional_input_file(parser):
     parser.add_argument(
         'input_file',
         help='read input from INPUT-FILE',
@@ -65,7 +73,7 @@ def input_file(parser):
         )
 
 
-def job(parser):
+def positional_job(parser):
     parser.add_argument(
         'job_id',
         help='execute command on JOB',
@@ -73,19 +81,28 @@ def job(parser):
         )
 
 
-def output_file(parser):
+def positional_output_file(parser):
     parser.add_argument(
         'output_file',
         help='write output to OUTPUT-FILE',
         metavar='OUTPUT-FILE',
         )
 
-def output_file_optional(parser):
+
+def positional_output_file_optional(parser):
     parser.add_argument(
         'output_file',
         nargs='?',
         help='write output to OUTPUT-FILE',
         metavar='OUTPUT-FILE',
+        )
+
+
+def positional_profile(parser):
+    parser.add_argument(
+        'profile_name',
+        help='use PROFILE',
+        metavar='PROFILE',
         )
 
 

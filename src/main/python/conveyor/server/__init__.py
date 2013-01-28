@@ -166,6 +166,24 @@ class Server(conveyor.stoppable.StoppableInterface):
         ports = self._port_manager.get_ports()
         return ports
 
+    def get_drivers(self):
+        drivers = self._driver_manager.get_drivers()
+        return drivers
+
+    def get_driver(self, driver_name):
+        driver = self._driver_manager.get_driver(driver_name)
+        return driver
+
+    def get_profiles(self, driver_name):
+        driver = self._driver_manager.get_driver(driver_name)
+        profiles = driver.get_profiles(None)
+        return profiles
+
+    def get_profile(self, driver_name, profile_name):
+        driver = self._driver_manager.get_driver(driver_name)
+        profile = driver.get_profile(profile_name)
+        return profile
+
     def get_machines(self):
         machines = self._machine_manager.get_machines()
         return machines
@@ -380,6 +398,12 @@ class Server(conveyor.stoppable.StoppableInterface):
 
 
 class _Client(conveyor.stoppable.StoppableThread):
+    '''
+    This is the `Server`'s notion of a client. One `_Client` is allocated for
+    each incoming connection.
+
+    '''
+
     def __init__(self, config, server, jsonrpc):
         conveyor.stoppable.StoppableThread.__init__(self)
         self._config = config
@@ -467,6 +491,34 @@ class _Client(conveyor.stoppable.StoppableThread):
         for port in self._server.get_ports():
             dct = port.get_info().to_dict()
             result.append(dct)
+        return result
+
+    @jsonrpc()
+    def get_drivers(self):
+        result = []
+        for driver in self._server.get_drivers():
+            dct = driver.get_info().to_dict()
+            result.append(dct)
+        return result
+
+    @jsonrpc()
+    def get_driver(self, driver_name):
+        driver = self._server.get_driver(driver_name)
+        result = driver.get_info().to_dict()
+        return result
+
+    @jsonrpc()
+    def get_profiles(self, driver_name):
+        result = []
+        for profile in self._server.get_profiles(driver_name):
+            dct = profile.get_info().to_dict()
+            result.append(dct)
+        return result
+
+    @jsonrpc()
+    def get_profile(self, driver_name, profile_name):
+        profile = self._server.get_profile(driver_name, profile_name)
+        result = profile.get_info().to_dict()
         return result
 
     @jsonrpc()

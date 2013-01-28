@@ -317,7 +317,7 @@ class _ConnectedCommand(_MonitorCommand):
         method_task.start()
 
 
-@args(conveyor.arg.job)
+@args(conveyor.arg.positional_job)
 class CancelCommand(_MethodCommand):
     name = 'cancel'
 
@@ -332,7 +332,7 @@ class CancelCommand(_MethodCommand):
         self._stop_jsonrpc()
 
 
-@args(conveyor.arg.firmware_version)
+@args(conveyor.arg.positional_firmware_version)
 class CompatibleFirmware(_QueryCommand):
     name = 'compatiblefirmware'
 
@@ -371,7 +371,7 @@ class ConnectCommand(_MethodCommand):
         self._stop_jsonrpc()
 
 
-@args(conveyor.arg.output_file_optional)
+@args(conveyor.arg.positional_output_file_optional)
 class DefaultConfigCommand(_ClientCommand):
     name = 'defaultconfig'
 
@@ -448,6 +448,38 @@ class DownloadFirmware(_QueryCommand):
         self._log.info('firmware downloaded to: %s', result)
 
 
+@args(conveyor.arg.positional_driver)
+class DriverCommand(_JsonCommand):
+    name = 'driver'
+
+    help = 'get the details for a driver'
+
+    def _create_method_task(self):
+        params = {'driver_name': self._parsed_args.driver_name,}
+        method_task = self._jsonrpc.request('get_driver', params)
+        return method_task
+
+    def _handle_result_default(self, result):
+        driver = result
+        drivers = [driver]
+        _print_driver_profiles(self._log, drivers)
+
+
+class DriversCommand(_JsonCommand):
+    name = 'drivers'
+
+    help = 'list the available drivers'
+
+    def _create_method_task(self):
+        params = {}
+        method_task = self._jsonrpc.request('get_drivers', params)
+        return method_task
+
+    def _handle_result_default(self, result):
+        drivers = result
+        _print_driver_profiles(self._log, drivers)
+
+
 @args(conveyor.arg.machine_type)
 class GetMachineVersions(_QueryCommand):
     name = 'getmachineversions'
@@ -477,7 +509,7 @@ class GetUploadableMachines(_QueryCommand):
         print(result)
 
 
-@args(conveyor.arg.job)
+@args(conveyor.arg.positional_job)
 class JobCommand(_JsonCommand):
     name = 'job'
 
@@ -553,7 +585,7 @@ class PortsCommand(_JsonCommand):
 @args(conveyor.arg.material)
 @args(conveyor.arg.slicer)
 @args(conveyor.arg.slicer_settings)
-@args(conveyor.arg.input_file)
+@args(conveyor.arg.positional_input_file)
 class PrintCommand(_ConnectedCommand):
     name = 'print'
 
@@ -589,8 +621,8 @@ class PrintCommand(_ConnectedCommand):
 @args(conveyor.arg.profile)
 @args(conveyor.arg.slicer)
 @args(conveyor.arg.slicer_settings)
-@args(conveyor.arg.input_file)
-@args(conveyor.arg.output_file)
+@args(conveyor.arg.positional_input_file)
+@args(conveyor.arg.positional_output_file)
 class PrintToFileCommand(_MonitorCommand):
     name = 'printtofile'
 
@@ -638,7 +670,54 @@ class PrintersCommand(_JsonCommand):
             # TODO: stop being lazy and add the rest of the fields.
 
 
-@args(conveyor.arg.output_file)
+@args(conveyor.arg.positional_driver)
+@args(conveyor.arg.positional_profile)
+class ProfileCommand(_JsonCommand):
+    name = 'profile'
+
+    help = 'get the details for a profile'
+
+    def _create_method_task(self):
+        params = {
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
+        }
+        method_task = self._jsonrpc.request('get_profile', params)
+        return method_task
+
+    def _handle_result_default(self, result):
+        profile = result
+        profiles = [profile]
+        driver = {
+            'name': self._parsed_args.driver_name,
+            'profiles': profiles,
+        }
+        drivers = [driver]
+        _print_driver_profiles(self._log, drivers)
+
+
+@args(conveyor.arg.positional_driver)
+class ProfilesCommand(_JsonCommand):
+    name = 'profiles'
+
+    help = 'list the available profiles'
+
+    def _create_method_task(self):
+        params = {'driver_name': self._parsed_args.driver_name,}
+        method_task = self._jsonrpc.request('get_profiles', params)
+        return method_task
+
+    def _handle_result_default(self, result):
+        profiles = result
+        driver = {
+            'name': self._parsed_args.driver_name,
+            'profiles': profiles,
+        }
+        drivers = [driver]
+        _print_driver_profiles(self._log, drivers)
+
+
+@args(conveyor.arg.positional_output_file)
 class ReadEepromCommand(_QueryCommand):
     name = 'readeeprom'
 
@@ -677,8 +756,8 @@ class ResetToFactoryCommand(_QueryCommand):
 @args(conveyor.arg.profile)
 @args(conveyor.arg.slicer)
 @args(conveyor.arg.slicer_settings)
-@args(conveyor.arg.input_file)
-@args(conveyor.arg.output_file)
+@args(conveyor.arg.positional_input_file)
+@args(conveyor.arg.positional_output_file)
 class SliceCommand(_MonitorCommand):
     name = 'slice'
 
@@ -721,7 +800,7 @@ class UnpauseCommand(_ConnectedCommand):
 
 
 @args(conveyor.arg.machine_type)
-@args(conveyor.arg.input_file)
+@args(conveyor.arg.positional_input_file)
 class UploadFirmwareCommand(_QueryCommand):
     name = 'uploadfirmware'
 
@@ -740,7 +819,7 @@ class UploadFirmwareCommand(_QueryCommand):
         pass
 
 
-@args(conveyor.arg.input_file)
+@args(conveyor.arg.positional_input_file)
 class VerifyS3gCommand(_QueryCommand):
     name = 'verifys3g'
 
@@ -782,7 +861,7 @@ class WaitForServiceCommand(_ClientCommand):
         return code
 
 
-@args(conveyor.arg.input_file)
+@args(conveyor.arg.positional_input_file)
 class WriteEepromCommand(_QueryCommand):
     name = 'writeeeprom'
 
@@ -834,3 +913,18 @@ def _create_slicer_settings(parsed_args, config):
         travel_speed=config.get('client', 'slicing', 'travel_speed'),
     )
     return slicer_settings
+
+
+def _print_driver_profiles(log, drivers):
+    log.info('drivers:')
+    for driver in drivers:
+        log.info('  %s:', driver['name'])
+        for profile in driver['profiles']:
+            log.info('    %s:', profile['name'])
+            log.info('      X axis size       - %s', profile['xsize'])
+            log.info('      Y axis size       - %s', profile['ysize'])
+            log.info('      Z axis size       - %s', profile['zsize'])
+            log.info('      can print         - %s', profile['can_print'])
+            log.info('      can print to file - %s', profile['can_print_to_file'])
+            log.info('      heated platform   - %s', profile['has_heated_platform'])
+            log.info('      number of tools   - %d', profile['number_of_tools'])
