@@ -514,6 +514,24 @@ class _Client(conveyor.stoppable.StoppableThread):
         for machine in self._server.get_machines():
             dct = machine.get_info().to_dict()
             result.append(dct)
+        # TODO: this is horrible... it is coupled to the s3g driver.
+        for driver in self._server._driver_manager.get_drivers():
+            for profile in driver.get_profiles(None):
+                info = conveyor.machine.MachineInfo(
+                    profile._s3g_profile.values['type'], None, driver.name,
+                    profile.name, conveyor.machine.MachineState.DISCONNECTED)
+                info.display_name = profile._s3g_profile.values['type']
+                info.unique_name = profile._s3g_profile.values['type']
+                info.printer_type = profile._s3g_profile.values['type']
+                info.machine_names = profile._s3g_profile.values['machinenames']
+                info.can_print = False
+                info.can_print_to_file = True
+                info.has_heated_platform = (0 != len(profile._s3g_profile.values['heated_platforms']))
+                info.number_of_toolheads = len(profile._s3g_profile.values['tools'])
+                info.temperature = {'tools': {}, 'heated_platforms': {},}
+                info.firmware_version = None
+                dct = info.to_dict()
+                result.append(dct)
         return result
 
     @jsonrpc()

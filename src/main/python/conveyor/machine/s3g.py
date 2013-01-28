@@ -51,7 +51,7 @@ class S3gDriver(conveyor.machine.Driver):
 
     def get_profiles(self, port):
         if None is port:
-            profiles = self._profile.values()
+            profiles = self._profiles.values()
         else:
             profiles = []
             for profile in self._profiles.values():
