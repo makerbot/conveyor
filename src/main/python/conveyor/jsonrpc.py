@@ -306,15 +306,15 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         try:
             result = func(*args, **kwargs)
         except TypeError as e:
-            self._log.debug('exception', exc_info=True)
+            self._log.warning('handled exception', exc_info=True)
             if None is not id:
                 response = self._invalidparams(id)
         except JsonRpcException as e:
-            self._log.debug('exception', exc_info=True)
+            self._log.warning('handled exception', exc_info=True)
             if None is not id:
                 response = self._errorresponse(id, e.code, e.message, e.data)
-        except:
-            self._log.exception('uncaught exception')
+        except Exception as e:
+            self._log.warning('uncaught exception', exc_info=True)
             if None is not id:
                 e = sys.exc_info()[1]
                 data = {'name': e.__class__.__name__, 'args': e.args}

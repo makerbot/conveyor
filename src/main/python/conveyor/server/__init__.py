@@ -49,12 +49,14 @@ class Server(conveyor.stoppable.StoppableInterface):
         self._spool = spool
         self._connection_manager = connection_manager
         self._listener = listener
+        self._stop = False
+        self._log = logging.getLogger(self.__class__.__name__)
         self._clients = set()
         self._clients_condition = threading.Condition()
-        self._log = logging.getLogger(self.__class__.__name__)
         self._queue = collections.deque()
         self._queue_condition = threading.Condition()
-        self._stop = False
+        self._jobs = {}
+        self._jobs_condition = threading.Condition()
 
     def stop(self):
         self._stop = True
@@ -157,11 +159,6 @@ class Server(conveyor.stoppable.StoppableInterface):
             port.set_machine(machine)
         return machine
 
-    ## new stuff ##############################################################
-
-    def machine_connected(self, machine):
-        pass # TODO
-
     def get_ports(self):
         ports = self._port_manager.get_ports()
         return ports
@@ -195,7 +192,7 @@ class Server(conveyor.stoppable.StoppableInterface):
             machine_name, port_name, driver_name, profile_name)
         if conveyor.machine.MachineState.DISCONNECTED == machine.get_state():
             machine.connect()
-            self.machine_connected(machine)
+            self._machine_connected(machine)
         self._connection_manager.acquire_machine(client, machine, persistent)
         return machine
 
@@ -207,7 +204,7 @@ class Server(conveyor.stoppable.StoppableInterface):
             self, client, machine_name, input_file, extruder_name,
             gcode_processor_name, has_start_end, material_name, slicer_name,
             slicer_settings):
-        job_id = object()
+        job_id = self._create_job_id()
         job_name = self._get_job_name(input_file)
         machine = self._find_machine(machine_name, None, None, None)
         job = conveyor.job.PrintJob(
@@ -216,9 +213,9 @@ class Server(conveyor.stoppable.StoppableInterface):
             slicer_settings)
         recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
         recipe = recipe_manager.get_recipe(job)
-        job.process = recipe.get_process()
-        self._attach_job_callbacks(job.process)
-        job.process.start()
+        job.task = recipe.get_task()
+        self._attach_job_callbacks(job)
+        job.task.start()
         return job
 
     def pause(self, client, machine_name):
@@ -233,7 +230,7 @@ class Server(conveyor.stoppable.StoppableInterface):
             self, client, driver_name, profile_name, input_file, output_file,
             extruder_name, file_type, gcode_processor_name, has_start_end,
             material_name, slicer_name, slicer_settings):
-        job_id = object()
+        job_id = self._create_job_id()
         job_name = self._get_job_name(output_file)
         driver = self._get_driver(driver_name)
         profile = driver.get_profile(profile_name)
@@ -243,16 +240,16 @@ class Server(conveyor.stoppable.StoppableInterface):
             material_name, slicer_name, slicer_settings)
         recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
         recipe = recipe_manager.get_recipe(job)
-        job.process = recipe.get_process()
-        self._attach_job_callbacks(job.process)
-        job.process.start()
+        job.task = recipe.get_task()
+        self._attach_job_callbacks(job)
+        job.task.start()
         return job
 
     def slice(
             self, client, driver_name, profile_name, input_file, output_file,
             add_start_end, extruder_name, gcode_processor_name, material_name,
             slicer_name, slicer_settings):
-        job_id = object()
+        job_id = self._create_job_id()
         job_name = self._get_job_name(output_file)
         driver = self._get_driver(driver_name)
         profile = driver.get_profile(profile_name)
@@ -262,19 +259,64 @@ class Server(conveyor.stoppable.StoppableInterface):
             material_name, slicer_name, slicer_settings)
         recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
         recipe = recipe_manager.get_recipe(job)
-        job.process = recipe.get_process()
-        self._attach_job_callbacks(job.process)
-        job.process.start()
+        job.task = recipe.get_task()
+        self._attach_job_callbacks(job)
+        job.task.start()
         return job
 
     def get_jobs(self, client):
+        with self._jobs_condition:
+            jobs = self._jobs.copy()
+        return jobs
+
+    def get_job(self, job_id):
+        with self._jobs_condition:
+            try:
+                job = self._jobs[job_id]
+            except KeyError:
+                raise conveyor.error.UnknownJobError(job_id)
+            else:
+                return job
+
+    def cancel_job(self, job_id):
+        job = self.get_job(job_id)
+        if conveyor.task.TaskState.STOPPED != job.task.state:
+            job.task.cancel()
+
+    def _machine_connected(self, machine):
+        pass # TODO
+
+    def _create_job_id(self):
+        with self._jobs_condition:
+            self._job_id_counter += 1
+            id_ = self._job_id_counter
+        return id_
+
+    def _get_job_name(self, p):
+        root, ext = os.path.splitext(p)
+        job_name = os.path.basename(root)
+        return job_name
+
+    def _attach_job_callbacks(job):
+        def start_callback(task):
+            self._add_job(job)
+        job.task.startevent.attach(start_callback)
+        def heartbeat_callback(task):
+            self._job_changed(job)
+        job.task.heartbeatevent.attach(heartbeat_callback)
+        def stopped_callback(task):
+            self._job_changed(job)
+        job.task.stoppedevent.attach(stopped_callback)
+
+    def _add_job(self, job):
+        with self._jobs_condition:
+            self._jobs[job.id] = job
+        # TODO: `jobadded`
+
+    def _job_changed(self, job):
         pass
 
-    def get_job(self, client, job_id):
-        pass
-
-    def cancel_job(self, client, job_id):
-        pass
+    ## old stuff ##############################################################
 
     def reset_to_factory(self, client, machine_name):
         machine = self._find_machine(machine_name, None, None, None)
@@ -388,14 +430,6 @@ class Server(conveyor.stoppable.StoppableInterface):
         task = conveyor.recipe.Recipe.verifys3gtask(s3gpath)
         return task
 
-    def _get_job_name(self, p):
-        root, ext = os.path.splitext(p)
-        job_name = os.path.basename(root)
-        return job_name
-
-    def _attach_job_callbacks(self, job):
-        pass
-
 
 class _Client(conveyor.stoppable.StoppableThread):
     '''
@@ -423,9 +457,6 @@ class _Client(conveyor.stoppable.StoppableThread):
             finally:
                 self._server._remove_client(self)
         conveyor.error.guard(self._log, func)
-
-    def printeradded(self, params):
-        self._jsonrpc.notify('printeradded', params)
 
     def printerchanged(self, params):
         self._jsonrpc.notify('printerchanged', params)
@@ -619,18 +650,18 @@ class _Client(conveyor.stoppable.StoppableThread):
         jobs = self._server.get_jobs(self)
         result = {}
         for job_id, job in self._server.get_jobs(self):
-            result[job_id] = job.to_dict()
+            result[job_id] = job.get_info().to_dict()
         return result
 
     @jsonrpc()
     def getjob(self, id):
-        job = self._server.get_job(self, id)
+        job = self._server.get_job(id)
         result = job.to_dict()
         return result
 
     @jsonrpc()
     def canceljob(self, id):
-        self._server.cancel_job(self, id)
+        self._server.cancel_job(id)
         return None
 
     @jsonrpc()

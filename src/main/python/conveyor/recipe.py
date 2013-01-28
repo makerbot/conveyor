@@ -43,7 +43,7 @@ import conveyor.util
 
 
 class RecipeManager(object):
-    def __init__(self, server, config):
+    def __init__(self, config, server):
         self._config = config
         self._server = server
         self._log = logging.getLogger(self.__class__.__name__)

@@ -105,6 +105,12 @@ class UnknownDriverError(KeyError):
         self.driver_name = driver_name
 
 
+class UnknownJobError(KeyError):
+    def __init__(self, job_id):
+        KeyError.__init__(self, job_id)
+        self.job_id = job_id
+
+
 class UnknownMachineError(KeyError):
     def __init__(self, machine_name):
         KeyError.__init__(self, machine_name)
@@ -182,6 +188,9 @@ def guard(log, func):
     except UnknownDriverError as e:
         code = 1
         log.critical('unknown driver: %s', e.driver_name, exc_info=True)
+    except UnknownJobError as e:
+        code = 1
+        log.critical('unknown job: %s', e.job_id, exc_info=True)
     except UnknownMachineError as e:
         code = 1
         log.critical('unknown machine: %s', e.machine_name, exc_info=True)
