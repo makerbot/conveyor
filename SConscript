@@ -105,9 +105,8 @@ env.Clean(libconveyor, '#/obj')
 tests = {}
 testenv = cppenv.Clone()
 
+utilenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
 if "darwin" == sys.platform:
-    utilenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
-
     startcmd = utilenv.Program('bin/start_conveyor_service',
                                'src/util/cpp/mac_start_conveyor_service.c')
     stopcmd = utilenv.Program('bin/stop_conveyor_service',
