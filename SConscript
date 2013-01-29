@@ -162,13 +162,15 @@ if sys.platform == "linux2":
     env.MBInstallConfig('#/data/conveyor.conf', 'init/conveyor.conf')
 
 elif sys.platform == 'darwin':
-    launchd_dir = '/Library/LaunchDaemons'
+    launchd_dir = 'Library/LaunchDaemons'
 
-    env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
+    #env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
     env.MBInstallResources(env.MBGlob('#/mac/*'))
     env.MBInstallConfig('#/conveyor-mac.conf', 'conveyor.conf')
     env.MBInstallBin('#/setup_conveyor_env.sh')
-    env.MBInstallSystem('#/mac/com.makerbot.conveyor.plist', launchd_dir)
+    env.MBInstallSystem('#/mac/com.makerbot.conveyor.plist',
+                        os.path.join(launchd_dir,
+                                     'com.makerbot.conveyor.plist'))
 
 elif sys.platform == 'win32':
     env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/windows/*'))
