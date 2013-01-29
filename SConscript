@@ -100,6 +100,7 @@ libconveyor = cppenv.SharedLibrary(
 
 cppenv.MBInstallLib(libconveyor)
 cppenv.MBInstallHeaders(env.MBGlob('#/include/*'))
+env.Clean(libconveyor, '#/obj')
 
 tests = {}
 testenv = cppenv.Clone()
@@ -150,6 +151,8 @@ conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
               'python -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
 
 env.MBInstallEgg(conveyor_egg)
+env.Clean(conveyor_egg, '#/build')
+env.Clean(conveyor_egg, '#/src/main/python/conveyor.egg-info')
 
 if sys.platform == "linux2":
     env.MBInstallResources(env.MBGlob('#/linux/*'))
@@ -159,13 +162,15 @@ if sys.platform == "linux2":
     env.MBInstallConfig('#/data/conveyor.conf', 'init/conveyor.conf')
 
 elif sys.platform == 'darwin':
-    launchd_dir = '/Library/LaunchDaemons'
+    launchd_dir = 'Library/LaunchDaemons'
 
-    env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
+    #env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
     env.MBInstallResources(env.MBGlob('#/mac/*'))
     env.MBInstallConfig('#/conveyor-mac.conf', 'conveyor.conf')
     env.MBInstallBin('#/setup_conveyor_env.sh')
-    env.MBInstallSystem('#/mac/com.makerbot.conveyor.plist', launchd_dir)
+    env.MBInstallSystem('#/mac/com.makerbot.conveyor.plist',
+                        os.path.join(launchd_dir,
+                                     'com.makerbot.conveyor.plist'))
 
 elif sys.platform == 'win32':
     env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/windows/*'))
@@ -188,4 +193,7 @@ env.MBInstallResources('#/virtualenv.py')
 
 env.MBCreateInstallTarget()
 cppenv.MBCreateInstallTarget()
+utilenv.MBCreateInstallTarget()
 
+#env.Clean('#/virtualenv')
+#env.Clean('#/virtualenv.pyc')

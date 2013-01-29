@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Disabled</key>
+    <false/>
+    <key>Label</key>
+    <string>com.makerbot.conveyor.daemon</string>
+    <key>WorkingDirectory</key>
+    <string>/Library/MakerBot</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Library/MakerBot/virtualenv/bin/python</string>
+        <string>/Library/MakerBot/conveyor_service.py</string>
+        <string>-c</string>
+        <string>/Library/MakerBot/conveyor.conf</string>
+        <string>--nofork</string>
+    </array>
+    <key>KeepAlive</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>UserName</key>
+    <string>_conveyor</string>
+</dict>
+</plist>
