@@ -190,6 +190,10 @@ env.MBInstallResources('#/conveyor_service.py')
 env.MBInstallResources('#/conveyor_cmdline_client.py')
 env.MBInstallResources('#/virtualenv.py')
 
+env.MBInstallResources('#/src/test/stl/single.stl', 'testfiles')
+env.MBInstallResources('#/src/test/stl/left.stl', 'testfiles')
+env.MBInstallResources('#/src/test/gcode/single.gcode', 'testfiles')
+
 env.MBCreateInstallTarget()
 cppenv.MBCreateInstallTarget()
 utilenv.MBCreateInstallTarget()
