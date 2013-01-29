@@ -33,6 +33,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.address
 import conveyor.domain
 import conveyor.dualstrusion
 import conveyor.enum
@@ -71,7 +72,7 @@ class RecipeManager(object):
 
     def _getrecipe_stl(self, job):
         if not os.path.exists(job.path):
-            raise MissingPathException(job.path)
+            raise conveyor.address.MissingPathException(job.path)
         elif not os.path.isfile(job.path):
             raise NotFileException(job.path)
         else:
