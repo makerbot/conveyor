@@ -100,6 +100,7 @@ libconveyor = cppenv.SharedLibrary(
 
 cppenv.MBInstallLib(libconveyor)
 cppenv.MBInstallHeaders(env.MBGlob('#/include/*'))
+env.Clean(libconveyor, '#/obj')
 
 tests = {}
 testenv = cppenv.Clone()
@@ -150,6 +151,8 @@ conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
               'python -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
 
 env.MBInstallEgg(conveyor_egg)
+env.Clean(conveyor_egg, '#/build')
+env.Clean(conveyor_egg, '#/src/main/python/conveyor.egg-info')
 
 if sys.platform == "linux2":
     env.MBInstallResources(env.MBGlob('#/linux/*'))
@@ -189,3 +192,5 @@ env.MBInstallResources('#/virtualenv.py')
 env.MBCreateInstallTarget()
 cppenv.MBCreateInstallTarget()
 
+#env.Clean('#/virtualenv')
+#env.Clean('#/virtualenv.pyc')
