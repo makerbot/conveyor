@@ -193,6 +193,7 @@ env.MBInstallResources('#/virtualenv.py')
 
 env.MBCreateInstallTarget()
 cppenv.MBCreateInstallTarget()
+utilenv.MBCreateInstallTarget()
 
 #env.Clean('#/virtualenv')
 #env.Clean('#/virtualenv.pyc')
