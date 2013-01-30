@@ -4,8 +4,8 @@
 #include <QStringList>
 #include <string>
 #include <vector>
-#include <json/reader.h>
-#include <json/value.h>
+#include <jsoncpp/json/reader.h>
+#include <jsoncpp/json/value.h>
 
 
 #include "EepromMapPrivateTestCase.h"

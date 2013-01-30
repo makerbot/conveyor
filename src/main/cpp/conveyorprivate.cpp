@@ -9,7 +9,7 @@
 # include <ws2tcpip.h>
 #endif
 
-#include <json/value.h>
+#include <jsoncpp/json/value.h>
 #include <jsonrpc.h>
 
 #include <conveyor/connection.h>
