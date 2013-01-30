@@ -731,6 +731,7 @@ class ProfilesCommand(_JsonCommand):
         _print_driver_profiles(self._log, drivers)
 
 
+@args(conveyor.arg.machine)
 @args(conveyor.arg.positional_output_file)
 class ReadEepromCommand(_QueryCommand):
     name = 'readeeprom'
@@ -738,7 +739,7 @@ class ReadEepromCommand(_QueryCommand):
     help = 'read a machine EEPROM'
 
     def _create_method_task(self):
-        params = {'printername': None}
+        params = {'printername': self._parsed_args.machine_name}
         method_task = self._jsonrpc.request('readeeprom', params)
         return method_task
 

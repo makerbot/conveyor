@@ -656,7 +656,7 @@ class _Client(conveyor.stoppable.StoppableThread):
 
     @jsonrpc()
     def verifys3g(self, s3gpath):
-        task = self._server.verify_s3g(self, s3gpath)
+        task = self._server.verify_s3g(s3gpath)
         return task
 
     @jsonrpc()
@@ -672,12 +672,12 @@ class _Client(conveyor.stoppable.StoppableThread):
 
     @jsonrpc()
     def readeeprom(self, printername):
-        task = self._server.read_eeprom(self, printername)
+        task = self._server.read_eeprom(printername)
         return task
 
     @jsonrpc()
     def writeeeprom(self, printername, eeprommap):
-        task = self._server.write_eeprom(self, printername, eeprommap)
+        task = self._server.write_eeprom(printername, eeprommap)
         return task
 
 

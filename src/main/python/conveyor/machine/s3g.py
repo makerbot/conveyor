@@ -279,6 +279,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
     def __init__(self, name, driver, profile):
         conveyor.stoppable.StoppableInterface.__init__(self)
         conveyor.machine.Machine.__init__(self, name, driver, profile)
+        self._poll_disabled = False
         self._poll_interval = 5.0
         self._poll_thread = None
         self._poll_time = time.time()
@@ -383,9 +384,9 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 raise conveyor.error.MachineStateException
             else:
                 self._operation = _MakeOperation(
-                    self, input_path, skip_start_end, extruders,
+                    self, task, input_path, skip_start_end, extruders,
                     extruder_temperature, platform_temperature,
-                    material_name, build_name, task)
+                    material_name, build_name)
                 self._change_state(conveyor.machine.MachineState.OPERATION)
 
     def reset_to_factory(self, task):
@@ -404,7 +405,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 raise conveyor.error.MachineStateException
             else:
                 self._operation = _UploadFirmwareOperation(
-                    machine_type, input_file, task)
+                    self, task, machine_type, input_file)
                 self._change_state(conveyor.machine.MachineState.OPERATION)
 
     def read_eeprom(self, task):
@@ -413,7 +414,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
             if conveyor.machine.MachineState.IDLE != self._state:
                 raise conveyor.error.MachineStateException
             else:
-                self._operation = _ReadEepromOperation(task)
+                self._operation = _ReadEepromOperation(self, task)
                 self._change_state(conveyor.machine.MachineState.OPERATION)
 
     def write_eeprom(self, eeprom_map, task):
@@ -422,7 +423,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
             if conveyor.machine.MachineState.IDLE != self._state:
                 raise conveyor.error.MachineStateException
             else:
-                self._operation = _WriteEepromOperation(eeprom_map, task)
+                self._operation = _WriteEepromOperation(self, task, eeprom_map)
                 self._change_state(conveyor.machine.MachineState.OPERATION)
 
     def _change_state(self, new_state):
@@ -443,12 +444,13 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
 
     def _poll_thread_target_iteration(self):
         with self._state_condition:
-            now = time.time()
-            if now >= self._poll_time:
-                self._poll()
-            else:
-                duration = self._poll_time - now
-                self._state_condition.wait(duration)
+            if not self._poll_disabled:
+                now = time.time()
+                if now >= self._poll_time:
+                    self._poll()
+                else:
+                    duration = self._poll_time - now
+                    self._state_condition.wait(duration)
 
     def _poll(self):
         with self._state_condition:
@@ -586,6 +588,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
 class _S3gOperation(object):
     def __init__(self, machine):
         self.machine = machine
+        self.log = logging.getLogger(self.__class__.__name__)
 
     def run(self):
         raise NotImplementedError
@@ -600,12 +603,40 @@ class _S3gOperation(object):
         raise NotImplementedError
 
 
-class _MakeOperation(_S3gOperation):
-    def __init__(
-            self, machine, input_path, skip_start_end, extruders,
-            extruder_temperature, platform_temperature, material_name,
-            build_name, task):
+class _TaskOperation(_S3gOperation):
+    def __init__(self, machine, task):
         _S3gOperation.__init__(self, machine)
+        self.task = task
+
+    def run(self):
+        self.machine._task = self.task
+        try:
+            self._run_task()
+        finally:
+            self.machine._task = None
+
+    def _run_task(self):
+        raise NotImplementedError
+
+
+class _BlockPollingOperation(_TaskOperation):
+    def _run_task(self):
+        self.machine._poll_disabled = True
+        try:
+            self._run_without_polling()
+        finally:
+            self.machine._poll_disabled = False
+
+    def _run_without_polling(self):
+        raise NotImplementedError
+
+
+class _MakeOperation(_TaskOperation):
+    def __init__(
+            self, machine, task, input_path, skip_start_end, extruders,
+            extruder_temperature, platform_temperature, material_name,
+            build_name):
+        _TaskOperation.__init__(self, machine, task)
         self.input_path = input_path
         self.skip_start_end = skip_start_end
         self.extruders = extruders
@@ -613,12 +644,9 @@ class _MakeOperation(_S3gOperation):
         self.platform_temperature = platform_temperature
         self.material_name = material_name
         self.build_name = build_name
-        self.task = task
-        self.log = logging.getLogger(self.__class__.__name__)
         self.pause = False
 
-    def run(self):
-        self.machine._task = self.task
+    def _run_task(self):
         try:
             parser = makerbot_driver.Gcode.GcodeParser()
             parser.state.profile = self.machine._profile._s3g_profile
@@ -678,7 +706,6 @@ class _MakeOperation(_S3gOperation):
             self.task.fail(e)
         finally:
             self.machine._operation = None
-            self.machine._task = None
 
     def _execute_lines(self, parser, iterable):
         for line in iterable:
@@ -724,52 +751,44 @@ class _MakeOperation(_S3gOperation):
             self.task.cancel()
 
 
-class _ResetToFactoryOperation(_S3gOperation):
-    def __init__(self, machine, task):
-        _S3gOperation.__init__(self, machine)
-        self._task = task
-
-    def run(self):
+class _ResetToFactoryOperation(_BlockPollingOperation):
+    def _run_without_polling(self):
         try:
-            self._machine._s3g.reset_to_factory()
-            self._machine._s3g.reset()
+            self.machine._s3g.reset_to_factory()
+            self.machine._s3g.reset()
         except Exception as e:
+            self.log.warning('handled exception', exc_info=True)
             failure = conveyor.util.exception_to_failure(e)
-            self._task.fail(failure)
+            self.task.fail(failure)
         else:
-            self._task.end(None)
+            self.task.end(None)
 
 
-class _UploadFirmwareOperation(_S3gOperation):
-    def __init__(self, machine, machine_type, input_file, task):
-        _S3gOperation.__init__(self, machine)
-        self._machine_type = machine_type
-        self._input_file = input_file
-        self._task = task
+class _UploadFirmwareOperation(_BlockPollingOperation):
+    def __init__(self, machine, task, machine_type, input_file):
+        _TaskOperation.__init__(self, machine, task)
+        self.machine_type = machine_type
+        self.input_file = input_file
 
-    def run(self):
+    def _run_without_polling(self):
         try:
-            # TODO: this needs to stop the polling thread.
             uploader = makerbot_driver.Firmware.Uploader()
             uploader.upload_firmware(
-                port_name, self._machine_type, self._input_file)
+                port_name, self.machine_type, self.input_file)
         except Exception as e:
+            self.log.warning('handled exception', exc_info=True)
             failure = conveyor.util.exception_to_failure(e)
-            self._task.fail(failure)
+            self.task.fail(failure)
         else:
-            self._task.end(None)
+            self.task.end(None)
 
 
-class _ReadEepromOperation(_S3gOperation):
-    def __init__(self, machine, task):
-        _S3gOperation.__init__(self, machine)
-        self._task = task
-
-    def run(self):
+class _ReadEepromOperation(_BlockPollingOperation):
+    def _run_without_polling(self):
         try:
-            version = self._machine._s3g.get_version()
+            version = str(self.machine._s3g.get_version())
             try:
-                advanced_version = self._machine._s3g.get_advanced_version()
+                advanced_version = self.machine._s3g.get_advanced_version()
                 software_variant = hex(advanced_version['SoftwareVariant'])
                 if len(software_variant.split('x')[1]) == 1:
                     software_variant = software_variant.replace('x', 'x0')
@@ -777,27 +796,26 @@ class _ReadEepromOperation(_S3gOperation):
                 software_variant = '0x00'
             version = _get_version_with_dot(version)
             eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(
-                self._machine._s3g, version, software_variant)
+                self.machine._s3g, version, software_variant)
             eeprom_map = eeprom_reader.read_entire_map()
         except Exception as e:
-            self._log.debug('handled exception')
+            self.log.warning('handled exception', exc_info=True)
             failure = conveyor.util.exception_to_failure(e)
-            tail.fail(failure)
+            self.task.fail(failure)
         else:
-            task.end(eeprom_map)
+            self.task.end(eeprom_map)
 
 
-class _WriteEepromOperation(_S3gOperation):
-    def __init__(self, machine, eeprom_map, task):
-        _S3gOperation.__init__(self, machine)
-        self._eeprom_map = eeprom_map
-        self._task = task
+class _WriteEepromOperation(_TaskOperation):
+    def __init__(self, machine, task, eeprom_map):
+        _TaskOperation.__init__(self, machine, task)
+        self.eeprom_map = eeprom_map
 
-    def run(self):
+    def _run_without_polling(self):
         try:
-            version = self._machine._s3g.get_version()
+            version = str(self.machine._s3g.get_version())
             try:
-                advanced_version = self._machine._s3g.get_advanced_version()
+                advanced_version = self.machine._s3g.get_advanced_version()
                 software_variant = hex(advanced_version['SoftwareVariant'])
                 if len(software_variant.split('x')[1]) == 1:
                     software_variant = software_variant.replace('x', 'x0')
@@ -805,14 +823,14 @@ class _WriteEepromOperation(_S3gOperation):
                 software_variant = '0x00'
             version = _get_version_with_dot(version)
             eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(
-                self._machine._s3g, version, software_variant)
+                self.machine._s3g, version, software_variant)
             eeprom_writer.write_entire_map(eeprommap)
         except Exception as e:
-            self._log.debug('handled exception')
+            self.log.warning('handled exception', exc_info=True)
             failure = conveyor.util.exception_to_failure(e)
-            tail.fail(failure)
+            self.task.fail(failure)
         else:
-            task.end(None)
+            self.task.end(None)
 
 
 def _get_version_with_dot(version):
