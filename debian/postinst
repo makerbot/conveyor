@@ -42,14 +42,11 @@ if [ "$1" = configure ]; then
 		# Drop us a line.
 
 		# Build virtualenv
-		python /usr/share/makerbot/virtualenv.py /usr/share/makerbot/virtualenv --system-site-packages
-		(
-			. /usr/share/makerbot/virtualenv/bin/activate
-			pip install --use-mirrors argparse coverage doxypy lockfile python-daemon unittest-xml-reporting
-			easy_install /usr/share/makerbot/python/pyserial-2.7_mb2.1-py2.7.egg
-		)
+		OLDDIR=$PWD
+		cd /usr/share/makerbot/
+		sh ./setup_conveyor_env.sh
+		cd $OLDDIR
 		chgrp -R conveyor /usr/share/makerbot/virtualenv
-
 fi
 
 #DEBHELPER#
