@@ -8,9 +8,9 @@ namespace conveyor
 {
 
     SlicerConfiguration *
-    SlicerConfiguration::defaultConfiguration(Quality quality)
+    SlicerConfiguration::defaultConfiguration(Preset preset)
     {
-        return SlicerConfigurationPrivate::defaultConfiguration(quality);
+        return SlicerConfigurationPrivate::defaultConfiguration(preset);
     }
 
     SlicerConfiguration::SlicerConfiguration(Json::Value &json)

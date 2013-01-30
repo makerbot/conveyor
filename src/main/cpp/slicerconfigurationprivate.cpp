@@ -4,18 +4,18 @@ namespace conveyor
 {
 
     SlicerConfiguration *
-    SlicerConfigurationPrivate::defaultConfiguration(SlicerConfiguration::Quality quality)
+    SlicerConfigurationPrivate::defaultConfiguration(SlicerConfiguration::Preset preset)
     {
         Json::Value null;
         SlicerConfiguration * const config(new SlicerConfiguration(null));
 
-        switch(quality)
+        switch(preset)
         {
-        case SlicerConfiguration::LowQuality:
+        case SlicerConfiguration::LowPreset:
             config->setSlicer(SlicerConfiguration::MiracleGrue);
             config->setLayerHeight(.34);
             break;
-        case SlicerConfiguration::MediumQuality:
+        case SlicerConfiguration::MediumPreset:
             config->setSlicer(SlicerConfiguration::MiracleGrue);
             config->setRaft(false);
             config->setSupports(false);
@@ -29,13 +29,13 @@ namespace conveyor
             config->setPrintSpeed(80);
             config->setTravelSpeed(100);
             break;
-        case SlicerConfiguration::HighQuality:
+        case SlicerConfiguration::HighPreset:
             config->setSlicer(SlicerConfiguration::Skeinforge);
             config->setLayerHeight(.1);
             config->setInfill(0.15);
             break;
 
-        case SlicerConfiguration::SkeinforgeDefaults:
+        case SlicerConfiguration::SkeinforgePreset:
             config->setSlicer(SlicerConfiguration::Skeinforge);
             config->setLayerHeight(.27);
             break;

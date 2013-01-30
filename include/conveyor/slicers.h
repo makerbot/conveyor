@@ -25,11 +25,11 @@ namespace conveyor
             MiracleGrue
         };
 
-        enum Quality {
-            LowQuality,
-            MediumQuality,
-            HighQuality,
-            SkeinforgeDefaults
+        enum Preset {
+            LowPreset,
+            MediumPreset,
+            HighPreset,
+            SkeinforgePreset
         };
 
         enum Extruder {
@@ -38,7 +38,7 @@ namespace conveyor
             LeftAndRight
         };
 
-        static SlicerConfiguration * defaultConfiguration(Quality quality);
+        static SlicerConfiguration * defaultConfiguration(Preset preset);
 
         /// Unpack a configuration serialized to JSON
         SlicerConfiguration(Json::Value &);
