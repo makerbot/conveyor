@@ -1,6 +1,6 @@
 @ECHO OFF
 
-CALL setup.bat
+CALL setup_conveyor_env.bat
 
 SET CONVEYOR_SYNC_FILE=conveyor.pid
 
