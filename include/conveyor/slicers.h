@@ -15,10 +15,8 @@ namespace conveyor
     /**
        Settings for the Skeinforge and MiracleGrue slicers
      */
-    class SlicerConfiguration : public QObject
+    class SlicerConfiguration
     {
-        Q_OBJECT
-
     public:
         enum Slicer {
             Skeinforge,
@@ -64,7 +62,6 @@ namespace conveyor
         unsigned printSpeed() const;
         unsigned travelSpeed() const;
 
-    public slots:
         void setSlicer(Slicer slicer);
         void setExtruder(Extruder extruder);
 
