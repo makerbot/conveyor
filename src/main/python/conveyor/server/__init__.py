@@ -122,11 +122,10 @@ class Server(conveyor.stoppable.StoppableInterface):
 
     def _job_changed(self, job):
         job_info = job.get_info()
-        # TODO: there was better logging here before....
-        # self._log.info(
-        #     'job %d: state=%s, progress=%s, conclusion=%s, failure=%s',
-        #     job_info.id, job_info.state, job_info.progress,
-        #     job_info.conclusion, job_info.failure)
+        self._log.info(
+            'job %d: state=%s, progress=%s, conclusion=%s, failure=%s',
+            job_info.id, job_info.state, job_info.progress,
+            job_info.conclusion, job_info.failure)
         with self._clients_condition:
             clients = self._clients.copy()
         _Client.job_changed(clients, job_info)

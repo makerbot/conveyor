@@ -146,7 +146,8 @@ class S3gDriver(conveyor.machine.Driver):
                 task.end(None)
         except Exception as e:
             self._log.exception('unhandled exception; print-to-file failed')
-            task.fail(e)
+            failure = conveyor.util.exception_to_failure(e)
+            task.fail(failure)
 
     def _execute_lines(self, task, parser, iterable):
         for line in iterable:
@@ -167,8 +168,9 @@ class S3gDriver(conveyor.machine.Driver):
                 uploader = makerbot_driver.Firmware.Uploader()
                 machines = uploader.list_machines()
             except Exception as e:
-                message = unicode(e)
-                task.fail(message)
+                self._log.exception('unhandled exception')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(machines)
         task.runningevent.attach(running_callback)
@@ -180,8 +182,9 @@ class S3gDriver(conveyor.machine.Driver):
                 uploader = makerbot_driver.Firmware.Uploader()
                 versions = uploader.list_firmware_versions(machine_type)
             except Exception as e:
-                message = unicode(e)
-                task.fail(message)
+                self._log.exception('unhandled exception')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(versions)
         task.runningevent.attach(running_callback)
@@ -198,8 +201,9 @@ class S3gDriver(conveyor.machine.Driver):
                 uploader = makerbot_driver.Firmware.Uploader()
                 hex_file_path = uploader.download_firmware(machinetype, version)
             except Exception as e:
-                message = unicode(e)
-                task.fail(message)
+                self._log.exception('unhandled exception')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(hex_file_path)
         task.runningevent.attach(running_callback)
@@ -454,6 +458,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
 
     def _poll(self):
         with self._state_condition:
+            self._poll_time = time.time() + self._poll_interval
             if conveyor.machine.MachineState.DISCONNECTED != self._state:
                 try:
                     motherboard_status = self._s3g.get_motherboard_status()
@@ -532,7 +537,6 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                         self._platform_temperature, self._is_platform_ready,
                         self._tool_status, self._toolhead_temperature,
                         self._is_tool_ready)
-                self._poll_time = time.time() + self._poll_interval
 
     def _handle_disconnect(self):
         if None is not self._s3g:
@@ -705,7 +709,8 @@ class _MakeOperation(_TaskOperation):
             self.machine._handle_external_stop(e)
         except Exception as e:
             self.log.exception('unhandled exception; print failed')
-            self.task.fail(e)
+            failure = conveyor.util.exception_to_failure(e)
+            self.task.fail(failure)
 
     def _execute_lines(self, parser, iterable):
         for line in iterable:
@@ -714,7 +719,7 @@ class _MakeOperation(_TaskOperation):
             else:
                 line = str(line) # NOTE: s3g can't handle unicode.
                 line = line.strip()
-                self.log.debug('%s', line)
+                self.log.debug('G-CODE: %s', line)
                 while True:
                     while self.pause:
                         self.machine._state_condition.wait(1.0)

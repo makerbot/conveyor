@@ -77,10 +77,11 @@ class Job(object):
             child_task = self.task.progress
             if None is child_task:
                 progress = None
+                failure = None
             else:
                 progress = child_task.progress
+                failure = child_task.failure
             conclusion = self.task.conclusion
-            failure = self.task.failure
         info = JobInfo(
             self.type, self.id, self.name, state, progress, conclusion,
             failure)
