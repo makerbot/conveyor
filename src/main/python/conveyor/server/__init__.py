@@ -55,6 +55,7 @@ class Server(conveyor.stoppable.StoppableInterface):
         self._clients_condition = threading.Condition()
         self._queue = collections.deque()
         self._queue_condition = threading.Condition()
+        self._job_id_counter = 0
         self._jobs = {}
         self._jobs_condition = threading.Condition()
 
@@ -77,9 +78,14 @@ class Server(conveyor.stoppable.StoppableInterface):
             work_thread.join(1)
         return 0
 
+    def queue_work(self, work):
+        with self._queue_condition:
+            self._queue.appendleft(work)
+            self._queue_condition.notify_all()
+
     def _work_queue_target(self):
-        def func():
-            while not self._stop:
+        while not self._stop:
+            def func():
                 with self._queue_condition:
                     if 0 == len(self._queue):
                         self._queue_condition.wait()
@@ -88,21 +94,40 @@ class Server(conveyor.stoppable.StoppableInterface):
                     else:
                         work = self._queue.pop()
                 if None is not work:
-                    conveyor.error.guard(self._log, work)
-        conveyor.error.guard(self._log, func)
-
-    def _queue_work(self, work):
-        with self._queue_condition:
-            self._queue.appendleft(work)
-            self._queue_condition.notify_all()
+                    work()
+            conveyor.error.guard(self._log, func)
 
     def _add_client(self, client):
         with self._clients_condition:
             self._clients.add(client)
 
+    def _get_clients(self):
+        with self._clients_condition:
+            clients = self._clients.copy()
+        return clients
+
     def _remove_client(self, client):
         with self._clients_condition:
             self._clients.remove(client)
+
+    def _add_job(self, job):
+        with self._jobs_condition:
+            self._jobs[job.id] = job
+        with self._clients_condition:
+            clients = self._clients.copy()
+        job_info = job.get_info()
+        _Client.job_added(clients, job_info)
+
+    def _job_changed(self, job):
+        job_info = job.get_info()
+        # TODO: there was better logging here before....
+        self._log.info(
+            'job %d: state=%s, progress=%s, conclusion=%s, failure=%s',
+            job_info.id, job_info.state, job_info.progress,
+            job_info.conclusion, job_info.failure)
+        with self._clients_condition:
+            clients = self._clients.copy()
+        _Client.job_changed(clients, job_info)
 
     def _find_machine(
             self, machine_name, port_name, driver_name, profile_name):
@@ -211,9 +236,10 @@ class Server(conveyor.stoppable.StoppableInterface):
             job_id, job_name, machine, input_file, extruder_name,
             gcode_processor_name, has_start_end, material_name, slicer_name,
             slicer_settings)
-        recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
+        recipe_manager = conveyor.recipe.RecipeManager(
+            self._config, self, self._spool)
         recipe = recipe_manager.get_recipe(job)
-        job.task = recipe.get_task()
+        job.task = recipe.print()
         self._attach_job_callbacks(job)
         job.task.start()
         return job
@@ -240,7 +266,7 @@ class Server(conveyor.stoppable.StoppableInterface):
             material_name, slicer_name, slicer_settings)
         recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
         recipe = recipe_manager.get_recipe(job)
-        job.task = recipe.get_task()
+        job.task = recipe.print_to_file()
         self._attach_job_callbacks(job)
         job.task.start()
         return job
@@ -259,7 +285,7 @@ class Server(conveyor.stoppable.StoppableInterface):
             material_name, slicer_name, slicer_settings)
         recipe_manager = conveyor.recipe.RecipeManager(self._config, self._server)
         recipe = recipe_manager.get_recipe(job)
-        job.task = recipe.get_task()
+        job.task = recipe.slice()
         self._attach_job_callbacks(job)
         job.task.start()
         return job
@@ -297,7 +323,7 @@ class Server(conveyor.stoppable.StoppableInterface):
         job_name = os.path.basename(root)
         return job_name
 
-    def _attach_job_callbacks(job):
+    def _attach_job_callbacks(self, job):
         def start_callback(task):
             self._add_job(job)
         job.task.startevent.attach(start_callback)
@@ -308,126 +334,57 @@ class Server(conveyor.stoppable.StoppableInterface):
             self._job_changed(job)
         job.task.stoppedevent.attach(stopped_callback)
 
-    def _add_job(self, job):
-        with self._jobs_condition:
-            self._jobs[job.id] = job
-        # TODO: `jobadded`
-
-    def _job_changed(self, job):
-        pass
-
     ## old stuff ##############################################################
 
-    def reset_to_factory(self, client, machine_name):
-        machine = self._find_machine(machine_name, None, None, None)
-        task = machine.reset_to_factory()
-        return task
-
-    def get_uploadable_machines(self, client):
+    def get_uploadable_machines(self, driver_name):
+        driver = self._driver_manager.get_driver(driver_name)
         task = conveyor.task.Task()
+        driver.get_uploadable_machines(task)
         return task
-        '''
-        def runningcallback(task):
-            try:
-                uploader = makerbot_driver.Firmware.Uploader()
-                machines = uploader.list_machines()
-                task.end(machines)
-            except Exception as e:
-                message = unicode(e)
-                task.fail(message)
-        task.runningevent.attach(runningcallback)
-        return task
-        '''
 
-    def get_machine_versions(self, client, machine_type):
+    def get_machine_versions(self, driver_name, machine_type):
+        driver = self._driver_manager.get_driver(driver_name)
         task = conveyor.task.Task()
+        driver.get_machine_versions(machine_type, task)
         return task
-        '''
-        def runningcallback(task):
-            try:
-                uploader = makerbot_driver.Firmware.Uploader()
-                versions = uploader.list_firmware_versions(machine_type)
-                task.end(versions)
-            except Exception as e:
-                message = unicode(e)
-                task.fail(message)
-        task.runningevent.attach(runningcallback)
-        return task
-        '''
 
-    def compatible_firmware(self, client, firmware_version):
-        uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
-        return uploader.compatible_firmware(firmwareversion)
+    def compatible_firmware(self, driver_name, firmware_version):
+        driver = self._driver_manager.get_driver(driver_name)
+        result = driver.compatible_firmware(firmware_version)
+        return result
 
-    def download_firmware(self, client, machine_type, firmware_version):
+    def download_firmware(self, driver_name, machine_type, firmware_version):
+        driver = self._driver_manager.get_driver(driver_name)
         task = conveyor.task.Task()
+        driver.download_firmware(machine_type, firmware_version, task)
         return task
-        '''
-        def runningcallback(task):
-            try:
-                uploader = makerbot_driver.Firmware.Uploader()
-                hex_file_path = uploader.download_firmware(machinetype, version)
-                task.end(hex_file_path)
-            except Exception as e:
-                message = unicode(e)
-                task.fail(message)
-        task.runningevent.attach(runningcallback)
-        return task
-        '''
-
-    def upload_firmware(self, machine_name, machine_type, input_file):
-        task = conveyor.task.Task()
-        return task
-        '''
-        def runningcallback(task):
-            try:
-                printerthread = self._findprinter(printername)
-                printerthread.uploadfirmware(machinetype, filename, task)
-            except Exception as e:
-                self._log.debug('handled exception')
-                message = unicode(e)
-                task.fail(message)
-            else:
-                task.end(None)
-        task.runningevent.attach(runningcallback)
-        '''
-
-    def read_eeprom(self, machine_name):
-        task = conveyor.task.Task()
-        return task
-        '''
-        def runningcallback(task):
-            try:
-                printerthread = self._findprinter(printername)
-                eeprommap = printerthread.readeeprom(task)
-            except Exception as e:
-                self._log.debug('handled exception')
-                failure = conveyor.util.exception_to_failure(e)
-                tail.fail(failure)
-            else:
-                task.end(eeprommap)
-        task.runningevent.attach(runningcallback)
-        '''
-
-    def write_eeprom(self, machine_name, eeprom_map):
-        task = conveyor.task.Task()
-        return task
-        '''
-        def runningcallback(task):
-            try:
-                printerthread = self._findprinter(printername)
-                printerthread.writeeeprom(eeprommap, task)
-            except Exception as e:
-                self._log.debug('handled exception')
-                failure = conveyor.util.exception_to_failure(e)
-                tail.fail(failure)
-            else:
-                task.end(None)
-        task.runningevent.attach(runningcallback)
-        '''
 
     def verify_s3g(self, input_file):
         task = conveyor.recipe.Recipe.verifys3gtask(s3gpath)
+        return task
+
+    def reset_to_factory(self, machine_name):
+        machine = self._find_machine(machine_name, None, None, None)
+        task = conveyor.task.Task()
+        machine.reset_to_factory(task)
+        return task
+
+    def upload_firmware(self, machine_name, machine_type, input_file):
+        machine = self._find_machine(machine_name, None, None, None)
+        task = conveyor.task.Task()
+        machine.upload_firmware(machine_type, input_file, task)
+        return task
+
+    def read_eeprom(self, machine_name):
+        machine = self._find_machine(machine_name, None, None, None)
+        task = conveyor.task.Task()
+        machine.read_eeprom(task)
+        return task
+
+    def write_eeprom(self, machine_name, eeprom_map):
+        machine = self._find_machine(machine_name, None, None, None)
+        task = conveyor.task.Task()
+        machine.write_eeprom(eeprom_map, task)
         return task
 
 
@@ -490,6 +447,18 @@ class _Client(conveyor.stoppable.StoppableThread):
                 raise ValueError(task.conclusion)
             self._server.changejob(job)
         return callback
+
+    @staticmethod
+    def job_added(clients, job_info):
+        params = job_info.to_dict()
+        for client in clients:
+            client._jsonrpc.notify('jobadded', params)
+
+    @staticmethod
+    def job_changed(clients, job_info):
+        params = job_info.to_dict()
+        for client in clients:
+            client._jsonrpc.notify('jobchanged', params)
 
     @jsonrpc()
     def hello(self):
@@ -578,7 +547,7 @@ class _Client(conveyor.stoppable.StoppableThread):
             self, machine_name, input_file, extruder_name,
             gcode_processor_name, has_start_end, material_name, slicer_name,
             slicer_settings)
-        dct = job.to_dict()
+        dct = job.get_info().to_dict()
         return dct
 
     @jsonrpc()
@@ -665,35 +634,40 @@ class _Client(conveyor.stoppable.StoppableThread):
         return None
 
     @jsonrpc()
-    def resettofactory(self, printername):
-        task = self._server.reset_to_factory(self, printername)
+    def getuploadablemachines(self, driver_name):
+        task = self._server.get_uploadable_machines(driver_name)
         return task
 
     @jsonrpc()
-    def getuploadablemachines(self):
-        task = self._server.get_uploadable_machines(self)
+    def getmachineversions(self, driver_name, machine_type):
+        task = self._server.get_machine_versions(driver_name, machine_type)
         return task
 
     @jsonrpc()
-    def getmachineversions(self, machine_type):
-        task = self._server.get_machine_versions(self)
-        return task
-
-    @jsonrpc()
-    def compatiblefirmware(self, firmwareversion):
-        result = self._server.compatible_firmware(self, firmwareversion)
+    def compatiblefirmware(self, driver_name, firmware_version):
+        result = self._server.compatible_firmware(self, firmware_version)
         return result
 
     @jsonrpc()
-    def downloadfirmware(self, machinetype, version):
+    def downloadfirmware(self, driver_name, machine_type, machine_version):
         task = self._server.download_firmware(
-            self, machine_type, firmware_version)
+            driver_name, machine_type, firmware_version)
+        return task
+
+    @jsonrpc()
+    def verifys3g(self, s3gpath):
+        task = self._server.verify_s3g(self, s3gpath)
+        return task
+
+    @jsonrpc()
+    def resettofactory(self, machine_name):
+        task = self._server.reset_to_factory(machine_name)
         return task
 
     @jsonrpc()
     def uploadfirmware(self, printername, machinetype, filename):
         task = self._server.upload_firmware(
-            printername, machinetype, filename)
+            machine_name, machinetype, filename)
         return task
 
     @jsonrpc()
@@ -704,11 +678,6 @@ class _Client(conveyor.stoppable.StoppableThread):
     @jsonrpc()
     def writeeeprom(self, printername, eeprommap):
         task = self._server.write_eeprom(self, printername, eeprommap)
-        return task
-
-    @jsonrpc()
-    def verifys3g(self, s3gpath):
-        task = self._server.verify_s3g(self, s3gpath)
         return task
 
 

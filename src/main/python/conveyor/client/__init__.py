@@ -31,11 +31,13 @@ import time
 
 import conveyor.arg
 import conveyor.domain
+import conveyor.job
 import conveyor.jsonrpc
 import conveyor.main
-import conveyor.task
+import conveyor.slicer
 import conveyor.machine.port
 import conveyor.main
+import conveyor.task
 
 from conveyor.decorator import args, command
 
@@ -247,7 +249,7 @@ class _MonitorCommand(_MethodCommand):
 
         '''
 
-        job = conveyor.domain.Job.fromdict(kwargs)
+        job = conveyor.job.JobInfo.from_dict(kwargs)
         job_id = job.id
         if (not self._stop and None is not self._job_id
                 and self._job_id == job_id):
@@ -287,8 +289,10 @@ class _ConnectedCommand(_MonitorCommand):
     conveyor service and waits for a job to complete. The request must return a
     job id.
 
-    (This is essentially a `_MonitorCommand` that calls `connect` on the
-    conveyor service before invoking the job-related method.)
+    This is essentially a `_MonitorCommand` that calls `connect` on the
+    conveyor service before invoking the job-related method. `connect` must
+    return a `MachineInfo` object with a `name` field. The machine's name is
+    stored in an instance field called `_machine_name`.
 
     '''
 
@@ -310,7 +314,7 @@ class _ConnectedCommand(_MonitorCommand):
         connect_task.start()
 
     def _connect_callback(self, connect_task):
-        self._machine_name = connect_task.result['machine_name']
+        self._machine_name = connect_task.result['name']
         method_task = self._create_method_task()
         method_task.stoppedevent.attach(
             self._guard_callback(self._method_callback))
@@ -332,6 +336,7 @@ class CancelCommand(_MethodCommand):
         self._stop_jsonrpc()
 
 
+@args(conveyor.arg.driver)
 @args(conveyor.arg.positional_firmware_version)
 class CompatibleFirmware(_QueryCommand):
     name = 'compatiblefirmware'
@@ -339,7 +344,10 @@ class CompatibleFirmware(_QueryCommand):
     help = 'determine if a firmware verison is comatible with the MakerBot driver'
 
     def _create_method_task(self):
-        params = {'firmwareversion': self._parsed_args.firmware_version}
+        params = {
+            'driver_name': self._parsed_args.driver_name,
+            'firmware_version': self._parsed_args.firmware_version,
+        }
         method_task = self._jsonrpc.request('compatiblefirmware', params)
         return method_task
 
@@ -429,6 +437,7 @@ class DisconnectCommand(_MethodCommand):
         self._stop_jsonrpc()
 
 
+@args(conveyor.arg.driver)
 @args(conveyor.arg.machine_type)
 @args(conveyor.arg.machine_version)
 class DownloadFirmware(_QueryCommand):
@@ -438,8 +447,9 @@ class DownloadFirmware(_QueryCommand):
 
     def _create_method_task(self, result):
         params = {
-            'machinetype': self._parsed_args.machine_type,
-            'version': self._parsed_args.machine_version,
+            'driver_name': self._parsed_args.driver_name,
+            'machine_type': self._parsed_args.machine_type,
+            'machine_version': self._parsed_args.machine_version,
         }
         method_task = self._jsonrpc.request('downloadfirmware', params)
         return method_task
@@ -480,6 +490,7 @@ class DriversCommand(_JsonCommand):
         _print_driver_profiles(self._log, drivers)
 
 
+@args(conveyor.arg.driver)
 @args(conveyor.arg.machine_type)
 class GetMachineVersions(_QueryCommand):
     name = 'getmachineversions'
@@ -487,7 +498,10 @@ class GetMachineVersions(_QueryCommand):
     help = 'get the firmware versions available for a machine'
 
     def _create_method_task(self):
-        params = {'machine_type': self._parsed_args.machine_type}
+        params = {
+            'driver_name': self._parsed_args.driver_name,
+            'machine_type': self._parsed_args.machine_type,
+        }
         method_task = self._jsonrpc.request('getmachineversions', params)
         return method_task
 
@@ -495,13 +509,14 @@ class GetMachineVersions(_QueryCommand):
         self._log.info('%s', result)
 
 
+@args(conveyor.arg.driver)
 class GetUploadableMachines(_QueryCommand):
     name = 'getuploadablemachines'
 
     help = 'list the machines to which conveyor can upload firmware'
 
     def _create_method_task(self):
-        params = {}
+        params = {'driver_name': driver_name,}
         method_task = self._jsonrpc.request('getuploadablemachines', params)
         return method_task
 
@@ -595,13 +610,11 @@ class PrintCommand(_ConnectedCommand):
         slicer_settings = _create_slicer_settings(
             self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
+        extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
         params = {
-            'machine_name': self._parsed_args.machine_name,
-            'port_name': self._parsed_args.port_name,
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'machine_name': self._machine_name,
             'input_file': self._parsed_args.input_file,
-            'extruder_name': self._parsed_args.extruder_name,
+            'extruder_name': extruder_name,
             'gcode_processor_name': self._parsed_args.gcode_processor_name,
             'has_start_end': self._parsed_args.has_start_end,
             'material_name': self._parsed_args.material_name,
@@ -632,12 +645,13 @@ class PrintToFileCommand(_MonitorCommand):
         slicer_settings = _create_slicer_settings(
             self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
+        extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
         params = {
             'driver_name': self._parsed_args.driver_name,
             'profile_name': self._parsed_args.profile_name,
             'input_file': self._parsed_args.input_file,
             'output_file': self._parsed_args.output_file,
-            'extruder_name': self._parsed_args.extruder_name,
+            'extruder_name': extruder_name,
             'file_type': self._parsed_args.file_type,
             'gcode_processor_name': self._parsed_args.gcode_processor_name,
             'has_start_end': self._parsed_args.has_start_end,
@@ -767,13 +781,14 @@ class SliceCommand(_MonitorCommand):
         slicer_settings = _create_slicer_settings(
             self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
+        extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
         params = {
             'driver_name': self._parsed_args.driver_name,
             'profile_name': self._parsed_args.profile_name,
             'input_file': self._parsed_args.input_file,
             'output_file': self._parsed_args.output_file,
             'add_start_end': self._parsed_args.add_start_end,
-            'extruder_name': self._parsed_args.extruder_name,
+            'extruder_name': extruder_name,
             'gcode_processor_name': self._parsed_args.gcode_processor_name,
             'material_name': self._parsed_args.material_name,
             'slicer_name': self._parsed_args.slicer_name,
@@ -882,24 +897,29 @@ class WriteEepromCommand(_QueryCommand):
         pass
 
 
+def _fix_extruder_name(extruder_name):
+    if 'right' == extruder_name:
+        result = '0'
+    elif 'left' == extruder_name:
+        result = '1'
+    elif 'both' == extruder_name:
+        result = '0,1'
+    else:
+        raise ValueError(extruder_name)
+    return result
+
+
 def _create_slicer_settings(parsed_args, config):
     if 'miraclegrue' == parsed_args.slicer_name:
-        slicer = conveyor.domain.Slicer.MIRACLEGRUE
+        slicer = conveyor.slicer.Slicer.MIRACLEGRUE
     elif 'skeinforge' == parsed_args.slicer_name:
-        slicer = conveyor.domain.Slicer.SKEINFORGE
+        slicer = conveyor.slicer.Slicer.SKEINFORGE
     else:
         raise ValueError(parsed_args.slicer_name)
-    if 'right' == parsed_args.extruder_name:
-        extruder = '0'
-    elif 'left' == parsed_args.extruder_name:
-        extruder = '1'
-    elif 'both' == parsed_args.extruder_name:
-        extruder = '0,1'
-    else:
-        raise ValueError(parsed_args.extruder)
+    extruder_name = _fix_extruder_name(parsed_args.extruder_name)
     slicer_settings = conveyor.domain.SlicerConfiguration(
         slicer=slicer,
-        extruder=extruder,
+        extruder=extruder_name,
         raft=config.get('client', 'slicing', 'raft'),
         support=config.get('client', 'slicing', 'support'),
         infill=config.get('client', 'slicing', 'infill'),

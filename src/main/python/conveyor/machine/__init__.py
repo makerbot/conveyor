@@ -98,6 +98,20 @@ class Driver(object):
         info = DriverInfo(self.name, profiles)
         return info
 
+    # TODO: these are specific to S3G.
+
+    def get_uploadable_machines(self, task):
+        raise NotImplementedError
+
+    def get_machine_versions(self, machine_type, task):
+        raise NotImplementedError
+
+    def compatible_firmware(self, firmware_version):
+        raise NotImplementedError
+
+    def download_firmware(self, machine_type, firmware_version, task):
+        raise NotImplementedError
+
 
 class ProfileInfo(object):
     '''This is the JSON-serializable portion of a `Profile`.'''
@@ -295,4 +309,18 @@ class Machine(object):
             self, input_path, skip_start_end, extruders,
             extruder_temperature, platform_temperature, material_name,
             build_name, task):
+        raise NotImplementedError
+
+    # TODO: these are specific to S3G.
+
+    def reset_to_factory(self, task):
+        raise NotImplementedError
+
+    def upload_firmware(self, machine_type, input_file, task):
+        raise NotImplementedError
+
+    def read_eeprom(self, task):
+        raise NotImplementedError
+
+    def write_eeprom(self, eeprom_map, task):
         raise NotImplementedError

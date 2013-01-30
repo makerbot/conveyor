@@ -76,6 +76,7 @@ def positional_input_file(parser):
 def positional_job(parser):
     parser.add_argument(
         'job_id',
+        type=int,
         help='execute command on JOB',
         metavar='JOB',
         )

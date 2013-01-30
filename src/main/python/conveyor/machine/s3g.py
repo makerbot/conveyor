@@ -124,7 +124,7 @@ class S3gDriver(conveyor.machine.Driver):
                 parser.environment.update(gcode_scaffold.variables)
                 parser.s3g.reset()
                 # TODO: clear build plate message
-                parser.s3g.wait_for_button('center', 0, True, False, False)
+                # parser.s3g.wait_for_button('center', 0, True, False, False)
                 progress = {
                     'name': 'print-to-file',
                     'progress': 0,
@@ -160,6 +160,50 @@ class S3gDriver(conveyor.machine.Driver):
                     'progress': int(parser.state.percentage),
                 }
                 task.lazy_heartbeat(progress, task.progress)
+
+    def get_uploadable_machines(self, task):
+        def running_callback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                machines = uploader.list_machines()
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+            else:
+                task.end(machines)
+        task.runningevent.attach(running_callback)
+        return task
+
+    def get_machine_versions(self, machine_type, task):
+        def running_callback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                versions = uploader.list_firmware_versions(machine_type)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+            else:
+                task.end(versions)
+        task.runningevent.attach(running_callback)
+        return task
+
+    def compatible_firmware(self, firmware_version):
+        uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
+        result = uploader.compatible_firmware(firmware_version)
+        return result
+
+    def download_firmware(self, machine_type, firmware_version, task):
+        def running_callback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                hex_file_path = uploader.download_firmware(machinetype, version)
+            except Exception as e:
+                message = unicode(e)
+                task.fail(message)
+            else:
+                task.end(hex_file_path)
+        task.runningevent.attach(running_callback)
+        return task
 
 
 class _S3gProfile(conveyor.machine.Profile):
@@ -202,6 +246,10 @@ class _S3gProfile(conveyor.machine.Profile):
         variables['TOOL_0_TEMP'] = extruder_temperature
         variables['TOOL_1_TEMP'] = extruder_temperature
         variables['PLATFORM_TEMP'] = platform_temperature
+        start_position = self._s3g_profile.values['print_start_sequence']['start_position']
+        variables['START_X'] = start_position['start_x']
+        variables['START_Y'] = start_position['start_y']
+        variables['START_Z'] = start_position['start_z']
         gcode_scaffold = conveyor.machine.GcodeScaffold()
         gcode_scaffold.start = gcode_assembler.assemble_start_sequence(
             start_template)
@@ -338,6 +386,43 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                     self, input_path, skip_start_end, extruders,
                     extruder_temperature, platform_temperature,
                     material_name, build_name, task)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def reset_to_factory(self, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _ResetToFactoryOperation(self, task)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def upload_firmware(self, machine_type, input_file, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _UploadFirmwareOperation(
+                    machine_type, input_file, task)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def read_eeprom(self, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _ReadEepromOperation(task)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def write_eeprom(self, eeprom_map, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _WriteEepromOperation(eeprom_map, task)
                 self._change_state(conveyor.machine.MachineState.OPERATION)
 
     def _change_state(self, new_state):
@@ -548,20 +633,23 @@ class _MakeOperation(_S3gOperation):
                     parser.s3g.writer.set_external_stop(False)
                     parser.s3g.abort_immediately()
             self.task.cancelevent.attach(cancel_callback)
+            self.log.info('extruders = %s', self.extruders)
             gcode_scaffold = self.machine._profile.get_gcode_scaffold(
                 self.extruders, self.extruder_temperature,
                 self.platform_temperature, self.material_name)
             parser.environment.update(gcode_scaffold.variables)
             self.machine._s3g.reset()
-            progress = {
-                'name': 'clear-build-plate',
-                'progress': 0,
-            }
-            self.task.lazy_heartbeat(progress, self.task.progress)
-            self.machine._s3g.display_message(0, 0, str('clear'), 0, True, True, False)
-            self.machine._s3g.wait_for_button('center', 0, True, False, False)
-            while self.machine._motherboard_status['wait_for_button']:
-                self.machine._state_condition.wait(0.2)
+            # Aaaaaaaaaargh. :'(
+            #
+            # progress = {
+            #     'name': 'clear-build-plate',
+            #     'progress': 0,
+            # }
+            # self.task.lazy_heartbeat(progress, self.task.progress)
+            # self.machine._s3g.display_message(0, 0, str('clear'), 0, True, True, False)
+            # self.machine._s3g.wait_for_button('center', 0, True, False, False)
+            # while self.machine._motherboard_status['wait_for_button']:
+            #     self.machine._state_condition.wait(0.2)
             progress = {
                 'name': 'print',
                 'progress': 0,
@@ -634,3 +722,105 @@ class _MakeOperation(_S3gOperation):
     def cancel(self):
         if conveyor.task.TaskState.RUNNING == self.task.state:
             self.task.cancel()
+
+
+class _ResetToFactoryOperation(_S3gOperation):
+    def __init__(self, machine, task):
+        _S3gOperation.__init__(self, machine)
+        self._task = task
+
+    def run(self):
+        try:
+            self._machine._s3g.reset_to_factory()
+            self._machine._s3g.reset()
+        except Exception as e:
+            failure = conveyor.util.exception_to_failure(e)
+            self._task.fail(failure)
+        else:
+            self._task.end(None)
+
+
+class _UploadFirmwareOperation(_S3gOperation):
+    def __init__(self, machine, machine_type, input_file, task):
+        _S3gOperation.__init__(self, machine)
+        self._machine_type = machine_type
+        self._input_file = input_file
+        self._task = task
+
+    def run(self):
+        try:
+            # TODO: this needs to stop the polling thread.
+            uploader = makerbot_driver.Firmware.Uploader()
+            uploader.upload_firmware(
+                port_name, self._machine_type, self._input_file)
+        except Exception as e:
+            failure = conveyor.util.exception_to_failure(e)
+            self._task.fail(failure)
+        else:
+            self._task.end(None)
+
+
+class _ReadEepromOperation(_S3gOperation):
+    def __init__(self, machine, task):
+        _S3gOperation.__init__(self, machine)
+        self._task = task
+
+    def run(self):
+        try:
+            version = self._machine._s3g.get_version()
+            try:
+                advanced_version = self._machine._s3g.get_advanced_version()
+                software_variant = hex(advanced_version['SoftwareVariant'])
+                if len(software_variant.split('x')[1]) == 1:
+                    software_variant = software_variant.replace('x', 'x0')
+            except makerbot_driver.errors.CommandNotSupportedError:
+                software_variant = '0x00'
+            version = _get_version_with_dot(version)
+            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(
+                self._machine._s3g, version, software_variant)
+            eeprom_map = eeprom_reader.read_entire_map()
+        except Exception as e:
+            self._log.debug('handled exception')
+            failure = conveyor.util.exception_to_failure(e)
+            tail.fail(failure)
+        else:
+            task.end(eeprom_map)
+
+
+class _WriteEepromOperation(_S3gOperation):
+    def __init__(self, machine, eeprom_map, task):
+        _S3gOperation.__init__(self, machine)
+        self._eeprom_map = eeprom_map
+        self._task = task
+
+    def run(self):
+        try:
+            version = self._machine._s3g.get_version()
+            try:
+                advanced_version = self._machine._s3g.get_advanced_version()
+                software_variant = hex(advanced_version['SoftwareVariant'])
+                if len(software_variant.split('x')[1]) == 1:
+                    software_variant = software_variant.replace('x', 'x0')
+            except makerbot_driver.errors.CommandNotSupportedError:
+                software_variant = '0x00'
+            version = _get_version_with_dot(version)
+            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(
+                self._machine._s3g, version, software_variant)
+            eeprom_writer.write_entire_map(eeprommap)
+        except Exception as e:
+            self._log.debug('handled exception')
+            failure = conveyor.util.exception_to_failure(e)
+            tail.fail(failure)
+        else:
+            task.end(None)
+
+
+def _get_version_with_dot(version):
+    if len(version) != 3:
+        raise ValueError(version)
+    else:
+        if '0' == version[1]:
+            version = version[0] + '.' + version[2]
+        else:
+            version = version[0] + '.' + version[1:2]
+        return version
