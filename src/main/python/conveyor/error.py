@@ -146,6 +146,12 @@ class PortMismatchException(Exception, Error):
         return 1
 
 
+class PrintQueuedException(Exception, Error):
+    def handle(self, log):
+        log.error('a print is already queued for the machine', exc_info=True)
+        return 1
+
+
 class ProfileMismatchException(Exception, Error):
     def handle(self, log):
         log.critical(

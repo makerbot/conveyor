@@ -521,6 +521,9 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                             self._change_state(conveyor.machine.MachineState.IDLE)
                     elif busy:
                         self._change_state(conveyor.machine.MachineState.BUSY)
+                    elif (conveyor.machine.MachineState.OPERATION == self._state
+                            and None is self._operation and self._is_finished):
+                        self._change_state(conveyor.machine.MachineState.IDLE)
                     if temperature_changed:
                         self.temperature_changed(self)
                     self._log.debug(
@@ -661,7 +664,6 @@ class _MakeOperation(_TaskOperation):
                     parser.s3g.writer.set_external_stop(False)
                     parser.s3g.abort_immediately()
             self.task.cancelevent.attach(cancel_callback)
-            self.log.info('extruders = %s', self.extruders)
             gcode_scaffold = self.machine._profile.get_gcode_scaffold(
                 self.extruders, self.extruder_temperature,
                 self.platform_temperature, self.material_name)
@@ -704,8 +706,6 @@ class _MakeOperation(_TaskOperation):
         except Exception as e:
             self.log.exception('unhandled exception; print failed')
             self.task.fail(e)
-        finally:
-            self.machine._operation = None
 
     def _execute_lines(self, parser, iterable):
         for line in iterable:
@@ -806,9 +806,9 @@ class _ReadEepromOperation(_BlockPollingOperation):
             self.task.end(eeprom_map)
 
 
-class _WriteEepromOperation(_TaskOperation):
+class _WriteEepromOperation(_BlockPollingOperation):
     def __init__(self, machine, task, eeprom_map):
-        _TaskOperation.__init__(self, machine, task)
+        _BlockPollingOperation.__init__(self, machine, task)
         self.eeprom_map = eeprom_map
 
     def _run_without_polling(self):

@@ -58,6 +58,8 @@ class Server(conveyor.stoppable.StoppableInterface):
         self._job_id_counter = 0
         self._jobs = {}
         self._jobs_condition = threading.Condition()
+        self._print_queued = set()
+        self._print_queued_condition = threading.Condition()
 
     def stop(self):
         self._stop = True
@@ -121,10 +123,10 @@ class Server(conveyor.stoppable.StoppableInterface):
     def _job_changed(self, job):
         job_info = job.get_info()
         # TODO: there was better logging here before....
-        self._log.info(
-            'job %d: state=%s, progress=%s, conclusion=%s, failure=%s',
-            job_info.id, job_info.state, job_info.progress,
-            job_info.conclusion, job_info.failure)
+        # self._log.info(
+        #     'job %d: state=%s, progress=%s, conclusion=%s, failure=%s',
+        #     job_info.id, job_info.state, job_info.progress,
+        #     job_info.conclusion, job_info.failure)
         with self._clients_condition:
             clients = self._clients.copy()
         _Client.job_changed(clients, job_info)
@@ -232,17 +234,21 @@ class Server(conveyor.stoppable.StoppableInterface):
         job_id = self._create_job_id()
         job_name = self._get_job_name(input_file)
         machine = self._find_machine(machine_name, None, None, None)
-        job = conveyor.job.PrintJob(
-            job_id, job_name, machine, input_file, extruder_name,
-            gcode_processor_name, has_start_end, material_name, slicer_name,
-            slicer_settings)
-        recipe_manager = conveyor.recipe.RecipeManager(
-            self._config, self, self._spool)
-        recipe = recipe_manager.get_recipe(job)
-        job.task = recipe.print()
-        self._attach_job_callbacks(job)
-        job.task.start()
-        return job
+        if self._is_print_queued(machine):
+            raise conveyor.error.PrintQueuedException
+        else:
+            job = conveyor.job.PrintJob(
+                job_id, job_name, machine, input_file, extruder_name,
+                gcode_processor_name, has_start_end, material_name, slicer_name,
+                slicer_settings)
+            recipe_manager = conveyor.recipe.RecipeManager(
+                self._config, self, self._spool)
+            recipe = recipe_manager.get_recipe(job)
+            job.task = recipe.print()
+            self._attach_job_callbacks(job)
+            self._attach_print_queued_callbacks(machine, job)
+            job.task.start()
+            return job
 
     def pause(self, client, machine_name):
         machine = self._find_machine(machine_name, None, None, None)
@@ -333,6 +339,27 @@ class Server(conveyor.stoppable.StoppableInterface):
         def stopped_callback(task):
             self._job_changed(job)
         job.task.stoppedevent.attach(stopped_callback)
+
+    def _attach_print_queued_callbacks(self, machine, job):
+        def start_callback(task):
+            self._add_print_queued(machine)
+        job.task.startevent.attach(start_callback)
+        def stopped_callback(task):
+            self._remove_print_queued(machine)
+        job.task.stoppedevent.attach(stopped_callback)
+
+    def _add_print_queued(self, machine):
+        with self._print_queued_condition:
+            self._print_queued.add(machine.name)
+
+    def _remove_print_queued(self, machine):
+        with self._print_queued_condition:
+            self._print_queued.remove(machine.name)
+
+    def _is_print_queued(self, machine):
+        with self._print_queued_condition:
+            result = machine.name in self._print_queued
+        return result
 
     ## old stuff ##############################################################
 
