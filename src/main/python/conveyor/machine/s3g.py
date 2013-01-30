@@ -565,7 +565,8 @@ class S3gDriver(object):
             slicer_settings, print_to_file_type, material,
             task, dualstrusion):
         with open(outputpath, 'wb') as fp:
-            writer = makerbot_driver.Writer.FileWriter(fp)
+            condition = threading.Condition()
+            writer = makerbot_driver.Writer.FileWriter(fp, condition)
             self._genericprint(
                 None, None, profile, buildname, writer, False, 5.0,
                 gcodepath, slicer_settings, print_to_file_type, material,
