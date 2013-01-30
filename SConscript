@@ -77,7 +77,7 @@ cppenv.MBAddDevelLibPath('#/../json-cpp/obj')
 cppenv.MBAddDevelIncludePath('#/../jsonrpc/src/main/include')
 cppenv.MBAddDevelIncludePath('#/../json-cpp/include')
 
-cppenv.Append(LIBS = ['json', 'jsonrpc'])
+cppenv.Append(LIBS = ['jsoncpp', 'jsonrpc'])
 
 if sys.platform == 'win32':
     cppenv.Append(LIBS=['ws2_32'])
