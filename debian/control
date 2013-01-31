@@ -10,6 +10,12 @@ Homepage: https://github.com/makerbot/Prototype
 
 Package: conveyor
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, zlib1g, libqtcore4, python, adduser (>= 3.11), makerbot-driver, miracle-grue, skeinforge, sudo
+Depends: ${shlibs:Depends}, ${misc:Depends}, zlib1g, libqtcore4, python, adduser (>= 3.11), makerbot-driver, miracle-grue (=2.0.0), mb-libjsonrpc(>= 0.01), skeinforge, sudo
+Description: Convey print information from applications to a 3d printer.
+ Conveyor is a process that manages 3d printers and dispatches prints to them.
+
+Package: conveyor-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, mb-libjsonrpc-dev(>= 0.01), conveyor (=2.0.0)
 Description: Convey print information from applications to a 3d printer.
  Conveyor is a process that manages 3d printers and dispatches prints to them.
