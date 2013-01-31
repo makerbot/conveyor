@@ -244,25 +244,62 @@ namespace conveyor
         return job;
     }
 
+    static void
+    setDriverNameParam(Json::Value &params)
+    {
+        params["driver_name"] = "s3g";
+    }
+
+    static void
+    setProfileNameParam(Json::Value &params,
+                        const Printer * const printer)
+    {
+        params["profile_name"] = printer->profileName().toStdString();
+    }
+
+    static Json::Value
+    commonPrintSliceParams
+        ( const SlicerConfiguration & slicerConf
+        , QString const & inputFile
+        , QString const & materialName
+        )
+    {
+        Json::Value params(Json::objectValue);
+        switch (slicerConf.extruder()) {
+          case SlicerConfiguration::Left:
+            params["extruder_name"] = "1";
+            break;
+          case SlicerConfiguration::Right:
+            params["extruder_name"] = "0";
+            break;
+          case SlicerConfiguration::LeftAndRight:
+            params["extruder_name"] = "0, 1";
+            break;
+        }
+        params["gcode_processor_name"] = Json::Value(Json::arrayValue);
+        params["input_file"] = inputFile.toStdString();
+        params["material_name"] = Json::Value(materialName.toStdString());
+        params["slicer_name"] = slicerConf.slicerName().toStdString();
+        params["slicer_settings"] = slicerConf.toJSON();
+
+        return params;
+    }
+
     Job *
     ConveyorPrivate::print
         ( Printer * const printer
         , QString const & inputFile
-        , const SlicerConfiguration & slicer_conf
-        , QString const & material
+        , const SlicerConfiguration & slicerConf
+        , QString const & materialName
         , bool const skipStartEnd 
         )
     {
-        Json::Value params (Json::objectValue);
-        Json::Value null;
-        params["printername"] = printer->uniqueName().toStdString();
-        params["inputpath"] = Json::Value (inputFile.toStdString ());
-        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
-        params["skip_start_end"] = skipStartEnd;
-        params["archive_lvl"] = Json::Value ("all");
-        params["archive_dir"] = null;
-        params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = Json::Value (material.toStdString());
+        Json::Value params(commonPrintSliceParams(slicerConf,
+                                                  inputFile,
+                                                  materialName));
+
+        params["machine_name"] = printer->uniqueName().toStdString();
+        params["has_start_end"] = skipStartEnd;
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
@@ -276,27 +313,54 @@ namespace conveyor
         ( Printer * const printer
         , QString const & inputFile
         , QString const & outputFile
-        , const SlicerConfiguration & slicer_conf
-        , QString const & material
+        , const SlicerConfiguration & slicerConf
+        , QString const & materialName
         , bool const skipStartEnd 
         , QString const & printToFileType
         )
     {
-        Json::Value params (Json::objectValue);
-        Json::Value null;
-        params["profilename"] = printer->uniqueName().toStdString();
-        params["inputpath"] = Json::Value (inputFile.toStdString ());
-        params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
-        params["skip_start_end"] = skipStartEnd;
-        params["archive_lvl"] = Json::Value ("all");
-        params["archive_dir"] = null;
-        params["slicer_settings"] = slicer_conf.toJSON();
-        params["print_to_file_type"] = Json::Value (printToFileType.toStdString());
-        params["material"] = Json::Value (material.toStdString());
+        Json::Value params(commonPrintSliceParams(slicerConf,
+                                                  inputFile,
+                                                  materialName));
+
+        setDriverNameParam(params);
+        setProfileNameParam(params, printer);
+        params["file_type"] = Json::Value (printToFileType.toStdString());
+        params["output_file"] = Json::Value (outputFile.toStdString ());
+        params["has_start_end"] = skipStartEnd;
 
         Json::Value const result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "printtofile", params)
+            ( SynchronousCallback::invoke (this->m_jsonRpc,
+                                           "print_to_file",
+                                           params)
+            );
+
+        return jobById(result["id"].asInt());
+    }
+
+
+
+    Job *
+    ConveyorPrivate::slice
+        ( Printer * const printer
+        , QString const & inputFile
+        , QString const & outputFile
+        , const SlicerConfiguration & slicerConf
+        , QString const & materialName
+        , bool const withStartEnd
+        )
+    {
+        Json::Value params(commonPrintSliceParams(slicerConf,
+                                                  inputFile,
+                                                  materialName));
+
+        setDriverNameParam(params);
+        setProfileNameParam(params, printer);
+        params["output_file"] = Json::Value(outputFile.toStdString ());
+        params["add_start_end"] = Json::Value(withStartEnd);
+
+        Json::Value const result
+            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
             );
 
         return jobById(result["id"].asInt());
@@ -306,6 +370,7 @@ namespace conveyor
     ConveyorPrivate::m_getUploadableMachines(void)
     {
         Json::Value params (Json::objectValue);
+        setDriverNameParam(params);
         Json::Value result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "getuploadablemachines", params)
             );
@@ -316,6 +381,7 @@ namespace conveyor
     ConveyorPrivate::m_getMachineVersions(QString machineType)
     {
         Json::Value params (Json::objectValue);
+        setDriverNameParam(params);
         params["machine_type"] = Json::Value (machineType.toStdString());
         
         Json::Value result
@@ -331,8 +397,9 @@ namespace conveyor
             )
     {
         Json::Value params (Json::objectValue);
-        params["machinetype"] = Json::Value (machinetype.toStdString());
-        params["version"] = Json::Value (version.toStdString());
+        setDriverNameParam(params);
+        params["machine_type"] = Json::Value (machinetype.toStdString());
+        params["firmware_version"] = Json::Value (version.toStdString());
         Json::Value result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "downloadfirmware", params)
             );
@@ -346,39 +413,12 @@ namespace conveyor
         , QString hexPath)
     {
         Json::Value params (Json::objectValue);
-        params["printername"] = Json::Value (printer->uniqueName().toStdString());
+        params["machine_name"] = Json::Value (printer->uniqueName().toStdString());
         params["machinetype"] = Json::Value (machineType.toStdString());
         params["filename"] = Json::Value (hexPath.toStdString());
         Json::Value result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "uploadfirmware", params)
             );
-    }
-
-    Job *
-    ConveyorPrivate::slice
-        ( Printer * const printer
-        , QString const & inputFile
-        , QString const & outputFile
-        , const SlicerConfiguration & slicer_conf
-        , QString const & material
-        , bool const withStartEnd
-        )
-    {
-        Json::Value params (Json::objectValue);
-        Json::Value null;
-        params["profilename"] = printer->uniqueName().toStdString();
-        params["inputpath"] = Json::Value (inputFile.toStdString ());
-        params["outputpath"] = Json::Value (outputFile.toStdString ());
-        params["gcodeprocessor"] = Json::Value (Json::arrayValue);
-        params["with_start_end"] = Json::Value (withStartEnd);
-        params["slicer_settings"] = slicer_conf.toJSON();
-        params["material"] = Json::Value (material.toStdString());
-
-        Json::Value const result
-            ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
-            );
-
-        return jobById(result["id"].asInt());
     }
 
     EepromMap
