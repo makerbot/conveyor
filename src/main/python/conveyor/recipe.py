@@ -322,10 +322,10 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def _with_start_end_task(self, profile, slicer_settings, material_name,
-            has_start_end, dualstrusion, input_path, output_path):
+    def _add_start_end_task(self, profile, slicer_settings, material_name,
+            add_start_end, dualstrusion, input_path, output_path):
         def running_callback(task):
-            self._log.info("Writing out gcode to %s with%s start/end gcode" % (output_path, '' if not has_start_end else 'out'))
+            self._log.info("Writing out gcode to %s with%s start/end gcode" % (output_path, '' if add_start_end else 'out'))
             try:
                 with open(input_path) as ifp:
                     with open(output_path, 'w') as ofp:
@@ -335,12 +335,12 @@ class Recipe(object):
                             slicer_settings.extruder_temperature,
                             slicer_settings.platform_temperature,
                             material_name)
-                        if not has_start_end:
+                        if add_start_end:
                             for line in gcode_scaffold.start:
                                 print(line, file=ofp)
                         for line in ifp.readlines():
                             ofp.write(line)
-                        if not has_start_end:
+                        if add_start_end:
                             for line in gcode_scaffold.end:
                                 print(line, file=ofp)
             except Exception as e:
@@ -373,10 +373,10 @@ class _GcodeRecipe(Recipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputfp:
             outputpath = outputfp.name
-        with_start_end_task = self._with_start_end_task(
+        add_start_end_task = self._add_start_end_task(
             printerthread._profile, self._job.slicer_settings, self._job.material_name,
             self._job.has_start_end, dualstrusion, self._job.input_file, outputpath)
-        tasks.append(with_start_end_task)
+        tasks.append(add_start_end_task)
 
         #verify
         verifytask = self.verifygcodetask(outputpath, printerthread._profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
@@ -396,18 +396,18 @@ class _GcodeRecipe(Recipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
-        with_start_end_task = self._with_start_end_task(
-            profile, self._job.slicer_settings, self._job.material_name,
+        add_start_end_task = self._add_start_end_task(
+            self._job.profile, self._job.slicer_settings, self._job.material_name,
             self._job.has_start_end, dualstrusion, self._job.input_file, start_end_path)
-        tasks.append(with_start_end_task)
+        tasks.append(add_start_end_task)
 
         #verify
-        verifytask = self.verifygcodetask(start_end_path, profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
+        verifytask = self.verifygcodetask(start_end_path, self._job.profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
         tasks.append(verifytask)
 
         # Print
         print_to_filetask = self._print_to_filetask(
-            profile, start_end_path, outputpath, False)
+            self._job.profile, start_end_path, outputpath, False)
         tasks.append(print_to_filetask)
 
         tasks.append(self.verifys3gtask(outputpath))
@@ -450,10 +450,10 @@ class _StlRecipe(Recipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputfp:
             outputpath = outputfp.name
-        with_start_end_task = self._with_start_end_task(
+        add_start_end_task = self._add_start_end_task(
             profile, self._job.slicer_settings, self._job.material_name,
             self._job.has_start_end, dualstrusion, processed_gcodepath, outputpath)
-        tasks.append(with_start_end_task)
+        tasks.append(add_start_end_task)
 
         #verify
         verifytask = self.verifygcodetask(outputpath, profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
@@ -479,35 +479,35 @@ class _StlRecipe(Recipe):
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefp:
             gcodepath = gcodefp.name
         slicetask = self._slicertask(
-            profile, self._stlpath, gcodepath, False, False,
+            self._job.profile, self._stlpath, gcodepath, False, False,
             self._job.slicer_settings)
         tasks.append(slicetask)
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors(profile)
+        gcodeprocessors = self.getgcodeprocessors(self._job.profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath
         else:
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
-                gcodepath, processed_gcodepath, profile)
+                gcodepath, processed_gcodepath, self._job.profile)
             tasks.append(gcodeprocessortask)
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
-        with_start_end_task = self._with_start_end_task(
-            profile, self._job.slicer_settings, self._job.material_name,
+        add_start_end_task = self._add_start_end_task(
+            self._job.profile, self._job.slicer_settings, self._job.material_name,
             self._job.has_start_end, dualstrusion, processed_gcodepath, start_end_path)
-        tasks.append(with_start_end_task)
+        tasks.append(add_start_end_task)
 
         #verify
-        verifytask = self.verifygcodetask(start_end_path, profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
+        verifytask = self.verifygcodetask(start_end_path, self._job.profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
         tasks.append(verifytask)
 
         # Print
         print_to_filetask = self._print_to_filetask(
-            profile, start_end_path, outputpath, False)
+            self._job.profile, start_end_path, outputpath, False)
         tasks.append(print_to_filetask)
 
         tasks.append(self.verifys3gtask(outputpath))
@@ -527,11 +527,11 @@ class _StlRecipe(Recipe):
         with tempfile.NamedTemporaryFile(suffix='.gcode') as gcodefh:
             gcodepath = gcodefh.name
         slicetask = self._slicertask(
-            profile, self._stlpath, gcodepath, False, False,
+            self._job.profile, self._stlpath, gcodepath, False, False,
             self._job.slicer_settings)
         tasks.append(slicetask)
 
-        gcodeprocessors = self.getgcodeprocessors(profile)
+        gcodeprocessors = self.getgcodeprocessors(self._job.profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath 
         else:
@@ -540,16 +540,17 @@ class _StlRecipe(Recipe):
 
         # Process Gcode
         if 0 != len(gcodeprocessors):
-            gcodeprocessortask = self._gcodeprocessortask(gcodepath, processed_gcodepath, profile)
+            gcodeprocessortask = self._gcodeprocessortask(gcodepath, processed_gcodepath, self._job.profile)
             tasks.append(gcodeprocessortask)
 
-        with_start_end_task = self._with_start_end_task(
-            profile, self._job.slicer_settings, self._job.material_name,
-            self._job.has_start_end, False, processed_gcodepath, outputpath)
-        tasks.append(with_start_end_task)
+        add_start_end_task = self._add_start_end_task(
+            self._job.profile, self._job.slicer_settings, self._job.material_name,
+            self._job.add_start_end, False, processed_gcodepath,
+            self._job.output_file)
+        tasks.append(add_start_end_task)
 
         def process_endcallback(task):
-            if gcodepath != outputpath:
+            if gcodepath != self._job.output_file:
                 os.unlink(gcodepath)
 
         process = conveyor.process.tasksequence(self._job, tasks)
@@ -568,20 +569,20 @@ class _SingleThingRecipe(_ThingRecipe):
 
     def print(self):
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, self._stl_path)
-        process = stlrecipe.print(printerthread)
+            self._server, self._config, self._job, self._spool, self._stl_path)
+        process = stlrecipe.print()
         return process
 
     def print_to_file(self):
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, self._stl_path)
-        process = stlrecipe.print_to_file(profile, outputpath)
+            self._server, self._config, self._job, self._spool, self._stl_path)
+        process = stlrecipe.print_to_file()
         return process
 
     def slice(self):
         stlrecipe = _StlRecipe(
-            self._server, self._config, self._job, self._stl_path)
-        process = stlrecipe.slice(profile, outputpath)
+            self._server, self._config, self._job, self._spool, self._stl_path)
+        process = stlrecipe.slice()
         return process
 
 
@@ -600,7 +601,7 @@ class _DualThingRecipe(_ThingRecipe):
         with tempfile.NamedTemporaryFile(suffix='.1.gcode') as f:
             gcode_1_path = f.name
 
-        with_start_end = False
+        add_start_end = False
 
         settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_0.extruder = '0'
@@ -632,10 +633,10 @@ class _DualThingRecipe(_ThingRecipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
-        with_start_end_task = self._with_start_end_task(
+        add_start_end_task = self._add_start_end_task(
             profile, self._job.slicer_settings, self._job.material_name,
-            self._job.has_start_end, dualstrusion, processed_gcodepath, start_end_path)
-        tasks.append(with_start_end_task)
+            self._job.add_start_end, dualstrusion, processed_gcodepath, start_end_path)
+        tasks.append(add_start_end_task)
         
         #verify
         verifytask = self.verifygcodetask(start_end_path, profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
@@ -662,7 +663,7 @@ class _DualThingRecipe(_ThingRecipe):
         with tempfile.NamedTemporaryFile(suffix='.1.gcode') as f:
             gcode_1_path = f.name
 
-        with_start_end = False
+        add_start_end = False
 
         settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_0.extruder = '0'
@@ -691,10 +692,10 @@ class _DualThingRecipe(_ThingRecipe):
             dualstrusion_path, dual_path, profile)
         tasks.append(gcodeprocessortask)
 
-        with_start_end_task = self._with_start_end_task(
+        add_start_end_task = self._add_start_end_task(
             profile, self._job.slicer_settings, self._job.material_name,
-            self._job.has_start_end, True, dual_path, outputpath)
-        tasks.append(with_start_end_task)
+            self._job.add_start_end, True, dual_path, outputpath)
+        tasks.append(add_start_end_task)
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
@@ -712,7 +713,7 @@ class _DualThingRecipe(_ThingRecipe):
         with tempfile.NamedTemporaryFile(suffix='.1.gcode') as f:
             gcode_1_path = f.name
 
-        with_start_end = False
+        add_start_end = False
 
         settings_0 = conveyor.domain.SlicerConfiguration.fromdict(self._job.slicer_settings.todict())
         settings_0.extruder = '0'
@@ -746,10 +747,10 @@ class _DualThingRecipe(_ThingRecipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputpathfp:
             outputpath = outputpathfp.name
-        with_start_end_task = self._with_start_end_task(
+        add_start_end_task = self._add_start_end_task(
             profile, self._job.slicer_settings, self._job.material_name,
-            self._job.has_start_end, dualstrusion, processed_gcodepath, outputpath)
-        tasks.append(with_start_end_task)
+            self._job.add_start_end, dualstrusion, processed_gcodepath, outputpath)
+        tasks.append(add_start_end_task)
 
         #verify
         verifytask = self.verifygcodetask(outputpath, printerthread._profile, self._job.slicer_settings, self._job.material_name, dualstrusion)

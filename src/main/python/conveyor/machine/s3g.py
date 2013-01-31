@@ -785,10 +785,12 @@ class _UploadFirmwareOperation(_BlockPollingOperation):
 
     def _run_without_polling(self):
         try:
-            port = self._machine.get_port()
+            self.machine._s3g.writer.file.close()
+            port = self.machine.get_port()
             uploader = makerbot_driver.Firmware.Uploader()
             uploader.upload_firmware(
                 port.path, self.machine_type, self.input_file)
+            self.machine._s3g.writer.file.open()
         except Exception as e:
             self.log.warning('handled exception', exc_info=True)
             failure = conveyor.util.exception_to_failure(e)
@@ -838,7 +840,7 @@ class _WriteEepromOperation(_BlockPollingOperation):
             version = _get_version_with_dot(version)
             eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(
                 self.machine._s3g, version, software_variant)
-            eeprom_writer.write_entire_map(eeprommap)
+            eeprom_writer.write_entire_map(self.eeprom_map)
         except Exception as e:
             self.log.warning('handled exception', exc_info=True)
             failure = conveyor.util.exception_to_failure(e)

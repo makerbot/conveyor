@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import logging
 import sys
 
 import conveyor.client
@@ -64,6 +65,7 @@ class ClientMain(conveyor.main.AbstractMain):
     _logging_handlers = ['stdout', 'stderr',]
 
     def _run(self):
+        self._log_startup(logging.DEBUG)
         self._init_event_threads()
         command = self._parsed_args.command_class(
             self._parsed_args, self._config)

@@ -21,6 +21,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 
 import cStringIO as StringIO
 import logging
+import os.path
 import subprocess
 
 import conveyor.task
@@ -116,6 +117,9 @@ class SubprocessSlicer(Slicer):
             quoted_arguments = ' '.join(self._quote(a) for a in arguments)
             self._log.info('command: %s %s', quoted_executable, quoted_arguments)
             cwd = self._getcwd()
+            path = os.path.join(cwd, executable)
+            if not os.path.exists(path):
+                raise conveyor.error.MissingExecutableException(path)
             self._popen = subprocess.Popen(
                 arguments, executable=executable, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, cwd=cwd)

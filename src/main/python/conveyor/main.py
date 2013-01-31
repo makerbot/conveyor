@@ -23,6 +23,8 @@ import argparse
 import decimal
 import logging
 import os
+import platform
+import struct
 import sys
 
 import conveyor.address
@@ -204,6 +206,17 @@ class AbstractMain(object):
             thread = conveyor.event.EventQueueThread(eventqueue, name)
             thread.start()
             self._event_threads.append(thread)
+
+    def _get_pointer_size(self):
+        size = 8 * struct.calcsize('P')
+        return size
+
+    def _log_startup(self, level):
+        self._log.log(
+            level, '%s %s started', self._program_name, conveyor.__version__)
+        self._log.log(level, 'python version: %r', sys.version)
+        self._log.log(level, 'python platform: %r', platform.platform())
+        self._log.log(level, 'python pointer size: %r', self._get_pointer_size())
 
     def _run(self):
         raise NotImplementedError

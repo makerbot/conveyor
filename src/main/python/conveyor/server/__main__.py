@@ -20,10 +20,12 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 import lockfile.pidlockfile
+import logging
 import os
 import signal
 import sys
 
+import conveyor
 import conveyor.arg
 import conveyor.log
 import conveyor.main
@@ -92,7 +94,7 @@ class ServerMain(conveyor.main.AbstractMain):
         return code
 
     def _run_server(self):
-        self._log.info('conveyord started')
+        self._log_startup(logging.INFO)
         self._init_event_threads()
         driver_manager = conveyor.machine.DriverManager.create(self._config)
         port_manager = conveyor.machine.port.PortManager.create(

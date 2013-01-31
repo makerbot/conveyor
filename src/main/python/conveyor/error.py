@@ -110,6 +110,16 @@ class MachineStateException(Exception, Error):
         return 1
 
 
+class MissingExecutableException(Exception, Error):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
+
+    def handle(self, log):
+        log.critical('missing executable: %s', self.path, exc_info=True)
+        return 1
+
+
 class MultipleDriversException(Exception, Error):
     def handle(self, log):
         log.critical(

@@ -439,17 +439,17 @@ class DisconnectCommand(_MethodCommand):
 
 @args(conveyor.arg.driver)
 @args(conveyor.arg.machine_type)
-@args(conveyor.arg.machine_version)
+@args(conveyor.arg.firmware_version)
 class DownloadFirmware(_QueryCommand):
     name = 'downloadfirmware'
 
     help = 'download firmware'
 
-    def _create_method_task(self, result):
+    def _create_method_task(self):
         params = {
             'driver_name': self._parsed_args.driver_name,
             'machine_type': self._parsed_args.machine_type,
-            'machine_version': self._parsed_args.machine_version,
+            'firmware_version': self._parsed_args.firmware_version,
         }
         method_task = self._jsonrpc.request('downloadfirmware', params)
         return method_task
@@ -824,9 +824,9 @@ class UploadFirmwareCommand(_QueryCommand):
 
     def _create_method_task(self):
         params = {
-            'printername': None,
-            'machinetype': self._parsedargs.machine_type,
-            'filename': self._parsedargs.input_file,
+            'machine_name': None,
+            'machinetype': self._parsed_args.machine_type,
+            'filename': self._parsed_args.input_file,
         }
         method_task = self._jsonrpc.request('uploadfirmware', params)
         return method_task

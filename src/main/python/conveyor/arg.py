@@ -249,16 +249,16 @@ def machine_type(parser):
         )
 
 
-def machine_version(parser):
+def firmware_version(parser):
     parser.add_argument(
         '--machine-version',
         action='store',
-        default='5.5',
+        default='7.0',
         type=str,
         required=False,
         help='the firmware VERSION',
         metavar='VERSION',
-        dest='machine_version',
+        dest='firmware_version',
         )
 
 
