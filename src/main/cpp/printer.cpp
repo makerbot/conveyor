@@ -118,6 +118,12 @@ namespace conveyor
         return m_private->m_printerType;
     }
 
+    QString
+    Printer::profileName() const
+    {
+        return m_private->m_profileName;
+    }
+
     bool
     Printer::canPrint () const
     {

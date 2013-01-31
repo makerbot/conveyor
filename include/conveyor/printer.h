@@ -82,6 +82,8 @@ namespace conveyor
         /** A string represenetation of the type of printer this is */
         QString const & printerType () const;
 
+        QString profileName() const;
+
         /** Can this printer create physical objects? false for virtual printers */
         bool canPrint () const;
 

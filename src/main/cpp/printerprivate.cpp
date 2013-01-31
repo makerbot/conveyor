@@ -46,6 +46,8 @@ namespace conveyor
         {
             machineNames << QString(json["machineNames"][i].asCString());
         }
+        QString const profileName(
+            QString::fromUtf8(json["profile_name"].asCString()));
 
         float buildVolumeXmin, buildVolumeYmin, buildVolumeZmin,
               buildVolumeXmax, buildVolumeYmax, buildVolumeZmax;
@@ -99,6 +101,7 @@ namespace conveyor
         m_canPrint = canPrint;
         m_canPrintToFile = canPrintToFile;
         m_printerType = printerType;
+        m_profileName = profileName;
         m_numberOfToolheads = numberOfToolheads;
         m_hasHeatedPlatform = hasHeatedPlatform;
         m_buildVolumeXmin = buildVolumeXmin;

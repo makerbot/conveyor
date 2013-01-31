@@ -50,6 +50,7 @@ namespace conveyor
         QString m_displayName;
         QString m_uniqueName;
         QString m_printerType;
+        QString m_profileName;
         QStringList m_machineNames;
         bool m_canPrint;
         bool m_canPrintToFile;
