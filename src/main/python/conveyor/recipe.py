@@ -84,7 +84,7 @@ class RecipeManager(object):
             raise MissingFileException(job.input_file)
         else:
             thing_dir = tempfile.mkdtemp(suffix='.thing')
-            unified_mesh_hack = self._config.get('server', 'unified_mesh_hack')
+            unified_mesh_hack = self._config.get('server', 'unified_mesh_hack_exe')
             popen = subprocess.Popen(
                 [unified_mesh_hack, job.input_file, thing_dir],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
