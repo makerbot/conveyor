@@ -10,13 +10,15 @@
 #endif
 
 #include <json/value.h>
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
 #include <conveyor/conveyor.h>
 #include <conveyor/eeprommap.h>
 #include <conveyor/exceptions.h>
+#include <conveyor/job.h>
+#include <conveyor/slicers.h>
 
 #include "connectionstream.h"
 #include "connectionthread.h"

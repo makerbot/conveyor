@@ -77,7 +77,8 @@ cppenv.MBAddDevelLibPath('#/../json-cpp/obj')
 cppenv.MBAddDevelIncludePath('#/../jsonrpc/src/main/include')
 cppenv.MBAddDevelIncludePath('#/../json-cpp/include')
 
-cppenv.Append(LIBS = ['json', 'jsonrpc'])
+cppenv.MBAddLib('json')
+cppenv.MBAddLib('jsonrpc')
 
 if sys.platform == 'win32':
     cppenv.Append(LIBS=['ws2_32'])
@@ -98,8 +99,8 @@ libconveyor = cppenv.SharedLibrary(
         cppenv.Moc4('include/conveyor/eeprommap.h')
     ])
 
-cppenv.MBInstallLib(libconveyor)
-cppenv.MBInstallHeaders(env.MBGlob('#/include/*'))
+cppenv.MBInstallLib(libconveyor, 'conveyor')
+cppenv.MBInstallHeaders(env.MBGlob('#/include/conveyor/*'), 'conveyor')
 env.Clean(libconveyor, '#/obj')
 
 tests = {}

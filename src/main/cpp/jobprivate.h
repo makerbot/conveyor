@@ -5,7 +5,9 @@
 
 #include <QString>
 
-#include "conveyor/job.h"
+#include <conveyor/job.h>
+#include <conveyor/conveyor.h>
+#include <conveyor/jobstatus.h>
 
 namespace conveyor
 {

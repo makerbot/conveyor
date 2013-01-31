@@ -5,6 +5,7 @@
 #include <QScopedPointer>
 
 #include <conveyor/exceptions.h>
+#include <conveyor/job.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"

@@ -3,7 +3,7 @@
 #ifndef PRINTERADDEDMETHOD_H
 #define PRINTERADDEDMETHOD_H (1)
 
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 #include <conveyor/fwd.h>
 

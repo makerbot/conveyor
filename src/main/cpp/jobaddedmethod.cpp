@@ -4,6 +4,8 @@
 #include "jobprivate.h"
 #include "conveyorprivate.h"
 
+#include <conveyor/job.h>
+
 #include <QString>
 #include <QMetaObject>
 
