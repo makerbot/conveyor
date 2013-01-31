@@ -271,13 +271,9 @@ _BuildState = conveyor.enum.enum(
 class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machine):
     @staticmethod
     def _create(id, driver, profile):
+        # TODO: since thread creation was moved, this static method is no
+        # longer necessary.
         machine = _S3gMachine(id, driver, profile)
-        machine._poll_thread = threading.Thread(
-            target=machine._poll_thread_target)
-        machine._poll_thread.start()
-        machine._work_thread = threading.Thread(
-            target=machine._work_thread_target)
-        machine._work_thread.start()
         return machine
 
     def __init__(self, name, driver, profile):
@@ -285,9 +281,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
         conveyor.machine.Machine.__init__(self, name, driver, profile)
         self._poll_disabled = False
         self._poll_interval = 5.0
-        self._poll_thread = None
         self._poll_time = time.time()
-        self._work_thread = None
         self._stop = False
         self._s3g = None
         self._toolhead_count = None
@@ -352,6 +346,14 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 self._toolhead_count = self._s3g.get_toolhead_count()
                 self._change_state(conveyor.machine.MachineState.BUSY)
                 self._poll()
+                poll_thread_name = ''.join(('poll-thread-', self.name))
+                poll_thread = threading.Thread(
+                    target=self._poll_thread_target, name=poll_thread_name)
+                poll_thread.start()
+                work_thread_name = ''.join(('work-thread-', self.name))
+                work_thread = threading.Thread(
+                    target=self._work_thread_target, name=work_thread_name)
+                work_thread.start()
 
     def disconnect(self):
         with self._state_condition:
@@ -440,21 +442,24 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
     def _poll_thread_target(self):
         try:
             while not self._stop:
-                self._poll_thread_target_iteration()
+                with self._state_condition:
+                    if conveyor.machine.MachineState.DISCONNECTED == self._state:
+                        break
+                    else:
+                        self._poll_thread_target_iteration()
         except Exception as e:
             self._log.exception('unhandled exception; s3g poll thread has ended')
         finally:
             self._log.info('machine %s poll thread ended', self.id)
 
     def _poll_thread_target_iteration(self):
-        with self._state_condition:
-            if not self._poll_disabled:
-                now = time.time()
-                if now >= self._poll_time:
-                    self._poll()
-                else:
-                    duration = self._poll_time - now
-                    self._state_condition.wait(duration)
+        if not self._poll_disabled:
+            now = time.time()
+            if now >= self._poll_time:
+                self._poll()
+            else:
+                duration = self._poll_time - now
+                self._state_condition.wait(duration)
 
     def _poll(self):
         with self._state_condition:
@@ -559,7 +564,11 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
     def _work_thread_target(self):
         try:
             while not self._stop:
-                self._work_thread_target_iteration()
+                with self._state_condition:
+                    if conveyor.machine.MachineState.DISCONNECTED == self._state:
+                        break
+                    else:
+                        self._work_thread_target_iteration()
         except Exception as e:
             self._log.exception('unhandled exception; s3g work thread ended')
         finally:
@@ -567,13 +576,12 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
             self._log.info('machine %s work thread ended', self.id)
 
     def _work_thread_target_iteration(self):
-        with self._state_condition:
-            if self._operation is not None:
-                try:
-                    self._operation.run()
-                finally:
-                    self._operation = None
-            self._state_condition.wait()
+        if self._operation is not None:
+            try:
+                self._operation.run()
+            finally:
+                self._operation = None
+        self._state_condition.wait()
 
     # TODO: Why are these two handlers identical? Is this right?
 
@@ -777,9 +785,10 @@ class _UploadFirmwareOperation(_BlockPollingOperation):
 
     def _run_without_polling(self):
         try:
+            port = self._machine.get_port()
             uploader = makerbot_driver.Firmware.Uploader()
             uploader.upload_firmware(
-                port_name, self.machine_type, self.input_file)
+                port.path, self.machine_type, self.input_file)
         except Exception as e:
             self.log.warning('handled exception', exc_info=True)
             failure = conveyor.util.exception_to_failure(e)
