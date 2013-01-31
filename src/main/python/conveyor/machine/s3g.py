@@ -63,7 +63,7 @@ class S3gDriver(conveyor.machine.Driver):
         try:
             profile = self._profiles[profile_name]
         except KeyError:
-            raise conveyor.error.UnknownProfileException(profile_name)
+            raise conveyor.error.UnknownProfileError(profile_name)
         else:
             return profile
 

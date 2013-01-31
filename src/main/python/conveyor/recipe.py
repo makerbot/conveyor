@@ -147,6 +147,8 @@ class Recipe(object):
 
     def _slicertask(self, profile, input_path, output_path, add_start_end,
             dualstrusion, slicer_settings):
+        self._log.info('blarg')
+        self._log.info(conveyor.slicer.Slicer.MIRACLEGRUE)
         if conveyor.slicer.Slicer.MIRACLEGRUE == self._job.slicer_name:
             exe = self._config.get('miracle_grue', 'exe')
             profile_dir = self._config.get('miracle_grue', 'profile_dir')
