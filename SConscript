@@ -100,7 +100,7 @@ libconveyor = cppenv.SharedLibrary(
     ])
 
 cppenv.MBInstallLib(libconveyor, 'conveyor')
-cppenv.MBInstallHeaders(env.MBGlob('#/include/conveyor/*', 'conveyor'))
+cppenv.MBInstallHeaders(env.MBGlob('#/include/conveyor/*'), 'conveyor')
 env.Clean(libconveyor, '#/obj')
 
 tests = {}
