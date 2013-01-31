@@ -199,7 +199,7 @@ class S3gDriver(conveyor.machine.Driver):
         def running_callback(task):
             try:
                 uploader = makerbot_driver.Firmware.Uploader()
-                hex_file_path = uploader.download_firmware(machinetype, version)
+                hex_file_path = uploader.download_firmware(machine_type, firmware_version)
             except Exception as e:
                 self._log.exception('unhandled exception')
                 failure = conveyor.util.exception_to_failure(e)

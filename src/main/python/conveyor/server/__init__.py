@@ -675,7 +675,7 @@ class _Client(conveyor.stoppable.StoppableThread):
         return result
 
     @jsonrpc()
-    def downloadfirmware(self, driver_name, machine_type, machine_version):
+    def downloadfirmware(self, driver_name, machine_type, firmware_version):
         task = self._server.download_firmware(
             driver_name, machine_type, firmware_version)
         return task
@@ -691,7 +691,7 @@ class _Client(conveyor.stoppable.StoppableThread):
         return task
 
     @jsonrpc()
-    def uploadfirmware(self, printername, machinetype, filename):
+    def uploadfirmware(self, machine_name, machinetype, filename):
         task = self._server.upload_firmware(
             machine_name, machinetype, filename)
         return task
