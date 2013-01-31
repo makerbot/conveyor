@@ -6,7 +6,7 @@
 
 #include <conveyor/exceptions.h>
 
-#include "conveyor.h"
+#include "conveyor/conveyor.h"
 #include "conveyorprivate.h"
 #include "jobprivate.h"
 #include "printerprivate.h"
