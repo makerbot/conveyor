@@ -42,9 +42,11 @@ if testmode is not None:
 env = Environment(ENV=os.environ)
 
 if 'win32' == sys.platform:
-   	env.Command('virtualenv', 'setup.bat', 'setup.bat')
+  venv = env.Command('virtualenv', 'setup.bat', 'setup.bat')
+  env.Clean(venv, 'virtualenv')
+  env.Clean(venv, 'virtualenv.pyc')
 else:
-	env.Command('virtualenv', 'setup.sh', './setup.sh')
+  env.Command('virtualenv', 'setup.sh', './setup.sh')
 
 if run_unit_tests:
     if 'win32' == sys.platform:

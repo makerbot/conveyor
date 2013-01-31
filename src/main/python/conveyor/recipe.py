@@ -33,6 +33,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.address
 import conveyor.domain
 import conveyor.dualstrusion
 import conveyor.enum
@@ -58,30 +59,30 @@ class RecipeManager(object):
         elif '.thing' == ext.lower():
             recipe = self._get_recipe_thing(job)
         else:
-            raise UnsupportedModelTypeException(job.input_file)
+            raise conveyor.error.UnsupportedModelTypeException(job.input_file)
         return recipe
 
     def _get_recipe_gcode(self, job):
         if not os.path.exists(job.input_file):
-            raise MissingFileException(job.input_file)
+            raise conveyor.error.MissingFileException(job.input_file)
         elif not os.path.isfile(job.input_file):
-            raise NotFileException(job.input_file)
+            raise conveyor.error.NotFileException(job.input_file)
         else:
             recipe = _GcodeRecipe(self._server, self._config, job, self._spool, job.input_file)
         return recipe
 
-    def _get_recipe_stl(self, job):
-        if not os.path.exists(job.input_file):
-            raise MissingFileException(job.input_file)
-        elif not os.path.isfile(job.input_file):
-            raise NotFileException(job.input_file)
+    def _getrecipe_stl(self, job):
+        if not os.path.exists(job.path):
+            raise conveyor.error.MissingPathException(job.input_file)
+        elif not os.path.isfile(job.path):
+            raise conveyor.error.NotFileException(job.input_file)
         else:
             recipe = _StlRecipe(self._server, self._config, job, self._spool, job.input_file)
             return recipe
 
     def _get_recipe_thing(self, job):
         if not os.path.exists(job.input_file):
-            raise MissingFileException(job.input_file)
+            raise conveyor.error.MissingFileException(job.input_file)
         else:
             thing_dir = tempfile.mkdtemp(suffix='.thing')
             unified_mesh_hack = self._config.get('server', 'unified_mesh_hack_exe')
@@ -766,24 +767,6 @@ class _DualThingRecipe(_ThingRecipe):
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process
-
-
-class UnsupportedModelTypeException(Exception):
-    def __init__(self, path):
-        Exception.__init__(self, path)
-        self.path = path
-
-
-class MissingFileException(Exception):
-    def __init__(self, path):
-        Exception.__init__(self, path)
-        self.path = path
-
-
-class NotFileException(Exception):
-    def __init__(self, path):
-        Exception.__init__(self, path)
-        self.path = path
 
 
 class InvalidThingException(Exception):

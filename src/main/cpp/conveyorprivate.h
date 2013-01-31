@@ -7,8 +7,8 @@
 #include <QList>
 #include <QString>
 
-#include <jsonrpc.h>
-#include <conveyor.h>
+#include <jsonrpc/jsonrpc.h>
+
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
 #include <conveyor/eeprommap.h>

@@ -3,8 +3,12 @@
 #ifndef PRINTERPRIVATE_H
 #define PRINTERPRIVATE_H
 
-#include <conveyor.h>
+#include <conveyor/conveyor.h>
+#include <conveyor/printer.h>
 #include <QStringList>
+
+#include "conveyor/printer.h"
+#include "conveyor/slicers.h"
 
 namespace conveyor
 {

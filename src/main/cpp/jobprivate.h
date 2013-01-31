@@ -3,7 +3,11 @@
 #ifndef JOBPRIVATE_H
 #define JOBPRIVATE_H
 
-#include <conveyor.h>
+#include <QString>
+
+#include <conveyor/job.h>
+#include <conveyor/conveyor.h>
+#include <conveyor/jobstatus.h>
 
 namespace conveyor
 {

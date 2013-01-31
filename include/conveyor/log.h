@@ -3,6 +3,7 @@
 #ifndef CONVEYOR_LOG_H
 #define CONVEYOR_LOG_H
 
+#include <ctime>
 #include <fstream>  // NOLINT(readability/streams)
 #include <sstream>  // NOLINT(readability/streams)
 #include <stdexcept>

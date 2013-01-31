@@ -20,7 +20,7 @@ import os.path
 import sys
 import fnmatch
 import re
-import glob
+from glob import glob
 
 # We require Qt 4.8.0; Oneiric ships with 4.7.4. On Oneiric, use the manually installed SDK.
 if sys.platform == 'linux2':
@@ -41,7 +41,7 @@ utilenv = env.Clone()
 Import('build_unit_tests', 'run_unit_tests')
 
 if 'win32' == sys.platform:
-    env.Tool('mingw')
+    env.Tool('mb_mingw', toolpath=[Dir('submodule/mw-scons-tools')])
     env.Replace(CCFLAGS=[])
 
 #NOTE: If you put '~'s in your bash profile, youre gonna have
@@ -67,18 +67,29 @@ env.Append(CCFLAGS='-Wno-long-long')
 env.Append(CCFLAGS='-Werror') # I <3 -Werror. It is my favorite -W flag.
 
 cppenv = env.Clone()
-cppenv.Append(CPPPATH=Dir('include/'))
-if ARGUMENTS.get('debian_build',0):
-    cppenv.Append(CPPPATH=Dir('/usr/include/makerbot/'))
-else:
-    cppenv.Append(CPPPATH=Dir('#/../jsonrpc/src/main/include/'))
-    cppenv.Append(CPPPATH=Dir('#/../json-cpp/include/'))
+cppenv.Append(CPPPATH=Dir('#/include/'))
+
+cppenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
+env.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
+
+cppenv.MBAddDevelLibPath('#/../jsonrpc/obj')
+cppenv.MBAddDevelLibPath('#/../json-cpp/obj')
+cppenv.MBAddDevelIncludePath('#/../jsonrpc/src/main/include')
+cppenv.MBAddDevelIncludePath('#/../json-cpp/include')
+
+cppenv.MBAddLib('json')
+cppenv.MBAddLib('jsonrpc')
+
+if sys.platform == 'win32':
+    cppenv.Append(LIBS=['ws2_32'])
+
+
 libconveyor_cpp = [Glob('src/main/cpp/*.cpp')]
 if 'win32' != sys.platform:
     libconveyor_cpp.append(Glob('src/main/cpp/posix/*.cpp'))
 else:
     libconveyor_cpp.append(Glob('src/main/cpp/win32/*.cpp'))
-libconveyor = cppenv.StaticLibrary(
+libconveyor = cppenv.SharedLibrary(
     'conveyor', [
         libconveyor_cpp,
         cppenv.Moc4('include/conveyor/conveyor.h'),
@@ -88,47 +99,26 @@ libconveyor = cppenv.StaticLibrary(
         cppenv.Moc4('include/conveyor/eeprommap.h')
     ])
 
-inst = []
-inst.append(cppenv.InstallAs( 'etc/conveyor.conf','conveyor-debian.conf'))
-inst.append(cppenv.Install('usr/lib',libconveyor))
-inst.append(cppenv.Install('usr/include','include/conveyor.h'))
-
-pysrc_root = str(Dir('#/src/main/python'))
-for root,dirnames,filenames in os.walk(pysrc_root):
-    for filename in fnmatch.filter(filenames,'*.py'):
-        rpath = os.path.relpath(root,pysrc_root)
-        outdir = os.path.join('module',rpath)
-        insrc = os.path.join(root,filename)
-        inst.append(cppenv.Install(outdir,insrc))
-        # print outdir,insrc
-
-env.Alias('install',inst)
+cppenv.MBInstallLib(libconveyor, 'conveyor')
+cppenv.MBInstallHeaders(env.MBGlob('#/include/conveyor/*'), 'conveyor')
+env.Clean(libconveyor, '#/obj')
 
 tests = {}
 testenv = cppenv.Clone()
 
+utilenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
 if "darwin" == sys.platform:
-    utilenv.Program('bin/start_conveyor_service',
-                    'src/util/cpp/mac_start_conveyor_service.c')
-    utilenv.Program('bin/stop_conveyor_service',
-                    'src/util/cpp/mac_stop_conveyor_service.c')
+    startcmd = utilenv.Program('bin/start_conveyor_service',
+                               'src/util/cpp/mac_start_conveyor_service.c')
+    stopcmd = utilenv.Program('bin/stop_conveyor_service',
+                              'src/util/cpp/mac_stop_conveyor_service.c')
+
+    utilenv.MBInstallBin(startcmd)
+    utilenv.MBInstallBin(stopcmd)
 
 
 if build_unit_tests:
     testenv.Append(LIBS='cppunit')
-
-    if ARGUMENTS.get('debian_build',0):
-        testenv.Append(LIBPATH=[Dir('/usr/lib/makerbot')])
-    	testenv.Append(LIBS=['jsonrpc'])
-    	testenv.Append(LIBS=['json'])
-    else:
-        testenv.Append(LIBPATH=[Dir('#/../json-cpp/obj/')])
-    	testenv.Append(LIBPATH=[Dir('#/../jsonrpc/obj/')])
-    	testenv.Append(LIBS=['jsonrpc'])
-    	testenv.Append(LIBS=['json'])
-
-    if 'win32' == sys.platform:
-        testenv.Append(LIBS=['ws2_32'])
 
     test_common = ['src/test/cpp/UnitTestMain.cpp', libconveyor]
 
@@ -149,4 +139,65 @@ if run_unit_tests:
     for (name, test) in tests.items():
         testenv.Command('runtest_test_'+name, test, test)
 
+conveyor_pysrc = []
+for curpath, dirnames, filenames in os.walk(str(Dir('#/src/main/python'))):
+    conveyor_pysrc.append(filter(lambda f:
+                                 (os.path.exists(str(f)) and
+                                  not os.path.isdir(str(f))),
+                             env.Glob(os.path.join(curpath, '*.py'))))
 
+conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
+                           conveyor_pysrc,
+              'python -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
+
+env.MBInstallEgg(conveyor_egg)
+env.Clean(conveyor_egg, '#/build')
+env.Clean(conveyor_egg, '#/src/main/python/conveyor.egg-info')
+
+if sys.platform == "linux2":
+    env.MBInstallResources(env.MBGlob('#/linux/*'))
+    env.MBInstallBin('#/wrapper/conveyord')
+    env.MBInstallResources('#/setup_conveyor_env.sh')
+    env.MBInstallConfig('#/conveyor-debian.conf', 'conveyor.conf')
+    env.MBInstallConfig('#/data/conveyor.conf', 'init/conveyor.conf')
+
+elif sys.platform == 'darwin':
+    launchd_dir = 'Library/LaunchDaemons'
+
+    #env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
+    env.MBInstallResources(env.MBGlob('#/mac/*'))
+    env.MBInstallConfig('#/conveyor-mac.conf', 'conveyor.conf')
+    env.MBInstallBin('#/setup_conveyor_env.sh')
+    env.MBInstallSystem('#/mac/com.makerbot.conveyor.plist',
+                        os.path.join(launchd_dir,
+                                     'com.makerbot.conveyor.plist'))
+
+elif sys.platform == 'win32':
+    env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/windows/*'))
+    env.MBInstallResources(env.MBGlob('#/win/*'))
+    env.MBInstallConfig('#/conveyor-win32.conf', 'conveyor.conf')
+
+    env.MBInstallBin('#/setup_conveyor_env.bat')
+    env.MBInstallBin('#/restart.bat')
+    env.MBInstallBin('#/start.bat')
+    env.MBInstallBin('#/stop.bat')
+
+env.MBInstallEgg(env.MBGlob('#/submodule/conveyor_bins/python/*'))
+    
+env.MBInstallResources('#/src/main/miraclegrue')
+env.MBInstallResources('#/src/main/skeinforge')
+
+env.MBInstallResources('#/conveyor_service.py')
+env.MBInstallResources('#/conveyor_cmdline_client.py')
+env.MBInstallResources('#/virtualenv.py')
+
+env.MBInstallResources('#/src/test/stl/single.stl', 'testfiles')
+env.MBInstallResources('#/src/test/stl/left.stl', 'testfiles')
+env.MBInstallResources('#/src/test/gcode/single.gcode', 'testfiles')
+
+env.MBCreateInstallTarget()
+cppenv.MBCreateInstallTarget()
+utilenv.MBCreateInstallTarget()
+
+#env.Clean('#/virtualenv')
+#env.Clean('#/virtualenv.pyc')

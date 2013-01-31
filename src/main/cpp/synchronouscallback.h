@@ -8,7 +8,7 @@
 #include <string>
 
 #include <json/value.h>
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 namespace conveyor
 {

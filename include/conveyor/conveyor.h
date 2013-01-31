@@ -10,7 +10,7 @@
 #include <conveyor/fwd.h>
 #include <conveyor/eeprommap.h>
 
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 namespace conveyor
 {

@@ -120,6 +120,16 @@ class MissingExecutableException(Exception, Error):
         return 1
 
 
+class MissingFileException(Exception, Error):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
+
+    def handle(self, log):
+        log.critical('missing file: %s', self.path, exc_info=True)
+        return 1
+
+
 class MultipleDriversException(Exception, Error):
     def handle(self, log):
         log.critical(
@@ -145,6 +155,15 @@ class NoDriversException(Exception, Error):
 class NoPortsException(Exception, Error):
     def handle(self, log):
         log.critical('there are no ports available', exc_info=True)
+        return 1
+
+
+class NotFileException(Exception, Error):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+
+    def handle(self, log):
+        log.critical('not a file: %s', self.path, exc_info=True)
         return 1
 
 
@@ -217,6 +236,17 @@ class UnknownProfileError(KeyError, Error):
 
     def handle(self, log):
         log.critical('unknown profile: %s', e.profile_name, exc_info=True)
+        return 1
+
+
+class UnsupportedModelTypeException(Exception, Error):
+    def __init__(self, path):
+        Exception.__init__(self, path)
+        self.path = path
+
+    def handle(self, log):
+        log.critical(
+            'not a supported model type: %s', self.path, exc_info=True)
         return 1
 
 
