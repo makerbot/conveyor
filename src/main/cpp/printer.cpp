@@ -4,8 +4,9 @@
 #include <QDebug>
 #include <QStringList>
 
-#include <conveyor.h>
+#include <conveyor/conveyor.h>
 #include <conveyor/exceptions.h>
+#include <conveyor/job.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"

@@ -1,4 +1,4 @@
-#include <conveyor.h>
+#include <conveyor/conveyor.h>
 
 #include <conveyor/slicers.h>
 

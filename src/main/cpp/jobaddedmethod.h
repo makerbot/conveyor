@@ -3,7 +3,7 @@
 #ifndef JOBADDEDMETHOD_H
 #define JOBADDEDMETHOD_H (1)
 
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 #include <conveyor/fwd.h>
 
