@@ -88,7 +88,7 @@ namespace conveyor
             qDebug() << "SynchronousCallback error:";
             qDebug() << response.toStyledString().c_str();
 
-            throw JsonRpcException (code, message, data);
+            throw JsonRpcException (methodName, params, code, message, data);
         }
         else
         if (not isSuccessResponse (response))
