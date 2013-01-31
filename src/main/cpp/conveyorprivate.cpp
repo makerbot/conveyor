@@ -279,7 +279,7 @@ namespace conveyor
         params["gcode_processor_name"] = Json::Value(Json::arrayValue);
         params["input_file"] = inputFile.toStdString();
         params["material_name"] = Json::Value(materialName.toStdString());
-        params["slicer_name"] = slicerConf.slicerName().toStdString();
+        params["slicer_name"] = slicerConf.slicerName().toLower().toStdString();
         params["slicer_settings"] = slicerConf.toJSON();
 
         return params;
