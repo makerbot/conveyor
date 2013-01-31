@@ -50,13 +50,13 @@ namespace conveyor
         QString m_displayName;
         QString m_uniqueName;
         QString m_printerType;
+        QString m_profileName;
         QStringList m_machineNames;
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasHeatedPlatform;
         int m_numberOfToolheads;
         ToolTemperature m_toolTemperature;
-        ConnectionStatus m_connectionStatus;
         float m_buildVolumeXmin;
         float m_buildVolumeYmin;
         float m_buildVolumeZmin;

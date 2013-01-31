@@ -9,13 +9,51 @@ digraph
     "S1";
     "S2";
     "S3";
+    "S4";
+    "S5";
+    "S6";
+    "S7";
+    "S8";
+    "S9";
+    "S10";
+    "S11";
 
     "S0" -> "S0" [label="<ws>"];
     "S0" -> "S1" [label="{,["];
+    "S0" -> "S4" [label="/"];
+
     "S1" -> "S1" [label="<any>"];
     "S1" -> "S2" [label="\""];
+    "S1" -> "S8" [label="/"];
+
     "S2" -> "S2" [label="<any>"];
     "S2" -> "S3" [label="\\"];
+
     "S2" -> "S1" [label="\""];
+
     "S3" -> "S2" [label="<any>"];
+
+    "S4" -> "S5" [label="/"];
+    "S4" -> "S6" [label="*"];
+
+    "S5" -> "S0" [label="<cr-lf>"];
+    "S5" -> "S5" [label="<any>"];
+
+    "S6" -> "S6" [label="<any>"];
+    "S6" -> "S7" [label="*"];
+
+    "S7" -> "S0" [label="/"];
+    "S7" -> "S6" [label="<any>"];
+
+    "S8" -> "S9" [label="/"];
+    "S8" -> "S10" [label="*"];
+
+    "S9" -> "S1" [label="<cr-lf>"];
+    "S9" -> "S9" [label="<any>"];
+
+    "S10" -> "S10" [label="<any>"];
+    "S10" -> "S11" [label="*"];
+
+    "S11" -> "S10" [label="<any>"];
+    "S11" -> "S1" [label="/"];
 }

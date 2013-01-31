@@ -118,6 +118,12 @@ namespace conveyor
         return m_private->m_printerType;
     }
 
+    QString
+    Printer::profileName() const
+    {
+        return m_private->m_profileName;
+    }
+
     bool
     Printer::canPrint () const
     {
@@ -138,30 +144,6 @@ namespace conveyor
     int Printer::numberOfExtruders() const
     {
         return m_private->m_numberOfToolheads;
-    }
-
-    ConnectionStatus
-    Printer::connectionStatus () const
-    {
-        return m_private->m_connectionStatus;
-    }
-
-    QString
-    Printer::connectionStatusString () const
-    {
-        QString status;
-
-        switch(m_private->m_connectionStatus)
-        {
-        case CONNECTED:
-            status = "Connected";
-            break;
-        case NOT_CONNECTED:
-            status = "Not Connected";
-            break;
-        }
-
-        return status;
     }
 
     const ToolTemperature &

@@ -87,6 +87,10 @@ namespace conveyor
         bool compatibleFirmware(QString &firmwareVersion) const;
         bool verifyS3g(QString &s3gPath) const;
 
+        std::list<Port> getPorts() const;
+
+        void connectToPort(const Port &port) const;
+
         Conveyor * const m_conveyor;
         Connection * const m_connection;
         ConnectionStream * const m_connectionStream;

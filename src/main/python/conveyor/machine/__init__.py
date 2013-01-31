@@ -22,82 +22,153 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import logging
 import threading
 
+import conveyor.enum
+import conveyor.error
 import conveyor.event
 import conveyor.stoppable
 
-class MachineDriver(object):
+
+class DriverManager(object):
+    @staticmethod
+    def create(config):
+        driver_manager = DriverManager()
+
+        import conveyor.machine.s3g
+        profile_dir = config.get('makerbot_driver', 'profile_dir')
+        driver = conveyor.machine.s3g.S3gDriver.create(profile_dir)
+        driver_manager._drivers[driver.name] = driver
+
+        # Add more drivers here.
+
+        return driver_manager
+
     def __init__(self):
-        self.portadded = conveyor.event.Event('portadded')
-        self.portremoved = conveyor.event.Event('portremoved')
+        self._drivers = {}
 
-    def initialize(self):
+    def get_drivers(self):
+        return self._drivers.values()
+
+    def get_driver(self, driver_name):
+        try:
+            driver = self._drivers[driver_name]
+        except KeyError:
+            raise conveyor.error.UnknownDriverError(driver_name)
+        else:
+            return driver
+
+
+class DriverInfo(object):
+    def __init__(self, name, profiles):
+        self.name = name
+        self.profiles = profiles
+
+    def to_dict(self):
+        dct = {
+            'name': self.name,
+            'profiles': [p.to_dict() for p in self.profiles],
+        }
+        return dct
+
+
+class Driver(object):
+    def __init__(self, name):
+        self.name = name
+        self._log = logging.getLogger(self.__class__.__name__)
+
+    def get_profiles(self, port):
         raise NotImplementedError
 
-    def getport(self, port_name):
+    def get_profile(self, profile_name):
         raise NotImplementedError
 
-    def getports(self):
+    def new_machine_from_port(self, port, profile):
         raise NotImplementedError
 
-    def getprofile(self, profile_name):
+    def print_to_file(
+            self, profile, input_file, output_file,
+            extruder_name, file_type, has_start_end, material_name,
+            build_name, task):
         raise NotImplementedError
 
-    def getprofiles(self):
+    def get_info(self):
+        profiles = []
+        for profile in self.get_profiles(None):
+            profile_info = profile.get_info()
+            profiles.append(profile_info)
+        info = DriverInfo(self.name, profiles)
+        return info
+
+    # TODO: these are specific to S3G.
+
+    def get_uploadable_machines(self, task):
         raise NotImplementedError
 
-class MachinePort(object):
-    def __init__(self):
-        pass
-
-    def getuid(self):
+    def get_machine_versions(self, machine_type, task):
         raise NotImplementedError
 
-    def connect(self, profile):
+    def compatible_firmware(self, firmware_version):
         raise NotImplementedError
 
-    def isconnceted(self):
+    def download_firmware(self, machine_type, firmware_version, task):
         raise NotImplementedError
 
-class MachineProfile(object):
-    def __init__(self):
-        self.xsize = None
-        self.ysize = None
-        self.zsize = None
 
-    def get_gcode_scaffold(self):
+class ProfileInfo(object):
+    '''This is the JSON-serializable portion of a `Profile`.'''
+
+    def __init__(
+            self, name, driver_name, xsize, ysize, zsize, can_print,
+            can_print_to_file, has_heated_platform, number_of_tools):
+        self.name = name
+        self.driver_name = driver_name
+        self.xsize = xsize
+        self.ysize = ysize
+        self.zsize = zsize
+        self.can_print = can_print
+        self.can_print_to_file = can_print_to_file
+        self.has_heated_platform = has_heated_platform
+        self.number_of_tools = number_of_tools
+
+    def to_dict(self):
+        dct = {
+            'name': self.name,
+            'driver_name': self.driver_name,
+            'xsize': self.xsize,
+            'ysize': self.ysize,
+            'zsize': self.zsize,
+            'can_print': self.can_print,
+            'can_print_to_file': self.can_print_to_file,
+            'has_heated_platform': self.has_heated_platform,
+            'number_of_tools': self.number_of_tools,
+        }
+        return dct
+
+
+class Profile(object):
+    def __init__(self, name, driver, xsize, ysize, zsize, can_print,
+            can_print_to_file, has_heated_platform, number_of_tools):
+        self.name = name
+        self.driver = driver
+        self.xsize = xsize
+        self.ysize = ysize
+        self.zsize = zsize
+        self.can_print = can_print
+        self.can_print_to_file = can_print_to_file
+        self.has_heated_platform = has_heated_platform
+        self.number_of_tools = number_of_tools
+
+    def get_gcode_scaffold(
+            self, extruders, extruder_temperature, platform_temperature,
+            material_name):
         raise NotImplementedError
 
-    def make_file(self, job, path, task):
-        raise NotImplementedError
+    def get_info(self):
+        info = ProfileInfo(
+            self.name, self.driver.name, self.xsize, self.ysize, self.zsize,
+            self.can_print, self.can_print_to_file, self.has_heated_platform,
+            self.number_of_tools,)
+        return info
 
-class Machine(object):
-    def __init__(self):
-        self.port = None
-        self.profile = None
-
-    def disconnect(self):
-        raise NotImplementedError
-
-    def preheat(self, job, task):
-        raise NotImplementedError
-
-    def make(self, job, task):
-        raise NotImplementedError
-
-    def update_firmware(self, path, task):
-        raise NotImplementedError
-
-    def getsettings(self, task):
-        raise NotImplementedError
-
-    def setsettings(self, settings, task):
-        raise NotImplementedError
-
-    def home(self, task):
-        raise NotImplementedError
-
-    def move_relative(self, position, task):
-        raise NotImplementedError
 
 class GcodeScaffold(object):
     def __init__(self):
@@ -105,73 +176,151 @@ class GcodeScaffold(object):
         self.end = None
         self.variables = None
 
-class SerialMachineDriver(MachineDriver):
+
+MachineState = conveyor.enum.enum(
+    'MachineState', 'DISCONNECTED', 'BUSY', 'IDLE', 'OPERATION', 'PAUSED',)
+
+
+MachineEvent = conveyor.enum.enum(
+    'MachineEvent', 'CONNECT', 'DISCONNECT', 'DISCONNECTED', 'WENT_IDLE',
+    'WENT_BUSY', 'START_OPERATION', 'PAUSE_OPERATION', 'UNPAUSE_OPERATION',
+    'OPERATION_STOPPED',)
+
+
+class MachineManager(object):
     def __init__(self):
-        MachineDriver.__init__(self)
-        self._detectorthread = None
-        self._log = logging.getLogger(self.__class__.__name__)
-        self._ports = {}
+        self._machines = {}
 
-    def initialize(self):
-        if None is self._detectorthread:
-            self._detectorthread = _SerialDetectorThread(self)
-            self._detectorthread.start()
+    def get_machines(self):
+        machines = self._machines.values()
+        return machines
 
-    def getport(self, port_name):
-        port = self._ports[port_name]
-        return port
-
-    def getports(self):
-        ports = self._ports.items()
-        return ports
-
-    def _addport(self, port_name, port):
-        self._ports[port_name] = port
-        self.portadded(port_name, port)
-
-    def _removeport(self, port_name):
-        del self._ports[port_name]
-        self.portremoved(port_name)
-
-class SerialMachinePort(MachinePort):
-    def __init__(self):
-        MachinePort.__init__(self)
-        self.path = None
-        self.vid = None
-        self.pid = None
-        self.iserial = None
-        self.baudrate = None
-
-class SerialMachineProfile(MachineProfile):
-    def __init__(self):
-        MachineProfile.__init__(self)
-
-class SerialMachine(Machine):
-    def __init__(self):
-        Machine.__init__(self)
-
-class _SerialDetectorThread(conveyor.stoppable.StoppableThread):
-    def __init__(Self, driver):
-        conveyor.stoppable.StoppableThread.__init__(self)
-        self._condition = threading.Condition()
-        self._driver = driver
-        self._interval = 5.0
-        self._log = logging.getLogger(self.__class__.__name__)
-        self._stop = False
-
-    def run(self):
+    def get_machine(self, machine_name):
         try:
-            while not self._stop:
-                self._runiteration()
-                with self._condition:
-                    self._condition.wait(self._interval)
-        except:
-            self._log.exception('unhandled exception', exc_info=True)
+            machine = self._machines[machine_name]
+        except KeyError:
+            raise conveyor.error.UnknownMachineError(machine_name)
+        else:
+            return machine
 
-    def stop(self):
-        self._stop = True
-        with self._condition:
-            self._condition.notify_all()
+    def new_machine(self, port, driver, profile):
+        machine = driver.new_machine_from_port(port, profile)
+        self._machines[machine.name] = machine
+        return machine
 
-    def _runiteration(self):
-        pass
+
+class MachineInfo(object):
+    '''This is the JSON-serializable portion of a `Machine`.'''
+
+    def __init__(self, name, port_name, driver_name, profile_name, state):
+        self.name = name
+        self.port_name = port_name
+        self.driver_name = driver_name
+        self.profile_name = profile_name
+        self.state = state
+
+        # Below are the fields from the old `Printer` object. Not all of them
+        # are useful. The `_S3gMachine` should populate these fields.
+        #
+        # We dropped the `connection_status` field since it had been
+        # permanently set to `connected` and is now subsumed by `state`.
+
+        self.display_name = None
+        self.unique_name = None
+        self.printer_type = None
+        self.machine_names = None
+        self.can_print = None
+        self.can_printtofile = None
+        self.has_heated_platform = None
+        self.number_of_toolheads = None
+        self.temperature = None
+        self.firmware_version = None
+
+    def to_dict(self):
+        dct = {
+            'name': self.name,
+            'port_name': self.port_name,
+            'driver_name': self.driver_name,
+            'profile_name': self.profile_name,
+            'state': self.state,
+
+            # Old stuff:
+
+            'displayName': self.display_name,
+            'uniqueName': self.unique_name,
+            'printerType': self.printer_type,
+            'machineNames': self.machine_names,
+            'canPrint': self.can_print,
+            'canPrintToFile': self.can_printtofile,
+            'hasHeatedPlatform': self.has_heated_platform,
+            'numberOfToolheads': self.number_of_toolheads,
+            'temperature': self.temperature,
+            'firmware_version': self.firmware_version,
+        }
+        return dct
+
+
+class Machine(object):
+    def __init__(self, name, driver, profile):
+        self.name = name
+        self._driver = driver
+        self._profile = profile
+        self._log = logging.getLogger(self.__class__.__name__)
+        self._port = None
+        self._state = MachineState.DISCONNECTED
+        self._state_condition = threading.Condition()
+        self.state_changed = conveyor.event.Event('state_changed')
+        self.temperature_changed = conveyor.event.Event('temperature_changed')
+
+    def get_info(self):
+        raise NotImplementedError
+
+    def get_port(self):
+        return self._port
+
+    def set_port(self, port):
+        self._port = port
+
+    def get_driver(self):
+        return self._driver
+
+    def get_profile(self):
+        return self._profile
+
+    def get_state(self):
+        return self._state
+
+    def connect(self):
+        raise NotImplementedError
+
+    def disconnect(self):
+        raise NotImplementedError
+
+    def pause(self):
+        raise NotImplementedError
+
+    def unpause(self):
+        raise NotImplementedError
+
+    def cancel(self):
+        raise NotImplementedError
+
+    def print(
+            self, input_path, skip_start_end, extruders,
+            extruder_temperature, platform_temperature, material_name,
+            build_name, task):
+        raise NotImplementedError
+
+    # TODO: these are specific to S3G.
+
+    def reset_to_factory(self, task):
+        raise NotImplementedError
+
+    def upload_firmware(self, machine_type, input_file, task):
+        raise NotImplementedError
+
+    def read_eeprom(self, task):
+        raise NotImplementedError
+
+    def write_eeprom(self, eeprom_map, task):
+        raise NotImplementedError
