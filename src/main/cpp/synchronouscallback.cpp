@@ -9,6 +9,7 @@
 
 #include <json/value.h>
 #include <jsonrpc/jsonrpc.h>
+#include <jsonrpc/jsonrpcexception.h>
 
 #include "synchronouscallback.h"
 
