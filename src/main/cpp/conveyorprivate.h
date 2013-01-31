@@ -8,7 +8,6 @@
 #include <QString>
 
 #include <jsonrpc.h>
-#include <conveyor.h>
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
 #include <conveyor/eeprommap.h>

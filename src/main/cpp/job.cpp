@@ -4,7 +4,6 @@
 #include <QDebug>
 #include <QScopedPointer>
 
-#include <conveyor.h>
 #include <conveyor/exceptions.h>
 
 #include "conveyorprivate.h"

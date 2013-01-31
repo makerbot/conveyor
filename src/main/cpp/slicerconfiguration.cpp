@@ -1,5 +1,3 @@
-#include <conveyor.h>
-
 #include <conveyor/slicers.h>
 
 #include "slicerconfigurationprivate.h"

@@ -14,6 +14,7 @@
 
 #include <conveyor/connection.h>
 #include <conveyor/connectionstatus.h>
+#include <conveyor/conveyor.h>
 #include <conveyor/eeprommap.h>
 #include <conveyor/exceptions.h>
 
