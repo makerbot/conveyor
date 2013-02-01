@@ -71,10 +71,10 @@ class RecipeManager(object):
             recipe = _GcodeRecipe(self._server, self._config, job, self._spool, job.input_file)
         return recipe
 
-    def _getrecipe_stl(self, job):
-        if not os.path.exists(job.path):
+    def _get_recipe_stl(self, job):
+        if not os.path.exists(job.input_file):
             raise conveyor.error.MissingPathException(job.input_file)
-        elif not os.path.isfile(job.path):
+        elif not os.path.isfile(job.input_file):
             raise conveyor.error.NotFileException(job.input_file)
         else:
             recipe = _StlRecipe(self._server, self._config, job, self._spool, job.input_file)
