@@ -66,9 +66,6 @@ namespace conveyor
         /** A list of all the jobs the printer has queued */
         QList<Job *> jobs ();
 
-        /** A Pointer to the current job */
-        Job * currentJob();
-
         /** A human readable name for the printer, for display in GUI elements */
         QString const & displayName () const;
 
