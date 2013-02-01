@@ -36,6 +36,7 @@ setup(
         'conveyor.slicer',
         'conveyor.platform',
         'conveyor.machine',
+        'conveyor.machine.port',
         'conveyor.server',
     ],
 )
