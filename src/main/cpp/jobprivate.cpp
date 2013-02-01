@@ -156,16 +156,20 @@ namespace conveyor
             if (json[failureKey].isObject()) {
                 const std::string failureExceptionKey("exception");
                 const std::string failureCodeKey("code");
-                const std::string failureSlicerLogKey("slicer_log");
+                const std::string failureSlicerLogKey("slicerlog");
                 if (json[failureKey].isMember(failureExceptionKey) &&
                     json[failureKey].isMember(failureCodeKey) &&
                     json[failureKey].isMember(failureSlicerLogKey) &&
-                    json[failureKey][failureExceptionKey].isString() &&
                     json[failureKey][failureCodeKey].isNumeric() &&
                     json[failureKey][failureSlicerLogKey].isString()) {
+                  const QString exc(
+                      json[failureKey][failureExceptionKey].isString() ?
+                      QString::fromUtf8(
+                          json[failureKey][failureExceptionKey].asCString()) :
+                      QString());
+
                     m_failure = new Job::Failure(
-                        QString::fromUtf8(
-                            json[failureKey][failureExceptionKey].asCString()),
+                        exc,
                         json[failureKey][failureCodeKey].asInt(),
                         QString::fromUtf8(
                             json[failureKey][failureSlicerLogKey].asCString()));
