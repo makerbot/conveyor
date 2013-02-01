@@ -321,6 +321,10 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
         info.can_printtofile = True
         info.has_heated_platform = (0 != len(profile._s3g_profile.values['heated_platforms']))
         info.number_of_toolheads = len(profile._s3g_profile.values['tools'])
+        axes = profile._s3g_profile.values['axes']
+        info.build_volume = [axes['X']['platform_length'],
+                             axes['Y']['platform_length'],
+                             axes['Z']['platform_length']]
         toolhead_temperature = {}
         if None is not self._toolhead_temperature:
             for i, t in enumerate(self._toolhead_temperature):
