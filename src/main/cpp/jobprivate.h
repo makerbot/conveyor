@@ -31,8 +31,6 @@ namespace conveyor
         QString m_name;
         JobState m_state;
         JobConclusion m_conclusion;
-        QString m_currentStepName;
-        int m_currentStepProgress;
 
         // Information about the machine or type of machine associated
         // with this job

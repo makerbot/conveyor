@@ -53,9 +53,6 @@ namespace conveyor
         JobState state (void) const;
         JobConclusion conclusion (void) const;
 
-        int currentStepProgress (void) const;
-        QString currentStepName (void) const;
-
         QString machineName() const;
         QString profileName() const;
 
