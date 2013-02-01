@@ -615,6 +615,10 @@ class _Client(conveyor.stoppable.StoppableThread):
                 info.can_print_to_file = True
                 info.has_heated_platform = (0 != len(profile._s3g_profile.values['heated_platforms']))
                 info.number_of_toolheads = len(profile._s3g_profile.values['tools'])
+                axes = profile._s3g_profile.values['axes']
+                info.build_volume = [axes['X']['platform_length'],
+                                     axes['Y']['platform_length'],
+                                     axes['Z']['platform_length']]
                 info.temperature = {'tools': {}, 'heated_platforms': {},}
                 info.firmware_version = None
                 dct = info.to_dict()
