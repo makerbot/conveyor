@@ -6,7 +6,7 @@
 #include <QObject>
 #include <QString>
 
-#include <json/value.h>
+#include <jsoncpp/json/value.h>
 
 #include <conveyor/fwd.h>
 

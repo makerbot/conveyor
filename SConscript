@@ -77,7 +77,7 @@ cppenv.MBAddDevelLibPath('#/../json-cpp/obj')
 cppenv.MBAddDevelIncludePath('#/../jsonrpc/src/main/include')
 cppenv.MBAddDevelIncludePath('#/../json-cpp/include')
 
-cppenv.MBAddLib('json')
+cppenv.MBAddLib('jsoncpp')
 cppenv.MBAddLib('jsonrpc')
 
 if sys.platform == 'win32':
@@ -157,8 +157,8 @@ env.Clean(conveyor_egg, '#/build')
 env.Clean(conveyor_egg, '#/src/main/python/conveyor.egg-info')
 
 if sys.platform == "linux2":
-    env.MBInstallResources(env.MBGlob('#/linux/*'))
-    env.MBInstallBin('#/wrapper/conveyord')
+    #env.MBInstallConfig(env.MBGlob('#/linux/*'))
+    #env.MBInstallBin('#/wrapper/conveyord')
     env.MBInstallResources('#/setup_conveyor_env.sh')
     env.MBInstallConfig('#/conveyor-debian.conf', 'conveyor.conf')
     env.MBInstallConfig('#/data/conveyor.conf', 'init/conveyor.conf')
