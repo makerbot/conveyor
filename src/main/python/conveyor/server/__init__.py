@@ -651,9 +651,10 @@ class _Client(conveyor.stoppable.StoppableThread):
 
     @jsonrpc()
     def getjobs(self):
+        jobs = self._server.get_jobs(self)
         result = {}
-        for job_id, job in self._server.get_jobs(self):
-            result[job_id] = job.get_info().to_dict()
+        for job_id in jobs:
+            result[job_id] = jobs[job_id].get_info().to_dict()
         return result
 
     @jsonrpc()
