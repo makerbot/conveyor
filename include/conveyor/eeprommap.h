@@ -7,7 +7,7 @@
 #include <conveyor/fwd.h>
 #include <vector>
 
-#include <json/value.h>
+#include <jsoncpp/json/value.h>
 
 namespace conveyor
 {

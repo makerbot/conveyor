@@ -235,6 +235,7 @@ class MachineInfo(object):
         self.number_of_toolheads = None
         self.temperature = None
         self.firmware_version = None
+        self.build_volume = None
 
     def to_dict(self):
         dct = {
@@ -256,6 +257,7 @@ class MachineInfo(object):
             'numberOfToolheads': self.number_of_toolheads,
             'temperature': self.temperature,
             'firmware_version': self.firmware_version,
+            'build_volume': self.build_volume,
         }
         return dct
 

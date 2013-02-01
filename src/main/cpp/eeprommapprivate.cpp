@@ -1,7 +1,7 @@
 #include <QString>
 #include <QStringList>
 #include <vector>
-#include <json/value.h>
+#include <jsoncpp/json/value.h>
 
 #include "eeprommapprivate.h"
 

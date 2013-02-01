@@ -9,7 +9,7 @@
 # include <ws2tcpip.h>
 #endif
 
-#include <json/value.h>
+#include <jsoncpp/json/value.h>
 #include <jsonrpc/jsonrpc.h>
 
 #include <conveyor/connection.h>
@@ -563,5 +563,49 @@ namespace conveyor
     ConveyorPrivate::emitJobRemoved (Job * const j)
     {
         m_conveyor->emitJobRemoved(j);
+    }
+
+    bool isJobForPrinter(
+        const Job * const job, const Printer * const printer)
+    {
+      return (
+          // Physical printer
+          (printer->canPrint() &&
+           !job->machineName().isEmpty() &&
+           job->machineName() == printer->uniqueName()) ||
+          // Archetype printer
+          (!printer->canPrint() &&
+           !job->profileName().isEmpty() &&
+           job->profileName() == printer->profileName()));
+    }
+
+    QList<Job *> filterJobsByPrinter(
+        const QList<Job *> jobs, const Printer * const printer)
+    {
+        QList<Job *> filteredJobs;
+        if (printer) {
+            for (int i = 0; i < jobs.size(); i++) {
+                Job * const job(jobs[i]);
+                if (isJobForPrinter(job, printer)) {
+                    filteredJobs.append(job);
+                }
+            }
+        } else {
+            LOG_ERROR << "Null printer parameter" << std::endl;
+        }
+        return filteredJobs;
+    }
+
+    QList<Job *> filterJobsByConclusion(
+        const QList<Job *> jobs, const JobConclusion jobConclusion)
+    {
+        QList<Job *> filteredJobs;
+        for (int i = 0; i < jobs.size(); i++) {
+            Job * const job(jobs[i]);
+            if (job->conclusion() == jobConclusion) {
+                filteredJobs.append(job);
+            }
+        }
+        return filteredJobs;
     }
 }

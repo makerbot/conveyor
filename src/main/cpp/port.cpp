@@ -1,7 +1,7 @@
 // Copyright 2013 Makerbot Industries
 
 #include "conveyor/port.h"
-#include "json/json.h"
+#include <jsoncpp/json/json.h>
 
 #include <stdexcept>
 

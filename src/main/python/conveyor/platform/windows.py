@@ -31,7 +31,7 @@ else:
     PROGRAM_FILES_DIR = os.path.join('C:\\', 'Program Files')
 
 
-DEFAULT_CONFIG_FILE = os.path.join(PROGRAM_FILES_DIR, 'MakerBot', 'conveyor', 'conveyor-win32.conf')
+DEFAULT_CONFIG_FILE = os.path.join(PROGRAM_FILES_DIR, 'MakerBot', 'MakerWare', 'conveyor.conf')
 
 
 DEFAULT_CONFIG_COMMON_ADDRESS = 'tcp:127.0.0.1:9999'
@@ -40,19 +40,19 @@ DEFAULT_CONFIG_COMMON_ADDRESS = 'tcp:127.0.0.1:9999'
 DEFAULT_CONFIG_COMMON_PID_FILE = 'conveyord.pid'
 
 
-DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = os.path.join('..', 's3g', 'makerbot_driver', 'profiles')
+DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = os.path.join('s3g', 'profiles')
 
 
-DEFAULT_CONFIG_MIRACLE_GRUE_EXE = os.path.join('..', 'Miracle-Grue', 'bin', 'miracle_grue.exe')
+DEFAULT_CONFIG_MIRACLE_GRUE_EXE = os.path.join('miracle_grue.exe')
 
 
-DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR = os.path.join('..', 'Miracle-Grue')
+DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR = os.path.join('miraclegrue')
 
 
-DEFAULT_CONFIG_SKEINFORGE_FILE = os.path.join('..', 'skeinforge', 'skeinforge_application', 'skeinforge.py')
+DEFAULT_CONFIG_SKEINFORGE_FILE = os.path.join('skeinforge', 'skeinforge_application', 'skeinforge.py')
 
 
-DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = os.path.join('..', 'skeinforge')
+DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = os.path.join('skeinforge')
 
 
 DEFAULT_CONFIG_SERVER_LOGGING_FILE = 'conveyord.log'

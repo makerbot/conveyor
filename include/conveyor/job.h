@@ -28,6 +28,9 @@ namespace conveyor
         int currentStepProgress (void) const;
         QString currentStepName (void) const;
 
+        QString machineName() const;
+        QString profileName() const;
+
     public slots:
         void cancel (void);
         void pause (void);

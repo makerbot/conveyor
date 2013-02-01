@@ -1,6 +1,7 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include <conveyor/conveyor.h>
+#include "conveyor/conveyor.h"
+#include "conveyor/log.h"
 
 #include "printerprivate.h"
 
@@ -21,14 +22,17 @@ namespace conveyor
         : m_conveyor (conveyor)
         , m_printer (printer)
         , m_uniqueName (uniqueName)
+        , m_canPrint(false)
+        , m_canPrintToFile(false)
+        , m_hasHeatedPlatform(false)
+        , m_numberOfToolheads(0)
+        , m_buildVolumeXmin(0)
+        , m_buildVolumeYmin(0)
+        , m_buildVolumeZmin(0)
+        , m_buildVolumeXmax(0)
+        , m_buildVolumeYmax(0)
+        , m_buildVolumeZmax(0)
     {
-        this->m_canPrint = true;
-        this->m_canPrintToFile = true;
-        this->m_displayName = "Dummy Printer";
-        this->m_printerType = "Replicator";
-        this->m_machineNames = QStringList("TheReplicator");
-        this->m_numberOfToolheads = 2;
-        this->m_hasHeatedPlatform = true;
     }
 
     void
@@ -52,47 +56,33 @@ namespace conveyor
         float buildVolumeXmin, buildVolumeYmin, buildVolumeZmin,
               buildVolumeXmax, buildVolumeYmax, buildVolumeZmax;
 
-        if ("The Replicator Single" == printerType) {
-            buildVolumeXmin = -113.5;
-            buildVolumeYmin = -74;
-            buildVolumeZmin = 0;
-            buildVolumeXmax = 113.5;
-            buildVolumeYmax = 74;
-            buildVolumeZmax = 150;
-        } else if ("The Replicator Dual" == printerType) {
-            buildVolumeXmin = -113.5;
-            buildVolumeYmin = -74;
-            buildVolumeZmin = 0;
-            buildVolumeXmax = 113.5;
-            buildVolumeYmax = 74;
-            buildVolumeZmax = 150;
-        } else if ("The Replicator 2" == printerType) {
-            buildVolumeXmin = -142.5;
-            buildVolumeYmin = -75;
-            buildVolumeZmin = 0;
-            buildVolumeXmax = 142.5;
-            buildVolumeYmax = 75;
-            buildVolumeZmax = 150;
-        } else if ("The Replicator 2X" == printerType) {
-            // TODO(nicholasbishop): these values are the same as rep2
-            // for now, not sure if correct though
-            buildVolumeXmin = -142.5;
-            buildVolumeYmin = -75;
-            buildVolumeZmin = 0;
-            buildVolumeXmax = 142.5;
-            buildVolumeYmax = 75;
-            buildVolumeZmax = 150;
+        const std::string buildVolumeKey("build_volume");
+        if (json.isMember(buildVolumeKey)) {
+            if (json[buildVolumeKey].isArray() &&
+                json[buildVolumeKey].size() == 3 &&
+                json[buildVolumeKey][0].isNumeric() &&
+                json[buildVolumeKey][1].isNumeric() &&
+                json[buildVolumeKey][2].isNumeric()) {
+              const float buildVolume[3] = {
+                json[buildVolumeKey][0].asFloat(),
+                json[buildVolumeKey][1].asFloat(),
+                json[buildVolumeKey][2].asFloat()
+              };
+              buildVolumeXmin = buildVolume[0] / -2.0f;
+              buildVolumeXmax = buildVolume[0] / 2.0f;
+
+              buildVolumeYmin = buildVolume[1] / -2.0f;
+              buildVolumeYmax = buildVolume[1] / 2.0f;
+
+              buildVolumeZmin = 0;
+              buildVolumeZmax = buildVolume[2];
+            } else {
+              LOG_ERROR << "Invalid build_volume: "
+                        << json.toStyledString() << std::endl;
+            }
         } else {
-            // Let's use TOM as default
-            const int xlen = 106;
-            const int ylen = 120;
-            const int zlen = 106;
-            buildVolumeXmin = -xlen / 2;
-            buildVolumeYmin = -ylen / 2;
-            buildVolumeZmin = 0;
-            buildVolumeXmax = xlen / 2;
-            buildVolumeYmax = ylen / 2;
-            buildVolumeZmax = zlen;
+          LOG_ERROR << "Missing build_volume"
+                    << json.toStyledString() << std::endl;
         }
 
         m_uniqueName = uniqueName;

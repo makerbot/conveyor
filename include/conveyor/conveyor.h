@@ -11,6 +11,7 @@
 
 #include <conveyor/fwd.h>
 #include <conveyor/eeprommap.h>
+#include <conveyor/jobstatus.h>
 #include <conveyor/port.h>
 
 #include <jsonrpc/jsonrpc.h>
@@ -109,6 +110,24 @@ namespace conveyor
         void emitJobAdded (Job *);
         void emitJobRemoved (Job *);
     };
+
+    /// True if the job is for the specified printer or printer type
+    ///
+    /// If the printer is a physical machine, it is matched against
+    /// the jobs' machine name and unique ID fields. For archetype
+    /// printers, the profile name is used.
+    bool isJobForPrinter(
+        const Job * const job, const Printer * const printer);
+
+    /// Return a new list of jobs filtered by their associated printers
+    ///
+    /// Uses isJobForPrinter() to determine a match.
+    QList<Job *> filterJobsByPrinter(
+        const QList<Job *> jobs, const Printer * const printer);
+
+    /// Return a new list of jobs filtered by their conclusion
+    QList<Job *> filterJobsByConclusion(
+        const QList<Job *> jobs, const JobConclusion jobConclusion);
 }
 
 #endif
