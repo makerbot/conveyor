@@ -77,7 +77,8 @@ cppenv.MBAddDevelLibPath('#/../json-cpp/obj')
 cppenv.MBAddDevelIncludePath('#/../jsonrpc/src/main/include')
 cppenv.MBAddDevelIncludePath('#/../json-cpp/include')
 
-cppenv.Append(LIBS = ['jsoncpp', 'jsonrpc'])
+cppenv.MBAddLib('jsoncpp')
+cppenv.MBAddLib('jsonrpc')
 
 if sys.platform == 'win32':
     cppenv.Append(LIBS=['ws2_32'])
@@ -98,16 +99,15 @@ libconveyor = cppenv.SharedLibrary(
         cppenv.Moc4('include/conveyor/eeprommap.h')
     ])
 
-cppenv.MBInstallLib(libconveyor)
-cppenv.MBInstallHeaders(env.MBGlob('#/include/*'))
+cppenv.MBInstallLib(libconveyor, 'conveyor')
+cppenv.MBInstallHeaders(env.MBGlob('#/include/conveyor/*'), 'conveyor')
 env.Clean(libconveyor, '#/obj')
 
 tests = {}
 testenv = cppenv.Clone()
 
+utilenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
 if "darwin" == sys.platform:
-    utilenv.Tool('mb_install', toolpath=[Dir('submodule/mw-scons-tools')])
-
     startcmd = utilenv.Program('bin/start_conveyor_service',
                                'src/util/cpp/mac_start_conveyor_service.c')
     stopcmd = utilenv.Program('bin/stop_conveyor_service',
@@ -191,8 +191,13 @@ env.MBInstallResources('#/conveyor_service.py')
 env.MBInstallResources('#/conveyor_cmdline_client.py')
 env.MBInstallResources('#/virtualenv.py')
 
+env.MBInstallResources('#/src/test/stl/single.stl', 'testfiles')
+env.MBInstallResources('#/src/test/stl/left.stl', 'testfiles')
+env.MBInstallResources('#/src/test/gcode/single.gcode', 'testfiles')
+
 env.MBCreateInstallTarget()
 cppenv.MBCreateInstallTarget()
+utilenv.MBCreateInstallTarget()
 
 #env.Clean('#/virtualenv')
 #env.Clean('#/virtualenv.pyc')

@@ -46,7 +46,7 @@ else:
 def checklevel(level):
     return _checkLevel(level)
 
-def earlylogging(program): # pragma: no cover
+def earlylogging(program, early_debugging=True): # pragma: no cover
     '''Initialize console logging for the early part of a conveyor process.'''
 
     dct = {
@@ -94,7 +94,6 @@ def earlylogging(program): # pragma: no cover
         'incremental': False,
         'disable_existing_loggers': True
     }
-    early_debugging = False # Flip this to enable early debugging
     if early_debugging:
         dct['handlers']['log'] = {
             "class": "logging.FileHandler",

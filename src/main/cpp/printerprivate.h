@@ -3,8 +3,12 @@
 #ifndef PRINTERPRIVATE_H
 #define PRINTERPRIVATE_H
 
-#include <conveyor.h>
+#include <conveyor/conveyor.h>
+#include <conveyor/printer.h>
 #include <QStringList>
+
+#include "conveyor/printer.h"
+#include "conveyor/slicers.h"
 
 namespace conveyor
 {
@@ -46,13 +50,13 @@ namespace conveyor
         QString m_displayName;
         QString m_uniqueName;
         QString m_printerType;
+        QString m_profileName;
         QStringList m_machineNames;
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasHeatedPlatform;
         int m_numberOfToolheads;
         ToolTemperature m_toolTemperature;
-        ConnectionStatus m_connectionStatus;
         float m_buildVolumeXmin;
         float m_buildVolumeYmin;
         float m_buildVolumeZmin;

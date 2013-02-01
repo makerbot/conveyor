@@ -84,12 +84,22 @@ class _AbstractSocketListener(Listener):
                     else:
                         raise
                 else:
+                    self._log_connection(addr)
                     connection = conveyor.connection.SocketConnection(sock, addr)
                     return connection
+    def _log_connection(self, addr):
+        raise NotImplementedError
+
+
 
 class TcpListener(_AbstractSocketListener):
     def cleanup(self):
         pass
+
+    def _log_connection(self, addr):
+        host, port = addr
+        self._log.info('accepted TCP connection: %s:%s', host, port)
+
 
 if 'nt' != os.name:
     class _PosixPipeListener(_AbstractSocketListener):
@@ -100,6 +110,10 @@ if 'nt' != os.name:
         def cleanup(self):
             if os.path.exists(self._path):
                 os.unlink(self._path)
+
+        def _log_connection(self, addr):
+            self._log.info('accepted pipe connection')
+
 
     PipeListener = _PosixPipeListener
 
@@ -122,7 +136,7 @@ else:
 
         def stop(self):
             self._stopped = True # conditional gaurd unneeded, run() does not sleep
-        
+
         def run(self):
             self.accept()
 
@@ -170,5 +184,9 @@ else:
 
         def cleanup(self):
             pass
+
+        def _log_connection(self, addr):
+            self._log.info('accepted pipe connection')
+
 
     PipeListener = _Win32PipeListener

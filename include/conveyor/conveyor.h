@@ -7,10 +7,13 @@
 #include <QObject>
 #include <QScopedPointer>
 
+#include <list>
+
 #include <conveyor/fwd.h>
 #include <conveyor/eeprommap.h>
+#include <conveyor/port.h>
 
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 namespace conveyor
 {
@@ -68,6 +71,11 @@ namespace conveyor
         void resetToFactory(Printer * const printer) const;
         bool compatibleFirmware(QString &firmwareVersion) const;
         bool verifyS3g(QString &s3gPath) const;
+
+        /** Run the "getports" command and format the result */
+        std::list<Port> getPorts() const;
+
+        void connectToPort(const Port &port) const;
 
     signals:
         void printerAdded (Printer *);

@@ -1,14 +1,15 @@
 // vim:cindent:cino=\:0:et:fenc=utf-8:ff=unix:sw=4:ts=4:
 
-#include <QDebug>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QWaitCondition>
+#include <cstdio>
 #include <stdexcept>
 #include <string>
 
 #include <jsoncpp/json/value.h>
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
+#include <jsonrpc/jsonrpcexception.h>
 
 #include "synchronouscallback.h"
 
@@ -84,10 +85,15 @@ namespace conveyor
             std::string const message (error["message"].asString ());
             Json::Value const data (error["data"]);
 
-            qDebug() << "SynchronousCallback error:";
-            qDebug() << response.toStyledString().c_str();
+            fprintf(stderr,
+                "Error invoking \"%s\"\n"
+                "This may indicate mismatched "
+                "Conveyor and MakerWare versions,\n"
+                "check your Conveyor and MakerWare "
+                "logs for more information.\n\n",
+                methodName.c_str());
 
-            throw JsonRpcException (code, message, data);
+            throw JsonRpcException (methodName, params, code, message, data);
         }
         else
         if (not isSuccessResponse (response))

@@ -3,8 +3,6 @@
 
 #include <cppunit/extensions/HelperMacros.h>
 
-#include <conveyor.h>
-
 class PrinterListTestCase : public CPPUNIT_NS::TestFixture
 {
     CPPUNIT_TEST_SUITE(PrinterListTestCase);

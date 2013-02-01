@@ -7,8 +7,8 @@
 #include <QList>
 #include <QString>
 
-#include <jsonrpc.h>
-#include <conveyor.h>
+#include <jsonrpc/jsonrpc.h>
+
 #include <conveyor/address.h>
 #include <conveyor/connection.h>
 #include <conveyor/eeprommap.h>
@@ -86,6 +86,10 @@ namespace conveyor
         void resetToFactory(Printer * const printer) const;
         bool compatibleFirmware(QString &firmwareVersion) const;
         bool verifyS3g(QString &s3gPath) const;
+
+        std::list<Port> getPorts() const;
+
+        void connectToPort(const Port &port) const;
 
         Conveyor * const m_conveyor;
         Connection * const m_connection;

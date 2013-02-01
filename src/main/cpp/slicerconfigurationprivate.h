@@ -20,7 +20,8 @@ namespace conveyor
     class SlicerConfigurationPrivate
     {
     public:
-        static SlicerConfiguration * defaultConfiguration(SlicerConfiguration::Quality quality);
+        static SlicerConfiguration * defaultConfiguration(
+            SlicerConfiguration::Preset preset);
 
         /// Unpack a configuration serialized to JSON
         SlicerConfigurationPrivate(Json::Value &);

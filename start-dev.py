@@ -45,15 +45,23 @@ def _main(argv):
     parser.add_argument(
         '-c',
         '--config',
-        help='the configuration file',
-        metavar='FILE')
+        action='store',
+        type=str,
+        required=False,
+        help='read configuration from FILE',
+        metavar='FILE',
+        dest='config_file')
     parsed_args, unparsed_args = parser.parse_known_args(argv[1:])
-    if None is parsed_args.config:
-        parsed_args.config = 'conveyor-dev.conf'
-    with open(parsed_args.config) as fp:
-        config = json.load(fp)
-    pidfile = config['common']['pidfile']
-    if os.path.exists(pidfile):
+    if None is parsed_args.config_file:
+        parsed_args.config_file = 'conveyor-dev.conf'
+    try:
+        with open(parsed_args.config_file) as fp:
+            config = json.load(fp)
+    except ValueError:
+        pid_file = 'conveyord.pid'
+    else:
+        pid_file = config.get('common', {}).get('pid_file', 'conveyord.pid')
+    if os.path.exists(pid_file):
         print(
             'conveyor-start: pid file exists; is the conveyor service already running?',
             file=sys.stderr)
@@ -69,16 +77,18 @@ def _main(argv):
         if 'PYTHONPATH' not in os.environ:
             os.environ['PYTHONPATH'] = path
         else:
-            os.environ['PYTHONPATH'] = os.pathsep.join(
-                path, os.environ['PYTHONPATH'])
+            os.environ['PYTHONPATH'] = os.pathsep.join((
+                path, os.environ['PYTHONPATH']))
         arguments = [
             'python',
             '-B',
-            '-m', 'conveyor.server',
-            '-c', parsed_args.config,
+            os.path.join('src', 'main', 'python', 'conveyor', 'server', '__main__.py'),
+            '-c', parsed_args.config_file,
             ]
+        if len(unparsed_args) > 0 and '--' == unparsed_args[0]:
+            unparsed_args = unparsed_args[1:]
         arguments.extend(unparsed_args)
-        os.execvp('python', arguments) # NOTE: this line does not return.
+        os.execvp(sys.executable, arguments) # NOTE: this line does not return.
 
 
 if '__main__' == __name__:

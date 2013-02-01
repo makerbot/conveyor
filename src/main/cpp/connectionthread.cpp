@@ -4,7 +4,7 @@
 #include <QThread>
 #include <unistd.h>
 
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 #include <conveyor/connection.h>
 

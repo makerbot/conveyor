@@ -128,6 +128,18 @@ namespace conveyor
         return m_private->verifyS3g(s3gPath);
     }
 
+    std::list<Port>
+    Conveyor::getPorts() const
+    {
+        return m_private->getPorts();
+    }
+
+    void
+    Conveyor::connectToPort(const Port &port) const
+    {
+      m_private->connectToPort(port);
+    }
+
     void
     Conveyor::emitPrinterAdded (Printer * const p)
     {

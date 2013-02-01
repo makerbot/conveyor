@@ -24,120 +24,25 @@ import codecs
 import errno
 import json
 import logging
+import inspect
 import io
 import os
 import sys
 import threading
 
-
 import conveyor.event
-from conveyor.event import Event
+import conveyor.json
 import conveyor.stoppable
-import conveyor.test
 import conveyor.task
 
-# See conveyor/doc/jsonreader.{dot,png}.
-#
-#   State 0 - handles whitespace before the top-level JSON object or array
-#   State 1 - handles JSON text that is not a string
-#   State 2 - handles JSON strings
-#   State 3 - handles JSON string escape sequences
-#
-# The _JsonReader state machine invokes the event handler whenever it makes an
-# invalid transition. This resets the machine to S0 and sends the invalid JSON
-# to the event handler. The event handler is expected to try to parse the
-# invalid JSON and issue an error.
 
-
-class _JsonReader(object):
-    """ Basic class to handle reading a JSON stream. Reads data via the
-   'feed' and 'feedeof' functions. Waits for completed JSON chunks, and
-    then passes them to self.event when a complete block is detected 
-    """
-    def __init__(self, inEvent=None):
-        """ 
-        @param conveyor event object, if None a new event object is created
-        """ 
-        # v Event to consume data
-        self.event = inEvent if inEvent is not None else Event('_JsonReader.event')
-        self._log = logging.getLogger(self.__class__.__name__)
-        self._reset()
-
-    def _reset(self):
-        """ Resets our JSON stream. """
-        self._log.debug('')
-        self._state = 0
-        self._stack = [] #json bracket-stack. stores JSON nesting level
-        self._buffer = StringIO.StringIO()
-
-    def _consume(self, ch):
-        """ consume a single charachter, storing it and updating JSON stream 
-        state. If char is mid-block, it is stored and state is updated. If
-        the charachter completes a JSON block, the complete block is sent to 
-        the associated Event, and the buffer is cleared. 
-        @param ch is assumed to be a unicode char, in a JSON stream
-        """
-        self._buffer.write(ch) # buffer our new char
-        # handle 'before top lvl json object' setup.
-        if 0 == self._state:
-            if ch in ('{', '['):
-                self._state = 1
-                self._stack.append(ch)
-            elif ch not in (' ', '\t', '\n', '\r'):
-                self._send()
-        # handle during JSON object  
-        elif 1 == self._state:
-            if '"' == ch:
-                self._state = 2
-            elif ch in ('{', '['):
-                self._stack.append(ch)
-            elif ch in ('}', ']'):
-                send = False
-                if 0 == len(self._stack):
-                    send = True
-                else:
-                    firstch = self._stack.pop()
-                    if ('{' == firstch and '}' != ch) or ('[' == firstch
-                        and ']' != ch):
-                            send = True
-                    else:
-                        send = (0 == len(self._stack))
-                if send:
-                    self._send()
-        # handle json strings
-        elif 2 == self._state:
-            if '"' == ch:
-                self._state = 1
-            elif '\\' == ch:
-                self._state = 3
-        # handle json string escapes 
-        elif 3 == self._state:
-            self._state = 2
-        else:
-            raise ValueError(self._state)
-
-    def _send(self):
-        """ posts _buffer to out registered Event, stripping edge chars"""
-        data = self._buffer.getvalue()
-        self._log.debug('data=%r', data)
-        self._reset()
-        if 0 != len(data.strip(' \t\n\r')):
-            self.event(data)
-
-    def feed(self, data):
-        """ 
-        Feed a chunk of data to the reader. If this chunk completes a JSON  dict, 
-        that full be automatically be passed to the attached Event as part of 
-        transition. 
-        @param data, assumed to be unicode JSON data
-        """
-        self._log.debug('data=%r', data)
-        for ch in data:
-            self._consume(ch)
-
-    def feedeof(self):
-        """ send EOF """
-        self._send()
+def install(jsonrpc, obj):
+    for name, value in inspect.getmembers(obj):
+        if inspect.ismethod(value) and getattr(value, '_jsonrpc', False):
+            exported_name = getattr(value, '_jsonrpc_name', None)
+            if None is exported_name:
+                exported_name = name
+            jsonrpc.addmethod(exported_name, value)
 
 
 class JsonRpcException(Exception):
@@ -147,11 +52,6 @@ class JsonRpcException(Exception):
         self.message = message
         self.data = data
 
-# TODO: This TaskFactory nonsense is a pretty terrible hack. Ugh.
-
-class TaskFactory(object):
-    def __call__(self, *args, **kwargs):
-        raise NotImplementedError
 
 class JsonRpc(conveyor.stoppable.StoppableInterface):
     """ JsonRpc handles a json stream, to gaurentee the output file pointer 
@@ -166,8 +66,8 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         self._condition = threading.Condition()
         self._idcounter = 0
         self._infp = infp # contract: .read(), .stop(), .close()
-        self._jsonreader = _JsonReader()
-        self._jsonreader.event.attach(self._jsonreadercallback)
+        self._jsonreader = conveyor.json.JsonReader(
+            self._jsonreadercallback, False)
         self._log = logging.getLogger(self.__class__.__name__)
         self._methods = {}
         self._methodsinfo={}
@@ -378,24 +278,17 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         if method in self._methods:
             func = self._methods[method]
             if 'params' not in request:
-                response = self._invokesomething(id, func, (), {})
+                response = self._invokemethod(id, func, (), {})
             else:
                 params = request['params']
                 if isinstance(params, dict):
-                    response = self._invokesomething(id, func, (), params)
+                    response = self._invokemethod(id, func, (), params)
                 elif isinstance(params, list):
-                    response = self._invokesomething(id, func, params, {})
+                    response = self._invokemethod(id, func, params, {})
                 else:
                     response = self._invalidparams(id)
         else:
             response = self._methodnotfound(id)
-        return response
-
-    def _invokesomething(self, id, func, args, kwargs):
-        if not isinstance(func, TaskFactory):
-            response = self._invokemethod(id, func, args, kwargs)
-        else:
-            response = self._invoketask(id, func, args, kwargs)
         return response
 
     def _fixkwargs(self, kwargs):
@@ -413,70 +306,45 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         try:
             result = func(*args, **kwargs)
         except TypeError as e:
-            self._log.debug('exception', exc_info=True)
+            self._log.warning('handled exception', exc_info=True)
             if None is not id:
                 response = self._invalidparams(id)
         except JsonRpcException as e:
-            self._log.debug('exception', exc_info=True)
+            self._log.warning('handled exception', exc_info=True)
             if None is not id:
                 response = self._errorresponse(id, e.code, e.message, e.data)
-        except:
-            self._log.exception('uncaught exception')
+        except Exception as e:
+            self._log.warning('uncaught exception', exc_info=True)
             if None is not id:
                 e = sys.exc_info()[1]
                 data = {'name': e.__class__.__name__, 'args': e.args}
                 response = self._errorresponse(
                     id, -32000, 'uncaught exception', data)
         else:
-            if None is not id:
-                response = self._successresponse(id, result)
-        self._log.debug('response=%r', response)
+            if not isinstance(result, conveyor.task.Task):
+                if None is not id:
+                    response = self._successresponse(id, result)
+            else:
+                task = result
+                def stoppedcallback(task):
+                    if conveyor.task.TaskConclusion.ENDED == task.conclusion:
+                        response = self._successresponse(id, task.result)
+                    elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
+                        response = self._errorresponse(id, -32001, 'task failed', task.failure)
+                    elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
+                        response = self._errorresponse(id, -32002, 'task canceled', None)
+                    else:
+                        raise ValueError(task.conclusion)
+                    outdata = json.dumps(response)
+                    self._send(outdata)
+                task.stoppedevent.attach(stoppedcallback)
+                task.start()
+            self._log.debug('response=%r', response)
         return response
 
-    def _invoketask(self, id, func, args, kwargs):
-        self._log.debug(
-            'id=%r, func=%r, args=%r, kwargs=%r', id, func, args, kwargs)
-        response = None
-        kwargs = self._fixkwargs(kwargs)
-        try:
-            task = func(*args, **kwargs)
-        except TypeError as e:
-            self._log.debug('exception', exc_info=True)
-            if None is not id:
-                response = self._invalidparams(id)
-        except JsonRpcException as e:
-            self._log.debug('exception', exc_info=True)
-            if None is not id:
-                response = self._errorresponse(id, e.code, e.message, e.data)
-        except:
-            self._log.exception('uncaught exception')
-            if None is not id:
-                e = sys.exc_info()[1]
-                data = {'name': e.__class__.__name__, 'args': e.args}
-                response = self._errorresponse(
-                    id, -32000, 'uncaught exception', data)
-        else:
-            def stoppedcallback(task):
-                if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                    response = self._successresponse(id, task.result)
-                elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-                    response = self._errorresponse(id, -32001, 'task failed', task.failure)
-                elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
-                    response = self._errorresponse(id, -32002, 'task canceled', None)
-                else:
-                    raise ValueError(task.conclusion)
-                outdata = json.dumps(response)
-                self._send(outdata)
-            task.stoppedevent.attach(stoppedcallback)
-            task.start()
-            response = None
-        return response
-
-    def addmethod(self, method, func, info=None):
+    def addmethod(self, method, func):
         self._log.debug('method=%r, func=%r', method, func)
         self._methods[method] = func
 
     def getmethods(self):
         return self._methods
-
-

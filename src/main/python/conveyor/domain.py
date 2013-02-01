@@ -19,7 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
-# NOTE: If you convert it to or from JSON, it should go in this file.
+# NOTE: this file should go away.
 
 import conveyor.enum
 
@@ -27,13 +27,17 @@ class DomainObject(object):
     def todict(self):
         raise NotImplementedError
 
+    def to_dict(self):
+        result = self.todict()
+        return result
+
+
 class Job(DomainObject):
     def __init__(
         self, id, build_name, path, config, printerid, gcodeprocessor,
         skip_start_end, with_start_end, slicer_settings, print_to_file_type, material):
             self.build_name = build_name
             self.conclusion = None
-            self.config = config
             self.currentstep = None
             self.failure = None
             self.id = id
@@ -57,7 +61,6 @@ class Job(DomainObject):
         dct = {
             'build_name': self.build_name,
             'conclusion': self.conclusion,
-            'config': self.config,
             'currentstep': self.currentstep, # TODO: not quite right
             'failure': self.failure, # TODO: also not quite right
             'id': self.id,
@@ -81,7 +84,7 @@ class Job(DomainObject):
     def fromdict(dct):
         slicer_settings = SlicerConfiguration.fromdict(dct['slicer_settings'])
         job = Job(
-            dct['id'], dct['build_name'], dct['path'], dct['config'],
+            dct['id'], dct['build_name'], dct['path'], None,
             dct['printerid'], dct['gcodeprocessor'], dct['skip_start_end'],
             dct['with_start_end'],  slicer_settings, dct['print_to_file_type'], dct['material'])
         job.state = dct['state'] # TODO: :(

@@ -22,661 +22,839 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import collections
 import logging
 import makerbot_driver
-import makerbot_driver.Writer
-import os.path
-import serial
 import threading
 import time
 
-import conveyor.event
-import conveyor.task
-import conveyor.util
+import conveyor.error
+import conveyor.machine
+import conveyor.machine.port.serial
 
-class S3gDetectorThread(conveyor.stoppable.StoppableThread):
-    def __init__(self, config, server):
-        conveyor.stoppable.StoppableThread.__init__(self)
-        self._available = {}
-        self._blacklist = {}
-        self._config = config
-        self._condition = threading.Condition()
-        self._detector = makerbot_driver.MachineDetector()
-        self._log = logging.getLogger(self.__class__.__name__)
-        self._server = server
-        self._stop = False
 
-    def _expire_blacklist(self):
-        now = time.time()
-        for portname, unlisttime in self._blacklist.items():
-            if now >= unlisttime:
-                del self._blacklist[portname]
-                self._log.debug('removing port from blacklist: %r', portname)
+# NOTE: The code here uses the word "profile" to refer to the
+# "conveyor.machine.s3g._S3gProfile" and "s3g_profile" to refer to the
+# "makerbot_driver.Profile".
 
-    def _runiteration(self):
-        self._expire_blacklist()
-        profiledir = self._config['common']['profiledir']
-        factory = makerbot_driver.MachineFactory(profiledir)
-        available = self._detector.get_available_machines().copy()
-        self._log.debug('self._available = %r', self._available)
-        self._log.debug('available = %r', available)
-        self._log.debug('blacklist = %r', self._blacklist)
-        for portname in self._blacklist.keys():
-            if portname in available:
-                del available[portname]
-        self._log.debug('available (post blacklist) = %r', available)
-        old_keys = set(self._available.keys())
-        new_keys = set(available.keys())
-        detached = old_keys - new_keys
-        attached = new_keys - old_keys
-        self._log.debug('detached = %r', detached)
-        self._log.debug('attached = %r', attached)
-        for portname in detached:
-            self._server.removeprinter(portname)
-        if len(attached) > 0:
-            for portname in attached:
-                try:
-                    returnobj = factory.build_from_port(portname, True)
-                    s3g = getattr(returnobj, 's3g')
-                    profile = getattr(returnobj, 'profile')
-                    printerid = available[portname]['iSerial']
-                    fp = s3g.writer.file
-                    firmware_version = s3g.get_version()
-                    s3gprinterthread = S3gPrinterThread(
-                        self._server, self._config, portname, printerid, profile,
-                        fp, firmware_version)
-                    s3gprinterthread.start()
-                    self._server.appendprinter(portname, s3gprinterthread)
-                except:
-                    self._log.exception('unhandled exception')
-                    self.blacklist(portname)
-        self._available = available.copy()
+class S3gDriver(conveyor.machine.Driver):
+    @staticmethod
+    def create(profile_dir):
+        driver = S3gDriver(profile_dir)
+        for profile_name in makerbot_driver.list_profiles(profile_dir):
+            s3g_profile = makerbot_driver.Profile(profile_name, profile_dir)
+            profile = _S3gProfile._create(profile_name, driver, s3g_profile)
+            driver._profiles[profile.name] = profile
+        return driver
 
-    def blacklist(self, portname):
-        with self._condition:
-            if portname in self._available:
-                del self._available[portname]
-            now = time.time()
-            unlisttime = now + self._config['server']['blacklisttime']
-            self._blacklist[portname] = unlisttime
+    def __init__(self, profile_dir):
+        conveyor.machine.Driver.__init__(self, 's3g')
+        self._profile_dir = profile_dir
+        self._profiles = {}
 
-    def run(self):
-        try:
-            while not self._stop:
-                with self._condition:
-                    self._runiteration()
-                if not self._stop:
-                    with self._condition:
-                        self._condition.wait(10.0)
-        except:
-            self._log.error('unhandled exception', exc_info=True)
-
-    def stop(self):
-        with self._condition:
-            self._stop = True
-            self._condition.notify_all()
-
-def _gettemperature(profile, s3g):
-    tools = {}
-    for key in profile.values['tools'].keys():
-        tool = int(key)
-        tools[key] = s3g.get_toolhead_temperature(tool)
-    heated_platforms = {}
-    for key in profile.values['heated_platforms'].keys():
-        heated_platform = int(key)
-        heated_platforms[key] = s3g.get_platform_temperature(heated_platform)
-    temperature = {
-        'tools': tools,
-        'heated_platforms': heated_platforms
-    }
-    return temperature
-
-class PrinterThreadNotIdleError(Exception):
-    def __init__(self):
-        pass
-
-class PrinterThreadBadStateError(Exception):
-    def __init__(self):
-        pass
-
-class S3gPrinterThread(conveyor.stoppable.StoppableThread):
-    def __init__(self, server, config, portname, printerid, profile, fp, firmware_version):
-        conveyor.stoppable.StoppableThread.__init__(self)
-        self._lock = threading.Lock()
-        self._condition = threading.Condition(self._lock)
-        self._config = config
-        self._currenttask = None
-        self._firmware_version = firmware_version
-        self._fp = fp
-        self._log = logging.getLogger(self.__class__.__name__)
-        self._portname = portname
-        self._printerid = printerid
-        self._profile = profile
-        self._queue = collections.deque()
-        self._server = server
-        self._stop = False
-        self._curprintjob = None
-
-        #states
-        self._states = {
-            "idle" : True,
-            "printing"  : False,
-            "uploadingfirmware"  : False,
-            "readingeeprom"  : False,
-            "writingeeprom"  : False,
-            "resettofactory" : False,
-            }
-
-    def _statetransition(self, current, new):
-        #The current state should be true
-        if not self._states[current]:
-            self._log.info("error=printer_thread_not_idle, action=%s", new)
-            raise PrinterThreadNotIdleError
-        self._states[current] = False
-        #All states should be false at this point
-        if True in self._states.values():
-            self._log.info("error=bad_printer_thread_state, action=%s", new)
-            raise PrinterThreadBadStateError
-        self._states[new] = True
-        self._log.debug('oldstate=%s, newstate=%s', current, new)
-
-    def getportname(self):
-        return self._portname
-
-    def getprinterid(self):
-        return self._printerid
-
-    def getprofile(self):
-        return self._profile
-
-    def get_firmware_version(self):
-        return self._firmware_version
-
-    def print(
-        self, job, buildname, gcodepath, slicer_settings,
-        print_to_file_type, material, task, dualstrusion):
-            def stoppedcallback(task):
-                with self._condition:
-                    self._currenttask = None
-                    self._curprintjob = None
-                    self._statetransition("printing", "idle")
-            task.stoppedevent.attach(stoppedcallback)
-            self._log.debug(
-                'job=%r, buildname=%r, gcodepath=%r, slicer_settings=%r, material=%r, task=%r',
-                job, buildname, gcodepath, slicer_settings,
-                print_to_file_type, material, task)
-            with self._condition:
-                printjob = (
-                    job, buildname, gcodepath,
-                    slicer_settings, print_to_file_type, material, task,
-                    dualstrusion)
-                self._queue.appendleft(printjob)
-                self._condition.notify_all()
-
-    def run(self):
-        try:
-            s3g = makerbot_driver.s3g()
-            condition = threading.Condition()
-            s3g.writer = makerbot_driver.Writer.StreamWriter(self._fp, condition)
-            now = time.time()
-            polltime = now + 5.0
-            while not self._stop:
-                if self._states['idle'] and self._curprintjob is None:
-                    with self._condition:
-                        if 0 < len(self._queue):
-                            self._curprintjob = self._queue.pop()
-                    now = time.time()
-                    if polltime <= now:
-                        polltime = now + 5.0
-                        try:
-                            with self._condition: # TODO: this is a hack
-                                temperature = _gettemperature(self._profile, s3g)
-                        except makerbot_driver.BuildCancelledError:
-                            self._log.debug('handled exception', exc_info=True)
-                            # This happens when print from SD and cancel it on
-                            # the bot. There is no conveyor job to cancel.
-                        else:
-                            self._server.changeprinter(
-                                self._portname, temperature)
-                    with self._condition:
-                        self._log.debug('waiting')
-                        self._condition.wait(1.0)
-                        self._log.debug('resumed')
-                elif self._states['idle'] and self._curprintjob is not None:
-                    job, buildname, gcodepath, slicer_settings, print_to_file_type, material, task, dualstrusion = self._curprintjob
-                    driver = S3gDriver()
-                    try:
-                        with self._condition:
-                            self._statetransition("idle", "printing")
-                            self._currenttask = task
-                        driver.print(
-                            self._server, self._portname, self._fp,
-                            self._profile, buildname, gcodepath,
-                            slicer_settings,
-                            print_to_file_type, material, task, dualstrusion)
-                    except PrinterThreadNotIdleError:
-                        self._log.debug('handled exception', exc_info=True)
-                    except makerbot_driver.BuildCancelledError:
-                        self._log.debug('handled exception', exc_info=True)
-                        self._log.info('print canceled')
-                        if (None is not self._currenttask
-                            and conveyor.task.TaskState.STOPPED != self._currenttask.state):
-                                with self._condition:
-                                    self._currenttask.cancel()
-                    except makerbot_driver.ExternalStopError:
-                        self._log.debug('handled exception', exc_info=True)
-                        self._log.info('print canceled')
-                        if (None is not self._currenttask
-                            and conveyor.task.TaskState.STOPPED != self._currenttask.state):
-                                with self._condition:
-                                    self._currenttask.cancel()
-                    except Exception as e:
-                        self._log.error('unhandled exception', exc_info=True)
-                        with self._condition:
-                            if None is not self._currenttask:
-                                self._currenttask.fail(e)
-                    now = time.time()
-                    polltime = now + 5.0
-        except:
-            self._log.exception('unhandled exception')
-            self._server.evictprinter(self._portname, self._fp)
-        finally:
-            self._fp.close()
-
-    def readeeprom(self, task):
-        driver = S3gDriver()
-        with self._condition:
-            self._statetransition("idle", "readingeeprom")
-            self._currenttask = task
-            try:
-                eeprommap = driver.readeeprom(self._fp)
-                return eeprommap
-            finally:
-                self._statetransition("readingeeprom", "idle")
-                self._currenttask = None
-
-    def writeeeprom(self, eeprommap, task):
-        driver = S3gDriver()
-        with self._condition:
-            self._statetransition("idle", "writingeeprom")
-            self._currenttask = task
-            try:
-                driver.writeeeprom(eeprommap, self._fp)
-            finally:
-                self._statetransition("writingeeprom", "idle")
-                self._currenttask = None
-    
-    def uploadfirmware(self, machine_type, filename, task):
-        with self._condition:
-            self._statetransition("idle", "uploadingfirmware")
-            uploader = makerbot_driver.Firmware.Uploader()
-            self._fp.close()
-            try:
-                uploader.upload_firmware(self._portname, machine_type, filename)
-            finally:
-                self._fp.open()
-                self._statetransition("uploadingfirmware", "idle")
-                self._currenttask = None
-
-    def resettofactory(self, task):
-        with self._condition:
-            self._statetransition("idle", "resettofactory")
-            def stoppedcallback(task):
-                self._statetransition("resettofactory", "idle")
-                self._currenttask = None
-            def runningcallback(task):
-                driver = S3gDriver()
-                with self._condition:
-                    driver.resettofactory(self._fp)
-                task.end(None)
-            task.stoppedevent.attach(stoppedcallback)
-            task.runningevent.attach(runningcallback)
-            self._currenttask = task
-            self._currenttask.start()
-
-    def stop(self):
-        with self._condition:
-            self._stop = True
-            if None is not self._currenttask:
-                self._currenttask.cancel()
-            self._condition.notify_all()
-
-class S3gDriver(object):
-    '''Stateless S3G printer driver.
-
-    All of the state related to a print job is passed on the call stack.
-    Instances of this class can safely be used by multiple threads.
-    '''
-
-    def __init__(self):
-        self._log = logging.getLogger(self.__class__.__name__)
-
-    # TODO: It makes me sad that we pass "slicer"_settings here, but that's the
-    # object that has the extruder and platform temperatures. Domain modeling
-    # error.
-
-    def _gcodelines(self, profile, gcodepath, slicer_settings,
-            material, dualstrusion):
-        """
-        @profle: undocumented, assuming a profile object
-        @gcodepath: undocumented assuming filepath
-        @slicer_settings: undocumented. assuming dict
-        @material undocumneted, assuming string
-        """ 
-        startgcode, endgcode, variables = conveyor.util.get_start_end_variables(
-                profile, slicer_settings, material, dualstrusion)
-        def generator():
-            with open(gcodepath, 'r') as fp:
-                for data in fp:
-                    yield data
-        gcodelines = list(generator())
-        return gcodelines, variables
-
-    def _countgcodelines(self, gcodelines):
-        lines = 0
-        bytes = 0
-        for data in enumerate(gcodelines):
-            lines += 1
-            bytes += len(data)
-        return (lines, bytes)
-
-    def _genericprint(self, server, portname, profile, buildname, writer,
-            polltemperature, pollinterval, gcodepath,
-            slicer_settings, print_to_file_type, material, task,
-            dualstrusion):
-        """
-        This does a generic print? 
-        @param server conveyor.server object
-        @param portname undocumneted. assuming it's the os-specific port name string
-        @param profile undocumented, assuming a profile object
-        @param buildname build name
-        @param writer   undocumented filewrite
-        @param polltemperature bool, true to poll temperture at pollinterval
-        @param pollinterval frequency of ?? poll, in seconds
-        @param gcodepath unddocumented assuming string name of gcode file to print
-        @param slicer_settings undocumented assuming a slicer settings dict
-        @param material a string indicating the material type
-        @param task undocumented, assuming it's a task object
-        """
-        current_progress = None
-        new_progress = {
-            'name': 'print',
-            'progress': 0
-        }
-        task.lazy_heartbeat(current_progress, new_progress)
-        current_progress, new_progress = new_progress, None
-        parser = makerbot_driver.Gcode.GcodeParser()
-        # ^ Technical debt: we should not be reaching 'into' objects in our 
-        # driver, and manually setting state info, etc. Those should be 
-        # constructor params
-        parser.state.profile = profile
-        parser.state.set_build_name(str(buildname))
-        parser.s3g = makerbot_driver.s3g()
-        parser.s3g.writer = writer
-        if print_to_file_type is not None:
-            parser.s3g.set_print_to_file_type(print_to_file_type);
-        # Send the start of stream command for x3g bots
-        if print_to_file_type == 'x3g':
-            pid = parser.state.profile.values['PID']
-            parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
-        # ^ Technical debt: we should not be reaching into objects in our driver
-        # to set values, they should be set in the constructor
-        def cancelcallback(task):
-            """Stop the writer and catch an ExternalStopError."""
-            try:
-                self._log.debug('setting external stop')
-                writer.set_external_stop()
-            except makerbot_driver.ExternalStopError:
-                self._log.debug('handled exception', exc_info=True)
-            if polltemperature:
-                self._log.debug('aborting printer')
-                # NOTE: need a new s3g object because the old one has
-                # external stop set.
-                # TODO: this is a horrible hack.
-                s3g = makerbot_driver.s3g()
-                s3g.writer = makerbot_driver.Writer.StreamWriter(
-                    parser.s3g.writer.file)
-                s3g.abort_immediately()
-        task.cancelevent.attach(cancelcallback)
-        if polltemperature:
-            self._log.debug('resetting machine %s', portname)
-            parser.s3g.reset()
-        now = time.time()
-        polltime = now + pollinterval
-        if not polltemperature:
-            temperature = None
+    def get_profiles(self, port):
+        if None is port:
+            profiles = self._profiles.values()
         else:
-            temperature = _gettemperature(profile, parser.s3g)
-            server.changeprinter(portname, temperature)
-        gcodelines, variables = self._gcodelines(
-            profile, gcodepath, slicer_settings, material,
-            dualstrusion)
-        parser.environment.update(variables)
-        # TODO: remove this {current,total}{byte,line} stuff; we have
-        # proper progress from the slicer now.
-        totallines, totalbytes = self._countgcodelines(gcodelines)
-        currentbyte = 0
-        for currentline, data in enumerate(gcodelines):
+            profiles = []
+            for profile in self._profiles.values():
+                if profile._check_port(port):
+                    profiles.append(profile)
+        return profiles
+
+    def get_profile(self, profile_name):
+        try:
+            profile = self._profiles[profile_name]
+        except KeyError:
+            raise conveyor.error.UnknownProfileError(profile_name)
+        else:
+            return profile
+
+    def new_machine_from_port(self, port, profile):
+        machine = port.get_machine()
+        if None is not machine:
+            if None is not profile and profile != machine.get_profile():
+                raise conveyor.error.ProfileMismatchException()
+        else:
+            if None is profile:
+                machine_factory = makerbot_driver.MachineFactory(
+                    self._profile_dir)
+                while True:
+                    try:
+                        return_object = machine_factory.build_from_port(
+                            port.path, False)
+                    except makerbot_driver.BuildCancelledError:
+                        pass
+                    else:
+                        break
+                s3g_profile = return_object.profile
+            id = self._get_id(port)
+            profile = _S3gProfile._create(s3g_profile.name, self, s3g_profile)
+            machine = _S3gMachine._create(id, self, profile)
+        return machine
+
+    def _get_id(self, port):
+        vid = '%04X' % (port.vid,)
+        pid = '%04X' % (port.pid,)
+        id = ':'.join((vid, pid, port.iserial))
+        return id
+
+    def _connect(self, port, condition):
+        machine_factory = makerbot_driver.MachineFactory(
+            self._profile_dir)
+        return_object = machine_factory.build_from_port(
+            port.path, condition=condition)
+        s3g = return_object.s3g
+        return s3g
+
+    def print_to_file(
+            self, profile, input_path, output_path, skip_start_end,
+            extruders, extruder_temperature, platform_temperature,
+            material_name, build_name, task):
+        try:
+            with open(output_path, 'wb') as output_fp:
+                condition = threading.Condition()
+                writer = makerbot_driver.Writer.FileWriter(
+                    output_fp, condition)
+                parser = makerbot_driver.Gcode.GcodeParser()
+                parser.state.profile = profile._s3g_profile
+                parser.state.set_build_name(str(build_name))
+                parser.s3g = makerbot_driver.s3g()
+                parser.s3g.writer = writer
+                gcode_scaffold = profile.get_gcode_scaffold(
+                    extruders, extruder_temperature, platform_temperature,
+                    material_name)
+                parser.environment.update(gcode_scaffold.variables)
+                parser.s3g.reset()
+                # TODO: clear build plate message
+                # parser.s3g.wait_for_button('center', 0, True, False, False)
+                progress = {
+                    'name': 'print-to-file',
+                    'progress': 0,
+                }
+                task.lazy_heartbeat(progress, task.progress)
+                if not skip_start_end:
+                    self._execute_lines(task, parser, gcode_scaffold.start)
+                if conveyor.task.TaskState.RUNNING == task.state:
+                    with open(input_path) as input_fp:
+                        self._execute_lines(task, parser, input_fp)
+                if not skip_start_end:
+                    self._execute_lines(task, parser, gcode_scaffold.end)
+            if conveyor.task.TaskState.RUNNING == task.state:
+                progress = {
+                    'name': 'print-to-file',
+                    'progress': 100,
+                }
+                task.lazy_heartbeat(progress, task.progress)
+                task.end(None)
+        except Exception as e:
+            self._log.exception('unhandled exception; print-to-file failed')
+            failure = conveyor.util.exception_to_failure(e)
+            task.fail(failure)
+
+    def _execute_lines(self, task, parser, iterable):
+        for line in iterable:
             if conveyor.task.TaskState.RUNNING != task.state:
                 break
             else:
-                # Increment currentbyte *before* stripping whitespace
-                # out of data or the currentbyte will not match the
-                # actual file position.
-                currentbyte += len(data)
-                data = data.strip()
-                now = time.time()
-                if polltemperature and polltime <= now:
-                    temperature = _gettemperature(profile, parser.s3g)
-                self._log.debug('gcode: %r', data)
-                # The s3g module cannot handle unicode strings.
-                data = str(data)
-                parser.execute_line(data)
-                new_progress = {
-                    'name': 'print',
-                    'progress': int(parser.state.percentage)
+                line = str(line)
+                parser.execute_line(line)
+                progress = {
+                    'name': 'print-to-file',
+                    'progress': int(parser.state.percentage),
                 }
-                if polltime <= now:
-                    polltime = now + pollinterval
-                    if polltemperature:
-                        server.changeprinter(portname, temperature)
-                task.lazy_heartbeat(current_progress, new_progress)
-                current_progress, new_progress = new_progress, None
-        if polltemperature:
-            '''
-            # This is the code that should be, but it requires new
-            # firmware.
-            while conveyor.task.TaskState.STOPPED != task.state:
-                build_stats = parser.s3g.get_build_stats()
-                build_state = build_stats['BuildState']
-                self._log.debug('build_stats=%r', build_stats)
-                self._log.debug('build_state=%r', build_state)
-                if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
-                    break
-                else:
-                    time.sleep(0.2) # TODO: wait on a condition
-            '''
-            while conveyor.task.TaskState.STOPPED != task.state:
-                available = parser.s3g.get_available_buffer_size()
-                if 512 == available:
-                    break
-                else:
-                    time.sleep(0.2) # TODO: wait on a condition
-            if conveyor.task.TaskState.STOPPED != task.state:
-                new_progress = {
-                    'name': 'print',
-                    'progress': int(parser.state.percentage)
-                }
-                if polltime <= now:
-                    polltime = now + pollinterval
-                    if polltemperature:
-                        server.changeprinter(portname, temperature)
-                task.lazy_heartbeat(current_progress, new_progress)
-                current_progress, new_progress  = new_progress, None
-        if polltemperature:
-            '''
-            # This is the code that should be, but it requires new
-            # firmware.
-            while conveyor.task.TaskState.STOPPED != task.state:
-                build_stats = parser.s3g.get_build_stats()
-                build_state = build_stats['BuildState']
-                self._log.debug('build_stats=%r', build_stats)
-                self._log.debug('build_state=%r', build_state)
-                if 0 == build_state or 2 == build_state or 4 == build_state: # TODO: constants for these magic codes
-                    break
-                else:
-                    time.sleep(0.2) # TODO: wait on a condition
-            '''
-            while conveyor.task.TaskState.STOPPED != task.state:
-                available = parser.s3g.get_available_buffer_size()
-                if 512 == available:
-                    break
-                else:
-                    time.sleep(0.2) # TODO: wait on a condition
+                task.lazy_heartbeat(progress, task.progress)
 
-        if conveyor.task.TaskState.STOPPED != task.state:
-            new_progress = {
-                'name': 'print',
-                'progress': 100
-            }
-            task.lazy_heartbeat(current_progress,new_progress)
-            current_progress, new_progress = new_progress,None
-            task.end(None)
-
-    def print(self, server, portname, fp, profile, buildname, gcodepath,
-            slicer_settings, print_to_file_type, material,
-            task, dualstrusion):
-        """
-        @param server conveyor.server object
-        @param portname undocumneted. assuming it's the os-specific port name string
-        @param fp undocumneted file pointer to  ???
-        @param profile undocumented assuming a conveyor.Profile object
-        @param buildname undocumented assuming the name of the build
-        @param gcodepath unddocumented assuming string name of gcode file to print
-        @param slicer_settings undocumented assuming a slicer settings dict
-        @param material a string indicating the material type
-        @param task undocumented, assuming it's a task object
-        """ 
-        writer = makerbot_driver.Writer.StreamWriter(fp)
-        self._genericprint(
-            server, portname, profile, buildname, writer, True, 5.0,
-            gcodepath, slicer_settings, print_to_file_type,
-            material, task, dualstrusion)
-
-    def printtofile(self, outputpath, profile, buildname, gcodepath,
-            slicer_settings, print_to_file_type, material,
-            task, dualstrusion):
-        with open(outputpath, 'wb') as fp:
-            writer = makerbot_driver.Writer.FileWriter(fp)
-            self._genericprint(
-                None, None, profile, buildname, writer, False, 5.0,
-                gcodepath, slicer_settings, print_to_file_type, material,
-                task, dualstrusion)
-
-    def resettofactory(self, fp):
-        s = self.create_s3g_from_fp(fp)
-        s.reset_to_factory()
-        s.reset()
-        return True
-
-    def get_version_with_dot(self, version):
-        # Log original version string
-        self._log.debug('get_version: %r', version)
-
-        # This assumes that the version string is always in 'XYY'
-        # format, where X is the major version and YY is the minor
-        # version. The EepromReader assumes that this will be
-        # converted into an X.Y format. This is a bit ill-defined,
-        # should clean this up (TODO)
-        if len(version) == 3:
-            if version[1] == '0':
-                version = version[0] + '.' + version[2]
+    def get_uploadable_machines(self, task):
+        def running_callback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                machines = uploader.list_machines()
+            except Exception as e:
+                self._log.exception('unhandled exception')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
-                version = version[0] + '.' + version[1:2]
+                task.end(machines)
+        task.runningevent.attach(running_callback)
+        return task
+
+    def get_machine_versions(self, machine_type, task):
+        def running_callback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                versions = uploader.list_firmware_versions(machine_type)
+            except Exception as e:
+                self._log.exception('unhandled exception')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
+            else:
+                task.end(versions)
+        task.runningevent.attach(running_callback)
+        return task
+
+    def compatible_firmware(self, firmware_version):
+        uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
+        result = uploader.compatible_firmware(firmware_version)
+        return result
+
+    def download_firmware(self, machine_type, firmware_version, task):
+        def running_callback(task):
+            try:
+                uploader = makerbot_driver.Firmware.Uploader()
+                hex_file_path = uploader.download_firmware(machine_type, firmware_version)
+            except Exception as e:
+                self._log.exception('unhandled exception')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
+            else:
+                task.end(hex_file_path)
+        task.runningevent.attach(running_callback)
+        return task
+
+
+class _S3gProfile(conveyor.machine.Profile):
+    @staticmethod
+    def _create(name, driver, s3g_profile):
+        xsize = s3g_profile.values['axes']['X']['platform_length']
+        ysize = s3g_profile.values['axes']['Y']['platform_length']
+        zsize = s3g_profile.values['axes']['Z']['platform_length']
+        can_print = True
+        can_print_to_file = True
+        has_heated_platform = 0 != len(s3g_profile.values['heated_platforms'])
+        number_of_tools = len(s3g_profile.values['tools'])
+        profile = _S3gProfile(
+            name, driver, xsize, ysize, zsize, s3g_profile, can_print,
+            can_print_to_file, has_heated_platform, number_of_tools)
+        return profile
+
+    def __init__(self, name, driver, xsize, ysize, zsize, s3g_profile,
+            can_print, can_print_to_file, has_heated_platform, number_of_tools):
+        conveyor.machine.Profile.__init__(
+            self, name, driver, xsize, ysize, zsize, can_print,
+            can_print_to_file, has_heated_platform, number_of_tools)
+        self._s3g_profile = s3g_profile
+
+    def _check_port(self, port):
+        result = (port.vid == self._s3g_profile.values['VID']
+            and port.pid == self._s3g_profile.values['PID'])
+        return result
+
+    def get_gcode_scaffold(
+            self, extruders, extruder_temperature, platform_temperature,
+            material_name):
+        tool_0 = '0' in extruders
+        tool_1 = '1' in extruders
+        gcode_assembler = makerbot_driver.GcodeAssembler(
+            self._s3g_profile, self._s3g_profile.path)
+        tuple_ = gcode_assembler.assemble_recipe(
+            tool_0=tool_0, tool_1=tool_1, material=material_name)
+        start_template, end_template, variables = tuple_
+        variables['TOOL_0_TEMP'] = extruder_temperature
+        variables['TOOL_1_TEMP'] = extruder_temperature
+        variables['PLATFORM_TEMP'] = platform_temperature
+        start_position = self._s3g_profile.values['print_start_sequence']['start_position']
+        variables['START_X'] = start_position['start_x']
+        variables['START_Y'] = start_position['start_y']
+        variables['START_Z'] = start_position['start_z']
+        gcode_scaffold = conveyor.machine.GcodeScaffold()
+        gcode_scaffold.start = gcode_assembler.assemble_start_sequence(
+            start_template)
+        gcode_scaffold.end = gcode_assembler.assemble_end_sequence(
+            end_template)
+        gcode_scaffold.variables = variables
+        return gcode_scaffold
+
+
+_BuildState = conveyor.enum.enum(
+    '_BuildState', NONE=0, RUNNING=1, FINISHED_NORMALLY=2, PAUSED=3,
+    CANCELED=4, SLEEPING=5)
+
+
+class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machine):
+    @staticmethod
+    def _create(id, driver, profile):
+        # TODO: since thread creation was moved, this static method is no
+        # longer necessary.
+        machine = _S3gMachine(id, driver, profile)
+        return machine
+
+    def __init__(self, name, driver, profile):
+        conveyor.stoppable.StoppableInterface.__init__(self)
+        conveyor.machine.Machine.__init__(self, name, driver, profile)
+        self._poll_disabled = False
+        self._poll_interval = 5.0
+        self._poll_time = time.time()
+        self._stop = False
+        self._s3g = None
+        self._toolhead_count = None
+        self._motherboard_status = None
+        self._build_stats = None
+        self._platform_temperature = None
+        self._is_platform_ready = None
+        self._tool_status = None
+        self._toolhead_temperature = None
+        self._is_tool_ready = None
+        self._is_finished = None
+        self._operation = None
+        self._task = None
+
+    def stop(self):
+        self._stop = True
+        with self._state_condition:
+            self._state_condition.notify_all()
+
+    def get_info(self):
+        port = self.get_port()
+        if None is port:
+            port_name = None
         else:
-            self._log.error('unexpected version length: %r', version)
+            port_name = port.name
+        driver = self.get_driver()
+        profile = self.get_profile()
+        state = self.get_state()
+        info = conveyor.machine.MachineInfo(
+            self.name, port_name, driver.name, profile.name, state)
+
+        info.display_name = profile._s3g_profile.values['type']
+        info.unique_name = self.name
+        info.printer_type = profile._s3g_profile.values['type']
+        info.machine_names = profile._s3g_profile.values['machinenames']
+        info.can_print = True
+        info.can_printtofile = True
+        info.has_heated_platform = (0 != len(profile._s3g_profile.values['heated_platforms']))
+        info.number_of_toolheads = len(profile._s3g_profile.values['tools'])
+        toolhead_temperature = {}
+        if None is not self._toolhead_temperature:
+            for i, t in enumerate(self._toolhead_temperature):
+                toolhead_temperature[i] = t
+        platform_temperature = {}
+        if (info.has_heated_platform
+                and None is not self._platform_temperature):
+            platform_temperature[i] = self._platform_temperature
+        info.temperature = {
+            'tools': toolhead_temperature,
+            'heated_platforms': platform_temperature,
+        }
+        info.firmware_version = self._firmware_version
+
+        return info
+
+    def connect(self):
+        with self._state_condition:
+            if conveyor.machine.MachineState.DISCONNECTED == self._state:
+                self._s3g = self._driver._connect(
+                    self._port, self._state_condition)
+                self._firmware_version = self._s3g.get_version()
+                self._toolhead_count = self._s3g.get_toolhead_count()
+                self._change_state(conveyor.machine.MachineState.BUSY)
+                self._poll()
+                poll_thread_name = ''.join(('poll-thread-', self.name))
+                poll_thread = threading.Thread(
+                    target=self._poll_thread_target, name=poll_thread_name)
+                poll_thread.start()
+                work_thread_name = ''.join(('work-thread-', self.name))
+                work_thread = threading.Thread(
+                    target=self._work_thread_target, name=work_thread_name)
+                work_thread.start()
+
+    def disconnect(self):
+        with self._state_condition:
+            self._handle_disconnect()
+
+    def pause(self):
+        with self._state_condition:
+            if None is self._operation:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation.pause()
+
+    def unpause(self):
+        with self._state_condition:
+            if None is self._operation:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation.unpause()
+
+    def cancel(self):
+        with self._state_condition:
+            if None is self._operation:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation.cancel()
+
+    def print(
+            self, input_path, skip_start_end, extruders,
+            extruder_temperature, platform_temperature, material_name,
+            build_name, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _MakeOperation(
+                    self, task, input_path, skip_start_end, extruders,
+                    extruder_temperature, platform_temperature,
+                    material_name, build_name)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def reset_to_factory(self, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _ResetToFactoryOperation(self, task)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def upload_firmware(self, machine_type, input_file, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _UploadFirmwareOperation(
+                    self, task, machine_type, input_file)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def read_eeprom(self, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _ReadEepromOperation(self, task)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def write_eeprom(self, eeprom_map, task):
+        with self._state_condition:
+            self._poll()
+            if conveyor.machine.MachineState.IDLE != self._state:
+                raise conveyor.error.MachineStateException
+            else:
+                self._operation = _WriteEepromOperation(self, task, eeprom_map)
+                self._change_state(conveyor.machine.MachineState.OPERATION)
+
+    def _change_state(self, new_state):
+        with self._state_condition:
+            if new_state != self._state:
+                self._state = new_state
+                self._state_condition.notify_all()
+                self.state_changed(self)
+
+    def _poll_thread_target(self):
+        try:
+            while not self._stop:
+                with self._state_condition:
+                    if conveyor.machine.MachineState.DISCONNECTED == self._state:
+                        break
+                    else:
+                        self._poll_thread_target_iteration()
+        except Exception as e:
+            self._log.exception('unhandled exception; s3g poll thread has ended')
+        finally:
+            self._log.info('machine %s poll thread ended', self.id)
+
+    def _poll_thread_target_iteration(self):
+        if not self._poll_disabled:
+            now = time.time()
+            if now >= self._poll_time:
+                self._poll()
+            else:
+                duration = self._poll_time - now
+                self._state_condition.wait(duration)
+
+    def _poll(self):
+        with self._state_condition:
+            self._poll_time = time.time() + self._poll_interval
+            if conveyor.machine.MachineState.DISCONNECTED != self._state:
+                try:
+                    motherboard_status = self._s3g.get_motherboard_status()
+                    build_stats = self._s3g.get_build_stats()
+                    platform_temperature = self._s3g.get_platform_temperature(0)
+                    is_platform_ready = self._s3g.is_platform_ready(0)
+                    tool_status = []
+                    toolhead_temperature = []
+                    is_tool_ready = []
+                    for t in range(self._toolhead_count):
+                        tool_status.append(self._s3g.get_tool_status(t))
+                        toolhead_temperature.append(
+                            self._s3g.get_toolhead_temperature(t))
+                        is_tool_ready.append(self._s3g.is_tool_ready(t))
+                    is_finished = self._s3g.is_finished()
+                except makerbot_driver.ActiveBuildError as e:
+                    self._log.exception('machine is busy')
+                    self._change_state(conveyor.machine.MachineState.BUSY)
+                except makerbot_driver.BuildCancelledError as e:
+                    self._handle_build_cancelled(e)
+                except makerbot_driver.ExternalStopError as e:
+                    self._handle_external_stop(e)
+                except makerbot_driver.OverheatError as e:
+                    self._log.exception('machine is overheated')
+                    self._handle_disconnect()
+                except makerbot_driver.CommandNotSupportedError as e:
+                    self._log.exception('unsupported command; failed to communicate with the machine')
+                    self._handle_disconnect()
+                except makerbot_driver.ProtocolError as e:
+                    self._log.exception('protocol error; failed to communicate with the machine')
+                    self._handle_disconnect()
+                except makerbot_driver.ParameterError as e:
+                    self._log.exception('internal error')
+                    self._handle_disconnect()
+                except IOError as e:
+                    self._log.exception('I/O error; failed to communicate with the machine')
+                    self._handle_disconnect()
+                except Exception as e:
+                    self._log.exception('unhandled exception')
+                    self._handle_disconnect()
+                else:
+                    busy = (motherboard_status['manual_mode']
+                        or motherboard_status['onboard_script']
+                        or motherboard_status['onboard_process']
+                        or motherboard_status['build_cancelling'])
+                    temperature_changed = (
+                        self._platform_temperature != platform_temperature
+                        or self._toolhead_temperature != toolhead_temperature)
+                    self._log.debug(
+                        'busy=%r, temperature_changed=%r, motherboard_status=%r, build_stats=%r, platform_temperature=%r, is_platform_ready=%r, tool_status=%r, toolhead_temperature=%r, is_tool_ready=%r, is_finished=%r',
+                        busy, temperature_changed, motherboard_status,
+                        build_stats, platform_temperature, is_platform_ready,
+                        tool_status, toolhead_temperature, is_tool_ready,
+                        is_finished)
+                    self._motherboard_status = motherboard_status
+                    self._build_stats = build_stats
+                    self._platform_temperature = platform_temperature
+                    self._is_platform_ready = is_platform_ready
+                    self._tool_status = tool_status
+                    self._toolhead_temperature = toolhead_temperature
+                    self._is_tool_ready = is_tool_ready
+                    self._is_finished = is_finished
+                    if conveyor.machine.MachineState.BUSY == self._state:
+                        if not busy and self._is_finished:
+                            self._change_state(conveyor.machine.MachineState.IDLE)
+                    elif busy:
+                        self._change_state(conveyor.machine.MachineState.BUSY)
+                    elif (conveyor.machine.MachineState.OPERATION == self._state
+                            and None is self._operation and self._is_finished):
+                        self._change_state(conveyor.machine.MachineState.IDLE)
+                    if temperature_changed:
+                        self.temperature_changed(self)
+                    self._log.debug(
+                        'motherboard_status=%r, build_stats=%r, platform_temperature=%r, is_platform_ready=%r, tool_status=%r, toolhead_temperature=%r, is_tool_ready=%r',
+                        self._motherboard_status, self._build_stats,
+                        self._platform_temperature, self._is_platform_ready,
+                        self._tool_status, self._toolhead_temperature,
+                        self._is_tool_ready)
+
+    def _handle_disconnect(self):
+        if None is not self._s3g:
+            self._s3g.writer.close()
+        self._s3g = None
+        self._firmware_version = None
+        self._toolhead_count = None
+        self._motherboard_status = None
+        self._build_stats = None
+        self._platform_temperature = None
+        self._is_platform_ready = None
+        self._tool_status = None
+        self._toolhead_temperature = None
+        self._is_tool_ready = None
+        self._is_finished = None
+        self._operation = None
+        self._task = None
+        self._change_state(conveyor.machine.MachineState.DISCONNECTED)
+
+    def _work_thread_target(self):
+        try:
+            while not self._stop:
+                with self._state_condition:
+                    if conveyor.machine.MachineState.DISCONNECTED == self._state:
+                        break
+                    else:
+                        self._work_thread_target_iteration()
+        except Exception as e:
+            self._log.exception('unhandled exception; s3g work thread ended')
+        finally:
+            self._handle_disconnect()
+            self._log.info('machine %s work thread ended', self.id)
+
+    def _work_thread_target_iteration(self):
+        if self._operation is not None:
+            try:
+                self._operation.run()
+            finally:
+                self._operation = None
+        self._state_condition.wait()
+
+    # TODO: Why are these two handlers identical? Is this right?
+
+    def _handle_build_cancelled(self, exception):
+        self._log.debug('handled exception', exc_info=True)
+        if (None is not self._task
+                and conveyor.task.TaskState.STOPPED != self._task.state):
+            self._task.cancel()
+            self._task = None
+
+    def _handle_external_stop(self, exception):
+        self._log.debug('handled exception', exc_info=True)
+        if (None is not self._task
+                and conveyor.task.TaskState.STOPPED != self._task.state):
+            self._task.cancel()
+            self._task = None
+
+
+class _S3gOperation(object):
+    def __init__(self, machine):
+        self.machine = machine
+        self.log = logging.getLogger(self.__class__.__name__)
+
+    def run(self):
+        raise NotImplementedError
+
+    def pause(self):
+        raise NotImplementedError
+
+    def unpause(self):
+        raise NotImplementedError
+
+    def cancel(self):
+        raise NotImplementedError
+
+
+class _TaskOperation(_S3gOperation):
+    def __init__(self, machine, task):
+        _S3gOperation.__init__(self, machine)
+        self.task = task
+
+    def run(self):
+        self.machine._task = self.task
+        try:
+            self._run_task()
+        finally:
+            self.machine._task = None
+
+    def _run_task(self):
+        raise NotImplementedError
+
+
+class _BlockPollingOperation(_TaskOperation):
+    def _run_task(self):
+        self.machine._poll_disabled = True
+        try:
+            self._run_without_polling()
+        finally:
+            self.machine._poll_disabled = False
+
+    def _run_without_polling(self):
+        raise NotImplementedError
+
+
+class _MakeOperation(_TaskOperation):
+    def __init__(
+            self, machine, task, input_path, skip_start_end, extruders,
+            extruder_temperature, platform_temperature, material_name,
+            build_name):
+        _TaskOperation.__init__(self, machine, task)
+        self.input_path = input_path
+        self.skip_start_end = skip_start_end
+        self.extruders = extruders
+        self.extruder_temperature = extruder_temperature
+        self.platform_temperature = platform_temperature
+        self.material_name = material_name
+        self.build_name = build_name
+        self.pause = False
+
+    def _run_task(self):
+        try:
+            parser = makerbot_driver.Gcode.GcodeParser()
+            parser.state.profile = self.machine._profile._s3g_profile
+            parser.state.set_build_name(str(self.build_name))
+            parser.s3g = self.machine._s3g
+            def cancel_callback(task):
+                with self.machine._state_condition:
+                    try:
+                        parser.s3g.writer.set_external_stop(True)
+                    except makerbot_driver.ExternalStopError:
+                        self._log.debug('handled exception', exc_info=True)
+                    parser.s3g.writer.set_external_stop(False)
+                    parser.s3g.abort_immediately()
+            self.task.cancelevent.attach(cancel_callback)
+            gcode_scaffold = self.machine._profile.get_gcode_scaffold(
+                self.extruders, self.extruder_temperature,
+                self.platform_temperature, self.material_name)
+            parser.environment.update(gcode_scaffold.variables)
+            self.machine._s3g.reset()
+            # Aaaaaaaaaargh. :'(
+            #
+            # progress = {
+            #     'name': 'clear-build-plate',
+            #     'progress': 0,
+            # }
+            # self.task.lazy_heartbeat(progress, self.task.progress)
+            # self.machine._s3g.display_message(0, 0, str('clear'), 0, True, True, False)
+            # self.machine._s3g.wait_for_button('center', 0, True, False, False)
+            # while self.machine._motherboard_status['wait_for_button']:
+            #     self.machine._state_condition.wait(0.2)
+            progress = {
+                'name': 'print',
+                'progress': 0,
+            }
+            self.task.lazy_heartbeat(progress, self.task.progress)
+            if not self.skip_start_end:
+                self._execute_lines(parser, gcode_scaffold.start)
+            if conveyor.task.TaskState.RUNNING == self.task.state:
+                with open(self.input_path) as input_fp:
+                    self._execute_lines(parser, input_fp)
+            if not self.skip_start_end:
+                self._execute_lines(parser, gcode_scaffold.end)
+            if conveyor.task.TaskState.RUNNING == self.task.state:
+                progress = {
+                    'name': 'print',
+                    'progress': 100,
+                }
+                self.task.lazy_heartbeat(progress, self.task.progress)
+                self.task.end(None)
+        except makerbot_driver.BuildCancelledError as e:
+            self.machine._handle_build_cancelled(e)
+        except makerbot_driver.ExternalStopError as e:
+            self.machine._handle_external_stop(e)
+        except Exception as e:
+            self.log.exception('unhandled exception; print failed')
+            failure = conveyor.util.exception_to_failure(e)
+            self.task.fail(failure)
+
+    def _execute_lines(self, parser, iterable):
+        for line in iterable:
+            if conveyor.task.TaskState.RUNNING != self.task.state:
+                break
+            else:
+                line = str(line) # NOTE: s3g can't handle unicode.
+                line = line.strip()
+                self.log.debug('G-CODE: %s', line)
+                while True:
+                    while self.pause:
+                        self.machine._state_condition.wait(1.0)
+                    try:
+                        parser.execute_line(line)
+                    except makerbot_driver.BufferOverflowError:
+                        # NOTE: too spammy
+                        # self._log.debug('handled exception', exc_info=True)
+                        self.machine._state_condition.wait(0.2)
+                    else:
+                        break
+                progress = {
+                    'name': 'print',
+                    'progress': int(parser.state.percentage),
+                }
+                self.task.lazy_heartbeat(progress, self.task.progress)
+
+    def pause(self):
+        with self.machine._state_condition:
+            if not self.pause:
+                self.pause = True
+                self.machine._s3g.pause() # NOTE: this toggles the pause state
+                self.machine._state_condition.notify_all()
+
+    def unpause(self):
+        with self.machine._state_condition:
+            if self.pause:
+                self.pause = False
+                self.machine._s3g.pause() # NOTE: this toggles the pause state
+                self.machine._state_condition.notify_all()
+
+    def cancel(self):
+        if conveyor.task.TaskState.RUNNING == self.task.state:
+            self.task.cancel()
+
+
+class _ResetToFactoryOperation(_BlockPollingOperation):
+    def _run_without_polling(self):
+        try:
+            self.machine._s3g.reset_to_factory()
+            self.machine._s3g.reset()
+        except Exception as e:
+            self.log.warning('handled exception', exc_info=True)
+            failure = conveyor.util.exception_to_failure(e)
+            self.task.fail(failure)
+        else:
+            self.task.end(None)
+
+
+class _UploadFirmwareOperation(_BlockPollingOperation):
+    def __init__(self, machine, task, machine_type, input_file):
+        _TaskOperation.__init__(self, machine, task)
+        self.machine_type = machine_type
+        self.input_file = input_file
+
+    def _run_without_polling(self):
+        try:
+            self.machine._s3g.writer.file.close()
+            port = self.machine.get_port()
+            uploader = makerbot_driver.Firmware.Uploader()
+            uploader.upload_firmware(
+                port.path, self.machine_type, self.input_file)
+            self.machine._s3g.writer.file.open()
+        except Exception as e:
+            self.log.warning('handled exception', exc_info=True)
+            failure = conveyor.util.exception_to_failure(e)
+            self.task.fail(failure)
+        else:
+            self.task.end(None)
+
+
+class _ReadEepromOperation(_BlockPollingOperation):
+    def _run_without_polling(self):
+        try:
+            version = str(self.machine._s3g.get_version())
+            try:
+                advanced_version = self.machine._s3g.get_advanced_version()
+                software_variant = hex(advanced_version['SoftwareVariant'])
+                if len(software_variant.split('x')[1]) == 1:
+                    software_variant = software_variant.replace('x', 'x0')
+            except makerbot_driver.errors.CommandNotSupportedError:
+                software_variant = '0x00'
+            version = _get_version_with_dot(version)
+            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(
+                self.machine._s3g, version, software_variant)
+            eeprom_map = eeprom_reader.read_entire_map()
+        except Exception as e:
+            self.log.warning('handled exception', exc_info=True)
+            failure = conveyor.util.exception_to_failure(e)
+            self.task.fail(failure)
+        else:
+            self.task.end(eeprom_map)
+
+
+class _WriteEepromOperation(_BlockPollingOperation):
+    def __init__(self, machine, task, eeprom_map):
+        _BlockPollingOperation.__init__(self, machine, task)
+        self.eeprom_map = eeprom_map
+
+    def _run_without_polling(self):
+        try:
+            version = str(self.machine._s3g.get_version())
+            try:
+                advanced_version = self.machine._s3g.get_advanced_version()
+                software_variant = hex(advanced_version['SoftwareVariant'])
+                if len(software_variant.split('x')[1]) == 1:
+                    software_variant = software_variant.replace('x', 'x0')
+            except makerbot_driver.errors.CommandNotSupportedError:
+                software_variant = '0x00'
+            version = _get_version_with_dot(version)
+            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(
+                self.machine._s3g, version, software_variant)
+            eeprom_writer.write_entire_map(self.eeprom_map)
+        except Exception as e:
+            self.log.warning('handled exception', exc_info=True)
+            failure = conveyor.util.exception_to_failure(e)
+            self.task.fail(failure)
+        else:
+            self.task.end(None)
+
+
+def _get_version_with_dot(version):
+    if len(version) != 3:
+        raise ValueError(version)
+    else:
+        if '0' == version[1]:
+            version = version[0] + '.' + version[2]
+        else:
+            version = version[0] + '.' + version[1:2]
         return version
-
-        # Log modified version string
-        self._log.debug('get_version: %r', version)
-
-    def writeeeprom(
-        self, eeprommap, fp):
-            s = self.create_s3g_from_fp(fp)
-            version = str(s.get_version())
-            try:
-                advanced_version_dict = s.get_advanced_version()
-                software_variant = hex(advanced_version_dict['SoftwareVariant'])
-                if len(software_variant.split('x')[1]) == 1:
-                    software_variant = software_variant.replace('x', 'x0')
-            except makerbot_driver.errors.CommandNotSupportedError:
-                software_variant = '0x00'
-
-            version = self.get_version_with_dot(version)
-
-            eeprom_writer = makerbot_driver.EEPROM.EepromWriter.factory(s, version, software_variant)
-            eeprom_writer.write_entire_map(eeprommap)
-            return True
-
-    def readeeprom(
-        self, fp):
-            s = self.create_s3g_from_fp(fp)
-            version = str(s.get_version())
-            try: 
-                advanced_version_dict = s.get_advanced_version()
-                software_variant = hex(advanced_version_dict['SoftwareVariant'])
-                if len(software_variant.split('x')[1]) == 1:
-                    software_variant = software_variant.replace('x', 'x0')
-            except makerbot_driver.errors.CommandNotSupportedError:
-                software_variant = '0x00'
-
-            version = self.get_version_with_dot(version)
-
-            eeprom_reader = makerbot_driver.EEPROM.EepromReader.factory(s, version, software_variant)
-            the_map = eeprom_reader.read_entire_map()
-            return the_map
-
-    def create_s3g_from_fp(self, fp):
-        s = makerbot_driver.s3g()
-        s.writer = makerbot_driver.Writer.StreamWriter(fp)
-        return s
-
-    def write_messages_to_display(self, s3gobj, messages, timeout, button_press, last_in_sequence):
-        """
-        Write messages to a machine.  If a message is too long, splits it in two and tries again.
-        NB: We cast messages as strs, since makerbot_driver can't handle unicode well :(
-        PNB: Since messages are just concatentated together, white-space needs to be baked into the messages.
-        The screen we are writing to is 20x4
-
-        @param s3g s3gobj: S3g object used to write messages
-        @param string/unicode/tuple/list messages: Messages to write to the bot. If not passed as a list or tuple, forced into a list
-        @param int timeout: Timeout for the messages.  Timeout = 0 displays indefinitely
-        @param bool button_press: Flag for wait on button press.  If true, waits on a button press
-        @param bool last_in_sequence: Flag to determine if this message is the last in a sequence.  Unless you want to send a 
-            sequence of messages, this should be set to True
-        """
-        if not isinstance(messages, (list, tuple)):
-            messages = [messages]
-        for i in range(len(messages)):
-            try:
-                s3gobj.display_message(0, 0, str(messages[i]), timeout, True, False, False)
-            # If the msg is too long, cut it in half and resend
-            except makerbot_driver.errors.PacketLengthError as e:
-                bifurcated_msg = self.split_message(messages[i])
-                self.write_messages_to_display(s3gobj, bifurcated_msg, timeout, button_press, False)
-        if last_in_sequence:
-            s3gobj.display_message(0, 0, str(''), timeout, True, True, button_press)
-        
-    def split_message(self, msg):
-        """
-        Takes a msg and spits it in half.  If msg is of length 1 or less,
-        returns a list containing only the msg
-
-        @param str msg: Message to split
-        @return list msgs: Split msg 
-        """
-        if len(msg) <= 1:
-            msgs = [msg]
-        else:
-            msg_1 = msg[:len(msg)/2]
-            msg_2 = msg[len(msg)/2:]
-            msgs = [msg_1, msg_2]
-        return msgs

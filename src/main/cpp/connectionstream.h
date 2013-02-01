@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <string>
 
-#include <jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
 #include <conveyor/connection.h>
 
