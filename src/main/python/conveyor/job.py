@@ -109,7 +109,7 @@ class PrintToFileJob(Job):
             self, id, name, driver, profile, input_file, output_file,
             extruder_name, gcode_processor_name, has_start_end,
             material_name, slicer_name, slicer_settings):
-        Job.__init__(self, JobType.PRINT_TO_FILE, id, name)
+        Job.__init__(self, JobType.PRINT_TO_FILE_JOB, id, name)
         self.driver = driver
         self.profile = profile
         self.input_file = input_file
