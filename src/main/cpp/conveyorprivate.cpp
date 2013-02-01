@@ -18,6 +18,7 @@
 #include <conveyor/eeprommap.h>
 #include <conveyor/exceptions.h>
 #include <conveyor/job.h>
+#include <conveyor/log.h>
 #include <conveyor/slicers.h>
 
 #include "connectionstream.h"
@@ -301,6 +302,8 @@ namespace conveyor
         params["machine_name"] = printer->uniqueName().toStdString();
         params["has_start_end"] = skipStartEnd;
 
+        LOG_INFO << "print params=" << params.toStyledString() << std::endl;
+
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "print", params)
             );
@@ -328,6 +331,9 @@ namespace conveyor
         params["file_type"] = Json::Value (printToFileType.toStdString());
         params["output_file"] = Json::Value (outputFile.toStdString ());
         params["has_start_end"] = skipStartEnd;
+
+        LOG_INFO << "print_to_file params="
+                 << params.toStyledString() << std::endl;
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc,
@@ -358,6 +364,9 @@ namespace conveyor
         setProfileNameParam(params, printer);
         params["output_file"] = Json::Value(outputFile.toStdString ());
         params["add_start_end"] = Json::Value(withStartEnd);
+
+        LOG_INFO << "print_to_file params="
+                 << params.toStyledString() << std::endl;
 
         Json::Value const result
             ( SynchronousCallback::invoke (this->m_jsonRpc, "slice", params)
