@@ -89,6 +89,8 @@ if 'win32' != sys.platform:
     libconveyor_cpp.append(Glob('src/main/cpp/posix/*.cpp'))
 else:
     libconveyor_cpp.append(Glob('src/main/cpp/win32/*.cpp'))
+
+cppenv.MBSetLibSymName('conveyor')
 libconveyor = cppenv.SharedLibrary(
     'conveyor', [
         libconveyor_cpp,

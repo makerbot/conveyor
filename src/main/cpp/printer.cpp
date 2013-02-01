@@ -84,16 +84,6 @@ namespace conveyor
         return result;
     }
 
-    Job *
-    Printer::currentJob ()
-    {
-        QList<Job *> j = jobs();
-        if(j.isEmpty())
-            return 0;
-        else
-            return j.first();
-    }
-
     QString const &
     Printer::displayName () const
     {
