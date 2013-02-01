@@ -42,6 +42,21 @@ namespace
 
 namespace conveyor
 {
+    Job::Progress::Progress(const QString &name,
+                            const int progress)
+        : m_name(name),
+          m_progress(progress) {
+    }
+
+    Job::Failure::Failure(const QString &exception,
+                          const int code,
+                          const QString &slicerLog)
+        : m_exception(exception),
+          m_code(code),
+          m_slicerLog(slicerLog)
+    {
+    }
+
     JobPrivate::JobPrivate
         ( Conveyor * conveyor
         , Job * job
@@ -53,6 +68,7 @@ namespace conveyor
         , m_id(id)
         , m_state(RUNNING)
         , m_conclusion(NOTCONCLUDED)
+        , m_failure(NULL)
         , m_type(Job::kInvalidType)
     {
 
@@ -61,6 +77,9 @@ namespace conveyor
     void
     JobPrivate::updateFromJson(Json::Value const & json)
     {
+        const std::string errorStr("error in job info: " +
+                                   json.toStyledString());
+
         int const id(json["id"].asInt());
 
         // This is the filename that is being sliced/printed
@@ -82,18 +101,6 @@ namespace conveyor
             conclusion = jobConclusionFromString(QString(json["conclusion"].asCString()));
         }
 
-        if (!json["currentstep"].isNull()) {
-            const QString currentStepName(json["currentstep"]["name"].asCString());
-            const int currentStepProgress(json["currentstep"]["progress"].asInt());
-
-            m_currentStepName = currentStepName;
-            m_currentStepProgress = currentStepProgress;
-        }
-        else {
-            m_currentStepName = "";
-            m_currentStepProgress = 0;
-        }
-
         if (conclusion != m_conclusion)
             m_job->emitConcluded();
 
@@ -113,6 +120,61 @@ namespace conveyor
             json[profileNameKey].isString()) {
             m_profileName =
                 QString::fromUtf8(json[profileNameKey].asCString());
+        }
+
+        // Clear out any old progress
+        delete m_failure;
+        m_failure = NULL;
+
+        const std::string progressKey("progress");
+        if (json.isMember(progressKey) && !json[progressKey].isNull()) {
+            if (json[progressKey].isObject()) {
+                const std::string progressNameKey("name");
+                const std::string progressProgressKey("progress");
+                if (json[progressKey].isMember(progressNameKey) &&
+                    json[progressKey].isMember(progressProgressKey) &&
+                    json[progressKey][progressNameKey].isString() &&
+                    json[progressKey][progressProgressKey].isNumeric()) {
+                    m_progress = new Job::Progress(QString::fromUtf8(
+                        json[progressKey][progressNameKey].asCString()),
+                        json[progressKey][progressProgressKey].asInt());
+                } else {
+                  LOG_ERROR << errorStr << std::endl;
+                }
+            } else {
+                LOG_ERROR << errorStr << std::endl;
+            }
+        }
+
+        // Clear out any old failure
+        delete m_failure;
+        m_failure = NULL;
+
+        // Check for failure
+        const std::string failureKey("failureKey");
+        if (json.isMember(failureKey) && !json[failureKey].isNull()) {
+            if (json[failureKey].isObject()) {
+                const std::string failureExceptionKey("exception");
+                const std::string failureCodeKey("code");
+                const std::string failureSlicerLogKey("slicer_log");
+                if (json[failureKey].isMember(failureExceptionKey) &&
+                    json[failureKey].isMember(failureCodeKey) &&
+                    json[failureKey].isMember(failureSlicerLogKey) &&
+                    json[failureKey][failureExceptionKey].isString() &&
+                    json[failureKey][failureCodeKey].isNumeric() &&
+                    json[failureKey][failureSlicerLogKey].isString()) {
+                    m_failure = new Job::Failure(
+                        QString::fromUtf8(
+                            json[failureKey][failureExceptionKey].asCString()),
+                        json[failureKey][failureCodeKey].asInt(),
+                        QString::fromUtf8(
+                            json[failureKey][failureSlicerLogKey].asCString()));
+                } else {
+                    LOG_ERROR << errorStr << std::endl;
+                }
+            } else {
+                LOG_ERROR << errorStr << std::endl;
+            }
         }
 
         const std::string typeKey("type");

@@ -25,6 +25,26 @@ namespace conveyor
             kInvalidType
         };
 
+        class Progress {
+         public:
+          Progress(const QString &name,
+                   const int progress);
+
+          const QString m_name;
+          const int m_progress;
+        };
+
+        class Failure {
+         public:
+          Failure(const QString &exception,
+                  const int code,
+                  const QString &slicerLog);
+
+          const QString m_exception;
+          const int m_code;
+          const QString m_slicerLog;
+        };
+
         ~Job (void);
 
         int id (void) const;
@@ -38,6 +58,10 @@ namespace conveyor
 
         QString machineName() const;
         QString profileName() const;
+
+        Progress *progress() const;
+
+        Failure *failure() const;
 
         Type type() const;
 
