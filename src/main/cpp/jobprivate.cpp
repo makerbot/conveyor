@@ -151,7 +151,7 @@ namespace conveyor
         m_failure = NULL;
 
         // Check for failure
-        const std::string failureKey("failureKey");
+        const std::string failureKey("failure");
         if (json.isMember(failureKey) && !json[failureKey].isNull()) {
             if (json[failureKey].isObject()) {
                 const std::string failureExceptionKey("exception");
