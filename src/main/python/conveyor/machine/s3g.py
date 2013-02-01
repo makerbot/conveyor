@@ -123,9 +123,13 @@ class S3gDriver(conveyor.machine.Driver):
                     extruders, extruder_temperature, platform_temperature,
                     material_name)
                 parser.environment.update(gcode_scaffold.variables)
-                parser.s3g.reset()
+
+                # TODO: can we fix the verifier so that this works?
+                # parser.s3g.reset()
+
                 # TODO: clear build plate message
                 # parser.s3g.wait_for_button('center', 0, True, False, False)
+
                 progress = {
                     'name': 'print-to-file',
                     'progress': 0,
