@@ -30,7 +30,8 @@ class JobInfo(object):
     '''This is the JSON-serializable portion of a `Job`.'''
 
     def __init__(
-            self, type_, id_, name, state, progress, conclusion, failure):
+            self, type_, id_, name, state, progress, conclusion, failure,
+            machine_name, port_name, driver_name, profile_name):
         self.type = type_
         self.id = id_
         self.name = name
@@ -38,6 +39,10 @@ class JobInfo(object):
         self.progress = progress
         self.conclusion = conclusion
         self.failure = failure
+        self.machine_name = machine_name
+        self.port_name = port_name
+        self.driver_name = driver_name
+        self.profile_name = profile_name
 
     def to_dict(self):
         dct = {
@@ -48,6 +53,10 @@ class JobInfo(object):
             'progress': self.progress,
             'conclusion': self.conclusion,
             'failure': self.failure,
+            'machine_name': self.machine_name,
+            'port_name': self.port_name,
+            'driver_name': self.driver_name,
+            'profile_name': self.profile_name,
         }
         return dct
 
@@ -55,7 +64,9 @@ class JobInfo(object):
     def from_dict(dct):
         info = JobInfo(
             dct['type'], dct['id'], dct['name'], dct['state'],
-            dct['progress'], dct['conclusion'], dct['failure'])
+            dct['progress'], dct['conclusion'], dct['failure'],
+            dct['machine_name'], dct['port_name'], dct['driver_name'],
+            dct['profile_name'])
         return info
 
 
@@ -65,6 +76,18 @@ class Job(object):
         self.id = id_
         self.name = name
         self.task = None
+
+    def _get_machine_name(self):
+        return None
+
+    def _get_port_name(self):
+        return None
+
+    def _get_driver_name(self):
+        return None
+
+    def _get_profile_name(self):
+        return None
 
     def get_info(self):
         if None is self.task:
@@ -82,9 +105,13 @@ class Job(object):
                 progress = child_task.progress
                 failure = child_task.failure
             conclusion = self.task.conclusion
+        machine_name = self._get_machine_name()
+        port_name = self._get_port_name()
+        driver_name = self._get_driver_name()
+        profile_name = self._get_profile_name()
         info = JobInfo(
             self.type, self.id, self.name, state, progress, conclusion,
-            failure)
+            failure, machine_name, port_name, driver_name, profile_name)
         return info
 
 
@@ -102,6 +129,29 @@ class PrintJob(Job):
         self.material_name = material_name
         self.slicer_name = slicer_name
         self.slicer_settings = slicer_settings
+
+    def _get_machine_name(self):
+        return self.machine.name
+
+    def _get_port_name(self):
+        # NOTE: a machine may be disconnected and it will not have a port. I'm
+        # not sure how a print job would get sent to a disconnected machine (at
+        # least not in this version), but we check the port against `None`
+        # anyway.
+        port = self.machine.get_port()
+        if None is port:
+            port_name = None
+        else:
+            port_name = port.name
+        return port_name
+
+    def _get_driver_name(self):
+        driver = self.machine.get_driver()
+        return driver.name
+
+    def _get_profile_name(self):
+        profile = self.machine.get_profile()
+        return profile.name
 
 
 class PrintToFileJob(Job):
@@ -121,6 +171,12 @@ class PrintToFileJob(Job):
         self.slicer_name = slicer_name
         self.slicer_settings = slicer_settings
 
+    def _get_driver_name(self):
+        return self.driver.name
+
+    def _get_profile_name(self):
+        return self.profile.name
+
 
 class SliceJob(Job):
     def __init__(
@@ -138,3 +194,9 @@ class SliceJob(Job):
         self.material_name = material_name
         self.slicer_name = slicer_name
         self.slicer_settings = slicer_settings
+
+    def _get_driver_name(self):
+        return self.driver.name
+
+    def _get_profile_name(self):
+        return self.profile.name
