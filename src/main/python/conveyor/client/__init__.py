@@ -659,7 +659,7 @@ class PrintToFileCommand(_MonitorCommand):
             'slicer_name': self._parsed_args.slicer_name,
             'slicer_settings': slicer_settings.to_dict(),
         }
-        method_task = self._jsonrpc.request('printtofile', params)
+        method_task = self._jsonrpc.request('print_to_file', params)
         return method_task
 
 

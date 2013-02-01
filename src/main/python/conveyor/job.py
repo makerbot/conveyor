@@ -157,7 +157,7 @@ class PrintJob(Job):
 class PrintToFileJob(Job):
     def __init__(
             self, id, name, driver, profile, input_file, output_file,
-            extruder_name, gcode_processor_name, has_start_end,
+            extruder_name, file_type, gcode_processor_name, has_start_end,
             material_name, slicer_name, slicer_settings):
         Job.__init__(self, JobType.PRINT_TO_FILE_JOB, id, name)
         self.driver = driver
@@ -165,6 +165,7 @@ class PrintToFileJob(Job):
         self.input_file = input_file
         self.output_file = output_file
         self.extruder_name = extruder_name
+        self.file_type = file_type
         self.gcode_processor_name = gcode_processor_name
         self.has_start_end = has_start_end
         self.material_name = material_name

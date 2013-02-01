@@ -105,7 +105,7 @@ class S3gDriver(conveyor.machine.Driver):
         return s3g
 
     def print_to_file(
-            self, profile, input_path, output_path, skip_start_end,
+            self, profile, input_path, output_path, file_type, has_start_end,
             extruders, extruder_temperature, platform_temperature,
             material_name, build_name, task):
         try:
@@ -117,6 +117,7 @@ class S3gDriver(conveyor.machine.Driver):
                 parser.state.profile = profile._s3g_profile
                 parser.state.set_build_name(str(build_name))
                 parser.s3g = makerbot_driver.s3g()
+                parser.s3g.set_print_to_file_type(file_type)
                 parser.s3g.writer = writer
                 gcode_scaffold = profile.get_gcode_scaffold(
                     extruders, extruder_temperature, platform_temperature,
@@ -130,12 +131,12 @@ class S3gDriver(conveyor.machine.Driver):
                     'progress': 0,
                 }
                 task.lazy_heartbeat(progress, task.progress)
-                if not skip_start_end:
+                if not has_start_end:
                     self._execute_lines(task, parser, gcode_scaffold.start)
                 if conveyor.task.TaskState.RUNNING == task.state:
                     with open(input_path) as input_fp:
                         self._execute_lines(task, parser, input_fp)
-                if not skip_start_end:
+                if not has_start_end:
                     self._execute_lines(task, parser, gcode_scaffold.end)
             if conveyor.task.TaskState.RUNNING == task.state:
                 progress = {
@@ -381,16 +382,15 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 self._operation.cancel()
 
     def print(
-            self, input_path, skip_start_end, extruders,
-            extruder_temperature, platform_temperature, material_name,
-            build_name, task):
+            self, input_path, has_start_end, extruders, extruder_temperature,
+            platform_temperature, material_name, build_name, task):
         with self._state_condition:
             self._poll()
             if conveyor.machine.MachineState.IDLE != self._state:
                 raise conveyor.error.MachineStateException
             else:
                 self._operation = _MakeOperation(
-                    self, task, input_path, skip_start_end, extruders,
+                    self, task, input_path, has_start_end, extruders,
                     extruder_temperature, platform_temperature,
                     material_name, build_name)
                 self._change_state(conveyor.machine.MachineState.OPERATION)

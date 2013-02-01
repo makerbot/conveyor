@@ -85,9 +85,9 @@ class Driver(object):
         raise NotImplementedError
 
     def print_to_file(
-            self, profile, input_file, output_file,
-            extruder_name, file_type, has_start_end, material_name,
-            build_name, task):
+            self, profile, input_file, output_file, file_type, has_start_end,
+            extruders, extruder_temperature, platform_temperature,
+            material_name, build_name, task):
         raise NotImplementedError
 
     def get_info(self):
@@ -306,9 +306,8 @@ class Machine(object):
         raise NotImplementedError
 
     def print(
-            self, input_path, skip_start_end, extruders,
-            extruder_temperature, platform_temperature, material_name,
-            build_name, task):
+            self, input_path, has_start_end, extruders, extruder_temperature,
+            platform_temperature, material_name, build_name, task):
         raise NotImplementedError
 
     # TODO: these are specific to S3G.

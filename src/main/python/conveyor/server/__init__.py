@@ -274,7 +274,7 @@ class Server(conveyor.stoppable.StoppableInterface):
         profile = driver.get_profile(profile_name)
         job = conveyor.job.PrintToFileJob(
             job_id, job_name, driver, profile, input_file, output_file,
-            extruder_name, gcode_processor_name, has_start_end,
+            extruder_name, file_type, gcode_processor_name, has_start_end,
             material_name, slicer_name, slicer_settings)
         recipe_manager = conveyor.recipe.RecipeManager(
             self._config, self, self._spool)
