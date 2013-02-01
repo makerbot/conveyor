@@ -386,11 +386,12 @@ class _GcodeRecipe(Recipe):
         tasks.append(add_start_end_task)
 
         #verify
-        verifytask = self.verifygcodetask(outputpath, printerthread._profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
+        profile = self._job.machine.get_profile()
+        verifytask = self.verifygcodetask(outputpath, profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
         tasks.append(verifytask)
 
         # Print
-        printtask = self._printtask(printerthread, outputpath, False)
+        printtask = self._printtask(self._job.machine, outputpath, False)
         tasks.append(printtask)
 
         process = conveyor.process.tasksequence(self._job, tasks)
@@ -761,11 +762,12 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(add_start_end_task)
 
         #verify
-        verifytask = self.verifygcodetask(outputpath, printerthread._profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
+        profile = self._job.machine.get_profile()
+        verifytask = self.verifygcodetask(outputpath, profile, self._job.slicer_settings, self._job.material_name, dualstrusion)
         tasks.append(verifytask)
 
         #print
-        printtask = self._printtask(printerthread, outputpath, True)
+        printtask = self._printtask(self._job.machine, outputpath, True)
         tasks.append(printtask)
 
         process = conveyor.process.tasksequence(self._job, tasks)
