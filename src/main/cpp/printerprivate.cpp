@@ -22,6 +22,10 @@ namespace conveyor
         : m_conveyor (conveyor)
         , m_printer (printer)
         , m_uniqueName (uniqueName)
+        , m_canPrint(false)
+        , m_canPrintToFile(false)
+        , m_hasHeatedPlatform(false)
+        , m_numberOfToolheads(0)
         , m_buildVolumeXmin(0)
         , m_buildVolumeYmin(0)
         , m_buildVolumeZmin(0)
@@ -29,13 +33,6 @@ namespace conveyor
         , m_buildVolumeYmax(0)
         , m_buildVolumeZmax(0)
     {
-        this->m_canPrint = true;
-        this->m_canPrintToFile = true;
-        this->m_displayName = "Dummy Printer";
-        this->m_printerType = "Replicator";
-        this->m_machineNames = QStringList("TheReplicator");
-        this->m_numberOfToolheads = 2;
-        this->m_hasHeatedPlatform = true;
     }
 
     void
