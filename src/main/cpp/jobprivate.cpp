@@ -99,6 +99,19 @@ namespace conveyor
         m_name = name;
         m_state = state;
         m_conclusion = conclusion;
+
+        const std::string machineNameKey("machine_name");
+        if (json.isMember(machineNameKey) &&
+            json[machineNameKey].isString()) {
+            m_machineName =
+                QString::fromUtf8(json[machineNameKey].asCString());
+        }
+        const std::string profileNameKey("profile_name");
+        if (json.isMember(profileNameKey) &&
+            json[profileNameKey].isString()) {
+            m_profileName =
+                QString::fromUtf8(json[profileNameKey].asCString());
+        }
     }
     
     void

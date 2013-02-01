@@ -86,4 +86,14 @@ namespace conveyor
     {
         emit concluded(this);
     }
+
+    QString Job::machineName() const
+    {
+        return m_private->m_machineName;
+    }
+
+    QString Job::profileName() const
+    {
+        return m_private->m_profileName;
+    }
 }
