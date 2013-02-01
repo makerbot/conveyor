@@ -2,6 +2,7 @@
 
 #include <conveyor/conveyor.h>
 #include <conveyor/job.h>
+#include <conveyor/log.h>
 
 #include "conveyorprivate.h"
 #include "jobprivate.h"
@@ -52,6 +53,7 @@ namespace conveyor
         , m_id(id)
         , m_state(RUNNING)
         , m_conclusion(NOTCONCLUDED)
+        , m_type(Job::kInvalidType)
     {
 
     }
@@ -112,11 +114,47 @@ namespace conveyor
             m_profileName =
                 QString::fromUtf8(json[profileNameKey].asCString());
         }
+
+        const std::string typeKey("type");
+        if (json.isMember(typeKey)) {
+            if (json[typeKey].isString()) {
+                const std::string type(json[typeKey].asString());
+                if (type == "PRINT_JOB") {
+                    m_type = Job::kPrint;
+                } else if (type == "PRINT_TO_FILE_JOB") {
+                    m_type = Job::kPrintToFile;
+                } else if (type == "SLICE_JOB") {
+                    m_type = Job::kSlice;
+                } else {
+                    LOG_ERROR << "job type invalid value" << std::endl;
+                    m_type = Job::kInvalidType;
+                }
+            } else {
+                LOG_ERROR << "job type field not a string" << std::endl;
+            }
+        } else {
+            LOG_ERROR << "job type field missing" << std::endl;
+        }
     }
     
     void
     JobPrivate::cancel (void)
     {
         m_conveyor->cancelJob(m_id);
+    }
+
+    QString jobTypeToHumanString(const Job::Type type)
+    {
+        switch (type) {
+            case Job::kPrint:
+                return QObject::tr("Print");
+            case Job::kPrintToFile:
+                return QObject::tr("Print to file");
+            case Job::kSlice:
+                return QObject::tr("Slice");
+            case Job::kInvalidType:
+                break;
+        }
+        return QObject::tr("Unknown job type");
     }
 }

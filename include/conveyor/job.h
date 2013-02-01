@@ -18,9 +18,17 @@ namespace conveyor
         Q_OBJECT
 
     public:
+        enum Type {
+            kPrint,
+            kPrintToFile,
+            kSlice,
+            kInvalidType
+        };
+
         ~Job (void);
 
         int id (void) const;
+
         QString name (void) const;
         JobState state (void) const;
         JobConclusion conclusion (void) const;
@@ -30,6 +38,8 @@ namespace conveyor
 
         QString machineName() const;
         QString profileName() const;
+
+        Type type() const;
 
     public slots:
         void cancel (void);
@@ -57,6 +67,8 @@ namespace conveyor
         friend class Printer;
         friend class PrinterPrivate;
     };
+
+    QString jobTypeToHumanString(const Job::Type type);
 }
 
 #endif

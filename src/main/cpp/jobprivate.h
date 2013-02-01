@@ -38,6 +38,8 @@ namespace conveyor
         // with this job
         QString m_machineName;
         QString m_profileName;
+
+        Job::Type m_type;
     };
 }
 

@@ -96,4 +96,9 @@ namespace conveyor
     {
         return m_private->m_profileName;
     }
+
+    Job::Type Job::type() const
+    {
+        return m_private->m_type;
+    }
 }
