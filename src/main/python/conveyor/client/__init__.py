@@ -921,17 +921,24 @@ def _create_slicer_settings(parsed_args, config):
     slicer_settings = conveyor.domain.SlicerConfiguration(
         slicer=slicer,
         extruder=extruder_name,
-        raft=config.get('client', 'slicing', 'raft'),
-        support=config.get('client', 'slicing', 'support'),
-        infill=config.get('client', 'slicing', 'infill'),
-        layer_height=config.get('client', 'slicing', 'layer_height'),
-        shells=config.get('client', 'slicing', 'shells'),
-        extruder_temperature=config.get(
-            'client', 'slicing', 'extruder_temperature'),
-        platform_temperature=config.get(
-            'client', 'slicing', 'platform_temperature'),
-        print_speed=config.get('client', 'slicing', 'print_speed'),
-        travel_speed=config.get('client', 'slicing', 'travel_speed'),
+        raft=bool(
+            config.get('client', 'slicing', 'raft')),
+        support=bool(
+            config.get('client', 'slicing', 'support')),
+        infill=float(
+            config.get('client', 'slicing', 'infill')),
+        layer_height=float(
+            config.get('client', 'slicing', 'layer_height')),
+        shells=int(
+            config.get('client', 'slicing', 'shells')),
+        extruder_temperature=float(
+            config.get('client', 'slicing', 'extruder_temperature')),
+        platform_temperature=float(
+            config.get('client', 'slicing', 'platform_temperature')),
+        print_speed=float(
+            config.get('client', 'slicing', 'print_speed')),
+        travel_speed=float(
+            config.get('client', 'slicing', 'travel_speed')),
     )
     return slicer_settings
 
