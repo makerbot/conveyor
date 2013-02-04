@@ -88,8 +88,6 @@ namespace conveyor
         /** Signals that a job has finished and been removed */
         void jobRemoved (Job *);
 
-        void machineTemperatureChanged(Printer *printer);
-
     private:
         Conveyor
             ( Connection * connection
