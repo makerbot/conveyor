@@ -46,7 +46,7 @@ else:
 def checklevel(level):
     return _checkLevel(level)
 
-def earlylogging(program, early_debugging=True): # pragma: no cover
+def earlylogging(program, early_debugging=False): # pragma: no cover
     '''Initialize console logging for the early part of a conveyor process.'''
 
     dct = {
