@@ -115,7 +115,8 @@ class SubprocessSlicer(Slicer):
             quoted_executable = self._quote(executable)
             arguments = list(self._getarguments())
             quoted_arguments = ' '.join(self._quote(a) for a in arguments)
-            self._log.info('command: %s %s', quoted_executable, quoted_arguments)
+            self._log.info('executable: %s', quoted_executable)
+            self._log.info('command: %s', quoted_arguments)
             cwd = self._getcwd()
             path = os.path.join(cwd, executable)
             if not os.path.exists(path):

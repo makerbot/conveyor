@@ -122,20 +122,9 @@ class Server(conveyor.stoppable.StoppableInterface):
 
     def _job_changed(self, job):
         job_info = job.get_info()
-        self._log.info(
-            'job %d: state=%s, progress=%s, conclusion=%s, failure=%s',
-            job_info.id, job_info.state, job_info.progress,
-            job_info.conclusion, job_info.failure)
         with self._clients_condition:
             clients = self._clients.copy()
         _Client.job_changed(clients, job_info)
-
-    '''
-    if None is not machine_name:
-        pass
-    else:
-        pass
-    '''
 
     def _find_machine(
             self, machine_name, port_name, driver_name, profile_name):
@@ -340,12 +329,15 @@ class Server(conveyor.stoppable.StoppableInterface):
     def _attach_job_callbacks(self, job):
         def start_callback(task):
             self._add_job(job)
+            job.log_job_started(self._log)
         job.task.startevent.attach(start_callback)
         def heartbeat_callback(task):
             self._job_changed(job)
+            job.log_job_heartbeat(self._log)
         job.task.heartbeatevent.attach(heartbeat_callback)
         def stopped_callback(task):
             self._job_changed(job)
+            job.log_job_stopped(self._log)
         job.task.stoppedevent.attach(stopped_callback)
 
     def _attach_print_queued_callbacks(self, machine, job):

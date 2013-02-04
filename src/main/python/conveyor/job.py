@@ -89,22 +89,47 @@ class Job(object):
     def _get_profile_name(self):
         return None
 
-    def get_info(self):
+    def _get_state(self):
         if None is self.task:
             state = None
-            progress = None
-            conclusion = None
-            failure = None
         else:
             state = self.task.state
+        return state
+
+    def _get_progress(self):
+        if None is self.task:
+            progress = None
+        else:
             child_task = self.task.progress
             if None is child_task:
                 progress = None
-                failure = None
             else:
                 progress = child_task.progress
+        return progress
+
+    def _get_failure(self):
+        if None is self.task:
+            failure = None
+        else:
+            child_task = self.task.failure
+            if None is child_task:
+                failure = None
+            else:
                 failure = child_task.failure
+        return failure
+
+    def _get_conclusion(self):
+        if None is self.task:
+            conclusion = None
+        else:
             conclusion = self.task.conclusion
+        return conclusion
+
+    def get_info(self):
+        state = self._get_state()
+        progress = self._get_progress()
+        failure = self._get_failure()
+        conclusion = self._get_conclusion()
         machine_name = self._get_machine_name()
         port_name = self._get_port_name()
         driver_name = self._get_driver_name()
@@ -113,6 +138,15 @@ class Job(object):
             self.type, self.id, self.name, state, progress, conclusion,
             failure, machine_name, port_name, driver_name, profile_name)
         return info
+
+    def log_job_started(self, log):
+        raise NotImplementedError
+
+    def log_job_heartbeat(self, log):
+        raise NotImplementedError
+
+    def log_job_stopped(self, log):
+        raise NotImplementedError
 
 
 class PrintJob(Job):
@@ -153,6 +187,28 @@ class PrintJob(Job):
         profile = self.machine.get_profile()
         return profile.name
 
+    def log_job_started(self, log):
+        log.info(
+            'print job %d started; printing %s to %s', self.id,
+            self.input_file, self.machine.name)
+
+    def log_job_heartbeat(self, log):
+        progress = self._get_progress()
+        if None is not progress:
+            log.debug(
+                'print job %d progress: %s, %d%%', self.id, progress['name'],
+                progress['progress'])
+
+    def log_job_stopped(self, log):
+        conclusion = self._get_conclusion()
+        if conveyor.task.TaskConclusion.ENDED == conclusion:
+            log.info('print job %d ended', self.id)
+        elif conveyor.task.TaskConclusion.FAILED == conclusion:
+            failure = self._get_failure()
+            log.error('print job %d failed: %s', self.id, failure)
+        elif conveyor.task.TaskConclusion.CANCELED == conclusion:
+            log.warning('print job %d canceled', self.id)
+
 
 class PrintToFileJob(Job):
     def __init__(
@@ -178,6 +234,28 @@ class PrintToFileJob(Job):
     def _get_profile_name(self):
         return self.profile.name
 
+    def log_job_started(self, log):
+        log.info(
+            'print-to-file job %d started; printing %s to %s', self.id,
+            self.input_file, self.output_file)
+
+    def log_job_heartbeat(self, log):
+        progress = self._get_progress()
+        if None is not progress:
+            log.debug(
+                'print-to-file job %d progress: %s, %d%%', self.id, progress['name'],
+                progress['progress'])
+
+    def log_job_stopped(self, log):
+        conclusion = self._get_conclusion()
+        if conveyor.task.TaskConclusion.ENDED == conclusion:
+            log.info('print-to-file job %d ended', self.id)
+        elif conveyor.task.TaskConclusion.FAILED == conclusion:
+            failure = self._get_failure()
+            log.error('print-to-file job %d failed: %s', self.id, failure)
+        elif conveyor.task.TaskConclusion.CANCELED == conclusion:
+            log.warning('print-to-file job %d canceled', self.id)
+
 
 class SliceJob(Job):
     def __init__(
@@ -201,3 +279,25 @@ class SliceJob(Job):
 
     def _get_profile_name(self):
         return self.profile.name
+
+    def log_job_started(self, log):
+        log.info(
+            'slice job %d started; slicing %s to %s', self.id,
+            self.input_file, self.output_file)
+
+    def log_job_heartbeat(self, log):
+        progress = self._get_progress()
+        if None is not progress:
+            log.debug(
+                'slice job %d progress: %s, %d%%', self.id, progress['name'],
+                progress['progress'])
+
+    def log_job_stopped(self, log):
+        conclusion = self._get_conclusion()
+        if conveyor.task.TaskConclusion.ENDED == conclusion:
+            log.info('slice job %d ended', self.id)
+        elif conveyor.task.TaskConclusion.FAILED == conclusion:
+            failure = self._get_failure()
+            log.error('slice job %d failed: %s', self.id, failure)
+        elif conveyor.task.TaskConclusion.CANCELED == conclusion:
+            log.warning('slice job %d canceled', self.id)

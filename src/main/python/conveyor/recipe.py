@@ -28,11 +28,6 @@ import os.path
 import subprocess
 import tempfile
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 import conveyor.address
 import conveyor.domain
 import conveyor.dualstrusion
@@ -147,7 +142,6 @@ class Recipe(object):
 
     def _slicertask(self, profile, input_path, output_path, add_start_end,
             dualstrusion, slicer_settings):
-        self._log.info('blarg')
         self._log.info(conveyor.slicer.Slicer.MIRACLEGRUE)
         if conveyor.slicer.Slicer.MIRACLEGRUE == self._job.slicer_name:
             exe = self._config.get('miracle_grue', 'exe')
@@ -227,7 +221,6 @@ class Recipe(object):
 
     def _printtask(self, machine, inputpath, dualstrusion):
         def runningcallback(task):
-            self._log.info("printing %s" % (inputpath))
             self._spool.spool_print(
                 machine, inputpath, True,
                 self._job.extruder_name,
@@ -308,7 +301,6 @@ class Recipe(object):
                 slicer_settings.extruder_temperature,
                 slicer_settings.platform_temperature,
                 material_name)
-            self._log.info('variables=%r', gcode_scaffold.variables)
             parser.environment.update(gcode_scaffold.variables)
             try:
                 # for line in gcode_scaffold.start:
@@ -379,9 +371,10 @@ class _GcodeRecipe(Recipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputfp:
             outputpath = outputfp.name
+        profile = self._job.machine.get_profile()
         add_start_end = not self._job.has_start_end
         add_start_end_task = self._add_start_end_task(
-            printerthread._profile, self._job.slicer_settings, self._job.material_name,
+            profile, self._job.slicer_settings, self._job.material_name,
             add_start_end, dualstrusion, self._job.input_file, outputpath)
         tasks.append(add_start_end_task)
 
