@@ -102,7 +102,6 @@ namespace conveyor
         PrinterRemovedMethod m_printerRemovedMethod;
         JobAddedMethod m_jobAddedMethod;
         JobChangedMethod m_jobChangedMethod;
-        MachineTemperatureChangedMethod m_machineTemperatureChangedMethod;
 
         /** Cached jobs, potentially including defunct jobs */
         QHash<int, Job *> m_jobs;

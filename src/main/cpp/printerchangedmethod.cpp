@@ -32,28 +32,4 @@ namespace conveyor
 
         return Json::Value(Json::nullValue);
     }
-
-
-    MachineTemperatureChangedMethod::MachineTemperatureChangedMethod
-        ( ConveyorPrivate * const conveyorPrivate
-        )
-        : m_conveyorPrivate(conveyorPrivate)
-    { 
-    }
-
-    MachineTemperatureChangedMethod::~MachineTemperatureChangedMethod (void)
-    {
-    }
-    
-    Json::Value MachineTemperatureChangedMethod::invoke (Json::Value const & params)
-    {
-        QString botId(params["uniqueName"].asString().c_str());
-
-        Printer * printer(m_conveyorPrivate->printerByUniqueName(botId));
-        printer->m_private->updateFromJson(params);
-
-        m_conveyorPrivate->emitPrinterChanged(printer);
-
-        return Json::Value(Json::nullValue);
-    }
 }

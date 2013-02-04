@@ -114,7 +114,6 @@ namespace conveyor
         , m_printerRemovedMethod(this)
         , m_jobAddedMethod(this)
         , m_jobChangedMethod(this)
-        , m_machineTemperatureChangedMethod(this)
     {
         this->m_jsonRpc->addMethod("printeradded", & m_printerAddedMethod);
         this->m_jsonRpc->addMethod("printerchanged", & m_printerChangedMethod);
@@ -122,7 +121,9 @@ namespace conveyor
         this->m_jsonRpc->addMethod("jobadded", & m_jobAddedMethod);
         this->m_jsonRpc->addMethod("jobchanged", & m_jobChangedMethod);
         this->m_jsonRpc->addMethod("machine_temperature_changed",
-                                     &m_machineTemperatureChangedMethod);
+                                     &m_printerChangedMethod);
+        this->m_jsonRpc->addMethod("machine_state_changed",
+                                     &m_printerChangedMethod);
     }
 
     ConveyorPrivate::~ConveyorPrivate (void)
