@@ -18,3 +18,35 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import (absolute_import, print_function, unicode_literals)
+
+import os.path
+
+
+DEFAULT_CONFIG_FILE = '/Library/MakerBot/conveyor.conf'
+
+
+DEFAULT_CONFIG_COMMON_ADDRESS = 'pipe:/var/tmp/conveyord.socket'
+
+
+DEFAULT_CONFIG_COMMON_PID_FILE = '/var/tmp/conveyord.pid'
+
+
+DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = '/Library/MakerBot/s3g/'
+
+
+DEFAULT_CONFIG_MIRACLE_GRUE_EXE = '/Library/MakerBot/miracle_grue'
+
+
+DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR = '/Library/MakerBot/src/main/miraclegrue/'
+
+
+DEFAULT_CONFIG_SKEINFORGE_FILE = '/Library/MakerBot/skeinforge/skeinforge_application/skeinforge.py'
+
+
+DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = '/Library/MakerBot/src/main/skeinforge/'
+
+
+DEFAULT_CONFIG_SERVER_LOGGING_FILE = '/var/log/conveyor/conveyord.log'
+
+
+DEFAULT_CONFIG_SERVER_UNIFIED_MESH_HACK_EXE = '/Library/MakerBot/unified_mesh_hack'
