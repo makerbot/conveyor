@@ -20,6 +20,18 @@ namespace conveyor
     private:
         ConveyorPrivate * const m_conveyorPrivate;
     };
+
+    class MachineTemperatureChangedMethod : public JsonRpcMethod
+    {
+    public:
+        MachineTemperatureChangedMethod (ConveyorPrivate * conveyorPrivate);
+        ~MachineTemperatureChangedMethod ();
+        
+        Json::Value invoke (Json::Value const & params);
+        
+    private:
+        ConveyorPrivate * const m_conveyorPrivate;
+    };
 }
 
 #endif // PRINTERCHANGEDMETHOD_H
