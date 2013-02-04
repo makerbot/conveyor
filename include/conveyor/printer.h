@@ -143,6 +143,7 @@ namespace conveyor
         friend class JobPrivate;
         friend class PrinterAddedMethod;
         friend class PrinterChangedMethod;
+        friend class MachineTemperatureChangedMethod;
     };
 }
 
