@@ -18,6 +18,7 @@ if [ "$1" = "purge" ]; then
 	chgrp root /var/run/conveyor >/dev/null 2>&1 || true
 	chmod g-s /var/log/conveyor >/dev/null 2>&1 || true
 	chgrp root /var/log/conveyor >/dev/null 2>&1 || true
+	rm -r /usr/share/makerbot/virtualenv >/dev/null 2>&1 || true
 fi
 
 exit 0
