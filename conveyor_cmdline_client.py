@@ -1,18 +1,11 @@
+#! /usr/bin/env python
+
+from __future__ import (absolute_import, print_function, unicode_literals)
 
 import sys
-#override sys.path
-sys.path.insert(0,'./src/main/python')
-sys.path.insert(0,'./submodule/s3g')
 
-import conveyor
-import conveyor.log
-import conveyor.client
-import conveyor.main
+import conveyor.client.__main__
 
 
-#start logging, fire up ServerMain of the server module
-conveyor.log.earlylogging('conveyord')
-main = conveyor.client.ClientMain()
-code = main.main(sys.argv)
-code = code if code else 0
-exit(code)
+if '__main__' == __name__:
+    sys.exit(conveyor.client.__main__._main(sys.argv))
