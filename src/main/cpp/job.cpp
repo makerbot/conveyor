@@ -51,18 +51,6 @@ namespace conveyor
         return m_private->m_conclusion;
     }
 
-    int
-    Job::currentStepProgress (void) const
-    {
-        return m_private->m_currentStepProgress;
-    }
-
-    QString
-    Job::currentStepName (void) const
-    {
-        return m_private->m_currentStepName;
-    }
-
     void
     Job::cancel (void)
     {
@@ -95,5 +83,20 @@ namespace conveyor
     QString Job::profileName() const
     {
         return m_private->m_profileName;
+    }
+
+    Job::Progress *Job::progress() const
+    {
+        return m_private->m_progress;
+    }
+
+    Job::Failure *Job::failure() const
+    {
+        return m_private->m_failure;
+    }
+
+    Job::Type Job::type() const
+    {
+        return m_private->m_type;
     }
 }

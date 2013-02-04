@@ -18,18 +18,49 @@ namespace conveyor
         Q_OBJECT
 
     public:
+        enum Type {
+            kPrint,
+            kPrintToFile,
+            kSlice,
+            kInvalidType
+        };
+
+        class Progress {
+         public:
+          Progress(const QString &name,
+                   const int progress);
+
+          const QString m_name;
+          const int m_progress;
+        };
+
+        class Failure {
+         public:
+          Failure(const QString &exception,
+                  const int code,
+                  const QString &slicerLog);
+
+          const QString m_exception;
+          const int m_code;
+          const QString m_slicerLog;
+        };
+
         ~Job (void);
 
         int id (void) const;
+
         QString name (void) const;
         JobState state (void) const;
         JobConclusion conclusion (void) const;
 
-        int currentStepProgress (void) const;
-        QString currentStepName (void) const;
-
         QString machineName() const;
         QString profileName() const;
+
+        Progress *progress() const;
+
+        Failure *failure() const;
+
+        Type type() const;
 
     public slots:
         void cancel (void);
@@ -57,6 +88,8 @@ namespace conveyor
         friend class Printer;
         friend class PrinterPrivate;
     };
+
+    QString jobTypeToHumanString(const Job::Type type);
 }
 
 #endif
