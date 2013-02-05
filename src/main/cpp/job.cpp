@@ -85,12 +85,12 @@ namespace conveyor
         return m_private->m_profileName;
     }
 
-    Job::Progress *Job::progress() const
+    Job::Progress Job::progress() const
     {
         return m_private->m_progress;
     }
 
-    Job::Failure *Job::failure() const
+    Job::Failure Job::failure() const
     {
         return m_private->m_failure;
     }
