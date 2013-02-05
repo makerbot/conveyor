@@ -52,6 +52,7 @@ namespace conveyor
         QString m_printerType;
         QString m_profileName;
         QStringList m_machineNames;
+        Printer::State m_state;
         bool m_canPrint;
         bool m_canPrintToFile;
         bool m_hasHeatedPlatform;

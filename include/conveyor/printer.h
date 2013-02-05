@@ -61,6 +61,15 @@ namespace conveyor
         Q_OBJECT
 
     public:
+        enum State {
+            kDisconnected,
+            kBusy,
+            kIdle,
+            kOperation,
+            kPaused,
+            kInvalid
+        };
+
         ~Printer ();
 
         /** A list of all the jobs the printer has queued */
@@ -80,6 +89,8 @@ namespace conveyor
         QString const & printerType () const;
 
         QString profileName() const;
+
+        State state() const;
 
         /** Can this printer create physical objects? false for virtual printers */
         bool canPrint () const;

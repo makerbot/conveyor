@@ -15,6 +15,7 @@
 
 #include "connectionstream.h"
 #include "connectionthread.h"
+#include "notification_methods.h"
 #include "printeraddedmethod.h"
 #include "printerchangedmethod.h"
 #include "printerremovedmethod.h"
@@ -102,6 +103,8 @@ namespace conveyor
         PrinterRemovedMethod m_printerRemovedMethod;
         JobAddedMethod m_jobAddedMethod;
         JobChangedMethod m_jobChangedMethod;
+        PortAttachedMethod m_portAttachedMethod;
+        PortDetachedMethod m_portDetachedMethod;
 
         /** Cached jobs, potentially including defunct jobs */
         QHash<int, Job *> m_jobs;

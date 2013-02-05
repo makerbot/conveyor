@@ -114,6 +114,11 @@ namespace conveyor
         return m_private->m_profileName;
     }
 
+    Printer::State Printer::state() const
+    {
+        return m_private->m_state;
+    }
+
     bool
     Printer::canPrint () const
     {
