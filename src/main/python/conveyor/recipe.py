@@ -391,9 +391,10 @@ class _GcodeRecipe(Recipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
+        add_start_end = not self._job.has_start_end
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
-            self._job.has_start_end, dualstrusion, self._job.input_file, start_end_path)
+            add_start_end, dualstrusion, self._job.input_file, start_end_path)
         tasks.append(add_start_end_task)
 
         #verify
