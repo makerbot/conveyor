@@ -118,7 +118,10 @@ class SubprocessSlicer(Slicer):
             self._log.info('executable: %s', quoted_executable)
             self._log.info('command: %s', quoted_arguments)
             cwd = self._getcwd()
-            path = os.path.join(cwd, executable)
+            if None is cwd:
+                path = executable
+            else:
+                path = os.path.join(cwd, executable)
             if not os.path.exists(path):
                 raise conveyor.error.MissingExecutableException(path)
             self._popen = subprocess.Popen(

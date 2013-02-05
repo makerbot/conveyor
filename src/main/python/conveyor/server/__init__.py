@@ -60,6 +60,8 @@ class Server(conveyor.stoppable.StoppableInterface):
         self._jobs_condition = threading.Condition()
         self._print_queued = set()
         self._print_queued_condition = threading.Condition()
+        self._port_manager.port_attached.attach(self._port_attached)
+        self._port_manager.port_detached.attach(self._port_detached)
 
     def stop(self):
         self._stop = True
@@ -98,6 +100,32 @@ class Server(conveyor.stoppable.StoppableInterface):
                 if None is not work:
                     work()
             conveyor.error.guard(self._log, func)
+
+    def _port_attached(self, port):
+        with self._clients_condition:
+            clients = self._clients.copy()
+        port_info = port.get_info()
+        _Client.port_attached(clients, port_info)
+
+    def _port_detached(self, port_name):
+        with self._clients_condition:
+            clients = self._clients.copy()
+        _Client.port_detached(clients, port_name)
+
+    def _machine_connected(self, machine):
+        pass # TODO
+
+    def _machine_state_changed(self, machine):
+        with self._clients_condition:
+            clients = self._clients.copy()
+        machine_info = machine.get_info()
+        _Client.machine_state_changed(clients, machine_info)
+
+    def _machine_temperature_changed(self, machine):
+        with self._clients_condition:
+            clients = self._clients.copy()
+        machine_info = machine.get_info()
+        _Client.machine_temperature_changed(clients, machine_info)
 
     def _add_client(self, client):
         with self._clients_condition:
@@ -177,6 +205,8 @@ class Server(conveyor.stoppable.StoppableInterface):
                 profile = None
         if None is machine:
             machine = self._machine_manager.new_machine(port, driver, profile)
+            machine.state_changed.attach(self._machine_state_changed)
+            machine.temperature_changed.attach(self._machine_temperature_changed)
             machine.set_port(port)
             port.set_machine(machine)
         return machine
@@ -312,9 +342,6 @@ class Server(conveyor.stoppable.StoppableInterface):
         if conveyor.task.TaskState.STOPPED != job.task.state:
             job.task.cancel()
 
-    def _machine_connected(self, machine):
-        pass # TODO
-
     def _create_job_id(self):
         with self._jobs_condition:
             self._job_id_counter += 1
@@ -442,38 +469,29 @@ class _Client(conveyor.stoppable.StoppableThread):
                 self._server._remove_client(self)
         conveyor.error.guard(self._log, func)
 
-    def printerchanged(self, params):
-        self._jsonrpc.notify('printerchanged', params)
+    @staticmethod
+    def port_attached(clients, port_info):
+        params = port_info.to_dict()
+        for client in clients:
+            client._jsonrpc.notify('port_attached', params)
 
-    def printerremoved(self, params):
-        self._jsonrpc.notify('printerremoved', params)
+    @staticmethod
+    def port_detached(clients, port_name):
+        params = {'port_name': port_name}
+        for client in clients:
+            client._jsonrpc.notify('port_detached', params)
 
-    def jobadded(self, params):
-        self._jsonrpc.notify('jobadded', params)
+    @staticmethod
+    def machine_state_changed(clients, machine_info):
+        params = machine_info.to_dict()
+        for client in clients:
+            client._jsonrpc.notify('machine_state_changed', params)
 
-    def jobchanged(self, params):
-        self._jsonrpc.notify('jobchanged', params)
-
-    def _stoppedcallback(self, job):
-        def callback(task):
-            job.state = task.state
-            job.conclusion = task.conclusion
-            job.failure = None
-            if None is not task.failure:
-                if isinstance(task.failure.failure, dict):
-                    job.failure = task.failure.failure
-                else:
-                    job.failure = unicode(task.failure.failure)
-            if conveyor.task.TaskConclusion.ENDED == task.conclusion:
-                self._log.info('job %d ended', job.id)
-            elif conveyor.task.TaskConclusion.FAILED == task.conclusion:
-                self._log.info('job %d failed: %s', job.id, job.failure)
-            elif conveyor.task.TaskConclusion.CANCELED == task.conclusion:
-                self._log.info('job %d canceled', job.id)
-            else:
-                raise ValueError(task.conclusion)
-            self._server.changejob(job)
-        return callback
+    @staticmethod
+    def machine_temperature_changed(clients, machine_info):
+        params = machine_info.to_dict()
+        for client in clients:
+            client._jsonrpc.notify('machine_temperature_changed', params)
 
     @staticmethod
     def job_added(clients, job_info):

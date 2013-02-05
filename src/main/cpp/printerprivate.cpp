@@ -22,6 +22,7 @@ namespace conveyor
         : m_conveyor (conveyor)
         , m_printer (printer)
         , m_uniqueName (uniqueName)
+        , m_state (Printer::kInvalid)
         , m_canPrint(false)
         , m_canPrintToFile(false)
         , m_hasHeatedPlatform(false)
@@ -35,6 +36,24 @@ namespace conveyor
     {
     }
 
+    static Printer::State stateFromString(const std::string &str) {
+        if (str == "DISCONNECTED") {
+            return Printer::kDisconnected;
+        } else if (str == "BUSY") {
+            return Printer::kBusy;
+        } else if (str == "IDLE") {
+            return Printer::kIdle;
+        } else if (str == "OPERATION") {
+            return Printer::kOperation;
+        } else if (str == "PAUSED") {
+            return Printer::kPaused;
+        } else {
+            LOG_ERROR << "Invlaid machine state string: "
+                      << str << std::endl;
+            return Printer::kInvalid;
+        }
+    }
+
     void
     PrinterPrivate::updateFromJson(Json::Value const & json)
     {
@@ -44,6 +63,7 @@ namespace conveyor
         bool const canPrintToFile(json["canPrintToFile"].asBool());
         QString const printerType(QString(json["printerType"].asCString()));
         int const numberOfToolheads(json["numberOfToolheads"].asInt());
+        const Printer::State state(stateFromString(json["state"].asString()));
         bool const hasHeatedPlatform(json["hasHeatedPlatform"].asBool());
         QStringList machineNames;
         for(Json::ArrayIndex i = 0; i < json["machineNames"].size(); ++i)
@@ -85,9 +105,24 @@ namespace conveyor
                     << json.toStyledString() << std::endl;
         }
 
+        if ((m_state == Printer::kInvalid ||
+             m_state == Printer::kDisconnected) &&
+            state != Printer::kInvalid &&
+            state != Printer::kDisconnected) {
+            m_conveyor->m_private->emitPrinterAdded(m_printer);
+        }
+
+        if ((m_state != Printer::kInvalid &&
+             m_state != Printer::kDisconnected) &&
+            (state == Printer::kInvalid ||
+             state == Printer::kDisconnected)) {
+            m_conveyor->m_private->emitPrinterRemoved(m_printer);
+        }
+
         m_uniqueName = uniqueName;
         m_displayName = displayName;
         m_machineNames = machineNames;
+        m_state = state;
         m_canPrint = canPrint;
         m_canPrintToFile = canPrintToFile;
         m_printerType = printerType;

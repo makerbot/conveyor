@@ -27,22 +27,28 @@ namespace conveyor
 
         class Progress {
          public:
-          Progress(const QString &name,
-                   const int progress);
+          Progress();
 
-          const QString m_name;
-          const int m_progress;
+          /// Name of the current progress step
+          QString m_name;
+
+          /// Percentage of the current progress step in the range [0, 100]
+          int m_progress;
         };
 
         class Failure {
          public:
-          Failure(const QString &exception,
-                  const int code,
-                  const QString &slicerLog);
+          Failure();
 
-          const QString m_exception;
-          const int m_code;
-          const QString m_slicerLog;
+          /// True if the Job failed, false otherwise
+          ///
+          /// The other Failure fields should not be used if m_failed
+          /// is false.
+          bool m_failed;
+
+          QString m_exception;
+          int m_code;
+          QString m_slicerLog;
         };
 
         ~Job (void);
@@ -56,9 +62,9 @@ namespace conveyor
         QString machineName() const;
         QString profileName() const;
 
-        Progress *progress() const;
+        Progress progress() const;
 
-        Failure *failure() const;
+        Failure failure() const;
 
         Type type() const;
 

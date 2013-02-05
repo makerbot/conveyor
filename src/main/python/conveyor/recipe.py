@@ -275,10 +275,9 @@ class Recipe(object):
                 task.fail(message)
         task.runningevent.attach(runningcallback)
         return task
-    
+
     def verifygcodetask(self, gcodepath, profile, slicer_settings, material_name, dualstrusion):
         task = conveyor.task.Task()
-        
         def update(percent):
             percent = min(percent, 100) 
             progress = {
@@ -288,7 +287,6 @@ class Recipe(object):
             # Use regular heartbeat here, since we cant keep track of past updates
             if progress != task.progress:
                 task.heartbeat(progress)
-            
         def runningcallback(task):
             self._log.info("Validating gcode file %s" % (gcodepath))
             parser = makerbot_driver.Gcode.GcodeParser()
@@ -303,14 +301,10 @@ class Recipe(object):
                 material_name)
             parser.environment.update(gcode_scaffold.variables)
             try:
-                # for line in gcode_scaffold.start:
-                #     parser.execute_line(line)
                 with open(gcodepath) as f:
                     for line in f:
                         parser.execute_line(line)
                         update(parser.state.percentage)
-                # for line in gcode_scaffold.end:
-                #     parser.execute_line(line)
             except makerbot_driver.Gcode.GcodeError as e:
                 self._log.exception('G-code error')
                 message = conveyor.util.exception_to_failure(e)
@@ -397,9 +391,10 @@ class _GcodeRecipe(Recipe):
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
+        add_start_end = not self._job.has_start_end
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
-            self._job.has_start_end, dualstrusion, self._job.input_file, start_end_path)
+            add_start_end, dualstrusion, self._job.input_file, start_end_path)
         tasks.append(add_start_end_task)
 
         #verify
@@ -407,10 +402,10 @@ class _GcodeRecipe(Recipe):
         tasks.append(verifytask)
 
         # Print
-        print_to_filetask = self._print_to_filetask(start_end_path, outputpath)
+        print_to_filetask = self._print_to_filetask(start_end_path, self._job.output_file)
         tasks.append(print_to_filetask)
 
-        tasks.append(self.verifys3gtask(outputpath))
+        tasks.append(self.verifys3gtask(self._job.output_file))
 
         def process_endcallback(task):
             os.unlink(start_end_path)

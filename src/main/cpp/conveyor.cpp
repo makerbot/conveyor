@@ -163,4 +163,14 @@ namespace conveyor
     {
         emit jobRemoved(j);
     }
+
+    void Conveyor::emitPortAttached(const Port * const port)
+    {
+      emit portAttached(port);
+    }
+
+    void Conveyor::emitPortDetached(const QString &portName)
+    {
+      emit portDetached(portName);
+    }
 }

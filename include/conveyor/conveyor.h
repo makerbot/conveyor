@@ -88,6 +88,9 @@ namespace conveyor
         /** Signals that a job has finished and been removed */
         void jobRemoved (Job *);
 
+        void portAttached(const conveyor::Port *port);
+        void portDetached(const QString portName);
+
     private:
         Conveyor
             ( Connection * connection
@@ -103,12 +106,17 @@ namespace conveyor
         friend class Printer;
         friend class PrinterPrivate;
         friend class ConveyorPrivate;
+        friend class PortAttachedMethod;
+        friend class PortDetachedMethod;
 
         void emitPrinterAdded (Printer *);
         void emitPrinterRemoved (Printer *);
 
         void emitJobAdded (Job *);
         void emitJobRemoved (Job *);
+
+        void emitPortAttached(const conveyor::Port *port);
+        void emitPortDetached(const QString &portName);
     };
 
     /// True if the job is for the specified printer or printer type

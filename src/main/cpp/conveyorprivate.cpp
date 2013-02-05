@@ -114,12 +114,23 @@ namespace conveyor
         , m_printerRemovedMethod(this)
         , m_jobAddedMethod(this)
         , m_jobChangedMethod(this)
+        , m_portAttachedMethod(conveyor)
+        , m_portDetachedMethod(conveyor)
     {
         this->m_jsonRpc->addMethod("printeradded", & m_printerAddedMethod);
         this->m_jsonRpc->addMethod("printerchanged", & m_printerChangedMethod);
         this->m_jsonRpc->addMethod("printerremoved", & m_printerRemovedMethod);
         this->m_jsonRpc->addMethod("jobadded", & m_jobAddedMethod);
         this->m_jsonRpc->addMethod("jobchanged", & m_jobChangedMethod);
+        this->m_jsonRpc->addMethod("machine_temperature_changed",
+                                     &m_printerChangedMethod);
+        this->m_jsonRpc->addMethod("machine_state_changed",
+                                     &m_printerChangedMethod);
+
+        this->m_jsonRpc->addMethod("port_attached",
+                                   &m_portAttachedMethod);
+        this->m_jsonRpc->addMethod("port_detached",
+                                   &m_portDetachedMethod);
     }
 
     ConveyorPrivate::~ConveyorPrivate (void)
@@ -160,7 +171,12 @@ namespace conveyor
                     ( QString(r["uniqueName"].asCString())));
 
             printer->m_private->updateFromJson(r);
-            activePrinters.append(printer);
+
+            if (!printer->canPrint() ||
+                (printer->state() != Printer::kInvalid &&
+                 printer->state() != Printer::kDisconnected)) {
+                activePrinters.append(printer);
+            }
         }
 
         // Sort the list so that it always appears in the same order

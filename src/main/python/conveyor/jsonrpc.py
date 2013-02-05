@@ -98,7 +98,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
                 response = self._invalidrequest(None)
         self._log.debug('response=%r', response)
         if None is not response:
-            outdata = json.dumps(response)
+            outdata = conveyor.json.dumps(response)
             self._send(outdata)
 
     def _handleobject(self, parsed):
@@ -239,7 +239,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
     def notify(self, method, params):
         self._log.debug('method=%r, params=%r', method, params)
         request = {'jsonrpc': '2.0', 'method': method, 'params': params}
-        data = json.dumps(request)
+        data = conveyor.json.dumps(request)
         self._send(data)
 
     def request(self, method, params):
@@ -255,7 +255,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         def runningevent(task):
             request = {
                 'jsonrpc': '2.0', 'method': method, 'params': params, 'id': id}
-            data = json.dumps(request)
+            data = conveyor.json.dumps(request)
             self._send(data)
             self._tasks[id] = task
         def stoppedevent(task):
@@ -335,7 +335,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
                         response = self._errorresponse(id, -32002, 'task canceled', None)
                     else:
                         raise ValueError(task.conclusion)
-                    outdata = json.dumps(response)
+                    outdata = conveyor.json.dumps(response)
                     self._send(outdata)
                 task.stoppedevent.attach(stoppedcallback)
                 task.start()

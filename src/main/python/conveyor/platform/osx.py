@@ -31,19 +31,19 @@ DEFAULT_CONFIG_COMMON_ADDRESS = 'pipe:/var/tmp/conveyord.socket'
 DEFAULT_CONFIG_COMMON_PID_FILE = '/var/tmp/conveyord.pid'
 
 
-DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = '/Library/MakerBot/s3g/'
+DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = '/Library/MakerBot/s3g/profiles/'
 
 
 DEFAULT_CONFIG_MIRACLE_GRUE_EXE = '/Library/MakerBot/miracle_grue'
 
 
-DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR = '/Library/MakerBot/src/main/miraclegrue/'
+DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR = '/Library/MakerBot/miraclegrue/'
 
 
 DEFAULT_CONFIG_SKEINFORGE_FILE = '/Library/MakerBot/skeinforge/skeinforge_application/skeinforge.py'
 
 
-DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = '/Library/MakerBot/src/main/skeinforge/'
+DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = '/Library/MakerBot/skeinforge/'
 
 
 DEFAULT_CONFIG_SERVER_LOGGING_FILE = '/var/log/conveyor/conveyord.log'
