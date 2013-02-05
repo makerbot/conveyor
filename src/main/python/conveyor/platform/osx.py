@@ -31,7 +31,7 @@ DEFAULT_CONFIG_COMMON_ADDRESS = 'pipe:/var/tmp/conveyord.socket'
 DEFAULT_CONFIG_COMMON_PID_FILE = '/var/tmp/conveyord.pid'
 
 
-DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = '/Library/MakerBot/s3g/'
+DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = '/Library/MakerBot/s3g/profiles/'
 
 
 DEFAULT_CONFIG_MIRACLE_GRUE_EXE = '/Library/MakerBot/miracle_grue'
