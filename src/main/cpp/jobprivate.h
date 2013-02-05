@@ -37,11 +37,9 @@ namespace conveyor
         QString m_machineName;
         QString m_profileName;
 
-        // Can be null
-        Job::Progress *m_progress;
+        Job::Progress m_progress;
 
-        // Can be null
-        Job::Failure *m_failure;
+        Job::Failure m_failure;
 
         Job::Type m_type;
     };

@@ -42,18 +42,16 @@ namespace
 
 namespace conveyor
 {
-    Job::Progress::Progress(const QString &name,
-                            const int progress)
-        : m_name(name),
-          m_progress(progress) {
+    Job::Progress::Progress()
+        : m_name(QString()),
+          m_progress(0) {
     }
 
-    Job::Failure::Failure(const QString &exception,
-                          const int code,
-                          const QString &slicerLog)
-        : m_exception(exception),
-          m_code(code),
-          m_slicerLog(slicerLog)
+    Job::Failure::Failure()
+        : m_failed(false),
+          m_exception(QString()),
+          m_code(-1),
+          m_slicerLog(QString())
     {
     }
 
@@ -68,7 +66,6 @@ namespace conveyor
         , m_id(id)
         , m_state(RUNNING)
         , m_conclusion(NOTCONCLUDED)
-        , m_failure(NULL)
         , m_type(Job::kInvalidType)
     {
 
@@ -122,10 +119,6 @@ namespace conveyor
                 QString::fromUtf8(json[profileNameKey].asCString());
         }
 
-        // Clear out any old progress
-        delete m_failure;
-        m_failure = NULL;
-
         const std::string progressKey("progress");
         if (json.isMember(progressKey) && !json[progressKey].isNull()) {
             if (json[progressKey].isObject()) {
@@ -135,9 +128,10 @@ namespace conveyor
                     json[progressKey].isMember(progressProgressKey) &&
                     json[progressKey][progressNameKey].isString() &&
                     json[progressKey][progressProgressKey].isNumeric()) {
-                    m_progress = new Job::Progress(QString::fromUtf8(
-                        json[progressKey][progressNameKey].asCString()),
-                        json[progressKey][progressProgressKey].asInt());
+                    m_progress.m_name = QString::fromUtf8(
+                        json[progressKey][progressNameKey].asCString());
+                    m_progress.m_progress =
+                        json[progressKey][progressProgressKey].asInt();
                 } else {
                   LOG_ERROR << errorStr << std::endl;
                 }
@@ -146,11 +140,6 @@ namespace conveyor
             }
         }
 
-        // Clear out any old failure
-        delete m_failure;
-        m_failure = NULL;
-
-        // Check for failure
         const std::string failureKey("failure");
         if (json.isMember(failureKey) && !json[failureKey].isNull()) {
             if (json[failureKey].isObject()) {
@@ -168,11 +157,12 @@ namespace conveyor
                           json[failureKey][failureExceptionKey].asCString()) :
                       QString());
 
-                    m_failure = new Job::Failure(
-                        exc,
-                        json[failureKey][failureCodeKey].asInt(),
-                        QString::fromUtf8(
-                            json[failureKey][failureSlicerLogKey].asCString()));
+                  m_failure.m_failed = true;
+                  m_failure.m_exception = exc;
+                  m_failure.m_code =
+                      json[failureKey][failureCodeKey].asInt();
+                  m_failure.m_slicerLog = QString::fromUtf8(
+                          json[failureKey][failureSlicerLogKey].asCString());
                 } else {
                     LOG_ERROR << errorStr << std::endl;
                 }
