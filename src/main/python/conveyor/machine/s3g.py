@@ -73,7 +73,9 @@ class S3gDriver(conveyor.machine.Driver):
             if None is not profile and profile != machine.get_profile():
                 raise conveyor.error.ProfileMismatchException()
         else:
-            if None is profile:
+            if None is not profile:
+                s3g_profile = profile._s3g_profile
+            else:
                 machine_factory = makerbot_driver.MachineFactory(
                     self._profile_dir)
                 while True:

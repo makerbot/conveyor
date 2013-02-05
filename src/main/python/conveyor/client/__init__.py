@@ -315,11 +315,14 @@ class _ConnectedCommand(_MonitorCommand):
         self._machine_name = None
 
     def _hello_callback(self, hello_task):
+        # NOTE: this method doesn't use the `_get_driver_name` nor
+        # `_get_profile_name` as the driver and profile can often be detected
+        # automatically.
         params = {
             'machine_name': self._parsed_args.machine_name,
             'port_name': self._parsed_args.port_name,
-            'driver_name': self._get_driver_name(),
-            'profile_name': self._get_profile_name(),
+            'driver_name': self._parsed_args.driver_name,
+            'profile_name': self._parsed_args.profile_name,
             'persistent': False,
         }
         connect_task = self._jsonrpc.request('connect', params)
