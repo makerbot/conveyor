@@ -72,9 +72,23 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
             shutil.copy2(self._slicer_settings.path, self._tmp_configpath)
             self._log.debug('using miracle grue configuration at %s', self._slicer_settings.path)
 
+    def _getconfig_file(self):
+        if 'ABS' == self._material:
+            config_abs = os.path.join(self._configpath, 'miracle-abs.config')
+            if os.path.exists(config_abs):
+                return config_abs
+        elif 'PLA' == self._material:
+            config_pla = os.path.join(self._configpath, 'miracle-pla.config')
+            if os.path.exists(config_pla):
+                return config_pla
+        else:
+            raise ValueError()
+        config_generic = os.path.join(self._configpath, 'miracle.config')
+        return config_generic
+
     def _getconfig(self):
-        config_file = os.path.join(self._configpath, 'miracle.config')
-        with open(config_file, 'r') as fp:
+        config_file = self._getconfig_file()
+        with open(config_file) as fp:
             config = conveyor.json.load(fp)
         config['infillDensity'] = self._slicer_settings.infill
         config['numberOfShells'] = self._slicer_settings.shells
