@@ -543,6 +543,16 @@ def _gettype():
                     ),
                 ),
                 _Field(
+                    'Default driver.',
+                    'driver',
+                    _Str('s3g'),
+                ),
+                _Field(
+                    'Default profile.',
+                    'profile',
+                    _Str('Replicator2'),
+                ),
+                _Field(
                     'Default slicing settings.',
                     'slicing',
                     _Group(

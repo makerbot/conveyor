@@ -45,6 +45,20 @@ from conveyor.decorator import args, command
 class _ClientCommand(conveyor.main.Command):
     '''A client command.'''
 
+    def _get_driver_name(self):
+        if None is not self._parsed_args.driver_name:
+            driver_name = self._parsed_args.driver_name
+        else:
+            driver_name = self._config.get('client', 'driver')
+        return driver_name
+
+    def _get_profile_name(self):
+        if None is not self._parsed_args.profile_name:
+            profile_name = self._parsed_args.profile_name
+        else:
+            profile_name = self._config.get('client', 'profile')
+        return profile_name
+
 
 class _JsonRpcCommand(_ClientCommand):
     '''
@@ -304,8 +318,8 @@ class _ConnectedCommand(_MonitorCommand):
         params = {
             'machine_name': self._parsed_args.machine_name,
             'port_name': self._parsed_args.port_name,
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'driver_name': self._get_driver_name(),
+            'profile_name': self._get_profile_name(),
             'persistent': False,
         }
         connect_task = self._jsonrpc.request('connect', params)
@@ -345,7 +359,7 @@ class CompatibleFirmware(_QueryCommand):
 
     def _create_method_task(self):
         params = {
-            'driver_name': self._parsed_args.driver_name,
+            'driver_name': self._get_driver_name(),
             'firmware_version': self._parsed_args.firmware_version,
         }
         method_task = self._jsonrpc.request('compatiblefirmware', params)
@@ -368,8 +382,8 @@ class ConnectCommand(_MethodCommand):
         params = {
             'machine_name': self._parsed_args.machine_name,
             'port_name': self._parsed_args.port_name,
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'driver_name': self._get_driver_name(),
+            'profile_name': self._get_profile_name(),
             'persistent': True,
         }
         method_task = self._jsonrpc.request('connect', params)
@@ -447,7 +461,7 @@ class DownloadFirmware(_QueryCommand):
 
     def _create_method_task(self):
         params = {
-            'driver_name': self._parsed_args.driver_name,
+            'driver_name': self._get_driver_name(),
             'machine_type': self._parsed_args.machine_type,
             'firmware_version': self._parsed_args.firmware_version,
         }
@@ -465,7 +479,7 @@ class DriverCommand(_JsonCommand):
     help = 'get the details for a driver'
 
     def _create_method_task(self):
-        params = {'driver_name': self._parsed_args.driver_name,}
+        params = {'driver_name': self._get_driver_name(),}
         method_task = self._jsonrpc.request('get_driver', params)
         return method_task
 
@@ -499,7 +513,7 @@ class GetMachineVersions(_QueryCommand):
 
     def _create_method_task(self):
         params = {
-            'driver_name': self._parsed_args.driver_name,
+            'driver_name': self._get_driver_name(),
             'machine_type': self._parsed_args.machine_type,
         }
         method_task = self._jsonrpc.request('getmachineversions', params)
@@ -516,7 +530,7 @@ class GetUploadableMachines(_QueryCommand):
     help = 'list the machines to which conveyor can upload firmware'
 
     def _create_method_task(self):
-        params = {'driver_name': driver_name,}
+        params = {'driver_name': self._get_driver_name(),}
         method_task = self._jsonrpc.request('getuploadablemachines', params)
         return method_task
 
@@ -562,8 +576,8 @@ class PauseCommand(_ConnectedCommand):
         params = {
             'machine_name': self._parsed_args.machine_name,
             'port_name': self._parsed_args.port_name,
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'driver_name': self._get_driver_name(),
+            'profile_name': self._get_profile_name(),
         }
         pause_task = self._jsonrpc.request('pause', params)
         return pause_task
@@ -647,8 +661,8 @@ class PrintToFileCommand(_MonitorCommand):
         slicer_settings.path = self._parsed_args.slicer_settings_path
         extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
         params = {
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'driver_name': self._get_driver_name(),
+            'profile_name': self._get_profile_name(),
             'input_file': self._parsed_args.input_file,
             'output_file': self._parsed_args.output_file,
             'extruder_name': extruder_name,
@@ -693,8 +707,8 @@ class ProfileCommand(_JsonCommand):
 
     def _create_method_task(self):
         params = {
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'driver_name': self._get_driver_name(),
+            'profile_name': self._get_profile_name(),
         }
         method_task = self._jsonrpc.request('get_profile', params)
         return method_task
@@ -717,7 +731,7 @@ class ProfilesCommand(_JsonCommand):
     help = 'list the available profiles'
 
     def _create_method_task(self):
-        params = {'driver_name': self._parsed_args.driver_name,}
+        params = {'driver_name': self._get_driver_name(),}
         method_task = self._jsonrpc.request('get_profiles', params)
         return method_task
 
@@ -784,8 +798,8 @@ class SliceCommand(_MonitorCommand):
         slicer_settings.path = self._parsed_args.slicer_settings_path
         extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
         params = {
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'driver_name': self._get_driver_name(),
+            'profile_name': self._get_profile_name(),
             'input_file': self._parsed_args.input_file,
             'output_file': self._parsed_args.output_file,
             'add_start_end': self._parsed_args.add_start_end,
@@ -808,8 +822,8 @@ class UnpauseCommand(_ConnectedCommand):
         params = {
             'machine_name': self._parsed_args.machine_name,
             'port_name': self._parsed_args.port_name,
-            'driver_name': self._parsed_args.driver_name,
-            'profile_name': self._parsed_args.profile_name,
+            'driver_name': self._get_driver_name(),
+            'profile_name': self._get_profile_name(),
         }
         pause_task = self._jsonrpc.request('unpause', params)
         return pause_task
