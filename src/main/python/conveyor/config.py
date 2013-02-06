@@ -427,6 +427,16 @@ def _gettype():
             'makerbot_driver',
             _Group(
                 _Field(
+                    'The path to the avrdude executable.',
+                    'avrdude_exe',
+                    _Executable(conveyor.platform.DEFAULT_CONFIG_MAKERBOT_DRIVER_AVRDUDE_EXE),
+                ),
+                _Field(
+                    'The location of the avrdude.conf configuration file.',
+                    'avrdude_conf_file',
+                    _File(conveyor.platform.DEFAULT_CONFIG_MAKERBOT_DRIVER_AVRDUDE_CONF_FILE),
+                ),
+                _Field(
                     'The directory containing the MakerBot machine profiles.',
                     'profile_dir',
                     _Directory(conveyor.platform.DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR),

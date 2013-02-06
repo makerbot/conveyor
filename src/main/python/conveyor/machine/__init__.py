@@ -35,7 +35,7 @@ class DriverManager(object):
 
         import conveyor.machine.s3g
         profile_dir = config.get('makerbot_driver', 'profile_dir')
-        driver = conveyor.machine.s3g.S3gDriver.create(profile_dir)
+        driver = conveyor.machine.s3g.S3gDriver.create(config, profile_dir)
         driver_manager._drivers[driver.name] = driver
 
         # Add more drivers here.
@@ -71,8 +71,9 @@ class DriverInfo(object):
 
 
 class Driver(object):
-    def __init__(self, name):
+    def __init__(self, name, config):
         self.name = name
+        self._config = config
         self._log = logging.getLogger(self.__class__.__name__)
 
     def get_profiles(self, port):

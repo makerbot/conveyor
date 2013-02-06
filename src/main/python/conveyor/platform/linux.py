@@ -31,6 +31,12 @@ DEFAULT_CONFIG_COMMON_ADDRESS = 'pipe:/var/run/conveyor/conveyord.socket'
 DEFAULT_CONFIG_COMMON_PID_FILE = '/var/run/conveyor/conveyord.pid'
 
 
+DEFAULT_CONFIG_MAKERBOT_DRIVER_AVRDUDE_EXE = '/usr/bin/avrdude'
+
+
+DEFAULT_CONFIG_MAKERBOT_DRIVER_AVRDUDE_CONF_FILE = '/etc/avrdude.conf'
+
+
 DEFAULT_CONFIG_MAKERBOT_DRIVER_PROFILE_DIR = '/usr/share/makerbot/s3g/profiles/'
 
 

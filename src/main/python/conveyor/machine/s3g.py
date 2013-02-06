@@ -36,16 +36,16 @@ import conveyor.machine.port.serial
 
 class S3gDriver(conveyor.machine.Driver):
     @staticmethod
-    def create(profile_dir):
-        driver = S3gDriver(profile_dir)
+    def create(config, profile_dir):
+        driver = S3gDriver(config, profile_dir)
         for profile_name in makerbot_driver.list_profiles(profile_dir):
             s3g_profile = makerbot_driver.Profile(profile_name, profile_dir)
             profile = _S3gProfile._create(profile_name, driver, s3g_profile)
             driver._profiles[profile.name] = profile
         return driver
 
-    def __init__(self, profile_dir):
-        conveyor.machine.Driver.__init__(self, 's3g')
+    def __init__(self, config, profile_dir):
+        conveyor.machine.Driver.__init__(self, 's3g', config)
         self._profile_dir = profile_dir
         self._profiles = {}
 
@@ -172,7 +172,7 @@ class S3gDriver(conveyor.machine.Driver):
     def get_uploadable_machines(self, task):
         def running_callback(task):
             try:
-                uploader = makerbot_driver.Firmware.Uploader()
+                uploader = self._create_firmware_uploader()
                 machines = uploader.list_machines()
             except Exception as e:
                 self._log.exception('unhandled exception')
@@ -186,7 +186,7 @@ class S3gDriver(conveyor.machine.Driver):
     def get_machine_versions(self, machine_type, task):
         def running_callback(task):
             try:
-                uploader = makerbot_driver.Firmware.Uploader()
+                uploader = self._create_firmware_uploader()
                 versions = uploader.list_firmware_versions(machine_type)
             except Exception as e:
                 self._log.exception('unhandled exception')
@@ -198,14 +198,14 @@ class S3gDriver(conveyor.machine.Driver):
         return task
 
     def compatible_firmware(self, firmware_version):
-        uploader = makerbot_driver.Firmware.Uploader(autoUpdate=False)
+        uploader = self._create_firmware_uploader(autoUpdate=False)
         result = uploader.compatible_firmware(firmware_version)
         return result
 
     def download_firmware(self, machine_type, firmware_version, task):
         def running_callback(task):
             try:
-                uploader = makerbot_driver.Firmware.Uploader()
+                uploader = self._create_firmware_uploader()
                 hex_file_path = uploader.download_firmware(machine_type, firmware_version)
             except Exception as e:
                 self._log.exception('unhandled exception')
@@ -215,6 +215,12 @@ class S3gDriver(conveyor.machine.Driver):
                 task.end(hex_file_path)
         task.runningevent.attach(running_callback)
         return task
+
+    def _create_firmware_uploader(self, *args, **kwargs):
+        kwargs['avrdude_exe'] = self._config.get('makerbot_driver', 'avrdude_exe')
+        kwargs['avrdude_conf_file'] = self._config.get('makerbot_driver', 'avrdude_conf_file')
+        uploader = makerbot_driver.Firmware.Uploader(*args, **kwargs)
+        return uploader
 
 
 class _S3gProfile(conveyor.machine.Profile):
@@ -797,7 +803,7 @@ class _UploadFirmwareOperation(_BlockPollingOperation):
         try:
             self.machine._s3g.writer.file.close()
             port = self.machine.get_port()
-            uploader = makerbot_driver.Firmware.Uploader()
+            uploader = self._create_firmware_uploader()
             uploader.upload_firmware(
                 port.path, self.machine_type, self.input_file)
             self.machine._s3g.writer.file.open()
