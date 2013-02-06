@@ -148,17 +148,52 @@ for curpath, dirnames, filenames in os.walk(str(Dir('#/src/main/python'))):
                                   not os.path.isdir(str(f))),
                              env.Glob(os.path.join(curpath, '*.py'))))
 
+
+if env.MBIsWindows():
+    pycmd = 'virtualenv\\Scripts\\python'
+    pyvers='python'
+    if env.MBUseDevelLibs():
+        setup_script = 'setup-dev.bat'
+    else:
+        setup_script = 'setup_conveyor_env.bat'
+else:
+    pycmd = 'virtualenv/bin/python'
+    pyvers = '2.7'
+
+    if env.MBUseDevelLibs():
+        setup_script = 'setup-dev.sh'
+    else:
+        setup_script = 'setup_conveyor_env.sh'
+
+vcmd = env.Command('#/virtualenv', setup_script,
+                   ' '.join([os.path.join('.', setup_script), pyvers,
+                             str(Dir('#/submodule/conveyor_bins/python')),
+                             env['MB_EGG_DIR']]))
+
+
 conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
-                           conveyor_pysrc,
-              'python -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
+                      conveyor_pysrc + [vcmd],
+                      pycmd + ' -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
+
 env.MBInstallEgg(conveyor_egg)
+env.Clean(vcmd,'#/virtualenv')
 
 if env.MBIsMac():
+    py26cmd = 'virtualenv26/bin/python'
+    vcmd26 = env.Command('#/virtualenv26', setup_script,
+                         ' '.join([os.path.join('.', setup_script), '2.6',
+                                   str(Dir('#/submodule/conveyor_bins/python')),
+                                   env['MB_EGG_DIR'], 'virtualenv26']))
+
     conveyor_egg26 = env.Command('#/dist/conveyor-2.0.0-py2.6.egg',
-                               conveyor_pysrc,
-           'python2.6 -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
+                                 conveyor_pysrc + [vcmd26],
+                                 py26cmd + ' -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
     env.MBInstallEgg(conveyor_egg26)
-    
+    env.Clean(vcmd,'#/virtualenv')
+
+
+
+
 env.Clean(conveyor_egg, '#/build')
 env.Clean(conveyor_egg, '#/src/main/python/conveyor.egg-info')
 

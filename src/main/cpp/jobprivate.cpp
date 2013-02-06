@@ -64,7 +64,7 @@ namespace conveyor
         , m_job(job)
         , m_printer(0)
         , m_id(id)
-        , m_state(RUNNING)
+        , m_state(PENDING)
         , m_conclusion(NOTCONCLUDED)
         , m_type(Job::kInvalidType)
     {
@@ -138,6 +138,10 @@ namespace conveyor
             } else {
                 LOG_ERROR << errorStr << std::endl;
             }
+        } else {
+          // Hack: conveyor doesn't set a pending state naturally, so
+          // for now we assume that jobs without progress are pending
+          m_state = PENDING;
         }
 
         const std::string failureKey("failure");
