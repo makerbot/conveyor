@@ -57,7 +57,7 @@ class PortManager(object):
         try:
             port = self._ports[port_name]
         except KeyError:
-            raise conveyor.error.UnknownPortException(port_name)
+            raise conveyor.error.UnknownPortError(port_name)
         else:
             return port
 
