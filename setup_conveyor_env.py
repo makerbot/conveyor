@@ -3,12 +3,12 @@ import sys
 import subprocess
 
 python_exe = sys.executable
+env_dir = 'virtualenv'
 try:
   dist_eggs = sys.argv[2]
   mb_eggs = sys.argv[3]
-  env_dir = sys.argv[4]
 except IndexError as ie:
-  print 'Expected location of dist_eggs, makerbot_eggs, and the virtualenv_dir'
+  print 'Expected location of dist_eggs and makerbot_eggs'
   print ie
   sys.exit(1)
   
