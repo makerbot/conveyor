@@ -4,9 +4,9 @@ import subprocess
 
 python_exe = sys.executable
 try:
-  dist_eggs = sys.args[2]
-  mb_eggs = sys.args[3]
-  env_dir = sys.args[4]
+  dist_eggs = sys.argv[2]
+  mb_eggs = sys.argv[3]
+  env_dir = sys.argv[4]
 except IndexError as ie:
   print 'Expected location of dist_eggs, makerbot_eggs, and the virtualenv_dir'
   print ie
@@ -43,7 +43,7 @@ eggs = [
   os.path.join(mb_eggs, 'makerbot_driver-0.1.1-py2.7.egg')
 ]
 conveyor_egg = os.path.join(mb_eggs, 'conveyor-2.0.0-py2.7.egg')
-if os.path.exists(conveyor_egg)
+if os.path.exists(conveyor_egg):
   eggs.append(conveyor_egg)
   
 try:
