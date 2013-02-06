@@ -4,9 +4,9 @@ import subprocess
 
 python_exe = sys.executable
 try:
-  dist_eggs = args[2]
-  mb_eggs = args[3]
-  env_dir = args[4]
+  dist_eggs = sys.args[2]
+  mb_eggs = sys.args[3]
+  env_dir = sys.args[4]
 except IndexError as ie:
   print 'Expected location of dist_eggs, makerbot_eggs, and the virtualenv_dir'
   print ie
