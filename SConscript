@@ -149,18 +149,24 @@ for curpath, dirnames, filenames in os.walk(str(Dir('#/src/main/python'))):
                              env.Glob(os.path.join(curpath, '*.py'))))
 
 
-pycmd = 'virtualenv/bin/python'
-
 if env.MBIsWindows():
-    setup_script = 'setup_conveyor_env.bat'
     pycmd = 'virtualenv\\Scripts\\python'
-elif env.MBUseDevelLibs():
-    setup_script = 'setup-dev.sh'
+    pyvers='python'
+    if env.MBUseDevelLibs():
+        setup_script = 'setup-dev.bat'
+    else:
+        setup_script = 'setup_conveyor_env.bat'
 else:
-    setup_script = 'setup_conveyor_env.sh'
+    pycmd = 'virtualenv/bin/python'
+    pyvers = '2.7'
+
+    if env.MBUseDevelLibs():
+        setup_script = 'setup-dev.sh'
+    else:
+        setup_script = 'setup_conveyor_env.sh'
 
 vcmd = env.Command('#/virtualenv', setup_script,
-                   ' '.join([os.path.join('.', setup_script), '2.7',
+                   ' '.join([os.path.join('.', setup_script), pyvers,
                              str(Dir('#/submodule/conveyor_bins/python')),
                              env['MB_EGG_DIR']]))
 
