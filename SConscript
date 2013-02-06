@@ -168,8 +168,8 @@ else:
 vcmd = env.Command('#/virtualenv', setup_script,
                    ' '.join([os.path.join('.', setup_script),
                             pyvers,
-                            str(Dir('#/submodule/conveyor_bins/python')),
-                            env['MB_EGG_DIR']]))
+                            '"'+str(Dir('#/submodule/conveyor_bins/python'))+'"',
+                            '"'+env['MB_EGG_DIR']+'"']))
 
 
 conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
