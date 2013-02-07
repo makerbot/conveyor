@@ -57,8 +57,7 @@ except subprocess.CalledProcessError as e:
 if 'win32' == sys.platform:
   virtualenv_easy_install = os.path.join(env_dir, 'Scripts', 'easy_install.exe')
 else:
-  print "I didn't expect this to be used on anything but windows, sorry."
-  sys.exit(3)
+  virtualenv_easy_install = os.path.join(env_dir, 'bin', 'easy_install')
 e_install = [virtualenv_easy_install, '-q']
 
 try:
