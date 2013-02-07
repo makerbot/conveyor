@@ -32,6 +32,8 @@ def find_egg(paths, egg):
 
 python_exe = sys.executable
 env_dir = 'virtualenv'
+if '2.6' == python_version:
+  env_dir += '26'
 
 search_paths = sys.argv[1:]
   
