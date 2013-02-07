@@ -9,15 +9,16 @@ req_eggs = [
   'lockfile-0.9.1',
   'argparse-1.2.1',
   'unittest2-0.5.1',
-  'python_daemon-1.6-py2.7.egg'
-  'pyserial-2.7_mb2.1'
+  'python_daemon-1.6',
+  'pyserial-2.7_mb2.1',
   'makerbot_driver-0.1.1'
 ]
 
 req_eggs = [egg + '-py' + python_version + '.egg' for egg in req_eggs]
+print req_eggs
 
 opt_eggs = [
-  'conveyor-2.0.0-py2.7.egg'
+  'conveyor-2.0.0'
 ]
 
 opt_eggs = [egg + '-py' + python_version + '.egg' for egg in opt_eggs]
@@ -64,7 +65,7 @@ try:
   for egg in req_eggs:
     egg_found = find_egg(search_paths, egg)
     if egg_found != None:
-      subprocess.check_call(e_install + [])
+      subprocess.check_call(e_install + [egg_found])
     else:
       print 'egg ' + egg + ' not found, failing'
       sys.exit(6)
