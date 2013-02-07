@@ -186,7 +186,7 @@ if env.MBIsMac():
                                  conveyor_pysrc + [vcmd26],
                                  py26cmd + ' -c "import setuptools; execfile(\'setup.py\')" bdist_egg')
     env.MBInstallEgg(conveyor_egg26)
-    env.Clean(vcmd,'#/virtualenv')
+    env.Clean(vcmd26,'#/virtualenv26')
 
 
 
