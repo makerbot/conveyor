@@ -148,28 +148,22 @@ for curpath, dirnames, filenames in os.walk(str(Dir('#/src/main/python'))):
                                   not os.path.isdir(str(f))),
                              env.Glob(os.path.join(curpath, '*.py'))))
 
-
+setup_script = 'setup_conveyor_env.py'
 if env.MBIsWindows():
     pycmd = 'virtualenv\\Scripts\\python'
-    pyvers='python'
-    if env.MBUseDevelLibs():
-        setup_script = 'setup-dev.bat'
-    else:
-        setup_script = 'setup_conveyor_env.py'
 else:
     pycmd = 'virtualenv/bin/python'
-    pyvers = '2.7'
 
-    if env.MBUseDevelLibs():
-        setup_script = 'setup-dev.sh'
-    else:
-        setup_script = 'setup_conveyor_env.sh'
+paths = [os.path.join('submodule', 'conveyor_bins', 'python')]
+if env.MBUseDevelLibs():
+    paths.append(os.path.join('..', 'pyserial', 'dist'))
+    paths.append(os.path.join('..', 's3g', 'dist'))
+else:
+    paths.append(env['MB_EGG_DIR'])
+    
 
 vcmd = env.Command('#/virtualenv', setup_script,
-                   ' '.join([os.path.join('.', setup_script),
-                            pyvers,
-                            '"'+str(Dir('#/submodule/conveyor_bins/python'))+'"',
-                            '"'+env['MB_EGG_DIR']+'"']))
+                   ' '.join(['python', os.path.join('.', setup_script)] + paths))
 
 
 conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
@@ -182,9 +176,7 @@ env.Clean(vcmd,'#/virtualenv')
 if env.MBIsMac():
     py26cmd = 'virtualenv26/bin/python'
     vcmd26 = env.Command('#/virtualenv26', setup_script,
-                         ' '.join([os.path.join('.', setup_script), '2.6',
-                                   str(Dir('#/submodule/conveyor_bins/python')),
-                                   env['MB_EGG_DIR'], 'virtualenv26']))
+                         ' '.join(['python2.6', os.path.join('.', setup_script)] + paths))
 
     conveyor_egg26 = env.Command('#/dist/conveyor-2.0.0-py2.6.egg',
                                  conveyor_pysrc + [vcmd26],
@@ -201,7 +193,6 @@ env.Clean(conveyor_egg, '#/src/main/python/conveyor.egg-info')
 if sys.platform == "linux2":
     #env.MBInstallConfig(env.MBGlob('#/linux/*'))
     #env.MBInstallBin('#/wrapper/conveyord')
-    env.MBInstallResources('#/setup_conveyor_env.sh')
     env.MBInstallConfig('#/conveyor-debian.conf', 'conveyor.conf')
     env.MBInstallConfig('#/data/conveyor.conf', 'init/conveyor.conf')
 
@@ -211,7 +202,6 @@ elif sys.platform == 'darwin':
     #env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
     env.MBInstallResources(env.MBGlob('#/mac/*'))
     env.MBInstallConfig('#/conveyor-mac.conf', 'conveyor.conf')
-    env.MBInstallBin('#/setup_conveyor_env.sh')
     env.MBInstallSystem('#/mac/com.makerbot.conveyor.plist',
                         os.path.join(launchd_dir,
                                      'com.makerbot.conveyor.plist'))
@@ -221,7 +211,6 @@ elif sys.platform == 'win32':
     env.MBInstallResources(env.MBGlob('#/win/*'))
     env.MBInstallConfig('#/conveyor-win32.conf', 'conveyor.conf')
 
-    env.MBInstallBin('#/setup_conveyor_env.bat')
     env.MBInstallBin('#/restart.bat')
     env.MBInstallBin('#/start.bat')
     env.MBInstallBin('#/stop.bat')
@@ -234,6 +223,7 @@ env.MBInstallResources('#/src/main/skeinforge')
 env.MBInstallResources('#/conveyor_service.py')
 env.MBInstallResources('#/conveyor_cmdline_client.py')
 env.MBInstallResources('#/virtualenv.py')
+env.MBInstallBin('#/setup_conveyor_env.py')
 
 env.MBInstallResources('#/src/test/stl/single.stl', 'testfiles')
 env.MBInstallResources('#/src/test/stl/left.stl', 'testfiles')
