@@ -148,23 +148,27 @@ for curpath, dirnames, filenames in os.walk(str(Dir('#/src/main/python'))):
                                   not os.path.isdir(str(f))),
                              env.Glob(os.path.join(curpath, '*.py'))))
 
+                             
 setup_script = 'setup_conveyor_env.py'
-if env.MBIsWindows():
-    pycmd = 'virtualenv\\Scripts\\python'
-else:
-    pycmd = 'virtualenv/bin/python'
-
 paths = [os.path.join('submodule', 'conveyor_bins', 'python')]
+
 if env.MBUseDevelLibs():
     paths.append(os.path.join('..', 'pyserial', 'dist'))
     paths.append(os.path.join('..', 's3g', 'dist'))
 else:
     paths.append(env['MB_EGG_DIR'])
     
-
+# add quoting. 
+paths = ['"'+path+'"' for path in paths]
+    
 vcmd = env.Command('#/virtualenv', setup_script,
                    ' '.join(['python', os.path.join('.', setup_script)] + paths))
 
+                   
+if env.MBIsWindows():
+    pycmd = 'virtualenv\\Scripts\\python'
+else:
+    pycmd = 'virtualenv/bin/python'
 
 conveyor_egg = env.Command('#/dist/conveyor-2.0.0-py2.7.egg',
                       conveyor_pysrc + [vcmd],
