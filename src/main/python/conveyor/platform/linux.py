@@ -52,7 +52,7 @@ DEFAULT_CONFIG_SKEINFORGE_FILE = '/usr/share/skeinforge/skeinforge_application/s
 DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = '/usr/share/makerbot/skeinforge/'
 
 
-DEFAULT_CONFIG_SERVER_LOGGING_FILE = '/var/log/conveyord/conveyord.log'
+DEFAULT_CONFIG_SERVER_LOGGING_FILE = '/var/log/conveyor/conveyord.log'
 
 
 DEFAULT_CONFIG_SERVER_UNIFIED_MESH_HACK_EXE = '/usr/bin/unified_mesh_hack'
