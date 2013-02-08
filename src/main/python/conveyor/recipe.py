@@ -135,7 +135,7 @@ class Recipe(object):
                     gcodeprocessors.insert(0, 'AnchorProcessor')
             if 'Skeinforge50Processor' not in gcodeprocessors:
                 gcodeprocessors.append('Skeinforge50Processor')
-            if profile.values['type'] == "The Replicator 2":
+            if profile.name == 'Replicator2':
                 if 'FanProcessor' not in gcodeprocessors:
                     gcodeprocessors.append('FanProcessor')
         return gcodeprocessors
