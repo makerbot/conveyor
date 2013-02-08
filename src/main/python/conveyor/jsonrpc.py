@@ -32,6 +32,7 @@ import threading
 
 import conveyor.event
 import conveyor.json
+import conveyor.log
 import conveyor.stoppable
 import conveyor.task
 
@@ -68,7 +69,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         self._infp = infp # contract: .read(), .stop(), .close()
         self._jsonreader = conveyor.json.JsonReader(
             self._jsonreadercallback, False)
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._methods = {}
         self._methodsinfo={}
         self._outfp = outfp # contract: .write(str), .close()

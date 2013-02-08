@@ -26,13 +26,14 @@ import os.path
 import socket
 
 import conveyor.connection
+import conveyor.log
 import conveyor.stoppable
 
 
 class Listener(conveyor.stoppable.StoppableInterface):
     def __init__(self):
         conveyor.stoppable.StoppableInterface.__init__(self)
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def accept(self):
         raise NotImplementedError

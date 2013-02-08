@@ -29,6 +29,7 @@ try:
 except ImportError:
     import unittest
 
+import conveyor.log
 import conveyor.stoppable
 import conveyor.test
 
@@ -44,7 +45,7 @@ class EventQueueThread(conveyor.stoppable.StoppableThread):
     def __init__(self, eventqueue, name):
         conveyor.stoppable.StoppableThread.__init__(self, name=name)
         self._eventqueue = eventqueue
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def run(self):
         try:
@@ -58,7 +59,7 @@ class EventQueueThread(conveyor.stoppable.StoppableThread):
 class EventQueue(object):
     def __init__(self):
         self._lock = threading.Lock()
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._condition = threading.Condition(self._lock)
         self._queue = collections.deque()
         self._stop = False
@@ -110,7 +111,7 @@ class Event(object):
     updates of data, heartbeat events, or other state-change information about
     a subproject or subsystem. 
     """
-    
+
     def __init__(self, name, eventqueue=None):
         """ Creates an event object.
         @param eventqueue if a specifi eventqueue is desired.
@@ -118,7 +119,7 @@ class Event(object):
         self._name = name
         self._eventqueue = eventqueue
         self._handles = {}
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def attach(self, func):
         handle = object()
@@ -156,7 +157,7 @@ class Event(object):
 
 class Callback(object):
     def __init__(self):
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self.delivered = False
         self.args = None
         self.kwargs = None

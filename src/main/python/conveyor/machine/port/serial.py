@@ -23,6 +23,7 @@ import logging
 import serial
 import threading
 
+import conveyor.log
 import conveyor.machine.port
 
 
@@ -101,7 +102,7 @@ class _SerialDetectorThread(conveyor.stoppable.StoppableThread):
         self._driver_manager = driver_manager
         self._factory = factory
         self._interval = 5.0
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._prev_ports = {}
         self._prev_ports_condition = threading.Condition()
         self._stop = False

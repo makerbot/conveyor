@@ -32,6 +32,7 @@ import conveyor.address
 import conveyor.domain
 import conveyor.dualstrusion
 import conveyor.enum
+import conveyor.log
 import conveyor.machine.s3g
 import conveyor.process
 import conveyor.task
@@ -43,7 +44,7 @@ class RecipeManager(object):
         self._config = config
         self._server = server
         self._spool = spool
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def get_recipe(self, job):
         root, ext = os.path.splitext(job.input_file)
@@ -119,7 +120,7 @@ class RecipeManager(object):
 class Recipe(object):
     def __init__(self, server, config, job, spool):
         self._config = config
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._job = job
         self._server = server
         self._spool = spool
