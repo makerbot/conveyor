@@ -70,7 +70,7 @@ def _main(argv):
         arguments = [
             sys.executable,
             '-B',
-            os.path.join('src', 'main', 'python', 'conveyor', 'client', '__main__.py'),
+            '-m', 'conveyor.client.__main__',
             '-c', parsed_args.config_file,
             ]
         if len(unparsed_args) > 0 and '--' == unparsed_args[0]:

@@ -82,7 +82,7 @@ def _main(argv):
         arguments = [
             'python',
             '-B',
-            os.path.join('src', 'main', 'python', 'conveyor', 'server', '__main__.py'),
+            '-m', 'conveyor.server.__main__',
             '-c', parsed_args.config_file,
             ]
         if len(unparsed_args) > 0 and '--' == unparsed_args[0]:
