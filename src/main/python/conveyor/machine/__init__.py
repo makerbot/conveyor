@@ -25,6 +25,7 @@ import threading
 import conveyor.enum
 import conveyor.error
 import conveyor.event
+import conveyor.log
 import conveyor.stoppable
 
 
@@ -74,7 +75,7 @@ class Driver(object):
     def __init__(self, name, config):
         self.name = name
         self._config = config
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def get_profiles(self, port):
         raise NotImplementedError
@@ -268,7 +269,7 @@ class Machine(object):
         self.name = name
         self._driver = driver
         self._profile = profile
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._port = None
         self._state = MachineState.DISCONNECTED
         self._state_condition = threading.Condition()

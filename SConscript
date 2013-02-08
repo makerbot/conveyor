@@ -227,7 +227,7 @@ env.MBInstallResources('#/src/main/skeinforge')
 env.MBInstallResources('#/conveyor_service.py')
 env.MBInstallResources('#/conveyor_cmdline_client.py')
 env.MBInstallResources('#/virtualenv.py')
-env.MBInstallBin('#/setup_conveyor_env.py')
+env.MBInstallResources('#/setup_conveyor_env.py')
 
 env.MBInstallResources('#/src/test/stl/single.stl', 'testfiles')
 env.MBInstallResources('#/src/test/stl/left.stl', 'testfiles')

@@ -27,6 +27,7 @@ import select
 import socket
 import threading
 
+import conveyor.log
 import conveyor.stoppable
 
 
@@ -35,7 +36,7 @@ class Connection(conveyor.stoppable.StoppableInterface):
 
     def __init__(self):
         conveyor.stoppable.StoppableInterface.__init__(self)
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def read(self):
         "Template read function, not implemented."

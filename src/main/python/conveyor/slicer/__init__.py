@@ -24,6 +24,7 @@ import logging
 import os.path
 import subprocess
 
+import conveyor.log
 import conveyor.task
 import conveyor.util
 
@@ -36,7 +37,7 @@ class Slicer(object):
     def __init__(
         self, profile, inputpath, outputpath, with_start_end, slicer_settings,
         material, dualstrusion, task):
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = conveyor.log.getlogger(self)
             self._progress = None
             self._slicerlog = None
 

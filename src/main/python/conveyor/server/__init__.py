@@ -27,6 +27,7 @@ import threading
 import conveyor.connection
 import conveyor.job
 import conveyor.jsonrpc
+import conveyor.log
 import conveyor.recipe
 import conveyor.slicer
 import conveyor.slicer.miraclegrue
@@ -50,7 +51,7 @@ class Server(conveyor.stoppable.StoppableInterface):
         self._connection_manager = connection_manager
         self._listener = listener
         self._stop = False
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._clients = set()
         self._clients_condition = threading.Condition()
         self._queue = collections.deque()
@@ -454,7 +455,7 @@ class _Client(conveyor.stoppable.StoppableThread):
         self._config = config
         self._server = server
         self._jsonrpc = jsonrpc
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def stop(self):
         self._jsonrpc.stop()
