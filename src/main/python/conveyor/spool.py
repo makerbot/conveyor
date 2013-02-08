@@ -23,6 +23,7 @@ import collections
 import logging
 import threading
 
+import conveyor.log
 import conveyor.machine
 
 
@@ -64,7 +65,7 @@ class _MachineSpool(object):
 
     def __init__(self, machine):
         self._machine = machine
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._spool = collections.deque()
         self._spool_condition = threading.Condition()
 

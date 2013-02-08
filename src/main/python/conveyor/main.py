@@ -32,6 +32,7 @@ import conveyor.arg
 import conveyor.config
 import conveyor.debug
 import conveyor.json
+import conveyor.log
 import conveyor.platform
 
 from conveyor.decorator import args
@@ -48,7 +49,7 @@ class AbstractMain(object):
     _logging_handlers = None
 
     def __init__(self):
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self._unparsed_args = None
         self._parser = None
         self._config = None
@@ -179,7 +180,7 @@ class AbstractMain(object):
                     'filters': ['stdout'],
                     'stream': 'ext://sys.stdout',
                 },
-                "stderr": {
+                'stderr': {
                     'class': 'logging.StreamHandler',
                     'level': 'WARNING',
                     'formatter': 'console',
@@ -188,6 +189,12 @@ class AbstractMain(object):
                 },
             },
             'loggers': {
+                'conveyor.machine': {
+                    'level': 'DEBUG',
+                    'propagate': False,
+                    'filters': [],
+                    'handlers': handlers,
+                },
             },
             'root': {
                 'level': level,
@@ -229,7 +236,7 @@ class Command(object):
     def __init__(self, parsed_args, config):
         self._parsed_args = parsed_args
         self._config = config
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
 
     def run(self):
         raise NotImplementedError

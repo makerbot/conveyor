@@ -24,6 +24,7 @@ import logging
 import conveyor.enum
 import conveyor.error
 import conveyor.event
+import conveyor.log
 
 
 class PortManager(object):
@@ -77,7 +78,7 @@ class PortManager(object):
 class PortFactory(object):
     def __init__(self, driver_manager):
         self._driver_manager = driver_manager
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = conveyor.log.getlogger(self)
         self.port_attached = conveyor.event.Event('port_attached')
         self.port_attached.attach(self._port_attached_callback)
         self.port_detached = conveyor.event.Event('port_detached')

@@ -26,6 +26,7 @@ import threading
 import time
 
 import conveyor.error
+import conveyor.log
 import conveyor.machine
 import conveyor.machine.port.serial
 
@@ -125,9 +126,6 @@ class S3gDriver(conveyor.machine.Driver):
                     extruders, extruder_temperature, platform_temperature,
                     material_name)
                 parser.environment.update(gcode_scaffold.variables)
-
-                # TODO: can we fix the verifier so that this works?
-                # parser.s3g.reset()
 
                 # TODO: clear build plate message
                 # parser.s3g.wait_for_button('center', 0, True, False, False)
@@ -592,6 +590,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
             self._log.info('machine %s work thread ended', self.id)
 
     def _work_thread_target_iteration(self):
+        self._log.debug('operation=%r', self._operation)
         if self._operation is not None:
             try:
                 self._operation.run()
@@ -619,7 +618,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
 class _S3gOperation(object):
     def __init__(self, machine):
         self.machine = machine
-        self.log = logging.getLogger(self.__class__.__name__)
+        self.log = conveyor.log.getlogger(self)
 
     def run(self):
         raise NotImplementedError
