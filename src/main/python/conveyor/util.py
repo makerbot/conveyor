@@ -52,6 +52,7 @@ def exception_to_failure(exception, **kwargs):
     failure.update(kwargs)
     return failure
 
+# TODO: now the bad coupling with the s3g module is here
 def get_start_end_variables(profile, slicer_settings, material, dualstrusion):
     """
     This function is static so it can be invoked be the verify gcode task.
@@ -69,7 +70,7 @@ def get_start_end_variables(profile, slicer_settings, material, dualstrusion):
             tool_0 = True
         if '1' in extruders:
             tool_1 = True
-    ga = makerbot_driver.GcodeAssembler(profile, profile.path)
+    ga = makerbot_driver.GcodeAssembler(profile._s3g_profile, profile._s3g_profile.path)
     start_template, end_template, variables = ga.assemble_recipe(
         tool_0=tool_0, tool_1=tool_1, material=material)
     start_gcode = ga.assemble_start_sequence(start_template)
@@ -77,7 +78,7 @@ def get_start_end_variables(profile, slicer_settings, material, dualstrusion):
     variables['TOOL_0_TEMP'] = slicer_settings.extruder_temperature
     variables['TOOL_1_TEMP'] = slicer_settings.extruder_temperature
     variables['PLATFORM_TEMP'] = slicer_settings.platform_temperature
-    start_position = profile.values['print_start_sequence']['start_position']
+    start_position = profile._s3g_profile.values['print_start_sequence']['start_position']
     variables['START_X'] = start_position['start_x']
     variables['START_Y'] = start_position['start_y']
     variables['START_Z'] = start_position['start_z']
