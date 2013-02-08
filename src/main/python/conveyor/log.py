@@ -46,6 +46,14 @@ else:
 def checklevel(level):
     return _checkLevel(level)
 
+def getlogger(o):
+    if not hasattr(o, '__module__'):
+        name = o.__class__.__name__
+    else:
+        name = '.'.join((o.__module__, o.__class__.__name__))
+    logger = logging.getLogger(name)
+    return logger
+
 def earlylogging(program, early_debugging=False): # pragma: no cover
     '''Initialize console logging for the early part of a conveyor process.'''
 
@@ -54,18 +62,18 @@ def earlylogging(program, early_debugging=False): # pragma: no cover
         'formatters': {
             'console': {
                 '()': 'conveyor.log.ConsoleFormatter',
-                'format': '%s: %%(levelname)s: %%(message)s' % (program,)
+                'format': '%s: %%(levelname)s: %%(message)s' % (program,),
             },
-            "log": {
-                "()": "conveyor.log.DebugFormatter",
-                "format": "%(asctime)s - %(levelname)s - %(message)s",
-                "datefmt": None,
-                "debugformat": "%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s"
-            }
+            'log': {
+                '()': 'conveyor.log.DebugFormatter',
+                'format': '%(asctime)s - %(levelname)s - %(message)s',
+                'datefmt': None,
+                'debugformat': '%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(funcName)s - %(message)s',
+            },
         },
         'filters': {
             'stdout': { '()': 'conveyor.log.StdoutFilter' },
-            'stderr': { '()': 'conveyor.log.StderrFilter' }
+            'stderr': { '()': 'conveyor.log.StderrFilter' },
         },
         'handlers': {
             'stdout': {
@@ -73,15 +81,15 @@ def earlylogging(program, early_debugging=False): # pragma: no cover
                 'level': 'INFO',
                 'formatter': 'console',
                 'filters': ['stdout'],
-                'stream': 'ext://sys.stdout'
+                'stream': 'ext://sys.stdout',
             },
             'stderr': {
                 'class': 'logging.StreamHandler',
                 'level': 'INFO',
                 'formatter': 'console',
                 'filters': ['stderr'],
-                'stream': 'ext://sys.stderr'
-            }
+                'stream': 'ext://sys.stderr',
+            },
         },
         'loggers': {
         },
@@ -89,18 +97,18 @@ def earlylogging(program, early_debugging=False): # pragma: no cover
             'level': 'INFO',
             'propagate': True,
             'filters': [],
-            'handlers': ['stdout', 'stderr']
+            'handlers': ['stdout', 'stderr'],
         },
         'incremental': False,
-        'disable_existing_loggers': True
+        'disable_existing_loggers': True,
     }
     if early_debugging:
         dct['handlers']['log'] = {
-            "class": "logging.FileHandler",
-            "level": "NOTSET",
-            "formatter": "log",
-            "filters": [],
-            "filename": "conveyor-startup.log"
+            'class': 'logging.FileHandler',
+            'level': 'NOTSET',
+            'formatter': 'log',
+            'filters': [],
+            'filename': 'conveyor-startup.log',
         }
         dct['root']['level'] = 'NOTSET'
         dct['root']['handlers'].append('log')
