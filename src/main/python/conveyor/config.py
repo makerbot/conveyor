@@ -548,7 +548,7 @@ def _gettype():
                         _Field(
                             'The logging level for the conveyor service.',
                             'level',
-                            _LogLevel('DEBUG'),
+                            _LogLevel('INFO'),
                         ),
                     ),
                 ),
