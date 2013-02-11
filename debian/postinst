@@ -44,7 +44,7 @@ if [ "$1" = configure ]; then
 		# Build virtualenv
 		OLDDIR=$PWD
 		cd /usr/share/makerbot/
-		python2.7 ./setup_conveyor_env.py usr/share/makerbot/python
+		python2.7 ./setup_conveyor_env.py ./python
 		cd $OLDDIR
 		chgrp -R conveyor /usr/share/makerbot/virtualenv
 fi
