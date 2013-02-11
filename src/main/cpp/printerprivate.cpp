@@ -105,18 +105,25 @@ namespace conveyor
                     << json.toStyledString() << std::endl;
         }
 
+        enum {
+          kStateChangeConnected,
+          kStateChangeDisconnected,
+          kStateNotChanged
+        } stateChanged = kStateNotChanged;
+
         if ((m_state == Printer::kInvalid ||
              m_state == Printer::kDisconnected) &&
             state != Printer::kInvalid &&
             state != Printer::kDisconnected) {
-            m_conveyor->m_private->emitPrinterAdded(m_printer);
+          stateChanged = kStateChangeConnected;
+            
         }
 
         if ((m_state != Printer::kInvalid &&
              m_state != Printer::kDisconnected) &&
             (state == Printer::kInvalid ||
              state == Printer::kDisconnected)) {
-            m_conveyor->m_private->emitPrinterRemoved(m_printer);
+          stateChanged = kStateChangeDisconnected;
         }
 
         m_uniqueName = uniqueName;
@@ -166,6 +173,20 @@ namespace conveyor
                 ToolTemperature::updateFromJson(m_toolTemperature.heated_platforms,
                                                 temperature["heated_platforms"]);
             }
+        }
+
+        // Wait to emit signals until all state has been updated
+        switch (stateChanged) {
+          case kStateChangeConnected:
+            m_conveyor->m_private->emitPrinterAdded(m_printer);
+            break;
+
+          case kStateChangeDisconnected:
+            m_conveyor->m_private->emitPrinterRemoved(m_printer);
+            break;
+
+          case kStateNotChanged:
+            break;
         }
     }
 
