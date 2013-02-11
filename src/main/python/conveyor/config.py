@@ -553,17 +553,17 @@ def _gettype():
                     ),
                 ),
                 _Field(
-                    'Default driver.',
+                    'Default driver. This setting applies to the conveyor command-line client only. It has no effect on MakerWare',
                     'driver',
                     _Str('s3g'),
                 ),
                 _Field(
-                    'Default profile.',
+                    'Default profile. This setting applies to the conveyor command-line client only. It has no effect on MakerWare.',
                     'profile',
                     _Str('Replicator2'),
                 ),
                 _Field(
-                    'Default slicing settings.',
+                    'Default slicing settings. These settings apply to the conveyor command-line client only. They have no effect on MakerWare.',
                     'slicing',
                     _Group(
                         _Field(
