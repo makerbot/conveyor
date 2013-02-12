@@ -203,7 +203,7 @@ if sys.platform == "linux2":
 elif sys.platform == 'darwin':
     launchd_dir = 'Library/LaunchDaemons'
 
-    #env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
+    env.MBInstallResources(env.MBGlob('#/submodule/conveyor_bins/mac/*'))
     env.MBInstallResources(env.MBGlob('#/mac/*'))
     env.MBInstallConfig('#/conveyor-mac.conf', 'conveyor.conf')
     env.MBInstallSystem('#/mac/com.makerbot.conveyor.plist',

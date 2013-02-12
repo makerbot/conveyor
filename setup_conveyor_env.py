@@ -1,4 +1,6 @@
 import os
+import os.path
+import platform
 import sys
 import subprocess
 
@@ -49,7 +51,12 @@ for path in search_paths:
 virtualenv_command.append(env_dir)
 
 try:
-  subprocess.check_call(virtualenv_command)
+  env = os.environ
+  if 'darwin' == sys.platform:
+    release, version_info, machine = platform.mac_ver()
+    subdirectory = os.path.abspath('.'.join(release.split('.')[:2]))
+    env['PATH'] = os.pathsep.join(env['PATH'].split(os.pathsep) + [subdirectory])
+  subprocess.check_call(virtualenv_command, env=env)
 except subprocess.CalledProcessError as e:
   print 'something went wrong calling virtualenv:'
   print e
