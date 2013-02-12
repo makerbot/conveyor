@@ -17,12 +17,9 @@ namespace
     conveyor::PipeAddress DefaultPipeAddress
         ( 
             #ifdef __APPLE__
-            /** Mac OS X treats /var/run differently than other unices and
-            launchd has no reliable way to create a /var/run/conveyor on launch.
-            Ideally conveyord should create this directory itself on OS X. However
-            we're going to leave that aside for now and get it done.
-            */
-            "/var/run/conveyord.socket"
+            // The OSX developer documentation says that non-root daemons
+            // should use /var/tmp for such socket files.
+            "/var/tmp/conveyord.socket"
             #else
             "/var/run/conveyor/conveyord.socket"
             #endif
