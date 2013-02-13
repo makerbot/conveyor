@@ -800,7 +800,8 @@ class _UploadFirmwareOperation(_BlockPollingOperation):
         try:
             self.machine._s3g.writer.file.close()
             port = self.machine.get_port()
-            uploader = self._create_firmware_uploader()
+            driver = self.machine.get_driver()
+            uploader = driver._create_firmware_uploader()
             uploader.upload_firmware(
                 port.path, self.machine_type, self.input_file)
             self.machine._s3g.writer.file.open()
