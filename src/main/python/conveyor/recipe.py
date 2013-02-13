@@ -129,7 +129,7 @@ class Recipe(object):
         gcodeprocessors = self._job.gcode_processor_name
         if None is gcodeprocessors:
             gcodeprocessors = []
-        if (conveyor.domain.Slicer.SKEINFORGE == self._job.slicer_settings.slicer):
+        if (conveyor.slicer.Slicer.SKEINFORGE == self._job.slicer_name):
             # custom profile (has own start/end)
             if self._job.slicer_settings.path is None:
                 if 'AnchorProcessor' not in gcodeprocessors:
@@ -143,7 +143,6 @@ class Recipe(object):
 
     def _slicertask(self, profile, input_path, output_path, add_start_end,
             dualstrusion, slicer_settings):
-        self._log.info(conveyor.slicer.Slicer.MIRACLEGRUE)
         if conveyor.slicer.Slicer.MIRACLEGRUE == self._job.slicer_name:
             exe = self._config.get('miracle_grue', 'exe')
             profile_dir = self._config.get('miracle_grue', 'profile_dir')
@@ -176,8 +175,8 @@ class Recipe(object):
 
     def _gcodeprocessortask(self, inputpath, outputpath, profile):
         factory = makerbot_driver.GcodeProcessors.ProcessorFactory()
-        gcodeprocessor_list = self.getgcodeprocessors(profile)
-        gcodeprocessors = list(factory.get_processors(gcodeprocessor_list, profile))
+        gcodeprocessor_list = self.getgcodeprocessors(profile._s3g_profile)
+        gcodeprocessors = list(factory.get_processors(gcodeprocessor_list, profile._s3g_profile))
         def runningcallback(task):
             try:
                 self._log.info('processing gcode %s -> %s', inputpath, outputpath)
@@ -434,7 +433,7 @@ class _StlRecipe(Recipe):
         tasks.append(slicetask)
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors(profile)
+        gcodeprocessors = self.getgcodeprocessors(profile._s3g_profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath
         else:
@@ -481,7 +480,7 @@ class _StlRecipe(Recipe):
         tasks.append(slicetask)
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors(self._job.profile)
+        gcodeprocessors = self.getgcodeprocessors(self._job.profile._s3g_profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath
         else:
@@ -528,7 +527,7 @@ class _StlRecipe(Recipe):
             self._job.slicer_settings)
         tasks.append(slicetask)
 
-        gcodeprocessors = self.getgcodeprocessors(self._job.profile)
+        gcodeprocessors = self.getgcodeprocessors(self._job.profile._s3g_profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = gcodepath 
         else:
@@ -618,7 +617,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors(self._job.profile)
+        gcodeprocessors = self.getgcodeprocessors(self._job.profile._s3g_profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = dualstrusion_path
         else:
@@ -684,7 +683,7 @@ class _DualThingRecipe(_ThingRecipe):
         # Process Gcode
         with tempfile.NamedTemporaryFile(suffix='.dual.gcode') as f:
             dual_path = f.name
-        gcodeprocessors = self.getgcodeprocessors(self._job.profile)
+        gcodeprocessors = self.getgcodeprocessors(self._job.profile._s3g_profile)
         gcodeprocessortask = self._gcodeprocessortask(
             dualstrusion_path, dual_path, self._job.profile)
         tasks.append(gcodeprocessortask)
@@ -732,7 +731,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(self._dualstrusiontask(gcode_0_path, gcode_1_path, dualstrusion_path))
 
         # Process Gcode
-        gcodeprocessors = self.getgcodeprocessors(profile)
+        gcodeprocessors = self.getgcodeprocessors(profile._s3g_profile)
         if 0 == len(gcodeprocessors):
             processed_gcodepath = dualstrusion_path
         else:
