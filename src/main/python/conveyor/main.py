@@ -189,12 +189,12 @@ class AbstractMain(object):
                 },
             },
             'loggers': {
-                'conveyor.machine': {
-                    'level': 'DEBUG',
-                    'propagate': False,
-                    'filters': [],
-                    'handlers': handlers,
-                },
+                # 'conveyor.machine': {
+                #     'level': 'DEBUG',
+                #     'propagate': False,
+                #     'filters': [],
+                #     'handlers': handlers,
+                # },
             },
             'root': {
                 'level': level,
