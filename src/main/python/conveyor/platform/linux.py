@@ -46,7 +46,7 @@ DEFAULT_CONFIG_MIRACLE_GRUE_EXE = '/usr/bin/miracle_grue'
 DEFAULT_CONFIG_MIRACLE_GRUE_PROFILE_DIR = '/usr/share/makerbot/miraclegrue/'
 
 
-DEFAULT_CONFIG_SKEINFORGE_FILE = '/usr/share/skeinforge/skeinforge_application/skeinforge.py'
+DEFAULT_CONFIG_SKEINFORGE_FILE = '/usr/share/makerbot/skeinforge/skeinforge_application/skeinforge.py'
 
 
 DEFAULT_CONFIG_SKEINFORGE_PROFILE_DIR = '/usr/share/makerbot/skeinforge/'
