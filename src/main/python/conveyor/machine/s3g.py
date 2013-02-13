@@ -598,8 +598,6 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 self._operation = None
         self._state_condition.wait()
 
-    # TODO: Why are these two handlers identical? Is this right?
-
     def _handle_build_cancelled(self, exception):
         self._log.debug('handled exception', exc_info=True)
         if (None is not self._task
@@ -613,6 +611,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 and conveyor.task.TaskState.STOPPED != self._task.state):
             self._task.cancel()
             self._task = None
+        self._s3g.writer.set_external_stop(False)
 
 
 class _S3gOperation(object):
@@ -684,12 +683,11 @@ class _MakeOperation(_TaskOperation):
             parser.s3g = self.machine._s3g
             def cancel_callback(task):
                 with self.machine._state_condition:
+                    parser.s3g.abort_immediately()
                     try:
                         parser.s3g.writer.set_external_stop(True)
                     except makerbot_driver.ExternalStopError:
                         self._log.debug('handled exception', exc_info=True)
-                    parser.s3g.writer.set_external_stop(False)
-                    parser.s3g.abort_immediately()
             self.task.cancelevent.attach(cancel_callback)
             gcode_scaffold = self.machine._profile.get_gcode_scaffold(
                 self.extruders, self.extruder_temperature,
