@@ -20,7 +20,7 @@
 from __future__ import (absolute_import, print_function, unicode_literals)
 
 
-class Error(object):
+class Handleable(object):
     def handle(self, log):
         '''
         Handle the error by writing it to the specified log and returning an
@@ -35,7 +35,7 @@ class Error(object):
 # derive from the built-in `KeyError`.
 
 
-class ConfigKeyError(KeyError, Error):
+class ConfigKeyError(KeyError, Handleable):
     '''
     Raised when the configuration is missing a key. Since there are default
     values, the configuration should always be fully populated and this
@@ -53,7 +53,7 @@ class ConfigKeyError(KeyError, Error):
         return 1
 
 
-class ConfigTypeError(TypeError, Error):
+class ConfigTypeError(TypeError, Handleable):
     '''
     Raised when a configuration file element has an invalid type (e.g., it is a
     string instead of a number).
@@ -73,7 +73,7 @@ class ConfigTypeError(TypeError, Error):
         return 1
 
 
-class ConfigValueError(ValueError, Error):
+class ConfigValueError(ValueError, Handleable):
     '''
     Raised when a configuration file element has an invalid value (e.g., the
     value for the logging level parameter is not one of the valid logging
@@ -94,7 +94,7 @@ class ConfigValueError(ValueError, Error):
         return 1
 
 
-class DriverMismatchException(Exception, Error):
+class DriverMismatchException(Exception, Handleable):
     def handle(self, log):
         log.critical(
             'the requested driver does not match the machine\'s current driver',
@@ -102,7 +102,7 @@ class DriverMismatchException(Exception, Error):
         return 1
 
 
-class MachineStateException(Exception, Error):
+class MachineStateException(Exception, Handleable):
     def handle(self, log):
         log.critical(
             'the machine is in an invalid state for that operation',
@@ -110,7 +110,7 @@ class MachineStateException(Exception, Error):
         return 1
 
 
-class MissingExecutableException(Exception, Error):
+class MissingExecutableException(Exception, Handleable):
     def __init__(self, path):
         Exception.__init__(self, path)
         self.path = path
@@ -120,7 +120,7 @@ class MissingExecutableException(Exception, Error):
         return 1
 
 
-class MissingFileException(Exception, Error):
+class MissingFileException(Exception, Handleable):
     def __init__(self, path):
         Exception.__init__(self, path)
         self.path = path
@@ -130,7 +130,7 @@ class MissingFileException(Exception, Error):
         return 1
 
 
-class MultipleDriversException(Exception, Error):
+class MultipleDriversException(Exception, Handleable):
     def handle(self, log):
         log.critical(
             'there are multiple drivers available; please specify a driver',
@@ -138,7 +138,7 @@ class MultipleDriversException(Exception, Error):
         return 1
 
 
-class MultiplePortsException(Exception, Error):
+class MultiplePortsException(Exception, Handleable):
     def handle(self, log):
         log.critical(
             'there are multiple ports available; please specify a port',
@@ -146,19 +146,19 @@ class MultiplePortsException(Exception, Error):
         return 1
 
 
-class NoDriversException(Exception, Error):
+class NoDriversException(Exception, Handleable):
     def handle(self, log):
         log.critical('there are no drivers available', exc_info=True)
         return 1
 
 
-class NoPortsException(Exception, Error):
+class NoPortsException(Exception, Handleable):
     def handle(self, log):
         log.critical('there are no ports available', exc_info=True)
         return 1
 
 
-class NotFileException(Exception, Error):
+class NotFileException(Exception, Handleable):
     def __init__(self, path):
         Exception.__init__(self, path)
 
@@ -167,7 +167,7 @@ class NotFileException(Exception, Error):
         return 1
 
 
-class PortMismatchException(Exception, Error):
+class PortMismatchException(Exception, Handleable):
     def handle(self, log):
         log.critical(
             'the requested port does not match the machine\'s current port',
@@ -175,13 +175,13 @@ class PortMismatchException(Exception, Error):
         return 1
 
 
-class PrintQueuedException(Exception, Error):
+class PrintQueuedException(Exception, Handleable):
     def handle(self, log):
         log.error('a print is already queued for the machine', exc_info=True)
         return 1
 
 
-class ProfileMismatchException(Exception, Error):
+class ProfileMismatchException(Exception, Handleable):
     def handle(self, log):
         log.critical(
             'the requested profile does not match the machine\'s current profile',
@@ -189,7 +189,7 @@ class ProfileMismatchException(Exception, Error):
         return 1
 
 
-class UnknownDriverError(KeyError, Error):
+class UnknownDriverError(KeyError, Handleable):
     def __init__(self, driver_name):
         KeyError.__init__(self, driver_name)
         self.driver_name = driver_name
@@ -199,7 +199,7 @@ class UnknownDriverError(KeyError, Error):
         return 1
 
 
-class UnknownJobError(KeyError, Error):
+class UnknownJobError(KeyError, Handleable):
     def __init__(self, job_id):
         KeyError.__init__(self, job_id)
         self.job_id = job_id
@@ -209,7 +209,7 @@ class UnknownJobError(KeyError, Error):
         return 1
 
 
-class UnknownMachineError(KeyError, Error):
+class UnknownMachineError(KeyError, Handleable):
     def __init__(self, machine_name):
         KeyError.__init__(self, machine_name)
         self.machine_name = machine_name
@@ -219,7 +219,7 @@ class UnknownMachineError(KeyError, Error):
         return 1
 
 
-class UnknownPortError(KeyError, Error):
+class UnknownPortError(KeyError, Handleable):
     def __init__(self, port_name):
         KeyError.__init__(self, port_name)
         self.port_name = port_name
@@ -229,7 +229,7 @@ class UnknownPortError(KeyError, Error):
         return 1
 
 
-class UnknownProfileError(KeyError, Error):
+class UnknownProfileError(KeyError, Handleable):
     def __init__(self, profile_name):
         KeyError.__init__(self, profile_name)
         self.profile_name = profile_name
@@ -239,7 +239,7 @@ class UnknownProfileError(KeyError, Error):
         return 1
 
 
-class UnsupportedModelTypeException(Exception, Error):
+class UnsupportedModelTypeException(Exception, Handleable):
     def __init__(self, path):
         Exception.__init__(self, path)
         self.path = path
@@ -250,7 +250,7 @@ class UnsupportedModelTypeException(Exception, Error):
         return 1
 
 
-class UnsupportedPlatformException(Exception, Error):
+class UnsupportedPlatformException(Exception, Handleable):
     '''Raised when conveyor does not support your operating system.'''
 
     def handle(self, log):
@@ -261,7 +261,7 @@ class UnsupportedPlatformException(Exception, Error):
 def guard(log, func):
     try:
         code = func()
-    except Error as e:
+    except Handleable as e:
         code = e.handle(log)
     except KeyboardInterrupt:
         code = 0
