@@ -219,6 +219,22 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
+    def _preweavetask(self, tool_0_path, tool_1_path):
+        def runningcallback(task)
+            self.log.info("preweave processing on %s and %s" % (tool_0_path, tool_1_path))
+            conveyor.dualstrusion.pre_weave(gcode_0_path, gcode_1_path)
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningcallback)
+        return task
+
+    def _postweavetask(self, gcode_path):
+        def runningcallback(task)
+            self.log.info("postweave processing on %s" % (gcode_path))
+            conveyor.dualstrusion.post_weave(gcode_path)
+        task = conveyor.task.Task()
+        task.runningevent.attach(runningcallback)
+        return task
+
     def _printtask(self, machine, inputpath, dualstrusion):
         def runningcallback(task):
             self._spool.spool_print(
@@ -612,7 +628,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(slice_1_task)
 
         #Process gcode files pre-weave
-        conveyor.dualstrusion.pre_weave(gcode_0_path, gcode_1_path)
+        tasks.append(self._preweavetask(gcode_0_path, gcode_1_path))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
@@ -631,7 +647,7 @@ class _DualThingRecipe(_ThingRecipe):
             tasks.append(gcodeprocessortask)
 
         #Process gcode post-weave and grooming
-        conveyor.dualstrusion.post_weave(processed_gcodepath)
+        tasks.append(self._postweavetask(processed_gcodepath))
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
@@ -682,7 +698,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(slice_1_task)
 
         #Process gcode files pre-weave
-        conveyor.dualstrusion.pre_weave(gcode_0_path, gcode_1_path)
+        tasks.append(self._preweavetask(gcode_0_path, gcode_1_path))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode') as f:
@@ -698,7 +714,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(gcodeprocessortask)
 
         #Process gcode post-weave and grooming
-        conveyor.dualstrusion.post_weave(dual_path)
+        tasks.append(self._postweavetask(dual_path))
 
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
@@ -738,7 +754,7 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(slice_1_task)
 
         #Process gcode files pre-weave
-        conveyor.dualstrusion.pre_weave(gcode_0_path, gcode_1_path)
+        tasks.append(self._preweavetask(gcode_0_path, gcode_1_path))
 
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode') as f:
@@ -757,7 +773,7 @@ class _DualThingRecipe(_ThingRecipe):
             tasks.append(gcodeprocessortask)
 
         #Process gcode post-weave and grooming
-        conveyor.dualstrusion.post_weave(processed_gcodepath)
+        tasks.append(self._postweavetask(processed_gcodepath))
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputpathfp:
             outputpath = outputpathfp.name
