@@ -222,7 +222,7 @@ elif sys.platform == 'win32':
 env.MBInstallEgg(env.MBGlob('#/submodule/conveyor_bins/python/*'))
     
 env.MBInstallResources('#/src/main/miraclegrue')
-env.MBInstallResources('#/src/main/skeinforge/*', 'skeinforge')
+env.MBInstallResources('#/src/main/skeinforge/Replicator slicing defaults', 'skeinforge')
 
 env.MBInstallResources('#/conveyor_service.py')
 env.MBInstallResources('#/conveyor_cmdline_client.py')
