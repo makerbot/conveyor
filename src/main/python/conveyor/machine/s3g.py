@@ -742,21 +742,24 @@ class _MakeOperation(_TaskOperation):
                 line = line.strip()
                 self.log.debug('G-CODE: %s', line)
                 while True:
-                    while self.pause:
+                    while self.pause and conveyor.task.TaskState.RUNNING == self.task.state:
                         self.machine._state_condition.wait(1.0)
-                    try:
-                        parser.execute_line(line)
-                    except makerbot_driver.BufferOverflowError:
-                        # NOTE: too spammy
-                        # self._log.debug('handled exception', exc_info=True)
-                        self.machine._state_condition.wait(0.2)
-                    else:
+                    if conveyor.task.TaskState.RUNNING != self.task.state:
                         break
-                progress = {
-                    'name': 'print',
-                    'progress': int(parser.state.percentage),
-                }
-                self.task.lazy_heartbeat(progress, self.task.progress)
+                    else:
+                        try:
+                            parser.execute_line(line)
+                        except makerbot_driver.BufferOverflowError:
+                            # NOTE: too spammy
+                            # self._log.debug('handled exception', exc_info=True)
+                            self.machine._state_condition.wait(0.2)
+                        else:
+                            progress = {
+                                'name': 'print',
+                                'progress': int(parser.state.percentage),
+                            }
+                            self.task.lazy_heartbeat(progress, self.task.progress)
+                            break
 
     def pause(self):
         with self.machine._state_condition:
