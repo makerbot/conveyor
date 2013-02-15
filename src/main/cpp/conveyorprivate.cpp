@@ -470,7 +470,7 @@ namespace conveyor
     void ConveyorPrivate::resetToFactory(Printer * const printer) const
     {
         Json::Value params (Json::objectValue);
-        params["printername"] = printer->uniqueName().toStdString();
+        params["machine_name"] = printer->uniqueName().toStdString();
         SynchronousCallback::invoke (this->m_jsonRpc, "resettofactory", params);
     }
 
