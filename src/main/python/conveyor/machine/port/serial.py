@@ -74,9 +74,15 @@ class SerialPort(conveyor.machine.port.Port):
             self.vid, self.pid, self.label)
         return info
 
+    def get_machine_name(self):
+        vid = '%04X' % (self.vid,)
+        pid = '%04X' % (self.pid,)
+        machine_name = ':'.join((vid, pid, self.iserial))
+        return machine_name
+
     def __str__(self):
-        s = '%s, %04X:%04X:%s' % (
-            self.name, self.vid, self.pid, self.iserial,)
+        machine_name = self.get_machine_name()
+        s = '%s, %s' % (self.name, machine_name)
         return s
 
 

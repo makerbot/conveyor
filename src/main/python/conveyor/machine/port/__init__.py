@@ -122,6 +122,28 @@ class Port(object):
     def get_info(self):
         raise NotImplementedError
 
+    def get_machine_name(self):
+        '''
+        Get the name of the machine associated with this port. The actual
+        machine may not be connected and it may not be set to this port (i.e.,
+        the port's `get_machine` method may return `None`). This method may
+        return `None` if the port is unable to determine the machine's name.
+
+        '''
+
+        raise NotImplementedError
+
+    def has_machine_name(self, machine_name):
+        '''
+        Return whether or not the port is associated with the specified machine
+        name. The actual machine may not be connected and it may not be set to
+        this port (i.e., the port's `get_machine` method may return `None`).
+
+        '''
+
+        result = (self.get_machine_name() == machine_name)
+        return result
+
     def get_machine(self):
         return self._machine
 

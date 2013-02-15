@@ -191,6 +191,7 @@ MachineEvent = conveyor.enum.enum(
 
 class MachineManager(object):
     def __init__(self):
+        self._log = conveyor.log.getlogger(self)
         self._machines = {}
 
     def get_machines(self):
@@ -207,6 +208,15 @@ class MachineManager(object):
 
     def new_machine(self, port, driver, profile):
         machine = driver.new_machine_from_port(port, profile)
+        machine.set_port(port)
+        port.set_machine(machine)
+        machine_port = machine.get_port()
+        machine_driver = machine.get_driver()
+        machine_profile = machine.get_profile()
+        self._log.info(
+            'creating new machine: name=%s, port=%s, driver=%s, profile=%s',
+            machine.name, machine_port.name, machine_driver.name,
+            machine_profile.name)
         self._machines[machine.name] = machine
         return machine
 

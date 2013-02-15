@@ -155,45 +155,41 @@ class Server(conveyor.stoppable.StoppableInterface):
             clients = self._clients.copy()
         _Client.job_changed(clients, job_info)
 
-    def _find_machine(
-            self, machine_name, port_name, driver_name, profile_name):
-        if None is not machine_name:
-            machine = self._machine_manager.get_machine(machine_name)
-            port = machine.get_port()
-            if None is not port_name and port_name != port.name:
-                raise conveyor.error.PortMismatchException
+    def _find_port_by_port_name(self, port_name):
+        if None is not port_name:
+            port = self._port_manager.get_port(port_name)
         else:
-            if None is not port_name:
-                port = self._port_manager.get_port(port_name)
+            ports = self._port_manager.get_ports()
+            if 0 == len(ports):
+                raise conveyor.error.NoPortsException
+            elif len(ports) > 1:
+                raise conveyor.error.MultiplePortsException
             else:
-                ports = self._port_manager.get_ports()
-                if 0 == len(ports):
-                    raise conveyor.error.NoPortsException
-                elif len(ports) > 1:
-                    raise conveyor.error.MultiplePortsException
-                else:
-                    port = ports[0]
-            machine = port.get_machine()
-        if None is not machine:
-            driver = machine.get_driver()
-            if None is not driver_name and driver_name != driver.name:
-                raise conveyor.error.DriverMismatchException
-        elif None is not driver_name:
+                port = ports[0]
+        return port
+
+    def _find_port_by_machine_name(self, machine_name):
+        for port in self._port_manager.get_ports():
+            if port.has_machine_name(machine_name):
+                return port
+        else:
+            raise conveyor.error.UnknownMachineError(machine_name)
+
+    def _find_driver(self, port, driver_name):
+        if None is not driver_name:
             driver = self._driver_manager.get_driver(driver_name)
+        elif 0 == len(port.driver_profiles):
+            raise conveyor.error.NoDriversException
+        elif len(port.driver_profiles) > 1:
+            raise MultipleDriversException
         else:
-            if 0 == len(port.driver_profiles):
-                raise conveyor.error.NoDriversException
-            elif len(port.driver_profiles) > 1:
-                raise MultipleDriversException
-            else:
-                # NOTE: this loop extracts the single driver.
-                for driver_name in port.driver_profiles.keys():
-                    driver = self._driver_manager.get_driver(driver_name)
-        if None is not machine:
-            profile = machine.get_profile()
-            if None is not profile_name and profile_name != profile.name:
-                raise conveyor.error.ProfileMismatchException
-        elif None is not profile_name:
+            # NOTE: this loop extracts the single driver.
+            for driver_name in port.driver_profiles.keys():
+                driver = self._driver_manager.get_driver(driver_name)
+        return driver
+
+    def _find_profile(self, port, driver, profile_name):
+        if None is not profile_name:
             profile = driver.get_profile(profile_name)
         else:
             profiles = port.driver_profiles[driver.name]
@@ -204,12 +200,70 @@ class Server(conveyor.stoppable.StoppableInterface):
                 # `profile` to `None` and expect that the driver determines the
                 # correct profile. It will raise an exception if it cannot.
                 profile = None
-        if None is machine:
-            machine = self._machine_manager.new_machine(port, driver, profile)
-            machine.state_changed.attach(self._machine_state_changed)
-            machine.temperature_changed.attach(self._machine_temperature_changed)
-            machine.set_port(port)
-            port.set_machine(machine)
+        return profile
+
+    # TODO: this `_find_machine` business is complicated. There's probably some
+    # opportunity for refactoring and condensing this, but for now I'm going to
+    # leave it alone for fear of breaking something.
+    #
+    # Also, the current logic doesn't cover every possible case. For example,
+    # you could pass only `driver_name` and it *should* (but does not) winnow
+    # the list of ports down to those that support that driver. This would mean
+    # restructuring the lookup as a series of filter stages.
+
+    def _find_machine(
+            self, machine_name, port_name, driver_name, profile_name):
+        if None is not machine_name:
+            try:
+                machine = self._machine_manager.get_machine(machine_name)
+            except conveyor.error.UnknownMachineError:
+                port = self._find_port_by_machine_name(machine_name)
+                driver = self._find_driver(port, driver_name)
+                profile = self._find_profile(port, driver, profile_name)
+                machine = self._machine_manager.new_machine(
+                    port, driver, profile)
+                machine.state_changed.attach(self._machine_state_changed)
+                machine.temperature_changed.attach(
+                    self._machine_temperature_changed)
+            else:
+                if None is port_name:
+                    port = self._find_port_by_machine_name(machine_name)
+                    machine.set_port(port)
+                    port.set_machine(machine)
+                else:
+                    port = self._port_manager.get_port(port_name)
+                    machine_port = machine.get_port()
+                    if None is machine_port:
+                        machine.set_port(port)
+                        port.set_machine(machine)
+                    elif machine_port.name != port.name:
+                        raise conveyor.error.PortMismatchException
+                driver = machine.get_driver()
+                if None is not driver_name and driver_name != driver.name:
+                    raise conveyor.error.DriverMismatchException
+                else:
+                    profile = machine.get_profile()
+                    if None is not profile_name and profile_name != profile.name:
+                        raise conveyor.error.ProfileMismatchException
+        else:
+            port = self._find_port_by_port_name(port_name)
+            driver = self._find_driver(port, driver_name)
+            profile = self._find_profile(port, driver, profile_name)
+            machine_name = port.get_machine_name()
+            if None is machine_name:
+                raise conveyor.error.MissingMachineNameException
+            else:
+                try:
+                    machine = self._machine_manager.get_machine(machine_name)
+                except conveyor.error.UnknownMachineError:
+                    machine = self._machine_manager.new_machine(
+                        port, driver, profile)
+                    machine.state_changed.attach(self._machine_state_changed)
+                    machine.temperature_changed.attach(
+                        self._machine_temperature_changed)
+                else:
+                    machine.set_port(port)
+                    port.set_machine(machine)
         return machine
 
     def get_ports(self):

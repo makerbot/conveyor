@@ -130,6 +130,14 @@ class MissingFileException(Exception, Handleable):
         return 1
 
 
+class MissingMachineNameException(Exception, Handleable):
+    def handle(self, log):
+        log.critical(
+            'unable to automatically detect the machine name; please specify a machine name',
+            exc_info=True)
+        return 1
+
+
 class MultipleDriversException(Exception, Handleable):
     def handle(self, log):
         log.critical(
