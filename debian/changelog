@@ -4,7 +4,7 @@ conveyor (2.0.0) precise; urgency=low
   * Bugfix: Formatting of changelog 
   * Feature: Debian package
 
- -- MakerBot Industries dev team <dev@makerbot.com>  Wed, 30 Jan 2013 10:27:20  -0400
+ -- MakerBot Industries dev team <dev@makerbot.com>  Fri, 15 Feb 2013 17:55:20  -0400
 
 conveyor (1.0.1) precise; urgency=low
 
