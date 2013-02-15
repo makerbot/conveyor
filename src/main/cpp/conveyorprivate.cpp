@@ -381,7 +381,7 @@ namespace conveyor
         params["output_file"] = Json::Value(outputFile.toStdString ());
         params["add_start_end"] = Json::Value(withStartEnd);
 
-        LOG_INFO << "print_to_file params="
+        LOG_INFO << "slice params="
                  << params.toStyledString() << std::endl;
 
         Json::Value const result
