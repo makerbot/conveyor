@@ -126,6 +126,8 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         if None is not self._tmp_endpath:
             yield ('-e', self._tmp_endpath,)
         yield ('-j',)
+        if None is not self._slicer_settings.path:
+            yield ('-x', str(self._slicer_settings.extruder),)
         yield (self._inputpath,)
 
     def _getcwd(self):
