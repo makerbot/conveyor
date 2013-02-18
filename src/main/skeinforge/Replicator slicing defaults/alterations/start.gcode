@@ -15,7 +15,7 @@ G161 Z F100 (home to Z axis minimum)
 M132 X Y Z A B (Recall stored home offsets for XYZAB axis)
 
 (*** Set the homing position***)
-G92 X152 Y75 Z0 A0 B0 (Replicator Home Position)
+G92 X152 Y72 Z0 A0 B0 (Replicator Home Position)
 
 G1 X-112 Y-73 Z150 F3300.0 (Waiting Position)
 G130 X20 Y20 A20 B20 (Lower stepper Vrefs while heating)
