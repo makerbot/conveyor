@@ -219,18 +219,10 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def _preweavetask(self, tool_0_path, tool_1_path):
-        def runningcallback(task)
-            self.log.info("preweave processing on %s and %s" % (tool_0_path, tool_1_path))
-            conveyor.dualstrusion.pre_weave(gcode_0_path, gcode_1_path)
-        task = conveyor.task.Task()
-        task.runningevent.attach(runningcallback)
-        return task
-
-    def _postweavetask(self, gcode_path):
+    def _postweavetask(self, gcode_path, gcode_path_tmp, gcode_path_out, profile):
         def runningcallback(task)
             self.log.info("postweave processing on %s" % (gcode_path))
-            conveyor.dualstrusion.post_weave(gcode_path)
+            conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
@@ -627,9 +619,6 @@ class _DualThingRecipe(_ThingRecipe):
             self._job.profile, self._stl_1_path, gcode_1_path, False, True, settings_1)
         tasks.append(slice_1_task)
 
-        #Process gcode files pre-weave
-        tasks.append(self._preweavetask(gcode_0_path, gcode_1_path))
-
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
             dualstrusion_path = f.name
@@ -647,14 +636,19 @@ class _DualThingRecipe(_ThingRecipe):
             tasks.append(gcodeprocessortask)
 
         #Process gcode post-weave and grooming
-        tasks.append(self._postweavetask(processed_gcodepath))
+        with tempfile.NamedTemporaryFile(suffic='.dual.tmp.gcode') as f:
+            tmp_dual_path = f.name
+        with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
+            fixed_dual_path = f.name
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, profile))
+
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
         add_start_end = True
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
-            add_start_end, dualstrusion, processed_gcodepath, start_end_path)
+            add_start_end, dualstrusion, fixed_dual_path, start_end_path)
         tasks.append(add_start_end_task)
 
         #verify
@@ -669,7 +663,7 @@ class _DualThingRecipe(_ThingRecipe):
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
-            for path in [gcode_0_path, gcode_1_path, processed_gcodepath]:
+            for path in [gcode_0_path, gcode_1_path, processed_gcodepath, tmp_dual_path, fixed_dual_path]:
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process
@@ -697,9 +691,6 @@ class _DualThingRecipe(_ThingRecipe):
             settings_1)
         tasks.append(slice_1_task)
 
-        #Process gcode files pre-weave
-        tasks.append(self._preweavetask(gcode_0_path, gcode_1_path))
-
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode') as f:
             dualstrusion_path = f.name
@@ -714,16 +705,20 @@ class _DualThingRecipe(_ThingRecipe):
         tasks.append(gcodeprocessortask)
 
         #Process gcode post-weave and grooming
-        tasks.append(self._postweavetask(dual_path))
+        with tempfile.NamedTemporaryFile(suffic='.dual.tmp.gcode') as f:
+            tmp_dual_path = f.name
+        with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
+            fixed_dual_path = f.name
+        tasks.append(self._postweavetask(dual_path, tmp_dual_path, fixed_dual_path, profile))
 
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
-            self._job.add_start_end, True, dual_path, self._job.output_file)
+            self._job.add_start_end, True, fixed_dual_path, self._job.output_file)
         tasks.append(add_start_end_task)
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
-            for path in [gcode_0_path, gcode_1_path, dualstrusion_path]:
+            for path in [gcode_0_path, gcode_1_path, dualstrusion_path, dual_path, tmp_dual_path, fixed_dual_path]:
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process
@@ -753,9 +748,6 @@ class _DualThingRecipe(_ThingRecipe):
             settings_1)
         tasks.append(slice_1_task)
 
-        #Process gcode files pre-weave
-        tasks.append(self._preweavetask(gcode_0_path, gcode_1_path))
-
         #Combine for dualstrusion
         with tempfile.NamedTemporaryFile(suffix='.gcode') as f:
             dualstrusion_path = f.name
@@ -773,14 +765,18 @@ class _DualThingRecipe(_ThingRecipe):
             tasks.append(gcodeprocessortask)
 
         #Process gcode post-weave and grooming
-        tasks.append(self._postweavetask(processed_gcodepath))
+        with tempfile.NamedTemporaryFile(suffic='.dual.tmp.gcode') as f:
+            tmp_dual_path = f.name
+        with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
+            fixed_dual_path = f.name
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, profile))
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputpathfp:
             outputpath = outputpathfp.name
         add_start_end = True
         add_start_end_task = self._add_start_end_task(
             profile, self._job.slicer_settings, self._job.material_name,
-            add_start_end, dualstrusion, processed_gcodepath, outputpath)
+            add_start_end, dualstrusion, fixed_dual_path, outputpath)
         tasks.append(add_start_end_task)
 
         #verify
@@ -794,7 +790,7 @@ class _DualThingRecipe(_ThingRecipe):
 
         process = conveyor.process.tasksequence(self._job, tasks)
         def process_endcallback(task):
-            for path in [gcode_0_path, gcode_1_path, dualstrusion_path, processed_gcodepath]:
+            for path in [gcode_0_path, gcode_1_path, dualstrusion_path, processed_gcodepath, tmp_dual_path, fixed_dual_path]:
                 os.unlink(path)
         process.endevent.attach(process_endcallback)
         return process

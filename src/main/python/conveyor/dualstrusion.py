@@ -20,40 +20,18 @@ try:
 except ImportError:
     pass
 
-def pre_weave(gcode_0_path, gcode_1_path):
-
-    preweave_processor = 'EmptyLayerProcessor'
-
-    with open(gcode_0_path, 'r') as f:
-        gcode_0_tmp = list(f)
-    with open(gcode_1_path, 'r') as f:
-        gcode_1_tmp = list(f)
-    
-    prepro_fact = makerbot_driver.GcodeProcessors.ProcessorFactory()
-    prepro = preopro_fact.create_processor_from_name(preweave_processor)
-
-    output = prepro.process_gcodes(gcode_0_tmp)
-    with open(gcode_0_path, 'w') as f:
-        for code in output:
-            f.write(code)
-    output = prepro.process_gcodes(gcode_1_tmp)
-    with open(gcode_1_path, 'w') as f:
-        for code in output:
-            f.write(code)
-
-def post_weave(gcode_path):
-
-    postweave_processor = 'Rep2XDualstrusionProcessor'
-    with open(gcode_path) as f:
-        gcode_tmp = list(f)
+def post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile):
 
     pro_fact = makerbot_driver.GcodeProcessor.ProcessorFactory()
-    postpro = pro_fact.create_processor_from_name(postweave_processor)
+    postpro = pro_fact.create_processor_from_name('EmptyLayerProcessor')
+    if(not postpro.process_gcodes(gcode_path, outfile=gcode_path_tmp)):
+        return False
+    postpro = pro_fact.create_processor_from_name('Rep2XDualstrusionProcessor')
+    if(not postpro.process_gcodes(gcode_path_tmp, outfile=gcode_path_out, profile=profile)):
+        return False
 
-    output = postpro.process_gcodes(gcode_tmp)
-    with open(gcode_path, 'w') as f:
-        for code in output:
-            f.write(code)
+    return True
+
 
 class DualstrusionWeaver(object):
 
