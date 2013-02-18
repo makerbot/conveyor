@@ -98,8 +98,7 @@ namespace conveyor
             conclusion = jobConclusionFromString(QString(json["conclusion"].asCString()));
         }
 
-        if (conclusion != m_conclusion)
-            m_job->emitConcluded();
+        const JobConclusion oldConclusion(m_conclusion);
 
         m_id = id;
         m_name = name;
@@ -138,9 +137,10 @@ namespace conveyor
             } else {
                 LOG_ERROR << errorStr << std::endl;
             }
-        } else {
-          // Hack: conveyor doesn't set a pending state naturally, so
-          // for now we assume that jobs without progress are pending
+        } else if (m_state != STOPPED) {
+          // Hack: conveyor doesn't yet set a pending state naturally,
+          // so for now we assume that running jobs without progress
+          // are pending
           m_state = PENDING;
         }
 
@@ -194,6 +194,10 @@ namespace conveyor
             }
         } else {
             LOG_ERROR << "job type field missing" << std::endl;
+        }
+
+        if (oldConclusion != m_conclusion) {
+            m_job->emitConcluded();
         }
     }
     
