@@ -624,7 +624,7 @@ class _DualThingRecipe(_ThingRecipe):
             with tempfile.NamedTemporaryFile(suffix='.gcode') as processed_gcodefp:
                 processed_gcodepath = processed_gcodefp.name
             gcodeprocessortask = self._gcodeprocessortask(
-                dualstrusion_path, processed_gcodepath, profile)
+                dualstrusion_path, processed_gcodepath, self._job.profile)
             tasks.append(gcodeprocessortask)
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
