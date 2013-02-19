@@ -20,6 +20,19 @@ try:
 except ImportError:
     pass
 
+def post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile):
+
+    pro_fact = makerbot_driver.GcodeProcessor.ProcessorFactory()
+    postpro = pro_fact.create_processor_from_name('EmptyLayerProcessor')
+    if(not postpro.process_gcodes(gcode_path, outfile=gcode_path_tmp)):
+        return False
+    postpro = pro_fact.create_processor_from_name('Rep2XDualstrusionProcessor')
+    if(not postpro.process_gcodes(gcode_path_tmp, outfile=gcode_path_out, profile=profile)):
+        return False
+
+    return True
+
+
 class DualstrusionWeaver(object):
 
     def __init__(self, tool_0_codes, tool_1_codes, task):
