@@ -3,10 +3,10 @@ _Name                          	Value
 WindowPosition	700+0
 Open File for Carve	
 Add Layer Template to SVG	True
-Edge Width over Height (ratio):	1.45
+Edge Width over Height (ratio):	4.0
 Extra Decimal Places (float):	1.0
 Import Coarseness (ratio):	1.0
-Layer Height (mm):	0.27
+Layer Height (mm):	0.1
 Layers From (index):	0
 Layers To (index):	912345678
 Correct Mesh	True

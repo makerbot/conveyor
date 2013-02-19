@@ -2,8 +2,8 @@ Format is tab separated alteration settings.
 _Name                          	Value
 WindowPosition	700+0
 Open File for Alteration	
-Activate Alteration	False
-Name of End File:	end.gcode
-Name of Start File:	start.gcode
+Activate Alteration	True
+Name of End File:	end-pla.gcode
+Name of Start File:	start-pla.gcode
 Remove Redundant Mcode	True
 Replace Variable with Setting	True

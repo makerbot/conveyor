@@ -4,7 +4,7 @@ WindowPosition	700+0
 Open File for Inset	
 Add Custom Code for Temperature Reading	False
 Infill in Direction of Bridge	False
-Infill Width over Thickness (ratio):	1.45
+Infill Width over Thickness (ratio):	4.0
 Ascending Area	True
 Descending Area	False
 Overlap Removal Width over Perimeter Width (ratio):	0.7
