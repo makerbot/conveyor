@@ -220,7 +220,7 @@ class Recipe(object):
         return task
 
     def _postweavetask(self, gcode_path, gcode_path_tmp, gcode_path_out, profile):
-        def runningcallback(task)
+        def runningcallback(task):
             self.log.info("postweave processing on %s" % (gcode_path))
             conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile)
         task = conveyor.task.Task()
