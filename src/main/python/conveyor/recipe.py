@@ -640,7 +640,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, self._job.profile))
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile))
 
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
@@ -709,7 +709,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(dual_path, tmp_dual_path, fixed_dual_path, self._job.profile))
+        tasks.append(self._postweavetask(dual_path, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile))
 
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
@@ -769,7 +769,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, self._job.profile))
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, profile._s3g_profile))
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputpathfp:
             outputpath = outputpathfp.name

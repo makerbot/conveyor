@@ -21,16 +21,29 @@ except ImportError:
     pass
 
 def post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile):
+    log = open('C:\conveyorlog.out', 'w')
+    log.write(str(gcode_path) + '::' + str(gcode_path_tmp) + '::' + str(gcode_path_out))
+    log.write('\n' + str(profile))
+    log.flush()
 
     pro_fact = makerbot_driver.GcodeProcessors.ProcessorFactory()
     postpro = pro_fact.create_processor_from_name('EmptyLayerProcessor')
-    if(not postpro.process_gcode(gcode_path, outfile=gcode_path_tmp)):
+    if not postpro.process_gcode(gcode_path, outfile=gcode_path_tmp):
+        log.write('\nempty failed\n')
+        log.flush()
         return False
+    log.write('on to Rep2X\n')
+    log.flush()
     postpro = pro_fact.create_processor_from_name('Rep2XDualstrusionProcessor')
-    if(not postpro.process_gcode(gcode_path_tmp, outfile=gcode_path_out, profile=profile)):
+    log.write(str(dir(profile)))
+    log.flush()
+    if not postpro.process_gcode(gcode_path_tmp, outfile=gcode_path_out, profile=profile):
+        log.write('\nrep2x failed\n')
+        log.flush()
         return False
-
-    return True
+    log.write('\nAlles Klar\n')
+    log.close()
+    return
 
 
 class DualstrusionWeaver(object):
