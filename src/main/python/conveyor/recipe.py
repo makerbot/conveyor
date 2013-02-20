@@ -222,7 +222,13 @@ class Recipe(object):
     def _postweavetask(self, gcode_path, gcode_path_tmp, gcode_path_out, profile):
         def runningcallback(task):
             self._log.info("postweave processing on %s" % (gcode_path))
-            conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile)
+            try:
+                conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile)
+            except Exception as e:
+                self._log.debug("unhandled exception", exc_info=True)
+                task.fail(e)
+            else:
+                task.end(None)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
