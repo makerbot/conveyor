@@ -26,8 +26,8 @@ def post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile):
     postpro = pro_fact.create_processor_from_name('EmptyLayerProcessor')
     if not postpro.process_gcode(gcode_path, outfile=gcode_path_tmp):
         return False
-    postpro = pro_fact.create_processor_from_name('Rep2XDualstrusionProcessor'))
-    if not postpro.process_gcode(gcode_path_tmp, outfile=gcode_path_out, profile=profile):)
+    postpro = pro_fact.create_processor_from_name('Rep2XDualstrusionProcessor')
+    if not postpro.process_gcode(gcode_path_tmp, outfile=gcode_path_out, profile=profile):
         return False
     return True
 
