@@ -806,4 +806,3 @@ class InvalidThingException(Exception):
     def __init__(self, path):
         Exception.__init__(self, path)
         self.path = path
->>>>>>> rep2X_fix_fix
