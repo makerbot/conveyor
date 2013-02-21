@@ -1,5 +1,5 @@
 Source: conveyor
-Section: unknown
+Section: main
 Priority: extra
 Maintainer: MakerBot Industries dev team <dev@makerbot.com>
 Build-Depends: debhelper (>= 8.0.0), zlib1g-dev, libqt4-dev, python2.7, cdbs, makerbot-driver, libjsoncpp-dev, mb-libjsonrpc-dev (>=2.0.0)
