@@ -350,6 +350,12 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
 
         return info
 
+    def is_idle(self):
+        with self._state_condition:
+            self._poll()
+            result = conveyor.machine.MachineState.IDLE == self._state
+            return result
+
     def connect(self):
         with self._state_condition:
             if conveyor.machine.MachineState.DISCONNECTED == self._state:
