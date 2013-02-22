@@ -88,18 +88,12 @@ class S3gDriver(conveyor.machine.Driver):
                     else:
                         break
                 s3g_profile = return_object.profile
-            id = self._get_id(port)
+            machine_name = port.get_machine_name()
             profile = _S3gProfile._create(s3g_profile.name, self, s3g_profile)
-            machine = _S3gMachine._create(id, self, profile)
+            machine = _S3gMachine._create(machine_name, self, profile)
         return machine
 
-    def _get_id(self, port):
-        vid = '%04X' % (port.vid,)
-        pid = '%04X' % (port.pid,)
-        id = ':'.join((vid, pid, port.iserial))
-        return id
-
-    def _connect(self, port, condition):
+    def _connect(self, port, condition): # TODO: move this to the machine's `connect` since that's the only place it is currently used
         machine_factory = makerbot_driver.MachineFactory(
             self._profile_dir)
         return_object = machine_factory.build_from_port(
@@ -126,6 +120,10 @@ class S3gDriver(conveyor.machine.Driver):
                     extruders, extruder_temperature, platform_temperature,
                     material_name)
                 parser.environment.update(gcode_scaffold.variables)
+                if 'x3g' == file_type:
+                    pid = parser.state.profile.values['PID']
+                    # ^ Technical debt: we get this value from conveyor local bot info, not from the profile
+                    parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
 
                 # TODO: clear build plate message
                 # parser.s3g.wait_for_button('center', 0, True, False, False)
@@ -693,6 +691,10 @@ class _MakeOperation(_TaskOperation):
                 self.extruders, self.extruder_temperature,
                 self.platform_temperature, self.material_name)
             parser.environment.update(gcode_scaffold.variables)
+            if self.machine._firmware_version >= 700:
+                pid = parser.state.profile.values['PID']
+                # ^ Technical debt: we get this value from conveyor local bot info, not from the profile
+                parser.s3g.x3g_version(1, 0, pid=pid) # Currently hardcode x3g v1.0
             self.machine._s3g.reset()
             # Aaaaaaaaaargh. :'(
             #
@@ -734,32 +736,41 @@ class _MakeOperation(_TaskOperation):
             self.task.fail(failure)
 
     def _execute_lines(self, parser, iterable):
+        count = 0
         for line in iterable:
-            if conveyor.task.TaskState.RUNNING != self.task.state:
-                break
-            else:
-                line = str(line) # NOTE: s3g can't handle unicode.
-                line = line.strip()
-                self.log.debug('G-CODE: %s', line)
-                while True:
-                    while self.pause and conveyor.task.TaskState.RUNNING == self.task.state:
-                        self.machine._state_condition.wait(1.0)
-                    if conveyor.task.TaskState.RUNNING != self.task.state:
-                        break
+            # OUTER LOOP: executed once per line of G-code
+            count += 1
+            line = str(line) # NOTE: s3g can't handle unicode.
+            line = line.strip()
+            self.log.debug('G-CODE [%d]: %s', count, line)
+            while True:
+                # INNER LOOP: executed until the task is canceled or the G-code
+                # is sent without a buffer overflow
+                if conveyor.task.TaskState.RUNNING != self.task.state:
+                    break
+                elif self.pause:
+                    self.machine._state_condition.wait(1.0)
+                else:
+                    try:
+                        parser.execute_line(line)
+                    except makerbot_driver.BufferOverflowError:
+                        # NOTE: too spammy
+                        # self.log.debug('handled exception', exc_info=True)
+                        self.machine._state_condition.wait(0.2)
+                        # NOTE: this branch WILL NOT break out of the inner
+                        # `while` loop. The interpreter will attempt to re-send
+                        # the current line of G-code (assuming the task is
+                        # still running and the machine is not paused).
                     else:
-                        try:
-                            parser.execute_line(line)
-                        except makerbot_driver.BufferOverflowError:
-                            # NOTE: too spammy
-                            # self._log.debug('handled exception', exc_info=True)
-                            self.machine._state_condition.wait(0.2)
-                        else:
-                            progress = {
-                                'name': 'print',
-                                'progress': int(parser.state.percentage),
-                            }
-                            self.task.lazy_heartbeat(progress, self.task.progress)
-                            break
+                        progress = {
+                            'name': 'print',
+                            'progress': int(parser.state.percentage),
+                        }
+                        self.task.lazy_heartbeat(progress, self.task.progress)
+                        # NOTE: this branch WILL break out of the inner `while`
+                        # loop but NOT the outer `for` loop. The interpreter
+                        # will advance to the next line of G-code.
+                        break
 
     def pause(self):
         with self.machine._state_condition:
