@@ -4,6 +4,7 @@
 #define CONVEYOR_JOB_H (1)
 
 #include <QList>
+#include <QMutex>
 #include <QObject>
 #include <QScopedPointer>
 #include <QString>
@@ -87,7 +88,10 @@ namespace conveyor
     private:
         Job (Conveyor * conveyor, int const & id);
 
-        QScopedPointer <JobPrivate> m_private;
+        // Important: all access to m_jobPrivate should take the
+        // m_jobPrivateMutex
+        mutable QMutex m_jobPrivateMutex;
+        QScopedPointer <JobPrivate> m_jobPrivate;
 
         void emitChanged (void);
         void emitConcluded (void);

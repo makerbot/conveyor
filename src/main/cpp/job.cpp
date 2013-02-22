@@ -2,6 +2,7 @@
 
 #include <QUuid>
 #include <QDebug>
+#include <QMutexLocker>
 #include <QScopedPointer>
 
 #include <conveyor/exceptions.h>
@@ -17,7 +18,7 @@ namespace conveyor
         ( Conveyor * conveyor
         , int const & id
         )
-        : m_private
+        : m_jobPrivate
           ( new JobPrivate (conveyor, this, id)
           )
     {
@@ -29,37 +30,43 @@ namespace conveyor
 
     void
     Job::updateFromJson(Json::Value const &value) {
-        m_private->updateFromJson(value);
+        QMutexLocker locker(&m_jobPrivateMutex);
+        m_jobPrivate->updateFromJson(value);
     }
 
     int
     Job::id (void) const
     {
-        return m_private->m_id;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_id;
     }
 
     QString
     Job::name (void) const
     {
-        return m_private->m_name;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_name;
     }
 
     JobState
     Job::state (void) const
     {
-        return m_private->m_state;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_state;
     }
 
     JobConclusion
     Job::conclusion (void) const
     {
-        return m_private->m_conclusion;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_conclusion;
     }
 
     void
     Job::cancel (void)
     {
-        m_private->cancel();
+        QMutexLocker locker(&m_jobPrivateMutex);
+        m_jobPrivate->cancel();
     }
     
     void
@@ -82,26 +89,31 @@ namespace conveyor
 
     QString Job::machineName() const
     {
-        return m_private->m_machineName;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_machineName;
     }
 
     QString Job::profileName() const
     {
-        return m_private->m_profileName;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_profileName;
     }
 
     Job::Progress Job::progress() const
     {
-        return m_private->m_progress;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_progress;
     }
 
     Job::Failure Job::failure() const
     {
-        return m_private->m_failure;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_failure;
     }
 
     Job::Type Job::type() const
     {
-        return m_private->m_type;
+        QMutexLocker locker(&m_jobPrivateMutex);
+        return m_jobPrivate->m_type;
     }
 }
