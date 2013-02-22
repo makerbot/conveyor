@@ -97,7 +97,6 @@ namespace conveyor
         void emitConcluded (void);
 
         friend class ConveyorPrivate;
-        friend class JobPrivate;
     };
 
     QString jobTypeToHumanString(const Job::Type type);

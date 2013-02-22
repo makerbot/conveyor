@@ -29,9 +29,18 @@ namespace conveyor
     }
 
     void
-    Job::updateFromJson(Json::Value const &value) {
-        QMutexLocker locker(&m_jobPrivateMutex);
-        m_jobPrivate->updateFromJson(value);
+    Job::updateFromJson(Json::Value const &value)
+    {
+        const JobConclusion oldConclusion(conclusion());
+
+        {
+            QMutexLocker locker(&m_jobPrivateMutex);
+            m_jobPrivate->updateFromJson(value);
+        }
+
+        if (oldConclusion != conclusion()) {
+            emitConcluded();
+        }
     }
 
     int
