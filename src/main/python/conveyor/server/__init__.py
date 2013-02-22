@@ -314,7 +314,7 @@ class Server(conveyor.stoppable.StoppableInterface):
         job_id = self._create_job_id()
         job_name = self._get_job_name(input_file)
         machine = self._find_machine(machine_name, None, None, None)
-        if self._is_print_queued(machine) or not self._is_machine_idle(machine):
+        if self._is_print_queued(machine) or not machine.is_idle():
             raise conveyor.error.PrintQueuedException
         else:
             job = conveyor.job.PrintJob(
@@ -441,11 +441,6 @@ class Server(conveyor.stoppable.StoppableInterface):
     def _is_print_queued(self, machine):
         with self._print_queued_condition:
             result = machine.name in self._print_queued
-        return result
-
-    def _is_machine_idle(self, machine):
-        state = machine.get_state()
-        result = conveyor.machine.MachineState.IDLE == state
         return result
 
     ## old stuff ##############################################################

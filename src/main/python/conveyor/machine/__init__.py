@@ -304,6 +304,9 @@ class Machine(object):
     def get_state(self):
         return self._state
 
+    def is_idle(self):
+        raise NotImplementedError
+
     def connect(self):
         raise NotImplementedError
 
