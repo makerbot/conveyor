@@ -73,7 +73,6 @@ class DualstrusionWeaver(object):
         self.set_progress(0)
         while len(self.tool_0_codes.gcodes) is not 0 or len(self.tool_1_codes.gcodes) is not 0:
             if conveyor.task.TaskState.RUNNING != self.task.state:
-                self.task.fail(None)
                 break
             next_gcode_obj = self.get_next_code_list()
             next_layer = self.get_next_layer(next_gcode_obj)
