@@ -11,6 +11,10 @@
 #include <conveyor/fwd.h>
 #include <conveyor/jobstatus.h>
 
+namespace Json {
+class Value;
+}
+
 namespace conveyor
 {
     class Job : public QObject
@@ -53,6 +57,8 @@ namespace conveyor
 
         ~Job (void);
 
+        void updateFromJson(Json::Value const &);
+
         int id (void) const;
 
         QString name (void) const;
@@ -86,13 +92,8 @@ namespace conveyor
         void emitChanged (void);
         void emitConcluded (void);
 
-        friend class Conveyor;
         friend class ConveyorPrivate;
-        friend class JobAddedMethod;
-        friend class JobChangedMethod;
         friend class JobPrivate;
-        friend class Printer;
-        friend class PrinterPrivate;
     };
 
     QString jobTypeToHumanString(const Job::Type type);
