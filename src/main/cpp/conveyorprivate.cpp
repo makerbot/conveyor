@@ -240,7 +240,7 @@ namespace conveyor
                 // object if it doesn't exist already.
                 Job * const job(jobById(id));
 
-                job->m_private->updateFromJson(results[key]);
+                job->updateFromJson(results[key]);
                 jobs.append(job);
             }
         }

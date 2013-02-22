@@ -27,6 +27,11 @@ namespace conveyor
     {
     }
 
+    void
+    Job::updateFromJson(Json::Value const &value) {
+        m_private->updateFromJson(value);
+    }
+
     int
     Job::id (void) const
     {

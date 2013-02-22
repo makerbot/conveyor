@@ -29,7 +29,7 @@ namespace conveyor
         const int id(params["id"].asInt());
 
         Job * job(m_conveyorPrivate->jobById(id));
-        job->m_private->updateFromJson(params);
+        job->updateFromJson(params);
 
         m_conveyorPrivate->emitJobAdded(job);
 
