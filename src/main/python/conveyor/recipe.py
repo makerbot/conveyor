@@ -219,11 +219,11 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def _postweavetask(self, gcode_path, gcode_path_tmp, gcode_path_out, profile):
+    def _postweavetask(self, gcode_path, gcode_path_tmp, gcode_path_out, profile, slicer_name):
         def runningcallback(task):
-            self._log.info("postweave processing on %s" % (gcode_path))
+            self._log.info("slicer: %s postweave processing on %s" % (slicer_name, gcode_path))
             try:
-                conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile)
+                conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile, slicer_name)
             except Exception as e:
                 self._log.debug("unhandled exception", exc_info=True)
                 task.fail(e)
@@ -646,8 +646,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile))
-
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile, self._job.slicer_name))
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
             start_end_path = start_end_pathfp.name
@@ -709,13 +708,13 @@ class _DualThingRecipe(_ThingRecipe):
         gcodeprocessortask = self._gcodeprocessortask(
             dualstrusion_path, dual_path, self._job.profile)
         tasks.append(gcodeprocessortask)
-
+        self._log.info(str(self._job.slicer_name))
         #Process gcode post-weave and grooming
         with tempfile.NamedTemporaryFile(suffix='.dual.tmp.gcode') as f:
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(dual_path, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile))
+        tasks.append(self._postweavetask(dual_path, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile, self._job.slicer_name))
 
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
@@ -775,7 +774,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, profile._s3g_profile))
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, profile._s3g_profile, self._job.slicer_name))
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputpathfp:
             outputpath = outputpathfp.name
