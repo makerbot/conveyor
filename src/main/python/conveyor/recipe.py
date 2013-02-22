@@ -147,26 +147,36 @@ class Recipe(object):
             exe = self._config.get('miracle_grue', 'exe')
             profile_dir = self._config.get('miracle_grue', 'profile_dir')
             def running_callback(task):
-                def work():
-                    slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer(
-                        profile, input_path, output_path, add_start_end,
-                        slicer_settings, self._job.material_name,
-                        dualstrusion, task, exe, profile_dir)
-                    slicer.slice()
-                self._server.queue_work(work)
+                try:
+                    def work():
+                        slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer(
+                            profile, input_path, output_path, add_start_end,
+                            slicer_settings, self._job.material_name,
+                            dualstrusion, task, exe, profile_dir)
+                        slicer.slice()
+                    self._server.queue_work(work)
+                except Exception as e:
+                    self._log.exception('unhandled exception; failed to queue slice')
+                    failure = conveyor.util.exception_to_failure(e)
+                    task.fail(failure)
         elif conveyor.slicer.Slicer.SKEINFORGE == self._job.slicer_name:
             file_ = self._config.get('skeinforge', 'file')
             profile_dir = self._config.get('skeinforge', 'profile_dir')
             skeinforge_profile = self._config.get('skeinforge', 'profile')
             profile_file = os.path.join(profile_dir, skeinforge_profile)
             def running_callback(task):
-                def work():
-                    slicer = conveyor.slicer.skeinforge.SkeinforgeSlicer(
-                        profile, input_path, output_path, add_start_end,
-                        slicer_settings, self._job.material_name,
-                        dualstrusion, task, file_, profile_file)
-                    slicer.slice()
-                self._server.queue_work(work)
+                try:
+                    def work():
+                        slicer = conveyor.slicer.skeinforge.SkeinforgeSlicer(
+                            profile, input_path, output_path, add_start_end,
+                            slicer_settings, self._job.material_name,
+                            dualstrusion, task, file_, profile_file)
+                        slicer.slice()
+                    self._server.queue_work(work)
+                except Exception as e:
+                    self._log.exception('unhandled exception; failed to queue slice')
+                    failure = conveyor.util.exception_to_failure(e)
+                    task.fail(failure)
         else:
             raise ValueError(self._job.slicer_name)
         task = conveyor.task.Task()
@@ -178,8 +188,8 @@ class Recipe(object):
         gcodeprocessor_list = self.getgcodeprocessors(profile._s3g_profile)
         gcodeprocessors = list(factory.get_processors(gcodeprocessor_list, profile._s3g_profile))
         def runningcallback(task):
+            self._log.info('processing gcode %s -> %s', inputpath, outputpath)
             try:
-                self._log.info('processing gcode %s -> %s', inputpath, outputpath)
                 with open(inputpath) as f:
                     output = list(f)
                     for gcodeprocessor in gcodeprocessors:
@@ -188,8 +198,9 @@ class Recipe(object):
                     for line in output:
                         f.write(line)
             except Exception as e:
-                self._log.debug('unhandled exception', exc_info=True)
-                task.fail(e)
+                self._log.exception('unhandled exception; gcode processing failed')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(None)
         task = conveyor.task.Task()
@@ -211,8 +222,9 @@ class Recipe(object):
                     for line in output:
                         f.write(line)
             except Exception as e:
-                self._log.debug("unhandled exception", exc_info=True)
-                task.fail(e)
+                self._log.exception('unhandled exception; dualstrusion weave failed')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(None)
         task = conveyor.task.Task()
@@ -225,8 +237,9 @@ class Recipe(object):
             try:
                 conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile)
             except Exception as e:
-                self._log.debug("unhandled exception", exc_info=True)
-                task.fail(e)
+                self._log.exception('unhandled exception; dualstrusion post-processing failed')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(None)
         task = conveyor.task.Task()
@@ -247,14 +260,19 @@ class Recipe(object):
 
     def _print_to_filetask(self, input_file, output_file):
         def runningcallback(task):
-            def work():
-                self._job.driver.print_to_file(
-                    self._job.profile, input_file, output_file,
-                    self._job.file_type, True, self._job.extruder_name,
-                    self._job.slicer_settings.extruder_temperature,
-                    self._job.slicer_settings.platform_temperature,
-                    self._job.material_name, self._job.name, task)
-            self._server.queue_work(work)
+            try:
+                def work():
+                    self._job.driver.print_to_file(
+                        self._job.profile, input_file, output_file,
+                        self._job.file_type, True, self._job.extruder_name,
+                        self._job.slicer_settings.extruder_temperature,
+                        self._job.slicer_settings.platform_temperature,
+                        self._job.material_name, self._job.name, task)
+                self._server.queue_work(work)
+            except Exception as e:
+                self._log.exception('unhandled exception; failed to queue print-to-file')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
         task = conveyor.task.Task()
         task.runningevent.attach(runningcallback)
         return task
@@ -278,15 +296,17 @@ class Recipe(object):
                 task.heartbeat(progress)
 
         def runningcallback(task):
-            # If the filereader can parse it, then the s3g file is valid
-            reader = makerbot_driver.FileReader.FileReader()
+            self._log.info('verifying s3g file %s', s3gpath)
             try:
+                # If the filereader can parse it, then the s3g file is valid
+                reader = makerbot_driver.FileReader.FileReader()
                 with open(s3gpath, 'rb') as reader.file:
                     payloads = reader.ReadFile(update)
                 task.end(True)
             except makerbot_driver.FileReader.S3gStreamError as e:
-                message = unicode(e)
-                task.fail(message)
+                self._log.exception('unhandled exception; s3g verification failed')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
         task.runningevent.attach(runningcallback)
         return task
 
@@ -302,27 +322,27 @@ class Recipe(object):
             if progress != task.progress:
                 task.heartbeat(progress)
         def runningcallback(task):
-            self._log.info("Validating gcode file %s" % (gcodepath))
-            parser = makerbot_driver.Gcode.GcodeParser()
-            parser.state.values['build_name'] = "VALIDATION"
-            parser.state.profile = profile._s3g_profile
-            parser.s3g = mock.Mock()
-            extruders = [e.strip() for e in slicer_settings.extruder.split(',')]
-            gcode_scaffold = profile.get_gcode_scaffold(
-                extruders,
-                slicer_settings.extruder_temperature,
-                slicer_settings.platform_temperature,
-                material_name)
-            parser.environment.update(gcode_scaffold.variables)
+            self._log.info('verifying g-code file %s', gcodepath)
             try:
+                parser = makerbot_driver.Gcode.GcodeParser()
+                parser.state.values['build_name'] = "VALIDATION"
+                parser.state.profile = profile._s3g_profile
+                parser.s3g = mock.Mock()
+                extruders = [e.strip() for e in slicer_settings.extruder.split(',')]
+                gcode_scaffold = profile.get_gcode_scaffold(
+                    extruders,
+                    slicer_settings.extruder_temperature,
+                    slicer_settings.platform_temperature,
+                    material_name)
+                parser.environment.update(gcode_scaffold.variables)
                 with open(gcodepath) as f:
                     for line in f:
                         parser.execute_line(line)
                         update(parser.state.percentage)
-            except makerbot_driver.Gcode.GcodeError as e:
-                self._log.exception('G-code error')
-                message = conveyor.util.exception_to_failure(e)
-                task.fail(message)
+            except Exception as e:
+                self._log.exception('unhandled exception; g-code verification failed')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(True)
         task.runningevent.attach(runningcallback)
@@ -331,7 +351,7 @@ class Recipe(object):
     def _add_start_end_task(self, profile, slicer_settings, material_name,
             add_start_end, dualstrusion, input_path, output_path):
         def running_callback(task):
-            self._log.info("Writing out gcode to %s with%s start/end gcode" % (output_path, '' if add_start_end else 'out'))
+            self._log.info("writing g-code to %s with%s start/end gcode", output_path, '' if add_start_end else 'out')
             try:
                 with open(input_path) as ifp:
                     with open(output_path, 'w') as ofp:
@@ -350,8 +370,9 @@ class Recipe(object):
                             for line in gcode_scaffold.end:
                                 print(line, file=ofp)
             except Exception as e:
-                self._log.debug("unhandled exception", exc_info=True)
-                task.fail(e)
+                self._log.exception('unhandled exception; failed to add start/end g-code')
+                failure = conveyor.util.exception_to_failure(e)
+                task.fail(failure)
             else:
                 task.end(None)
         task = conveyor.task.Task()
