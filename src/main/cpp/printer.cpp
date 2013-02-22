@@ -64,26 +64,6 @@ namespace conveyor
     {
     }
 
-    QList<Job *>
-    Printer::jobs ()
-    {
-        const QList<Job *> all_jobs(m_private->m_conveyor->jobs());
-        QList<Job *> result;
-
-        // Filter the list of jobs to just those jobs whose printer
-        // matches this printer
-        const int len = all_jobs.size();
-        for (int i = 0; i < len; ++i) {
-            Job * j = all_jobs[i];
-            // TODO: any reason why this should use uniqueName rather
-            // than the Printer address?
-            if (j->m_private->m_printer == this)
-                result.append(j);
-        }
-
-        return result;
-    }
-
     QString const &
     Printer::displayName () const
     {

@@ -20,19 +20,14 @@ try:
 except ImportError:
     pass
 
-def post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile, slicer_name):
-
-    if conveyor.slicer.Slicer.MIRACLEGRUE == slicer_name:
-        slicer = 'miracle_grue'
-    if conveyor.slicer.Slicer.SKEINFORGE == slicer_name:
-        slicer = 'skeinforge'
+def post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile):
 
     pro_fact = makerbot_driver.GcodeProcessors.ProcessorFactory()
     postpro = pro_fact.create_processor_from_name('EmptyLayerProcessor')
     if not postpro.process_gcode(gcode_path, outfile=gcode_path_tmp):
         return False
     postpro = pro_fact.create_processor_from_name('Rep2XDualstrusionProcessor')
-    if not postpro.process_gcode(gcode_path_tmp, outfile=gcode_path_out, profile=profile, slicer=slicer):
+    if not postpro.process_gcode(gcode_path_tmp, outfile=gcode_path_out, profile=profile):
         return False
     return True
 
@@ -78,7 +73,6 @@ class DualstrusionWeaver(object):
         self.set_progress(0)
         while len(self.tool_0_codes.gcodes) is not 0 or len(self.tool_1_codes.gcodes) is not 0:
             if conveyor.task.TaskState.RUNNING != self.task.state:
-                self.task.fail(None)
                 break
             next_gcode_obj = self.get_next_code_list()
             next_layer = self.get_next_layer(next_gcode_obj)

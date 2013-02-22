@@ -4,12 +4,17 @@
 #define CONVEYOR_JOB_H (1)
 
 #include <QList>
+#include <QMutex>
 #include <QObject>
 #include <QScopedPointer>
 #include <QString>
 
 #include <conveyor/fwd.h>
 #include <conveyor/jobstatus.h>
+
+namespace Json {
+class Value;
+}
 
 namespace conveyor
 {
@@ -53,6 +58,8 @@ namespace conveyor
 
         ~Job (void);
 
+        void updateFromJson(Json::Value const &);
+
         int id (void) const;
 
         QString name (void) const;
@@ -81,18 +88,15 @@ namespace conveyor
     private:
         Job (Conveyor * conveyor, int const & id);
 
-        QScopedPointer <JobPrivate> m_private;
+        // Important: all access to m_jobPrivate should take the
+        // m_jobPrivateMutex
+        mutable QMutex m_jobPrivateMutex;
+        QScopedPointer <JobPrivate> m_jobPrivate;
 
         void emitChanged (void);
         void emitConcluded (void);
 
-        friend class Conveyor;
         friend class ConveyorPrivate;
-        friend class JobAddedMethod;
-        friend class JobChangedMethod;
-        friend class JobPrivate;
-        friend class Printer;
-        friend class PrinterPrivate;
     };
 
     QString jobTypeToHumanString(const Job::Type type);

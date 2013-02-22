@@ -98,8 +98,6 @@ namespace conveyor
             conclusion = jobConclusionFromString(QString(json["conclusion"].asCString()));
         }
 
-        const JobConclusion oldConclusion(m_conclusion);
-
         m_id = id;
         m_name = name;
         m_state = state;
@@ -194,10 +192,6 @@ namespace conveyor
             }
         } else {
             LOG_ERROR << "job type field missing" << std::endl;
-        }
-
-        if (oldConclusion != m_conclusion) {
-            m_job->emitConcluded();
         }
     }
     

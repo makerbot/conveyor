@@ -32,7 +32,7 @@ namespace conveyor
 
         JobState const initialJobState(job->state());
 
-        job->m_private->updateFromJson(params);
+        job->updateFromJson(params);
 
         // Signal job-changed, and check if the job state has changed
         // to STOPPED, in which case send the job-removed signal too
