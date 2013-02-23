@@ -245,8 +245,9 @@ class Recipe(object):
                 with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
                     dualpurgetempfile = f.name
                 conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, dualpurgetempfile, profile, slicer_name)
-                if self._job._get_profile_name() == 'Replicator2XFAIL':
+                if self._job._get_profile_name() == 'Replicator2X':
                         rep2xdualpurgeprocessor = makerbot_driver.GcodeProcessors.Rep2XDualstrusionPurgeProcessor()
+                        rep2xdualpurgeprocessor.profile = profile
                         with open(dualpurgetempfile) as not_processed:
                             processed_lines = rep2xdualpurgeprocessor.process_gcode(list(not_processed))
                         with open(gcode_path_out, 'w') as f:
