@@ -245,12 +245,16 @@ class Recipe(object):
                 with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
                     dualpurgetempfile = f.name
                 conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, dualpurgetempfile, profile, slicer_name)
-                rep2xdualpurgeprocessor = makerbot_driver.GcodeProcessors.Rep2XDualstrusionPurgeProcessor()
-                with open(dualpurgetempfile) as not_processed:
-                    processed_lines = rep2xdualpurgeprocessor.process_gcode(not_processed)
-                with open(gcode_path_out, 'w') as f:
-                    for line in processed_lines:
-                        f.write(line)
+                if self._job._get_profile_name() == 'Replicator2XFAIL':
+                        rep2xdualpurgeprocessor = makerbot_driver.GcodeProcessors.Rep2XDualstrusionPurgeProcessor()
+                        with open(dualpurgetempfile) as not_processed:
+                            processed_lines = rep2xdualpurgeprocessor.process_gcode(list(not_processed))
+                        with open(gcode_path_out, 'w') as f:
+                            for line in processed_lines:
+                                f.write(line)
+                else:
+                    import shutil
+                    shutil.copyfile(dualpurgetempfile, gcode_path_out)
             except Exception as e:
                 self._log.exception('unhandled exception; dualstrusion post-processing failed')
                 failure = conveyor.util.exception_to_failure(e)
