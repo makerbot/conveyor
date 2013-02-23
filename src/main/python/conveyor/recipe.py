@@ -139,6 +139,13 @@ class Recipe(object):
             if profile.name == 'Replicator2':
                 if 'FanProcessor' not in gcodeprocessors:
                     gcodeprocessors.append('FanProcessor')
+        extruders = [e.strip() for e in self._job.slicer_settings.extruder.split(',')]
+        if self._job._get_profile_name() == 'Replicator2X' and len(extruders) == 1:
+            try:
+                anchor_index = gcodeprocessors.index('AnchorProcessor')
+                gcodeprocessors[anchor_index] = 'Rep2XSinglePurgeProcessor'
+            except ValueError: # No Anchor Processor in gcodeprocessors list
+                gcodeprocessors.insert(0, 'Rep2XSinglePurgeProcessor')
         return gcodeprocessors
 
     def _slicertask(self, profile, input_path, output_path, add_start_end,
@@ -235,7 +242,15 @@ class Recipe(object):
         def runningcallback(task):
             self._log.info("postweave processing on %s" % (gcode_path))
             try:
-                conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile, slicer_name)
+                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+                    dualpurgetempfile = f.name
+                conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, dualpurgetempfile, profile, slicer_name)
+                rep2xdualpurgeprocessor = makerbot_driver.GcodeProcessors.Rep2XDualstrusionPurgeProcessor()
+                with open(dualpurgetempfile) as not_processed:
+                    processed_lines = rep2xdualpurgeprocessor.process_gcode(not_processed)
+                with open(gcode_path_out, 'w') as f:
+                    for line in processed_lines:
+                        f.write(line)
             except Exception as e:
                 self._log.exception('unhandled exception; dualstrusion post-processing failed')
                 failure = conveyor.util.exception_to_failure(e)
