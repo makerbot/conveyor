@@ -316,7 +316,6 @@ class Recipe(object):
                 task.heartbeat(progress)
 
         def runningcallback(task):
-            self._log.info('verifying s3g file %s', s3gpath)
             try:
                 # If the filereader can parse it, then the s3g file is valid
                 reader = makerbot_driver.FileReader.FileReader()
