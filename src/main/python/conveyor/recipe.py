@@ -139,6 +139,13 @@ class Recipe(object):
             if profile.name == 'Replicator2':
                 if 'FanProcessor' not in gcodeprocessors:
                     gcodeprocessors.append('FanProcessor')
+        extruders = [e.strip() for e in self._job.slicer_settings.extruder.split(',')]
+        if self._job._get_profile_name() == 'Replicator2X' and len(extruders) == 1:
+            try:
+                anchor_index = gcodeprocessors.index('AnchorProcessor')
+                gcodeprocessors[anchor_index] = 'Rep2XSinglePurgeProcessor'
+            except ValueError: # No Anchor Processor in gcodeprocessors list
+                gcodeprocessors.insert(0, 'Rep2XSinglePurgeProcessor')
         return gcodeprocessors
 
     def _slicertask(self, profile, input_path, output_path, add_start_end,
@@ -231,11 +238,24 @@ class Recipe(object):
         task.runningevent.attach(runningcallback)
         return task
 
-    def _postweavetask(self, gcode_path, gcode_path_tmp, gcode_path_out, profile):
+    def _postweavetask(self, gcode_path, gcode_path_tmp, gcode_path_out, profile, slicer_name):
         def runningcallback(task):
             self._log.info("postweave processing on %s" % (gcode_path))
             try:
-                conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, gcode_path_out, profile)
+                with tempfile.NamedTemporaryFile(suffix='.gcode', delete=True) as f:
+                    dualpurgetempfile = f.name
+                conveyor.dualstrusion.post_weave(gcode_path, gcode_path_tmp, dualpurgetempfile, profile, slicer_name)
+                if self._job._get_profile_name() == 'Replicator2X':
+                        rep2xdualpurgeprocessor = makerbot_driver.GcodeProcessors.Rep2XDualstrusionPurgeProcessor()
+                        rep2xdualpurgeprocessor.profile = profile
+                        with open(dualpurgetempfile) as not_processed:
+                            processed_lines = rep2xdualpurgeprocessor.process_gcode(list(not_processed))
+                        with open(gcode_path_out, 'w') as f:
+                            for line in processed_lines:
+                                f.write(line)
+                else:
+                    import shutil
+                    shutil.copyfile(dualpurgetempfile, gcode_path_out)
             except Exception as e:
                 self._log.exception('unhandled exception; dualstrusion post-processing failed')
                 failure = conveyor.util.exception_to_failure(e)
@@ -296,7 +316,6 @@ class Recipe(object):
                 task.heartbeat(progress)
 
         def runningcallback(task):
-            self._log.info('verifying s3g file %s', s3gpath)
             try:
                 # If the filereader can parse it, then the s3g file is valid
                 reader = makerbot_driver.FileReader.FileReader()
@@ -667,7 +686,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile))
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile, self._job.slicer_name))
 
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as start_end_pathfp:
@@ -736,7 +755,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(dual_path, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile))
+        tasks.append(self._postweavetask(dual_path, tmp_dual_path, fixed_dual_path, self._job.profile._s3g_profile, self._job.slicer_name))
 
         add_start_end_task = self._add_start_end_task(
             self._job.profile, self._job.slicer_settings, self._job.material_name,
@@ -796,7 +815,7 @@ class _DualThingRecipe(_ThingRecipe):
             tmp_dual_path = f.name
         with tempfile.NamedTemporaryFile(suffix='.dual.fix.gcode') as f:
             fixed_dual_path = f.name
-        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, profile._s3g_profile))
+        tasks.append(self._postweavetask(processed_gcodepath, tmp_dual_path, fixed_dual_path, profile._s3g_profile, self._job.slicer_name))
 
         with tempfile.NamedTemporaryFile(suffix='.gcode') as outputpathfp:
             outputpath = outputpathfp.name
