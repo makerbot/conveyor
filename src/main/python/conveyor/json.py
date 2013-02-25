@@ -36,13 +36,13 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def dump(obj, fp, *args, **kwargs):
-    kwargs['cls'] = DecimalEncoder
+    kwargs[str('cls')] = DecimalEncoder
     result = json.dump(obj, fp, *args, **kwargs)
     return result
 
 
 def dumps(obj, *args, **kwargs):
-    kwargs['cls'] = DecimalEncoder
+    kwargs[str('cls')] = DecimalEncoder
     result = json.dumps(obj, *args, **kwargs)
     return result
 
