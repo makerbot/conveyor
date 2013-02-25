@@ -58,7 +58,8 @@ class Slicer(object):
         posts progres update to our task, lazily
         @param new_progress progress dict of {'name':$NANME 'progress'$INT_PERCENT } 
         """
-        self._task.lazy_heartbeat(new_progress, self._progress)
+        if conveyor.task.TaskState.RUNNING == self._task.state:
+            self._task.lazy_heartbeat(new_progress, self._progress)
         self._progress = new_progress
 
     def _setprogress_percent(self, percent, pMin=1, pMax=99):
