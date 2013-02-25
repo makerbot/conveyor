@@ -126,7 +126,7 @@ class Recipe(object):
         self._spool = spool
 
     def getgcodeprocessors(self, profile):
-        gcodeprocessors = self._job.gcode_processor_name
+        gcodeprocessors = self._job.gcode_processor_name[:]
         if None is gcodeprocessors:
             gcodeprocessors = []
         if (conveyor.slicer.Slicer.SKEINFORGE == self._job.slicer_name):
