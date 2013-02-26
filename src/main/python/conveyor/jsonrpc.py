@@ -258,7 +258,6 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
                 'jsonrpc': '2.0', 'method': method, 'params': params, 'id': id}
             data = conveyor.json.dumps(request)
             self._send(data)
-            self._tasks[id] = task
         def stoppedevent(task):
             if id in self._tasks.keys():
                 del self._tasks[id]
@@ -267,6 +266,7 @@ class JsonRpc(conveyor.stoppable.StoppableInterface):
         task = conveyor.task.Task()
         task.runningevent.attach(runningevent)
         task.stoppedevent.attach(stoppedevent)
+        self._tasks[id] = task
         return task
 
     #
