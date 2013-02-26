@@ -103,12 +103,13 @@ def earlylogging(program, early_debugging=False): # pragma: no cover
         'disable_existing_loggers': True,
     }
     if early_debugging:
+        filename = ''.join((program, '-startup.log'))
         dct['handlers']['log'] = {
             'class': 'logging.FileHandler',
             'level': 'NOTSET',
             'formatter': 'log',
             'filters': [],
-            'filename': 'conveyor-startup.log',
+            'filename': filename,
         }
         dct['root']['level'] = 'NOTSET'
         dct['root']['handlers'].append('log')
