@@ -74,7 +74,7 @@ class ClientMain(conveyor.main.AbstractMain):
 
 
 def _main(argv): # pragma: no cover
-    conveyor.log.earlylogging('conveyor')
+    conveyor.log.earlylogging('conveyor', True)
     main = ClientMain()
     code = main.main(argv)
     return code

@@ -166,13 +166,6 @@ class AbstractMain(object):
                 },
             },
             'handlers': {
-                'log': {
-                    'class': 'logging.FileHandler',
-                    'level': 'NOTSET',
-                    'formatter': 'log',
-                    'filters': [],
-                    'filename': filename,
-                },
                 'stdout': {
                     'class': 'logging.StreamHandler',
                     'level': 'INFO',
@@ -203,6 +196,17 @@ class AbstractMain(object):
                 'handlers': handlers,
             },
         }
+        if 'log' in handlers:
+            # NOTE: only add this handler if the log file is enabled, otherwise
+            # the logging system (at least on Windows) will try to create the
+            # log file whether or not it is actually used.
+            dct['handlers']['log'] = {
+                'class': 'logging.FileHandler',
+                'level': 'NOTSET',
+                'formatter': 'log',
+                'filters': [],
+                'filename': filename,
+            }
         return dct
 
     def _init_event_threads(self):
@@ -221,6 +225,7 @@ class AbstractMain(object):
     def _log_startup(self, level):
         self._log.log(
             level, '%s %s started', self._program_name, conveyor.__version__)
+        self._log.log(level, 'process id: %r', os.getpid())
         self._log.log(level, 'python version: %r', sys.version)
         self._log.log(level, 'python platform: %r', platform.platform())
         self._log.log(level, 'python pointer size: %r', self._get_pointer_size())

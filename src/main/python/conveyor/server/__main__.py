@@ -114,7 +114,7 @@ class ServerMain(conveyor.main.AbstractMain):
 
 
 def _main(argv): # pragma: no cover
-    conveyor.log.earlylogging('conveyord')
+    conveyor.log.earlylogging('conveyord', True)
     main = ServerMain()
     code = main.main(argv)
     if None is code:
