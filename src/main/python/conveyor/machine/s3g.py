@@ -213,8 +213,8 @@ class S3gDriver(conveyor.machine.Driver):
         return task
 
     def _create_firmware_uploader(self, *args, **kwargs):
-        kwargs['avrdude_exe'] = self._config.get('makerbot_driver', 'avrdude_exe')
-        kwargs['avrdude_conf_file'] = self._config.get('makerbot_driver', 'avrdude_conf_file')
+        kwargs[str('avrdude_exe')] = self._config.get('makerbot_driver', 'avrdude_exe')
+        kwargs[str('avrdude_conf_file')] = self._config.get('makerbot_driver', 'avrdude_conf_file')
         uploader = makerbot_driver.Firmware.Uploader(*args, **kwargs)
         return uploader
 
