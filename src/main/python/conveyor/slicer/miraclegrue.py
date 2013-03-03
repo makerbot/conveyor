@@ -25,67 +25,62 @@ import tempfile
 
 import conveyor.event
 import conveyor.json
+import conveyor.machine
 import conveyor.slicer
 import conveyor.util
 
 class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
+    _name = conveyor.slicer.Slicer.MIRACLEGRUE
+
+    _display_name = 'Miracle Grue'
+
+    @staticmethod
+    def get_gcode_scaffold(path):
+        gcode_scaffold = conveyor.machine.GcodeScaffold()
+        dirname = os.path.dirname(path)
+        with open(path) as config_fp:
+            config = conveyor.json.load(config_fp)
+        start_value = config.get('startGcode', 'start.gcode')
+        start_file = os.path.join(dirname, start_value)
+        with open(start_file) as start_fp:
+            gcode_scaffold.start = start_fp.readlines()
+        end_value = config.get('endGcode', 'end.gcode')
+        end_file = os.path.join(dirname, end_value)
+        with open(end_file) as end_fp:
+            gcode_scaffold.end = end_fp.readlines()
+        gcode_scaffold.variables = {}
+        return gcode_scaffold
+
     def __init__(
-        self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, dualstrusion, task, slicerpath, configpath):
-            conveyor.slicer.SubprocessSlicer.__init__(
-                self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, dualstrusion, task, slicerpath)
-
-            self._tmp_startpath = None
-            self._tmp_endpath = None
-            self._tmp_configpath = None
-
-            self._configpath = configpath
-
-    def _getname(self):
-        return 'Miracle Grue'
+            self, profile, input_file, output_file, slicer_settings, material,
+            dualstrusion, task, slicer_file, config_file):
+        conveyor.slicer.SubprocessSlicer.__init__(
+            self, profile, input_file, output_file, slicer_settings, material,
+            dualstrusion, task, slicer_file)
+        self._config_file = config_file
+        self._tmp_config_file = None
 
     def _prologue(self):
-        if self._with_start_end:
-            startgcode, endgcode, variables = conveyor.util.get_start_end_variables(
-                self._profile, self._slicer_settings, self._material, False)
-            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as startfp:
-                self._tmp_startpath = startfp.name
-                for line in startgcode:
-                    print(line, file=startfp)
-            with tempfile.NamedTemporaryFile(suffix='.gcode', delete=False) as endfp:
-                self._tmp_endpath = endfp.name
-                for line in endgcode:
-                    print(line, file=endfp)
-        with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as configfp:
-            self._tmp_configpath = configfp.name
-        if None is self._slicer_settings.path:
-            config = self._getconfig()
-            s = json.dumps(config)
-            self._log.debug('miracle grue configuration: %s', s)
-            with open(self._tmp_configpath, 'w') as configfp:
-                json.dump(config, configfp, indent=8)
+        if None is not self._slicer_settings.path:
+            config = self._get_config_custom()
         else:
-            import shutil
-            shutil.copy2(self._slicer_settings.path, self._tmp_configpath)
-            self._log.debug('using miracle grue configuration at %s', self._slicer_settings.path)
+            config = self._get_config_printomatic()
+        s = json.dumps(config)
+        self._log.debug('using miracle grue configuration: %s', s)
+        with tempfile.NamedTemporaryFile(suffix='.config', delete=False) as tmp_config_fp:
+            self._tmp_config_file = tmp_config_fp.name
+            json.dump(config, tmp_config_fp, indent=8)
 
-    def _getconfig_file(self):
-        if 'ABS' == self._material:
-            config_abs = os.path.join(self._configpath, 'miracle-abs.config')
-            if os.path.exists(config_abs):
-                return config_abs
-        elif 'PLA' == self._material:
-            config_pla = os.path.join(self._configpath, 'miracle-pla.config')
-            if os.path.exists(config_pla):
-                return config_pla
-        else:
-            raise ValueError()
-        config_generic = os.path.join(self._configpath, 'miracle.config')
-        return config_generic
+    def _get_config_custom(self):
+        with open(self._slicer_settings.path) as config_fp:
+            config = conveyor.json.load(config_fp)
+        config['defaultExtruder'] = int(self._slicer_settings.extruder)
+        config['startGcode'] = None
+        config['endGcode'] = None
+        return config
 
-    def _getconfig(self):
-        config_file = self._getconfig_file()
+    def _get_config_printomatic(self):
+        config_file = self._get_config_printomatic_file()
         with open(config_file) as fp:
             config = conveyor.json.load(fp)
         config['infillDensity'] = self._slicer_settings.infill
@@ -108,36 +103,44 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         config['endGcode'] = None
         return config
 
-    def _getexecutable(self):
-        executable = os.path.abspath(self._slicerpath)
+    def _get_config_printomatic_file(self):
+        if 'ABS' == self._material:
+            config_abs = os.path.join(self._config_file, 'miracle-abs.config')
+            if os.path.exists(config_abs):
+                return config_abs
+        elif 'PLA' == self._material:
+            config_pla = os.path.join(self._config_file, 'miracle-pla.config')
+            if os.path.exists(config_pla):
+                return config_pla
+        else:
+            raise ValueError()
+        config_generic = os.path.join(self._config_file, 'miracle.config')
+        return config_generic
+
+    def _get_executable(self):
+        executable = os.path.abspath(self._slicer_file)
         return executable
 
-    def _getarguments(self):
-        for iterable in self._getarguments_miraclegrue():
+    def _get_arguments(self):
+        for iterable in self._get_arguments_miraclegrue():
             for value in iterable:
                 yield value
 
-    def _getarguments_miraclegrue(self):
-        yield (self._getexecutable(),)
-        yield ('-c', self._tmp_configpath,)
-        yield ('-o', self._outputpath,)
-        if None is not self._tmp_startpath:
-            yield ('-s', self._tmp_startpath,)
-        if None is not self._tmp_endpath:
-            yield ('-e', self._tmp_endpath,)
+    def _get_arguments_miraclegrue(self):
+        yield (self._get_executable(),)
+        yield ('-c', self._tmp_config_file,)
+        yield ('-o', self._output_file,)
         yield ('-j',)
-        if None is not self._slicer_settings.path:
-            yield ('-x', str(self._slicer_settings.extruder),)
-        yield (self._inputpath,)
+        yield (self._input_file,)
 
-    def _getcwd(self):
+    def _get_cwd(self):
         if None is self._slicer_settings.path:
             cwd = None
         else:
             cwd = os.path.dirname(self._slicer_settings.path)
         return cwd
 
-    def _readpopen(self):
+    def _read_popen(self):
         while True:
             line = self._popen.stdout.readline()
             if '' == line:
@@ -155,9 +158,4 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
                             self._setprogress_ratio(percent, 100)
 
     def _epilogue(self):
-        if None is not self._tmp_startpath:
-            os.unlink(self._tmp_startpath)
-        if None is not self._tmp_endpath:
-            os.unlink(self._tmp_endpath)
-        if None is not self._tmp_configpath:
-            os.unlink(self._tmp_configpath)
+        pass

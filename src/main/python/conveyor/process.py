@@ -38,9 +38,7 @@ def tasksequence(job, tasklist):
     term = reduce(
         _TermSequence, (_TermYield(_TermTask(t)) for t in tasklist))
     machine = _Machine.create(term)
-    task = conveyor.task.Task()
-    processhandler = _ProcessHandler(job, machine, task)
-    return task
+    processhandler = _ProcessHandler(job, machine, job.task)
 
 class _ProcessHandler(object):
     def __init__(self, job, machine, task):

@@ -19,6 +19,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals)
 
+import csv
 import os
 import os.path
 import re
@@ -30,73 +31,108 @@ import unittest
 
 import conveyor.enum
 import conveyor.slicer
-import conveyor.util
 
-SkeinforgeSupport = conveyor.enum.enum('SkeinforgeSupport', 'NONE', 'EXTERIOR', 'FULL')
+
+SkeinforgeSupport = conveyor.enum.enum(
+    'SkeinforgeSupport', 'NONE', 'EXTERIOR', 'FULL')
+
 
 class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
+    _name =  conveyor.slicer.Slicer.SKEINFORGE
+
+    _display_name = 'Skeinforge'
+
+    @staticmethod
+    def get_gcode_scaffold(path):
+        gcode_scaffold = conveyor.machine.GcodeScaffold()
+        start_value = 'start-pla.gcode'
+        end_value = 'end-pla.gcode'
+        alteration_file = os.path.join(path, 'profiles', 'extrusion', 'ABS')
+        with open(alteration_file) as alteration_fp:
+            alteration_fp.readline() # consume comment
+            alteration_fp.readline() # consume header
+            pos = alteration_fp.tell()
+            sniffer = csv.Sniffer()
+            sample = alteration_fp.read(4096)
+            dialect = sniffer.sniff(sample)
+            alteration_fp.seek(pos)
+            reader = csv.reader(alteration_fp, dialect)
+            for line in reader:
+                try:
+                    if 'Name of Start File:' == line[0]:
+                        start_value = line[1]
+                    elif 'Name of End File:' == line[0]:
+                        end_value = line[1]
+                except:
+                    pass
+        start_file = os.path.join(
+            path, 'profiles', 'extrusion', 'ABS', start_value)
+        with open(start_file) as start_fp:
+            gcode_scaffold.start = start_fp.readlines()
+        end_file = os.path.join(
+            path, 'profiles', 'extrusion', 'ABS', end_value)
+        with open(end_file) as end_fp:
+            gcode_scaffold.end = end_fp.readlines()
+        gcode_scaffold.variables = {}
+        return gcode_scaffold
+
     def __init__(
-        self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, dualstrusion, task, slicerpath, profilepath):
-            conveyor.slicer.SubprocessSlicer.__init__(
-                self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, dualstrusion, task, slicerpath)
-
-            self._regex = re.compile(
-                'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
-            self._tmp_directory = None
-            self._tmp_inputpath = None
-
-            self._profilepath = profilepath
-
-    def _getname(self):
-        return 'Skeinforge'
+            self, profile, input_file, output_file, slicer_settings, material,
+            dualstrusion, task, slicer_file, profilepath):
+        conveyor.slicer.SubprocessSlicer.__init__(
+            self, profile, input_file, output_file, slicer_settings, material,
+            dualstrusion, task, slicer_file)
+        self._regex = re.compile(
+            'Fill layer count (?P<layer>\d+) of (?P<total>\d+)\.\.\.')
+        self._tmp_directory = None
+        self._tmp_input_file = None
+        self._profilepath = profilepath
 
     def _prologue(self):
         self._tmp_directory = tempfile.mkdtemp(suffix='.skeinforge')
-        self._tmp_inputpath = os.path.join(
-            self._tmp_directory, os.path.basename(self._inputpath))
-        shutil.copy2(self._inputpath, self._tmp_inputpath)
+        self._tmp_input_file = os.path.join(
+            self._tmp_directory, os.path.basename(self._input_file))
+        shutil.copy2(self._input_file, self._tmp_input_file)
 
-    def _getexecutable(self):
+    def _get_executable(self):
         return sys.executable
 
-    def _getarguments(self):
+    def _get_arguments(self):
         for method in (
-            self._getarguments_python,
-            self._getarguments_skeinforge,
+            self._get_arguments_python,
+            self._get_arguments_skeinforge,
             ):
                 for iterable in method():
                     for value in iterable:
                         yield value
 
-    def _getarguments_python(self):
+    def _get_arguments_python(self):
         yield ('-u',)
-        yield (self._slicerpath,)
+        yield (self._slicer_file,)
 
-    def _getarguments_skeinforge(self):
+    def _get_arguments_skeinforge(self):
         if self._slicer_settings.path is None:
             yield ('-p', self._profilepath,)
             for method in (
-                self._getarguments_raft,
-                self._getarguments_support,
-                self._getarguments_bookend,
-                self._getarguments_printomatic,
-                self._getarguments_stl,
+                self._get_arguments_raft,
+                self._get_arguments_support,
+                self._get_arguments_bookend,
+                self._get_arguments_printomatic,
+                self._get_arguments_stl,
                 ):
                     for iterable in method():
                         yield iterable
         else:
             yield ('-p', self._slicer_settings.path)
-            for iterable in self._getarguments_stl():
+            for iterable in self._get_arguments_stl():
                 yield iterable
 
-    def _getarguments_raft(self):
+    def _get_arguments_raft(self):
         yield self._option(
             'raft.csv', 'Add Raft, Elevate Nozzle, Orbit:',
             self._slicer_settings.raft)
 
-    def _getarguments_support(self):
+    def _get_arguments_support(self):
         # TODO: Support the exterior support. Endless domain model problems... :(
         if not self._slicer_settings.support:
             support = SkeinforgeSupport.NONE
@@ -126,12 +162,12 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
     _FILAMENTDIAMETER = 1.82
     _PATHWIDTH = 0.4
 
-    def _getarguments_bookend(self):
+    def _get_arguments_bookend(self):
         if SkeinforgeSlicer._BOOKEND:
             yield self._option('alteration.csv', 'Name of Start File:', '')
             yield self._option('alteration.csv', 'Name of End File:', '')
 
-    def _getarguments_printomatic(self):
+    def _get_arguments_printomatic(self):
         ratio = SkeinforgeSlicer._PATHWIDTH / self._slicer_settings.layer_height
         wall_width = SkeinforgeSlicer._PATHWIDTH * self._slicer_settings.shells
         ceiling_layers = int(wall_width / self._slicer_settings.layer_height)
@@ -164,14 +200,14 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
             'fill.csv', 'Extra Shells on Sparse Layer (layers):',
             self._slicer_settings.shells-1)
 
-    def _getarguments_stl(self):
-        yield (self._tmp_inputpath,)
+    def _get_arguments_stl(self):
+        yield (self._tmp_input_file,)
 
     def _option(self, module, preference, value):
         yield '--option'
         yield ''.join((module, ':', preference, '=', unicode(value)))
 
-    def _readpopen(self):
+    def _read_popen(self):
         """
         Read the output of Skeinforge and turn them into progress updates.
         SF does a poor job emitting progress updates, so we need to inject
@@ -183,9 +219,9 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         #first_third_done = False
         #second_third_done = False
         sf_timeout= 15 #sf timeout in seconds
-		runner = 0.0
-		current_third = 1 # 1'st 3rd, fake, 2nd-third read, 3rd-3rd fake
-		faker_min, faker_max = 1, 33
+        runner = 0.0
+        current_third = 1 # 1'st 3rd, fake, 2nd-third read, 3rd-3rd fake
+        faker_min, faker_max = 1, 33
         progress_increment_hack = .5
         progress_time_interval = 1
         cur_datetime = datetime.datetime.now()
@@ -194,37 +230,37 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         while True:
             cur_datetime = datetime.datetime.now()
             data = self._popen.stdout.read(1) # :.(
-			# no good data, leave this loop forevar
+            # no good data, leave this loop forevar
             if '' == data:
                 break
-			self._slicerlog.write(data)
-			buffer += data
-			match = self._regex.search(buffer)
-			if current_third < 3 and match is not None:
-				sf_prev_datetime = datetime.datetime.now()
-				current_third = 2
-				buffer = buffer[match.end():]
-				layer = int(match.group('layer'))
-				total = int(match.group('total'))
-				progress = 100*layer/total
-				self._setprogress_percent(progress,33, 66)
-			# SF doesnt always emit updates for all its layers, we
-			# take a timestamp diff to see if we should begin 
-			# artificial update for the last 33% 
-			elif current_third == 2:
-				if self._total_seconds(cur_datetime - sf_prev_datetime) > sf_timeout:
-					current_third = 3 # sf timeout is no longer updating, take over
-					runner = 66.0 #set this 
-			elif self._total_seconds(cur_datetime - prev_datetime) > progress_time_interval:
-				prev_datetime = cur_datetime 
-				# fake the first 1/3 while skeinforge warms up
-				if current_third == 1:
-					runner = runner + progress_increment_hack
-					self._setprogress_percent(int(runner),1,33)
-				# fake the final 1/3 while skeinforge closes/writes
-				elif current_third == 3:
-					runner = runner + progress_increment_hack
-					self._setprogress_percent(int(runner),66, 99)
+            self._slicerlog.write(data)
+            buffer += data
+            match = self._regex.search(buffer)
+            if current_third < 3 and match is not None:
+                sf_prev_datetime = datetime.datetime.now()
+                current_third = 2
+                buffer = buffer[match.end():]
+                layer = int(match.group('layer'))
+                total = int(match.group('total'))
+                progress = 100*layer/total
+                self._setprogress_percent(progress,33, 66)
+            # SF doesnt always emit updates for all its layers, we
+            # take a timestamp diff to see if we should begin 
+            # artificial update for the last 33% 
+            elif current_third == 2:
+                if self._total_seconds(cur_datetime - sf_prev_datetime) > sf_timeout:
+                    current_third = 3 # sf timeout is no longer updating, take over
+                    runner = 66.0 #set this 
+            elif self._total_seconds(cur_datetime - prev_datetime) > progress_time_interval:
+                prev_datetime = cur_datetime 
+                # fake the first 1/3 while skeinforge warms up
+                if current_third == 1:
+                    runner = runner + progress_increment_hack
+                    self._setprogress_percent(int(runner),1,33)
+                # fake the final 1/3 while skeinforge closes/writes
+                elif current_third == 3:
+                    runner = runner + progress_increment_hack
+                    self._setprogress_percent(int(runner),66, 99)
 
     def _total_seconds(self, td):
         result = float(td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / float(10**6)
@@ -232,18 +268,10 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
 
     def _epilogue(self):
         if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
-            startgcode, endgcode, variables = conveyor.util.get_start_end_variables(
-                self._profile, self._slicer_settings, self._material, False)
-            with open(self._outputpath, 'w') as wfp:
-                if self._with_start_end:
-                    for line in startgcode:
-                        print(line, file=wfp)
-                root, ext = os.path.splitext(self._tmp_inputpath)
-                tmp_outputpath = ''.join((root, '.gcode'))
-                with open(tmp_outputpath, 'r') as rfp:
+            with open(self._output_file, 'w') as wfp:
+                root, ext = os.path.splitext(self._tmp_input_file)
+                tmp_output_file = ''.join((root, '.gcode'))
+                with open(tmp_output_file, 'r') as rfp:
                     for line in rfp:
                         wfp.write(line)
-                if self._with_start_end:
-                    for line in endgcode:
-                        print(line, file=wfp)
         shutil.rmtree(self._tmp_directory)

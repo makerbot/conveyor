@@ -132,7 +132,7 @@ class S3gDriver(conveyor.machine.Driver):
                     'name': 'print-to-file',
                     'progress': 0,
                 }
-                task.lazy_heartbeat(progress, task.progress)
+                task.lazy_heartbeat(progress)
                 if not has_start_end:
                     self._execute_lines(task, parser, gcode_scaffold.start)
                 if conveyor.task.TaskState.RUNNING == task.state:
@@ -145,7 +145,7 @@ class S3gDriver(conveyor.machine.Driver):
                     'name': 'print-to-file',
                     'progress': 100,
                 }
-                task.lazy_heartbeat(progress, task.progress)
+                task.lazy_heartbeat(progress)
                 task.end(None)
         except Exception as e:
             self._log.exception('unhandled exception; print-to-file failed')
@@ -163,7 +163,7 @@ class S3gDriver(conveyor.machine.Driver):
                     'name': 'print-to-file',
                     'progress': int(parser.state.percentage),
                 }
-                task.lazy_heartbeat(progress, task.progress)
+                task.lazy_heartbeat(progress)
 
     def get_uploadable_machines(self, task):
         def running_callback(task):
@@ -708,7 +708,7 @@ class _MakeOperation(_TaskOperation):
             #     'name': 'clear-build-plate',
             #     'progress': 0,
             # }
-            # self.task.lazy_heartbeat(progress, self.task.progress)
+            # self.task.lazy_heartbeat(progress)
             # self.machine._s3g.display_message(0, 0, str('clear'), 0, True, True, False)
             # self.machine._s3g.wait_for_button('center', 0, True, False, False)
             # while self.machine._motherboard_status['wait_for_button']:
@@ -717,7 +717,7 @@ class _MakeOperation(_TaskOperation):
                 'name': 'print',
                 'progress': 0,
             }
-            self.task.lazy_heartbeat(progress, self.task.progress)
+            self.task.lazy_heartbeat(progress)
             if not self.skip_start_end:
                 self._execute_lines(parser, gcode_scaffold.start)
             if conveyor.task.TaskState.RUNNING == self.task.state:
@@ -730,7 +730,7 @@ class _MakeOperation(_TaskOperation):
                     'name': 'print',
                     'progress': 100,
                 }
-                self.task.lazy_heartbeat(progress, self.task.progress)
+                self.task.lazy_heartbeat(progress)
                 self.task.end(None)
         except makerbot_driver.BuildCancelledError as e:
             self.machine._handle_build_cancelled(e)
@@ -772,7 +772,7 @@ class _MakeOperation(_TaskOperation):
                             'name': 'print',
                             'progress': int(parser.state.percentage),
                         }
-                        self.task.lazy_heartbeat(progress, self.task.progress)
+                        self.task.lazy_heartbeat(progress)
                         # NOTE: this branch WILL break out of the inner `while`
                         # loop but NOT the outer `for` loop. The interpreter
                         # will advance to the next line of G-code.

@@ -293,7 +293,7 @@ namespace conveyor
             params["extruder_name"] = "0, 1";
             break;
         }
-        params["gcode_processor_name"] = Json::Value(Json::arrayValue);
+        params["gcode_processor_names"] = Json::nullValue;
         params["input_file"] = inputFile.toStdString();
         params["material_name"] = Json::Value(materialName.toStdString());
         params["slicer_name"] = slicerConf.slicerName().toLower().toStdString();

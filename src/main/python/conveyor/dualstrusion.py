@@ -54,12 +54,10 @@ class DualstrusionWeaver(object):
         self.new_codes = []
         self.next_location_regex = re.compile("[gG]1.*?[zZ][-]?([\d]*\.?[\d]+)")
         self.last_location_regex = re.compile("[gG]1.*?[xXyY][-]?([\d]*\.?[\d]+)")
-        self.progress = {'name': 'weave', 'progress': 0 }
         
     def set_progress(self, percent):
-        old_progress = self.progress.copy()
-        self.progress['progress'] = percent;
-        self.task.lazy_heartbeat(self.progress, old_progress)
+        progress = {'name': 'weave', 'progress': percent}
+        self.task.lazy_heartbeat(progress)
 
     def get_toolchange_commands(self, tool_codes):
         commands = []

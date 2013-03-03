@@ -34,33 +34,32 @@ class Slicer(object):
 
     SKEINFORGE = 'skeinforge'
 
-    def __init__(
-        self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, dualstrusion, task):
-            self._log = conveyor.log.getlogger(self)
-            self._progress = None
-            self._slicerlog = None
+    _name = None
 
-            self._profile = profile
-            self._inputpath = inputpath
-            self._outputpath = outputpath
-            self._with_start_end = with_start_end
-            self._slicer_settings = slicer_settings
-            self._material = material
-            self._dualstrusion = dualstrusion
-            self._task = task
+    _display_name = None
 
-    def _getname(self):
+    @staticmethod
+    def get_gcode_scaffold(path):
         raise NotImplementedError
+
+    def __init__(
+            self, profile, input_file, output_file, slicer_settings, material,
+            dualstrusion, task):
+        self._log = conveyor.log.getlogger(self)
+        self._profile = profile
+        self._input_file = input_file
+        self._output_file = output_file
+        self._slicer_settings = slicer_settings
+        self._material = material
+        self._dualstrusion = dualstrusion
+        self._task = task
 
     def _setprogress(self, new_progress):
         """
         posts progres update to our task, lazily
         @param new_progress progress dict of {'name':$NANME 'progress'$INT_PERCENT } 
         """
-        if conveyor.task.TaskState.RUNNING == self._task.state:
-            self._task.lazy_heartbeat(new_progress, self._progress)
-        self._progress = new_progress
+        self._task.lazy_heartbeat(new_progress)
 
     def _setprogress_percent(self, percent, pMin=1, pMax=99):
         """ Sets a progress update as percent, clipped to pMin, pMax
@@ -92,34 +91,28 @@ class SubprocessSlicerException(Exception):
 
 class SubprocessSlicer(Slicer):
     def __init__(
-        self, profile, inputpath, outputpath, with_start_end, slicer_settings,
-        material, dualstrusion, task, slicerpath):
-            Slicer.__init__(
-                self, profile, inputpath, outputpath, with_start_end,
-                slicer_settings, material, dualstrusion, task)
-
-            self._popen = None
-            self._slicerlog = None
-            self._code = None
-
-            self._slicerpath = slicerpath
+            self, profile, input_file, output_file, slicer_settings,
+            material_name, dualstrusion, task, slicer_file):
+        Slicer.__init__(
+            self, profile, input_file, output_file, slicer_settings,
+            material_name, dualstrusion, task)
+        self._popen = None
+        self._slicerlog = None
+        self._code = None
+        self._slicer_file = slicer_file
 
     def slice(self):
-        name = self._getname()
-        self._log.info(
-            'slicing with %s: %s -> %s', name, self._inputpath,
-            self._outputpath)
         try:
             progress = {'name': 'slice', 'progress': 0}
             self._setprogress(progress)
             self._prologue()
-            executable = self._getexecutable()
+            executable = self._get_executable()
             quoted_executable = self._quote(executable)
-            arguments = list(self._getarguments())
+            arguments = list(self._get_arguments())
             quoted_arguments = ' '.join(self._quote(a) for a in arguments)
             self._log.info('executable: %s', quoted_executable)
             self._log.info('command: %s', quoted_arguments)
-            cwd = self._getcwd()
+            cwd = self._get_cwd()
             if None is cwd:
                 path = executable
             else:
@@ -129,11 +122,11 @@ class SubprocessSlicer(Slicer):
             self._popen = subprocess.Popen(
                 arguments, executable=executable, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, cwd=cwd)
-            def cancelcallback(task):
+            def cancel_callback(task):
                 self._popen.terminate()
-            self._task.cancelevent.attach(cancelcallback)
+            self._task.cancelevent.attach(cancel_callback)
             self._slicerlog = StringIO.StringIO()
-            self._readpopen()
+            self._read_popen()
             slicerlog = self._slicerlog.getvalue()
             self._code = self._popen.wait()
             try:
@@ -146,56 +139,60 @@ class SubprocessSlicer(Slicer):
             except:
                 self._log.debug('handled exception', exc_info=True)
             if (0 != self._code
-                and conveyor.task.TaskConclusion.CANCELED != self._task.conclusion):
-                    self._log.error('%s terminated with code %s', name, self._code)
-                    failure = self._getfailure(None)
-                    self._task.fail(failure)
+                    and conveyor.task.TaskConclusion.CANCELED != self._task.conclusion):
+                self._log.error(
+                    '%s terminated with code %s', self._display_name,
+                    self._code)
+                failure = self._get_failure(None)
+                self._task.fail(failure)
             else:
-                    self._log.debug('%s terminated with code %s', name, self._code)
-                    self._epilogue()
-                    if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
-                        progress = {'name': 'slice', 'progress': 100}
-                        self._setprogress(progress)
-                        self._task.end(None)
+                self._log.debug(
+                    '%s terminated with code %s', self._display_name,
+                    self._code)
+                self._epilogue()
+                if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
+                    progress = {'name': 'slice', 'progress': 100}
+                    self._setprogress(progress)
+                    self._task.end(None)
         except SubprocessSlicerException as e:
             self._log.debug('handled exception', exc_info=True)
             if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
-                failure = self._getfailure(e)
+                failure = self._get_failure(e)
                 self._task.fail(failure)
         except OSError as e:
             self._log.error('operating system error', exc_info=True)
             if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
-                failure = self._getfailure(e)
+                failure = self._get_failure(e)
                 self._task.fail(failure)
         except Exception as e:
             self._log.error('unhandled exception', exc_info=True)
             if conveyor.task.TaskConclusion.CANCELED != self._task.conclusion:
-                failure = self._getfailure(e)
+                failure = self._get_failure(e)
                 self._task.fail(failure)
 
     def _prologue(self):
         raise NotImplementedError
 
-    def _getexecutable(self):
+    def _get_executable(self):
         raise NotImplementedError
 
-    def _getarguments(self):
+    def _get_arguments(self):
         raise NotImplementedError
 
-    def _getcwd(self):
+    def _get_cwd(self):
         return None
 
     def _quote(self, s):
         quoted = ''.join(('"', unicode(s), '"'))
         return quoted
 
-    def _readpopen(self):
+    def _read_popen(self):
         raise NotImplementedError
 
     def _epilogue(self):
         raise NotImplementedError
 
-    def _getfailure(self, exception):
+    def _get_failure(self, exception):
         slicerlog = None
         if None is not self._slicerlog:
             slicerlog = self._slicerlog.getvalue()

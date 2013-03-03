@@ -143,22 +143,46 @@ class Job(object):
         raise NotImplementedError
 
     def log_job_heartbeat(self, log):
-        raise NotImplementedError
+        progress = self._get_progress()
+        if None is not progress:
+            log.info(
+                'job %d: progress: %s, %d%%', self.id, progress['name'],
+                progress['progress'])
 
     def log_job_stopped(self, log):
+        conclusion = self._get_conclusion()
+        if conveyor.task.TaskConclusion.ENDED == conclusion:
+            log.info('job %d: ended', self.id)
+        elif conveyor.task.TaskConclusion.FAILED == conclusion:
+            failure = self._get_failure()
+            log.error('job %d: failed: %r', self.id, failure)
+        elif conveyor.task.TaskConclusion.CANCELED == conclusion:
+            log.warning('job %d: canceled', self.id)
+        else:
+            raise ValueError(conclusion)
+
+
+class RecipeJob(Job):
+    def get_has_start_end(self):
+        raise NotImplementedError
+
+    def get_add_start_end(self):
+        raise NotImplementedError
+
+    def get_profile(self):
         raise NotImplementedError
 
 
-class PrintJob(Job):
+class PrintJob(RecipeJob):
     def __init__(
             self, id, name, machine, input_file, extruder_name,
-            gcode_processor_name, has_start_end, material_name, slicer_name,
+            gcode_processor_names, has_start_end, material_name, slicer_name,
             slicer_settings):
         Job.__init__(self, JobType.PRINT_JOB, id, name)
         self.machine = machine
         self.input_file = input_file
         self.extruder_name = extruder_name
-        self.gcode_processor_name = gcode_processor_name
+        self.gcode_processor_names = gcode_processor_names
         self.has_start_end = has_start_end
         self.material_name = material_name
         self.slicer_name = slicer_name
@@ -189,31 +213,24 @@ class PrintJob(Job):
 
     def log_job_started(self, log):
         log.info(
-            'print job %d started; printing %s to %s', self.id,
-            self.input_file, self.machine.name)
+            'job %d: started printing: %s -> %s', self.id, self.input_file,
+            self.machine_name)
 
-    def log_job_heartbeat(self, log):
-        progress = self._get_progress()
-        if None is not progress:
-            log.debug(
-                'print job %d progress: %s, %d%%', self.id, progress['name'],
-                progress['progress'])
+    def get_has_start_end(self):
+        return self.has_start_end
 
-    def log_job_stopped(self, log):
-        conclusion = self._get_conclusion()
-        if conveyor.task.TaskConclusion.ENDED == conclusion:
-            log.info('print job %d ended', self.id)
-        elif conveyor.task.TaskConclusion.FAILED == conclusion:
-            failure = self._get_failure()
-            log.error('print job %d failed: %s', self.id, failure)
-        elif conveyor.task.TaskConclusion.CANCELED == conclusion:
-            log.warning('print job %d canceled', self.id)
+    def get_add_start_end(self):
+        return True
+
+    def get_profile(self):
+        profile = self.machine.get_profile()
+        return profile
 
 
-class PrintToFileJob(Job):
+class PrintToFileJob(RecipeJob):
     def __init__(
             self, id, name, driver, profile, input_file, output_file,
-            extruder_name, file_type, gcode_processor_name, has_start_end,
+            extruder_name, file_type, gcode_processor_names, has_start_end,
             material_name, slicer_name, slicer_settings):
         Job.__init__(self, JobType.PRINT_TO_FILE_JOB, id, name)
         self.driver = driver
@@ -222,7 +239,7 @@ class PrintToFileJob(Job):
         self.output_file = output_file
         self.extruder_name = extruder_name
         self.file_type = file_type
-        self.gcode_processor_name = gcode_processor_name
+        self.gcode_processor_names = gcode_processor_names
         self.has_start_end = has_start_end
         self.material_name = material_name
         self.slicer_name = slicer_name
@@ -236,31 +253,23 @@ class PrintToFileJob(Job):
 
     def log_job_started(self, log):
         log.info(
-            'print-to-file job %d started; printing %s to %s', self.id,
+            'job %d: started print-to-file: %s -> %s', self.id,
             self.input_file, self.output_file)
 
-    def log_job_heartbeat(self, log):
-        progress = self._get_progress()
-        if None is not progress:
-            log.debug(
-                'print-to-file job %d progress: %s, %d%%', self.id, progress['name'],
-                progress['progress'])
+    def get_has_start_end(self):
+        return self.has_start_end
 
-    def log_job_stopped(self, log):
-        conclusion = self._get_conclusion()
-        if conveyor.task.TaskConclusion.ENDED == conclusion:
-            log.info('print-to-file job %d ended', self.id)
-        elif conveyor.task.TaskConclusion.FAILED == conclusion:
-            failure = self._get_failure()
-            log.error('print-to-file job %d failed: %s', self.id, failure)
-        elif conveyor.task.TaskConclusion.CANCELED == conclusion:
-            log.warning('print-to-file job %d canceled', self.id)
+    def get_add_start_end(self):
+        return True
+
+    def get_profile(self):
+        return self.profile
 
 
-class SliceJob(Job):
+class SliceJob(RecipeJob):
     def __init__(
             self, id, name, driver, profile, input_file, output_file,
-            add_start_end, extruder_name, gcode_processor_name,
+            add_start_end, extruder_name, gcode_processor_names,
             material_name, slicer_name, slicer_settings):
         Job.__init__(self, JobType.SLICE_JOB, id, name)
         self.driver = driver
@@ -269,7 +278,7 @@ class SliceJob(Job):
         self.output_file = output_file
         self.add_start_end = add_start_end
         self.extruder_name = extruder_name
-        self.gcode_processor_name = gcode_processor_name
+        self.gcode_processor_names = gcode_processor_names
         self.material_name = material_name
         self.slicer_name = slicer_name
         self.slicer_settings = slicer_settings
@@ -282,22 +291,14 @@ class SliceJob(Job):
 
     def log_job_started(self, log):
         log.info(
-            'slice job %d started; slicing %s to %s', self.id,
-            self.input_file, self.output_file)
+            'job %d: started slicing: %s -> %s', self.id, self.input_file,
+            self.output_file)
 
-    def log_job_heartbeat(self, log):
-        progress = self._get_progress()
-        if None is not progress:
-            log.debug(
-                'slice job %d progress: %s, %d%%', self.id, progress['name'],
-                progress['progress'])
+    def get_has_start_end(self):
+        return False
 
-    def log_job_stopped(self, log):
-        conclusion = self._get_conclusion()
-        if conveyor.task.TaskConclusion.ENDED == conclusion:
-            log.info('slice job %d ended', self.id)
-        elif conveyor.task.TaskConclusion.FAILED == conclusion:
-            failure = self._get_failure()
-            log.error('slice job %d failed: %s', self.id, failure)
-        elif conveyor.task.TaskConclusion.CANCELED == conclusion:
-            log.warning('slice job %d canceled', self.id)
+    def get_add_start_end(self):
+        return self.add_start_end
+
+    def get_profile(self):
+        return self.profile

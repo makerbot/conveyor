@@ -631,9 +631,9 @@ class PrintCommand(_ConnectedCommand):
         processors = _convert_processors_to_default(self._parsed_args.gcode_processor_name)
         params = {
             'machine_name': self._machine_name,
-            'input_file': self._parsed_args.input_file,
+            'input_file': os.path.abspath(self._parsed_args.input_file),
             'extruder_name': extruder_name,
-            'gcode_processor_name': processors,
+            'gcode_processor_names': processors,
             'has_start_end': self._parsed_args.has_start_end,
             'material_name': self._parsed_args.material_name,
             'slicer_name': self._parsed_args.slicer_name,
@@ -668,11 +668,11 @@ class PrintToFileCommand(_MonitorCommand):
         params = {
             'driver_name': self._get_driver_name(),
             'profile_name': self._get_profile_name(),
-            'input_file': self._parsed_args.input_file,
-            'output_file': self._parsed_args.output_file,
+            'input_file': os.path.abspath(self._parsed_args.input_file),
+            'output_file': os.path.abspath(self._parsed_args.output_file),
             'extruder_name': extruder_name,
             'file_type': self._parsed_args.file_type,
-            'gcode_processor_name': processors,
+            'gcode_processor_names': processors,
             'has_start_end': self._parsed_args.has_start_end,
             'material_name': self._parsed_args.material_name,
             'slicer_name': self._parsed_args.slicer_name,
@@ -806,11 +806,11 @@ class SliceCommand(_MonitorCommand):
         params = {
             'driver_name': self._get_driver_name(),
             'profile_name': self._get_profile_name(),
-            'input_file': self._parsed_args.input_file,
-            'output_file': self._parsed_args.output_file,
+            'input_file': os.path.abspath(self._parsed_args.input_file),
+            'output_file': os.path.abspath(self._parsed_args.output_file),
             'add_start_end': self._parsed_args.add_start_end,
             'extruder_name': extruder_name,
-            'gcode_processor_name': processors,
+            'gcode_processor_names': processors,
             'material_name': self._parsed_args.material_name,
             'slicer_name': self._parsed_args.slicer_name,
             'slicer_settings': slicer_settings.to_dict(),
@@ -846,7 +846,7 @@ class UploadFirmwareCommand(_QueryCommand):
         params = {
             'machine_name': None,
             'machinetype': self._parsed_args.machine_type,
-            'filename': self._parsed_args.input_file,
+            'filename': os.path.abspath(self._parsed_args.input_file),
         }
         method_task = self._jsonrpc.request('uploadfirmware', params)
         return method_task
@@ -862,7 +862,7 @@ class VerifyS3gCommand(_QueryCommand):
     help = 'verify an s3g/x3g file.'
 
     def _create_method_task(self):
-        params = {'s3gpath': self._parsed_args.input_file}
+        params = {'s3gpath': os.path.abspath(self._parsed_args.input_file)}
         method_task = self._jsonrpc.request('verifys3g', params)
         return method_task
 

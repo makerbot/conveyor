@@ -184,7 +184,7 @@ def gcode_processor(parser):
         required=False,
         help='run PROCESSOR on .gcode files',
         metavar='PROCESSOR',
-        dest='gcode_processor_name',
+        dest='gcode_processor_names',
         )
 
 

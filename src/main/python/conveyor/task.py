@@ -78,6 +78,13 @@ class Task(object):
 
 
     def _transition(self, event, data):
+        # import cStringIO as StringIO
+        # import logging
+        # import traceback
+        # fp = StringIO.StringIO()
+        # traceback.print_stack(file=fp)
+        # log = logging.getLogger()
+        # log.debug('state=%r, event=%r, date=%r, traceback=%r', self.state, event, data, fp.getvalue())
         if TaskState.PENDING == self.state:
             if TaskEvent.START == event:
                 self.state = TaskState.RUNNING
@@ -131,15 +138,9 @@ class Task(object):
         """
         self._transition(TaskEvent.HEARTBEAT, progress)
 
-
-    def lazy_heartbeat(self, new_progress, old_progress = None):
-        """ Posts a hearbeat update only if it's different from the old, and not None 
-        @param new_progress progress dict, see heartbeat for details
-        @param old_progress progress dict, see heartbeat for details
-        """
-        if None is not new_progress and new_progress != old_progress:
-            self.heartbeat(new_progress)
-    
+    def lazy_heartbeat(self, progress):
+        if self.progress != progress:
+            self.heartbeat(progress)
 
     def end(self, result):
         self._transition(TaskEvent.END, result)
