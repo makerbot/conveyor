@@ -438,7 +438,7 @@ class _UnifiedRecipe(_Recipe):
             else:
                 yield 'Rep2XDualstrusionPurgeProcesspr'
                 yield 'EmptyLayerProcessor'
-                yield 'Rep2XDualstrusionProcessor'
+                yield 'DualRetractProcessor'
 
     @_task
     @_work
