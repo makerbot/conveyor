@@ -180,6 +180,7 @@ def gcode_processor(parser):
     parser.add_argument(
         '--gcode-processor',
         action='append',
+        default=None,
         type=str,
         required=False,
         help='run PROCESSOR on .gcode files',

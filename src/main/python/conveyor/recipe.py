@@ -385,7 +385,7 @@ class _UnifiedRecipe(_Recipe):
             progress_processor = makerbot_driver.GcodeProcessors.DualstrusionProgressProcessor()
             output = progress_processor.process_gcode(woven_codes)
             for line in output:
-                print(line, file=layer_gcode_fp)
+                layer_gcode_fp.write(line)
         task.end(None)
 
     @_task
@@ -394,8 +394,8 @@ class _UnifiedRecipe(_Recipe):
             self, task, processed_gcode, layer_gcode, dualstrusion):
         profile = self._job.get_profile()
         factory = makerbot_driver.GcodeProcessors.ProcessorFactory()
-        gcode_processor_names = self._get_gcode_processor_names(
-            dualstrusion)
+        gcode_processor_names = list(self._get_gcode_processor_names(
+            dualstrusion))
         gcode_processor_list = list(factory.get_processors(
             gcode_processor_names, profile._s3g_profile))
         input_file = layer_gcode.get()
@@ -407,19 +407,21 @@ class _UnifiedRecipe(_Recipe):
         else:
             with self._temp_file(processed_gcode) as processed_gcode_fp:
                 self._log.info(
-                    'job %d: processing g-code: %s to %s', self._job.id,
-                    input_file, processed_gcode_fp.name)
+                    'job %d: processing g-code: %s to %s [%s]', self._job.id,
+                    input_file, processed_gcode_fp.name,
+                    ', '.join(gcode_processor_names))
                 with open(input_file) as input_fp:
                     output = input_fp.readlines()
                 for gcode_processor in gcode_processor_list:
                     output = gcode_processor.process_gcode(output)
                 for line in output:
-                    print(line, file=processed_gcode_fp)
+                    processed_gcode_fp.write(line)
         task.end(None)
 
     def _get_gcode_processor_names(self, dualstrusion):
+        self._log.info('gcode_processor_names = %r', self._job.gcode_processor_names)
         if None is not self._job.gcode_processor_names:
-            gcode_processor_names = self._gcode_processor_names
+            gcode_processor_names = self._job.gcode_processor_names
         else:
             gcode_processor_names = self._get_default_gcode_processor_names(
                 dualstrusion)
@@ -434,9 +436,9 @@ class _UnifiedRecipe(_Recipe):
             yield 'FanProcessor'
         elif 'Replicator2X' == profile.name:
             if not dualstrusion:
-                yield 'Rep2XSinglePurgeProcessor'
+                yield 'Rep2XSinglePrimeProcessor'
             else:
-                yield 'Rep2XDualstrusionPurgeProcessor'
+                yield 'Rep2XDualstrusionPrimeProcessor'
                 yield 'EmptyLayerProcessor'
                 yield 'DualRetractProcessor'
 
@@ -450,10 +452,14 @@ class _UnifiedRecipe(_Recipe):
                     'job %d: adding start/end g-code: %s -> %s', self._job.id,
                     processed_gcode_file, whole_gcode_fp.name)
                 gcode_scaffold = self._get_gcode_scaffold()
+                # NOTE: we use `print` because the start/end g-code needs line
+                # endings (they are stored in an JSON array of strings) and
+                # `write` because the layer g-code has line endings (because it
+                # is stored as a file).
                 for line in gcode_scaffold.start:
                     print(line, file=whole_gcode_fp)
                 for line in processed_gcode_fp:
-                    print(line, file=whole_gcode_fp)
+                    whole_gcode_fp.write(line)
                 for line in gcode_scaffold.end:
                     print(line, file=whole_gcode_fp)
         task.end(None)
