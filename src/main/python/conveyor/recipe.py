@@ -419,7 +419,7 @@ class _UnifiedRecipe(_Recipe):
 
     def _get_gcode_processor_names(self, dualstrusion):
         if None is not self._job.gcode_processor_names:
-            gcode_processor_names = self._gcode_processor_names
+            gcode_processor_names = self._job.gcode_processor_names
         else:
             gcode_processor_names = self._get_default_gcode_processor_names(
                 dualstrusion)
