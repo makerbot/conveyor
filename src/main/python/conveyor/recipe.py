@@ -380,7 +380,7 @@ class _UnifiedRecipe(_Recipe):
                 layer_gcode_1_gcode = conveyor.dualstrusion.GcodeObject(
                     layer_gcode_1_fp)
             weaver = conveyor.dualstrusion.DualstrusionWeaver(
-                layer_gcode_0_gcode, layer_gcode_1, task)
+                layer_gcode_0_gcode, layer_gcode_1_gcode, task)
             woven_codes = weaver.combine_codes()
             progress_processor = makerbot_driver.GcodeProcessors.DualstrusionProgressProcessor()
             output = progress_processor.process_gcode(woven_codes)
@@ -434,9 +434,9 @@ class _UnifiedRecipe(_Recipe):
             yield 'FanProcessor'
         elif 'Replicator2X' == profile.name:
             if not dualstrusion:
-                yield 'Rep2XSinglePurgeProcesspr'
+                yield 'Rep2XSinglePurgeProcessor'
             else:
-                yield 'Rep2XDualstrusionPurgeProcesspr'
+                yield 'Rep2XDualstrusionPurgeProcessor'
                 yield 'EmptyLayerProcessor'
                 yield 'DualRetractProcessor'
 

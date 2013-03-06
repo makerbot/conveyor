@@ -628,7 +628,7 @@ class PrintCommand(_ConnectedCommand):
             self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
         extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
-        processors = _convert_processors_to_default(self._parsed_args.gcode_processor_name)
+        processors = _convert_processors_to_default(self._parsed_args.gcode_processor_names)
         params = {
             'machine_name': self._machine_name,
             'input_file': os.path.abspath(self._parsed_args.input_file),
@@ -664,7 +664,7 @@ class PrintToFileCommand(_MonitorCommand):
             self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
         extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
-        processors = _convert_processors_to_default(self._parsed_args.gcode_processor_name)
+        processors = _convert_processors_to_default(self._parsed_args.gcode_processor_names)
         params = {
             'driver_name': self._get_driver_name(),
             'profile_name': self._get_profile_name(),
@@ -802,7 +802,7 @@ class SliceCommand(_MonitorCommand):
             self._parsed_args, self._config)
         slicer_settings.path = self._parsed_args.slicer_settings_path
         extruder_name = _fix_extruder_name(self._parsed_args.extruder_name)
-        processors = _convert_processors_to_default(self._parsed_args.gcode_processor_name)
+        processors = _convert_processors_to_default(self._parsed_args.gcode_processor_names)
         params = {
             'driver_name': self._get_driver_name(),
             'profile_name': self._get_profile_name(),
