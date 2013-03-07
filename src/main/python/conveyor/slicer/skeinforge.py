@@ -92,7 +92,7 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         self._tmp_directory = tempfile.mkdtemp(suffix='.skeinforge')
         self._tmp_input_file = os.path.join(
             self._tmp_directory, os.path.basename(self._input_file))
-        shutil.copy2(self._input_file, self._tmp_input_file)
+        shutil.copy(self._input_file, self._tmp_input_file)
 
     def _get_executable(self):
         return sys.executable

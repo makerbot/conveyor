@@ -564,7 +564,7 @@ class _UnifiedRecipe(_Recipe):
         self._log.info(
             'job %d: copying output: %s -> %s', self._job.id, output_file,
             self._job.output_file)
-        shutil.copy2(output_file, self._job.output_file)
+        shutil.copy(output_file, self._job.output_file)
         task.end(None)
 
 
