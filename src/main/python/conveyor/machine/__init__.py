@@ -323,7 +323,7 @@ class Machine(object):
         raise NotImplementedError
 
     def print(
-            self, input_path, has_start_end, extruders, extruder_temperature,
+            self, input_path, extruders, extruder_temperature,
             platform_temperature, material_name, build_name, task):
         raise NotImplementedError
 

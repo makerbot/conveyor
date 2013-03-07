@@ -102,9 +102,9 @@ class S3gDriver(conveyor.machine.Driver):
         return s3g
 
     def print_to_file(
-            self, profile, input_path, output_path, file_type, has_start_end,
-            extruders, extruder_temperature, platform_temperature,
-            material_name, build_name, task):
+            self, profile, input_path, output_path, file_type, extruders,
+            extruder_temperature, platform_temperature, material_name,
+            build_name, task):
         try:
             with open(output_path, 'wb') as output_fp:
                 condition = threading.Condition()
@@ -133,13 +133,9 @@ class S3gDriver(conveyor.machine.Driver):
                     'progress': 0,
                 }
                 task.lazy_heartbeat(progress)
-                if not has_start_end:
-                    self._execute_lines(task, parser, gcode_scaffold.start)
                 if conveyor.task.TaskState.RUNNING == task.state:
                     with open(input_path) as input_fp:
                         self._execute_lines(task, parser, input_fp)
-                if not has_start_end:
-                    self._execute_lines(task, parser, gcode_scaffold.end)
             if conveyor.task.TaskState.RUNNING == task.state:
                 progress = {
                     'name': 'print-to-file',
@@ -400,7 +396,7 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 self._operation.cancel()
 
     def print(
-            self, input_path, has_start_end, extruders, extruder_temperature,
+            self, input_path, extruders, extruder_temperature,
             platform_temperature, material_name, build_name, task):
         with self._state_condition:
             self._poll()
@@ -408,9 +404,8 @@ class _S3gMachine(conveyor.stoppable.StoppableInterface, conveyor.machine.Machin
                 raise conveyor.error.MachineStateException
             else:
                 self._operation = _MakeOperation(
-                    self, task, input_path, has_start_end, extruders,
-                    extruder_temperature, platform_temperature,
-                    material_name, build_name)
+                    self, task, input_path, extruders, extruder_temperature,
+                    platform_temperature, material_name, build_name)
                 self._change_state(conveyor.machine.MachineState.OPERATION)
 
     def reset_to_factory(self, task):
@@ -666,12 +661,10 @@ class _BlockPollingOperation(_TaskOperation):
 
 class _MakeOperation(_TaskOperation):
     def __init__(
-            self, machine, task, input_path, skip_start_end, extruders,
-            extruder_temperature, platform_temperature, material_name,
-            build_name):
+            self, machine, task, input_path, extruders, extruder_temperature,
+            platform_temperature, material_name, build_name):
         _TaskOperation.__init__(self, machine, task)
         self.input_path = input_path
-        self.skip_start_end = skip_start_end
         self.extruders = extruders
         self.extruder_temperature = extruder_temperature
         self.platform_temperature = platform_temperature
@@ -718,13 +711,9 @@ class _MakeOperation(_TaskOperation):
                 'progress': 0,
             }
             self.task.lazy_heartbeat(progress)
-            if not self.skip_start_end:
-                self._execute_lines(parser, gcode_scaffold.start)
             if conveyor.task.TaskState.RUNNING == self.task.state:
                 with open(self.input_path) as input_fp:
                     self._execute_lines(parser, input_fp)
-            if not self.skip_start_end:
-                self._execute_lines(parser, gcode_scaffold.end)
             if conveyor.task.TaskState.RUNNING == self.task.state:
                 progress = {
                     'name': 'print',

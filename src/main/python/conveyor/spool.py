@@ -38,13 +38,12 @@ class Spool(object):
         return empty
 
     def spool_print(
-            self, machine, input_path, has_start_end, extruders,
-            extruder_temperature, platform_temperature, material_name,
-            build_name, task):
+            self, machine, input_path, extruders, extruder_temperature,
+            platform_temperature, material_name, build_name, task):
         machine_spool = self._get_machine_spool(machine)
         machine_spool.spool_print(
-            input_path, has_start_end, extruders, extruder_temperature,
-            platform_temperature, material_name, build_name, task)
+            input_path, extruders, extruder_temperature, platform_temperature,
+            material_name, build_name, task)
 
     def _get_machine_spool(self, machine):
         with self._machine_spools_condition:
@@ -75,11 +74,11 @@ class _MachineSpool(object):
         return empty
 
     def spool_print(
-            self, input_path, has_start_end, extruders, extruder_temperature,
+            self, input_path, extruders, extruder_temperature,
             platform_temperature, material_name, build_name, task):
         tuple_ = (
-            input_path, has_start_end, extruders, extruder_temperature,
-            platform_temperature, material_name, build_name, task)
+            input_path, extruders, extruder_temperature, platform_temperature,
+            material_name, build_name, task)
         with self._spool_condition:
             self._spool.append(tuple_)
         self._attempt_print()
