@@ -214,7 +214,7 @@ class PrintJob(RecipeJob):
     def log_job_started(self, log):
         log.info(
             'job %d: started printing: %s -> %s', self.id, self.input_file,
-            self.machine_name)
+            self.machine.name)
 
     def get_has_start_end(self):
         return self.has_start_end
