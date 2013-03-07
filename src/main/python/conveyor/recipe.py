@@ -498,7 +498,7 @@ class _UnifiedRecipe(_Recipe):
         has_start_end = True
         self._job.driver.print_to_file(
             profile, input_file, output_file, self._job.file_type,
-            has_start_end, self._job.extruder_name,
+            self._job.extruder_name,
             self._job.slicer_settings.extruder_temperature,
             self._job.slicer_settings.platform_temperature,
             self._job.material_name, self._job.name, task)
