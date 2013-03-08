@@ -55,7 +55,7 @@ namespace conveyor
             , QString const & inputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
-            , bool const skipStartEnd
+            , bool const hasStartEnd
             );
         Job * printToFile
             ( Printer * printer

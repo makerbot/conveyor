@@ -121,7 +121,7 @@ namespace conveyor
         virtual Job * print (QString const & inputFile,
                              const SlicerConfiguration & slicer_conf,
                              QString const & material,
-                             bool const skipStartEnd);
+                             bool const hasStartEnd);
 
         virtual Job * printToFile (QString const & inputFile, QString const & outputFile,
                                    const SlicerConfiguration & slicer_conf,

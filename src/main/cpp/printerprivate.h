@@ -26,7 +26,7 @@ namespace conveyor
         Job * print (QString const & inputFile
                      , const SlicerConfiguration & slicer_conf
                      , QString const & material
-                     , bool const skipStartEnd);
+                     , bool const hasStartEnd);
         Job * printToFile
             ( QString const & inputFile
             , QString const & outputFile

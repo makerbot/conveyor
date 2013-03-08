@@ -179,12 +179,12 @@ namespace conveyor
     Printer::print (QString const & inputFile
                     , const SlicerConfiguration & slicer_conf
                     , QString const & material
-                    , bool const skipStartEnd)
+                    , bool const hasStartEnd)
     {
         Job * const result (this->m_private->print (inputFile,
                                                     slicer_conf,
                                                     material,
-                                                    skipStartEnd));
+                                                    hasStartEnd));
         return result;
     }
 

@@ -308,7 +308,7 @@ namespace conveyor
         , QString const & inputFile
         , const SlicerConfiguration & slicerConf
         , QString const & materialName
-        , bool const skipStartEnd 
+        , bool const hasStartEnd 
         )
     {
         Json::Value params(commonPrintSliceParams(slicerConf,
@@ -316,7 +316,7 @@ namespace conveyor
                                                   materialName));
 
         params["machine_name"] = printer->uniqueName().toStdString();
-        params["has_start_end"] = skipStartEnd;
+        params["has_start_end"] = hasStartEnd;
 
         LOG_INFO << "print params=" << params.toStyledString() << std::endl;
 
