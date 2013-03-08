@@ -194,7 +194,7 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicer_conf
         , QString const & material
-        , bool const skipStartEnd
+        , bool const hasStartEnd
         , QString const & printToFileType
         )
     {
@@ -202,7 +202,7 @@ namespace conveyor
                                                           outputFile,
                                                           slicer_conf,
                                                           material,
-                                                          skipStartEnd,
+                                                          hasStartEnd,
                                                           printToFileType));
         return result;
     }

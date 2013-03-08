@@ -63,7 +63,7 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
-            , bool const skipStartEnd
+            , bool const hasStartEnd
             , QString const & printToFileType
             );
         Job * slice

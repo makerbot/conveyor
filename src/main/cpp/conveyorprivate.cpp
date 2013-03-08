@@ -334,7 +334,7 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicerConf
         , QString const & materialName
-        , bool const skipStartEnd 
+        , bool const hasStartEnd 
         , QString const & printToFileType
         )
     {
@@ -346,7 +346,7 @@ namespace conveyor
         setProfileNameParam(params, printer);
         params["file_type"] = Json::Value (printToFileType.toStdString());
         params["output_file"] = Json::Value (outputFile.toStdString ());
-        params["has_start_end"] = skipStartEnd;
+        params["has_start_end"] = hasStartEnd;
 
         LOG_INFO << "print_to_file params="
                  << params.toStyledString() << std::endl;
