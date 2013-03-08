@@ -41,13 +41,19 @@ class MiracleGrueSlicer(conveyor.slicer.SubprocessSlicer):
         with open(path) as config_fp:
             config = conveyor.json.load(config_fp)
         start_value = config.get('startGcode', 'start.gcode')
-        start_file = os.path.join(dirname, start_value)
-        with open(start_file) as start_fp:
-            gcode_scaffold.start = start_fp.readlines()
+        if None is start_value:
+            gcode_scaffold.start = []
+        else:
+            start_file = os.path.join(dirname, start_value)
+            with open(start_file) as start_fp:
+                gcode_scaffold.start = start_fp.readlines()
         end_value = config.get('endGcode', 'end.gcode')
-        end_file = os.path.join(dirname, end_value)
-        with open(end_file) as end_fp:
-            gcode_scaffold.end = end_fp.readlines()
+        if None is end_value:
+            gcode_scaffold.end = []
+        else:
+            end_file = os.path.join(dirname, end_value)
+            with open(end_file) as end_fp:
+                gcode_scaffold.end = end_fp.readlines()
         gcode_scaffold.variables = {}
         return gcode_scaffold
 

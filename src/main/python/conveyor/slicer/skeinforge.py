@@ -47,7 +47,8 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         gcode_scaffold = conveyor.machine.GcodeScaffold()
         start_value = 'start-pla.gcode'
         end_value = 'end-pla.gcode'
-        alteration_file = os.path.join(path, 'profiles', 'extrusion', 'ABS')
+        alteration_file = os.path.join(
+            path, 'profiles', 'extrusion', 'ABS', 'alteration.csv')
         with open(alteration_file) as alteration_fp:
             alteration_fp.readline() # consume comment
             alteration_fp.readline() # consume header
@@ -60,19 +61,23 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
             for line in reader:
                 try:
                     if 'Name of Start File:' == line[0]:
-                        start_value = line[1]
+                        start_value = line[1].strip()
                     elif 'Name of End File:' == line[0]:
-                        end_value = line[1]
+                        end_value = line[1].strip()
                 except:
                     pass
-        start_file = os.path.join(
-            path, 'profiles', 'extrusion', 'ABS', start_value)
-        with open(start_file) as start_fp:
-            gcode_scaffold.start = start_fp.readlines()
-        end_file = os.path.join(
-            path, 'profiles', 'extrusion', 'ABS', end_value)
-        with open(end_file) as end_fp:
-            gcode_scaffold.end = end_fp.readlines()
+        if '' == start_value:
+            gcode_scaffold.start = []
+        else:
+            start_file = os.path.join(path, 'alterations', start_value)
+            with open(start_file) as start_fp:
+                gcode_scaffold.start = start_fp.readlines()
+        if '' == end_value:
+            gcode_scaffold.end = []
+        else:
+            end_file = os.path.join(path, 'alterations', end_value)
+            with open(end_file) as end_fp:
+                gcode_scaffold.end = end_fp.readlines()
         gcode_scaffold.variables = {}
         return gcode_scaffold
 
@@ -111,21 +116,25 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
         yield (self._slicer_file,)
 
     def _get_arguments_skeinforge(self):
-        if self._slicer_settings.path is None:
+        if None is self._slicer_settings.path:
             yield ('-p', self._profilepath,)
             for method in (
-                self._get_arguments_raft,
-                self._get_arguments_support,
-                self._get_arguments_bookend,
-                self._get_arguments_printomatic,
-                self._get_arguments_stl,
-                ):
-                    for iterable in method():
-                        yield iterable
+                    self._get_arguments_raft,
+                    self._get_arguments_support,
+                    self._get_arguments_bookend,
+                    self._get_arguments_printomatic,
+                    self._get_arguments_stl,
+                    ):
+                for iterable in method():
+                    yield iterable
         else:
             yield ('-p', self._slicer_settings.path)
-            for iterable in self._get_arguments_stl():
-                yield iterable
+            for method in (
+                    self._get_arguments_bookend,
+                    self._get_arguments_stl,
+                    ):
+                for iterable in method():
+                    yield iterable
 
     def _get_arguments_raft(self):
         yield self._option(
@@ -158,14 +167,12 @@ class SkeinforgeSlicer(conveyor.slicer.SubprocessSlicer):
 
     # TODO: find a home for these values.
 
-    _BOOKEND = True
     _FILAMENTDIAMETER = 1.82
     _PATHWIDTH = 0.4
 
     def _get_arguments_bookend(self):
-        if SkeinforgeSlicer._BOOKEND:
-            yield self._option('alteration.csv', 'Name of Start File:', '')
-            yield self._option('alteration.csv', 'Name of End File:', '')
+        yield self._option('alteration.csv', 'Name of Start File:', '')
+        yield self._option('alteration.csv', 'Name of End File:', '')
 
     def _get_arguments_printomatic(self):
         ratio = SkeinforgeSlicer._PATHWIDTH / self._slicer_settings.layer_height

@@ -163,7 +163,8 @@ class _UnifiedRecipe(_Recipe):
         ext = ext.lower()
         if '.gcode' == ext:
             if not self._job.get_has_start_end():
-                dualstrusion = False
+                extruders = [e.strip() for e in self._job.slicer_settings.extruder.split(',')]
+                dualstrusion = '0' in extruders and '1' in extruders
                 yield self._goto_layer_gcode(input_, dualstrusion)
             else:
                 yield self._goto_whole_gcode(input_)
@@ -245,13 +246,13 @@ class _UnifiedRecipe(_Recipe):
         return new_settings
 
     def _goto_layer_gcode(self, layer_gcode, dualstrusion):
-        processed_gcode = _Variable('processed-gcode', 'gcode')
-        yield self._gcode_processor_task(
-            processed_gcode, layer_gcode, dualstrusion)
         if not self._job.get_add_start_end():
-            yield self._goto_output_file(processed_gcode)
+            yield self._goto_output_file(layer_gcode)
         else:
+            processed_gcode = _Variable('processed-gcode', 'gcode')
             whole_gcode = _Variable('whole-gcode', 'gcode')
+            yield self._gcode_processor_task(
+                processed_gcode, layer_gcode, dualstrusion)
             yield self._add_start_end_task(whole_gcode, processed_gcode)
             yield self._goto_whole_gcode(whole_gcode)
 
@@ -478,7 +479,7 @@ class _UnifiedRecipe(_Recipe):
             if conveyor.slicer.Slicer.MIRACLEGRUE == self._job.slicer_name:
                 slicer = conveyor.slicer.miraclegrue.MiracleGrueSlicer
             elif conveyor.slicer.Slicer.SKEINFORGE == self._job.slicer_name:
-                slicer = conveyor.slicer.skeinforge.SkeinforgeGrueSlicer
+                slicer = conveyor.slicer.skeinforge.SkeinforgeSlicer
             else:
                 raise ValueError(self._job.slicer_name)
             gcode_scaffold = slicer.get_gcode_scaffold(
