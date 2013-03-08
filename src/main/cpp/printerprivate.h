@@ -40,7 +40,7 @@ namespace conveyor
             , QString const & outputFile
             , const SlicerConfiguration & slicer_conf
             , QString const & material
-            , bool const withStartEnd
+            , bool const addStartEnd
             );
 
         void updateFromJson (Json::Value const &);

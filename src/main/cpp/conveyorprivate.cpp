@@ -369,7 +369,7 @@ namespace conveyor
         , QString const & outputFile
         , const SlicerConfiguration & slicerConf
         , QString const & materialName
-        , bool const withStartEnd
+        , bool const addStartEnd
         )
     {
         Json::Value params(commonPrintSliceParams(slicerConf,
@@ -379,7 +379,7 @@ namespace conveyor
         setDriverNameParam(params);
         setProfileNameParam(params, printer);
         params["output_file"] = Json::Value(outputFile.toStdString ());
-        params["add_start_end"] = Json::Value(withStartEnd);
+        params["add_start_end"] = Json::Value(addStartEnd);
 
         LOG_INFO << "slice params="
                  << params.toStyledString() << std::endl;

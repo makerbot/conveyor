@@ -132,7 +132,7 @@ namespace conveyor
         virtual Job * slice (QString const & inputFile, QString const & outputFile,
                              const SlicerConfiguration & slicer_conf,
                              QString const & material,
-                             bool const withStartEnd);
+                             bool const addStartEnd);
 
     signals:
         void changed (void);
