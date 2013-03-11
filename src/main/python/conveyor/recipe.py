@@ -568,10 +568,14 @@ class _UnifiedRecipe(_Recipe):
         if not os.path.exists(self._job.output_file):
             shutil.copy(output_file, self._job.output_file)
         else:
-            with open(output_file) as read_fp:
-                with open(self._job.output_file, 'w') as write_fp:
-                    for line in read_fp:
-                        write_fp.write(line)
+            with open(output_file, 'rb') as read_fp:
+                with open(self._job.output_file, 'wb') as write_fp:
+                    while True:
+                        data = read_fp.read(4096)
+                        if 0 == len(data):
+                            break
+                        else:
+                            write_fp.write(data)
         task.end(None)
 
 
