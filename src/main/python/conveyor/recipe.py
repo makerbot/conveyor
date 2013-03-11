@@ -453,16 +453,14 @@ class _UnifiedRecipe(_Recipe):
                     'job %d: adding start/end g-code: %s -> %s', self._job.id,
                     processed_gcode_file, whole_gcode_fp.name)
                 gcode_scaffold = self._get_gcode_scaffold()
-                # NOTE: we use `print` because the start/end g-code needs line
-                # endings (they are stored in an JSON array of strings) and
-                # `write` because the layer g-code has line endings (because it
-                # is stored as a file).
+                # NOTE: we use `write` here because the start/end G-code lines
+                # are expected to always have line separators.
                 for line in gcode_scaffold.start:
-                    print(line, file=whole_gcode_fp)
+                    whole_gcode_fp.write(line)
                 for line in processed_gcode_fp:
                     whole_gcode_fp.write(line)
                 for line in gcode_scaffold.end:
-                    print(line, file=whole_gcode_fp)
+                    whole_gcode_fp.write(line)
         task.end(None)
 
     def _get_gcode_scaffold(self):

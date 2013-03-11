@@ -260,10 +260,19 @@ class _S3gProfile(conveyor.machine.Profile):
         variables['START_Y'] = start_position['start_y']
         variables['START_Z'] = start_position['start_z']
         gcode_scaffold = conveyor.machine.GcodeScaffold()
-        gcode_scaffold.start = gcode_assembler.assemble_start_sequence(
-            start_template)
-        gcode_scaffold.end = gcode_assembler.assemble_end_sequence(
-            end_template)
+        def append_linesep(s):
+            # NOTE: do not use os.linesep here since G-code files are written
+            # in text mode (Python will automagically translate the '\n' to the
+            # platform's line separator).
+            if not s.endswith('\n'):
+                s += '\n'
+            return s
+        gcode_scaffold.start = map(
+            append_linesep, gcode_assembler.assemble_start_sequence(
+                start_template))
+        gcode_scaffold.end = map(
+            append_linesep, gcode_assembler.assemble_end_sequence(
+                end_template))
         gcode_scaffold.variables = variables
         return gcode_scaffold
 
