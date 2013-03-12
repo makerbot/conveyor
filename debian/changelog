@@ -1,3 +1,9 @@
+conveyor (2.0.1) precise; urgency=low
+
+  * Fixed custom profiles (by rewriting recipe.py).
+
+ -- MakerBot Industries dev team <dev@makerbot.com>  Tue, 12 Mar 2013 11:29:56  -0400
+
 conveyor (2.0.0) precise; urgency=low
 
   * Bugfix: Less likely to break your system
